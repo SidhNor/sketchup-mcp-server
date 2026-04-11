@@ -16,7 +16,9 @@ Validate that the document is a PRD rather than a disguised architecture or impl
 4. Confirm that domain-rule conflicts are flagged where applicable.
 5. Confirm that non-functional scope sections are complete.
 6. Confirm that the document does not contain architecture-only content such as component breakdowns, technology stacks, or runtime layering.
-7. Check that links are repo-relative.
+7. Confirm that front matter is present and `last_updated` reflects the current edit.
+8. Confirm that `Revision History` includes an entry for the current create/update pass.
+9. Check that links are repo-relative.
 
 ## Expected Outputs
 
@@ -28,6 +30,7 @@ Validate that the document is a PRD rather than a disguised architecture or impl
 - the PRD is consistent with its source material
 - the required structure is complete
 - the document reads as a product document rather than an architecture document
+- front matter and revision history are up to date
 - links are repo-relative
 - any remaining uncertainty is captured in `Opened Questions`
 

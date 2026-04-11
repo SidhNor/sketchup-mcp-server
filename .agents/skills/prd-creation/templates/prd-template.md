@@ -5,6 +5,13 @@ Use this template when creating or normalizing a PRD.
 Store it as `specifications/prds/prd-<slug>.md`.
 
 ````md
+---
+doc_type: prd
+title: <PRD Title>
+status: draft
+last_updated: YYYY-MM-DD
+---
+
 # PRD: <PRD Title>
 
 ## Problem statement
@@ -89,6 +96,12 @@ Conflict flag: <state whether any functional requirements conflict with domain r
 
 - <Dependency>
 - <Dependency>
+
+## Revision History
+
+| Date | Change |
+| --- | --- |
+| YYYY-MM-DD | Initial draft created |
 ````
 
 ## Writing rules
@@ -96,6 +109,9 @@ Conflict flag: <state whether any functional requirements conflict with domain r
 - Keep the PRD focused on product behavior, value, constraints, and scope.
 - Avoid implementation detail unless the user explicitly asks for it.
 - Use repo-relative links only.
+- Use lightweight YAML front matter with `doc_type`, `title`, `status`, and `last_updated`.
+- Add a `Revision History` section with concise, dated entries.
+- When updating an existing PRD, update `last_updated` and append a new revision-history entry for that change.
 - Split broad source material into multiple PRDs when that produces cleaner product boundaries.
 - Ensure metrics, requirements, and risks are concrete enough to review.
 - Do not include component breakdowns, technology stacks, module/file layout, or runtime architecture.

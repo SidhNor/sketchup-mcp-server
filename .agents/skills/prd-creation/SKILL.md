@@ -14,6 +14,8 @@ This skill is intentionally progressive. Start from the source material and exec
 - Store PRDs under `specifications/prds/`.
 - Use one file per coherent product slice.
 - File name format: `prd-<slug>.md`.
+- Every PRD must include lightweight YAML front matter with `doc_type`, `title`, `status`, and `last_updated`.
+- Every PRD must include a `Revision History` section with concise, dated entries.
 
 Examples:
 
@@ -70,6 +72,7 @@ By the end of the skill, produce:
 - structured functional and non-functional requirements
 - constraints, out-of-scope boundaries, risks, and dependencies
 - one or more PRDs stored in `specifications/prds/` using `templates/prd-template.md`
+- updated front matter and revision history for every PRD created or edited during the skill
 
 ## Step index
 
@@ -92,6 +95,8 @@ By the end of the skill, produce:
 - If domain rules are missing and materially affect requirements, ask the user or explicitly mark the gap instead of inventing rules.
 - Functional requirements must be checked against domain rules and any conflicts must be flagged explicitly in the PRD.
 - Keep implementation details out of the PRD unless the user explicitly asks for that level of specificity.
+- When creating a PRD, initialize its front matter and add an initial revision-history entry.
+- When updating an existing PRD, update `last_updated` and append a dated revision-history entry describing the change.
 - Persist the final PRD as `prd-<slug>.md` under `specifications/prds/`.
 
 ## Step map
