@@ -1,41 +1,40 @@
 module SU_MCP
   module Bridge
-    DEFAULT_TRANSPORT = "stdio".freeze
-    DEFAULT_HTTP_HOST = "127.0.0.1".freeze
-    DEFAULT_HTTP_PORT = 8000
+    DEFAULT_MCP_TRANSPORT = "stdio".freeze
+    DEFAULT_SOCKET_BIND_HOST = "0.0.0.0".freeze
+    DEFAULT_SOCKET_PORT = 9876
 
     module_function
 
-    def transport
-      env_or_default("SKETCHUP_MCP_TRANSPORT", DEFAULT_TRANSPORT).downcase
+    def mcp_transport
+      env_or_default("SKETCHUP_MCP_TRANSPORT", DEFAULT_MCP_TRANSPORT).downcase
     end
 
-    def http_host
-      env_or_default("SKETCHUP_MCP_HTTP_HOST", DEFAULT_HTTP_HOST)
+    def socket_bind_host
+      env_or_default("SKETCHUP_BIND_HOST", DEFAULT_SOCKET_BIND_HOST)
     end
 
-    def http_port
-      Integer(env_or_default("SKETCHUP_MCP_HTTP_PORT", DEFAULT_HTTP_PORT.to_s))
+    def socket_port
+      Integer(env_or_default("SKETCHUP_PORT", DEFAULT_SOCKET_PORT.to_s))
     rescue ArgumentError
-      DEFAULT_HTTP_PORT
+      DEFAULT_SOCKET_PORT
     end
 
-    def endpoint
-      return "stdio" if transport == "stdio"
-
-      "http://#{http_host}:#{http_port}/mcp"
+    def socket_endpoint
+      "#{socket_bind_host}:#{socket_port}"
     end
 
-    def status_message
+    def status_message(server_status = {})
       lines = []
       lines << "SketchUp MCP is loaded."
-      lines << "Configured transport: #{transport}"
-      lines << "Configured endpoint: #{endpoint}"
+      lines << "Python MCP transport default: #{mcp_transport}"
+      lines << "SketchUp socket bridge: #{server_status[:host] || socket_bind_host}:#{server_status[:port] || socket_port}"
+      lines << "Bridge running: #{server_status[:running] ? 'yes' : 'no'}"
 
-      if transport == "stdio"
-        lines << "Start the FastMCP server from the client or via `uv run sketchup-mcp-server`."
+      if mcp_transport == "stdio"
+        lines << "Start the FastMCP server from the MCP client or via `uv run sketchup-mcp-server`."
       else
-        lines << "Set SKETCHUP_MCP_TRANSPORT=stdio to use a local stdio-launched server."
+        lines << "Set SKETCHUP_MCP_TRANSPORT=stdio to keep the Python MCP server on stdio by default."
       end
 
       lines.join("\n")

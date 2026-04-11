@@ -1,6 +1,6 @@
 {
   "name": "SketchUp MCP",
-  "description": "SketchUp extension scaffold for a paired FastMCP server.",
+  "description": "SketchUp socket bridge and tool surface for the paired FastMCP server.",
   "creator": "sidhnor",
   "copyright": "2026",
   "license": "MIT",
