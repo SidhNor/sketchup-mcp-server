@@ -50,7 +50,7 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           set +e
-          uv run semantic-release -v version --strict
+          uv run semantic-release --strict -v version
           status=$?
           if [ "$status" -eq 0 ]; then
             echo "released=true" >> "$GITHUB_OUTPUT"
