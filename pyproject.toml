@@ -1,0 +1,33 @@
+[build-system]
+requires = ["setuptools>=69", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "sketchup-mcp-server"
+version = "0.1.0"
+description = "FastMCP server for the SketchUp MCP extension."
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+  "fastmcp>=3.2.3,<4"
+]
+
+[project.scripts]
+sketchup-mcp-server = "sketchup_mcp_server.__main__:main"
+
+[dependency-groups]
+dev = [
+  "pytest>=8.3.5",
+  "ruff>=0.11.5"
+]
+
+[tool.setuptools.package-dir]
+"" = "python/src"
+
+[tool.setuptools.packages.find]
+where = ["python/src"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+src = ["python/src", "python/tests"]

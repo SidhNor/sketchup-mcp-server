@@ -1,0 +1,17 @@
+require:
+  - rubocop-sketchup
+
+AllCops:
+  NewCops: enable
+  SuggestExtensions: false
+  Exclude:
+    - ".bundle/**/*"
+    - "python/**/*"
+    - "vendor/**/*"
+
+Layout/LineLength:
+  Max: 100
+
+Naming/FileName:
+  Exclude:
+    - "src/su_mcp.rb"

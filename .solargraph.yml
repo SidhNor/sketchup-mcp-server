@@ -1,0 +1,12 @@
+include:
+  - "src/**/*.rb"
+
+exclude:
+  - ".bundle/**/*"
+  - "vendor/**/*"
+
+require_paths:
+  - src
+
+reporters:
+  - rubocop

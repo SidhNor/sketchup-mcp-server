@@ -1,0 +1,10 @@
+{
+  "name": "SketchUp MCP",
+  "description": "SketchUp extension scaffold for a paired FastMCP server.",
+  "creator": "sidhnor",
+  "copyright": "2026",
+  "license": "MIT",
+  "product_id": "SKETCHUP_MCP",
+  "version": "0.1.0",
+  "build": "1"
+}
