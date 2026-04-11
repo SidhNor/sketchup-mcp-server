@@ -2,21 +2,26 @@
 
 ## Purpose
 
-Define final implementation-level acceptance outcomes without prescribing code structure.
+Define the final implementation-level acceptance outcomes without prescribing code structure.
 
 ## Entry Criteria
 
 - Step 06 exit criteria are met
+- architectural context is documented
 
 ## Actions
 
 1. Write acceptance criteria as bullet-point outcomes, not Gherkin.
-2. Ensure each criterion is verifiable, specific, and implementation agnostic.
+2. Ensure each acceptance criterion is:
+   - verifiable
+   - specific
+   - implementation agnostic
 3. Ensure coverage includes:
    - happy path
-   - error handling
+   - error handling scenarios
    - edge cases
    - integration points
+4. Remove vague or duplicated criteria.
 
 ## Expected Outputs
 
@@ -25,8 +30,9 @@ Define final implementation-level acceptance outcomes without prescribing code s
 ## Exit Criteria
 
 - every acceptance criterion is verifiable
-- coverage is sufficient for implementation review
+- the criteria are specific and implementation agnostic
+- the full behavior surface has adequate coverage
 
 ## Proceed Condition
 
-Proceed to Step 08 once the acceptance criteria are complete enough to validate the plan.
+Proceed to Step 08 once the acceptance criteria are complete enough to validate the implementation plan.

@@ -2,11 +2,12 @@
 
 ## Purpose
 
-Validate the plan against technical risk and dependency constraints.
+Validate the plan against real technical risk and dependency constraints.
 
 ## Entry Criteria
 
 - Step 07 exit criteria are met
+- acceptance criteria are defined
 
 ## Actions
 
@@ -16,19 +17,24 @@ Validate the plan against technical risk and dependency constraints.
    - specs
    - tooling
    - runtime environment
-3. Validate risk and dependency assumptions against prior research and decisions.
+   - external systems when relevant
+3. Validate the risks and dependencies against the research from Step 03 and technical decisions from Step 05.
+4. Note mitigations and sequencing implications.
 
 ## Expected Outputs
 
 - risk assessment
 - dependency list
 - mitigation summary
+- validation notes against prior research
 
 ## Exit Criteria
 
-- major risks are explicit
+- major technical risks are explicit
 - dependencies are clear enough to sequence work safely
+- mitigation thinking exists for the highest-impact risks
+- the risk and dependency view does not conflict with prior research
 
 ## Proceed Condition
 
-Proceed to Step 09 once risks and dependencies are documented well enough to finalize the plan.
+Proceed to Step 09 once risks and dependencies are documented well enough to finalize the implementation plan.

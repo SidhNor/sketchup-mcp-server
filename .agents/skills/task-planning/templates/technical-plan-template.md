@@ -1,8 +1,8 @@
 # Technical Implementation Plan Template
 
-Store this document as:
+Use this template for the final Step 09 output.
 
-- `specifications/tasks/<scope>/<TASK-ID>-<task-slug>/plan.md`
+Store it as `plan.md` in the same folder as the source `task.md`.
 
 ````md
 # Technical Plan: <Task ID> <Task Title>
@@ -69,6 +69,11 @@ Store this document as:
 <Diagram or structured component view>
 ```
 
+## Key Relationships
+
+- <Relationship>
+- <Relationship>
+
 ## Acceptance Criteria
 
 - <Verifiable implementation-level outcome>
@@ -84,12 +89,13 @@ Store this document as:
 
 - <Unit tests>
 - <Integration tests>
-- <Scenario tests>
+- <Scenario or acceptance tests>
 
 ## Implementation Phases
 
 1. <Small reversible phase>
 2. <Small reversible phase>
+3. <Small reversible phase>
 
 ## Risks and Mitigations
 
@@ -98,10 +104,25 @@ Store this document as:
 ## Dependencies
 
 - <Dependency>
+
+## Quality Checks
+
+- [ ] All required inputs validated
+- [ ] Problem statement documented
+- [ ] Goals and non-goals documented
+- [ ] Research summary documented
+- [ ] Technical decisions included
+- [ ] Architecture context included
+- [ ] Acceptance criteria included
+- [ ] Test requirements specified
+- [ ] Risks and dependencies documented
+- [ ] Small reversible phases defined
 ````
 
 ## Writing rules
 
 - Prefer concrete technical decisions over vague implementation notes.
+- Keep the plan implementation-oriented, not product-marketing oriented.
+- Break work into small reversible phases.
 - Keep the design simple and understandable.
-- Use repo-internal relative links only.
+- Do not leave important implementation decisions implicit.

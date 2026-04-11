@@ -21,24 +21,34 @@ Write the technical implementation plan as a sibling file:
 
 ## Operating principles
 
-- One step at a time.
+- One step at a time: load only the current step reference, not the whole step set up front.
 - Requirements first: keep the task product-readable; put technical detail in the implementation plan.
-- TDD is required.
-- Small reversible steps over large clever leaps.
-- Clarity and simplicity over cleverness.
+- TDD is required: test strategy must be designed before implementation planning is finalized.
+- Small reversible steps: break complex delivery into small implementable phases with low rollback cost.
+- Clarity over cleverness: choose simple, understandable approaches over overly abstract designs.
 - Confirm before advancing at explicit checkpoints.
-- Use repo-internal relative references only.
+- Resolve ambiguity early: ask for missing or conflicting information before it pollutes the plan.
+
+## Inputs
+
+Start with:
+
+- the defined task file
+- linked HLD, PRD, and domain-analysis documents as needed
+- any related tasks or prior planning artifacts
 
 ## Outputs
 
-- validated understanding of the task problem and scope
+By the end of the skill, produce:
+
+- a validated understanding of the task problem and scope
 - refined goals, constraints, assumptions, and non-goals
-- research summary tied to related work
-- task updates only if research proves the task wrong or incomplete
-- architectural context diagram with integration and test boundaries
+- a research summary tied to related work
+- an updated task document only if research proves the task is wrong or incomplete
+- an architectural context diagram with integration and test boundaries
 - refined acceptance criteria as testable bullet-point outcomes
-- documented risk and dependency assessment
-- comprehensive technical implementation plan stored as `plan.md` in the same task folder
+- a documented risk and dependency assessment
+- a comprehensive technical implementation plan stored as `plan.md` in the same task folder, using `templates/technical-plan-template.md`
 
 ## Step index
 
@@ -57,6 +67,8 @@ Write the technical implementation plan as a sibling file:
 - Start with `steps/step-01-capture-problem.md`.
 - After completing a step, check its exit criteria before loading the next step.
 - For steps 1, 2, 3, and 5, present a summary and ask the user for confirmation before proceeding.
+- If a step reveals that the task, HLD, PRD, or domain analysis is materially wrong or conflicting, stop and resolve the conflict before moving on.
+- If the implementation plan would require inventing important behavior without support from the task or research, ask the user instead of guessing.
 - Persist the final plan as `plan.md` in the same folder as `task.md`.
 - Update the task's `## Related Technical Plan` section to point to `./plan.md` when the plan is created.
 
