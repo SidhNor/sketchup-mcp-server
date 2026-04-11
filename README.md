@@ -34,12 +34,20 @@ The extension entrypoint is `src/su_mcp.rb`, which registers `src/su_mcp/main.rb
 
 For local development, load the extension from this repository by symlinking or copying the `src/` contents into SketchUp's `Plugins` directory.
 
+Build a local RBZ package:
+
+```bash
+bundle exec rake package:rbz
+```
+
+This writes `dist/su_mcp-<version>.rbz`, where the version comes from `VERSION`.
+
 ## Python FastMCP server
 
 Install the Python environment with `uv`:
 
 ```bash
-uv sync
+uv sync --dev
 ```
 
 Run the server over stdio:
@@ -73,6 +81,37 @@ SKETCHUP_PORT=9876
 ```
 
 When the Python server runs under WSL, it will try to auto-detect the Windows host if `SKETCHUP_HOST` is not set.
+
+## Local CI and release tasks
+
+Run the local CI task set:
+
+```bash
+bundle exec rake ci
+```
+
+This currently runs:
+
+- `version:assert`
+- `ruby:lint`
+- `ruby:test`
+- `python:lint`
+- `python:test`
+- `package:verify`
+
+Prepare a local versioned release artifact without running the GitHub release flow:
+
+```bash
+NEW_VERSION=0.1.1 bundle exec rake release:prepare
+```
+
+This syncs version-bearing files and builds the RBZ.
+
+The release workflow uses `python-semantic-release` from `pyproject.toml`. To preview the next computed version locally without creating a release:
+
+```bash
+uv run semantic-release --noop -v version --print
+```
 
 ## VS Code tasks
 

@@ -1,4 +1,4 @@
-require:
+plugins:
   - rubocop-sketchup
 
 AllCops:
@@ -12,6 +12,35 @@ AllCops:
 Layout/LineLength:
   Max: 100
 
+Metrics/BlockLength:
+  Exclude:
+    - "rakelib/**/*.rake"
+
+Metrics/MethodLength:
+  Exclude:
+    - "rakelib/**/*.rb"
+
+Metrics/ModuleLength:
+  Exclude:
+    - "rakelib/**/*.rb"
+
 Naming/FileName:
   Exclude:
     - "src/su_mcp.rb"
+
+Naming/ClassAndModuleCamelCase:
+  AllowedNames:
+    - "SU_MCP"
+
+SketchupRequirements/ExtensionNamespace:
+  Exclude:
+    - "Gemfile"
+    - "Rakefile"
+    - "rakelib/**/*"
+    - "test/**/*"
+
+SketchupSuggestions/FileEncoding:
+  Exclude:
+    - "Rakefile"
+    - "rakelib/**/*"
+    - "test/**/*"

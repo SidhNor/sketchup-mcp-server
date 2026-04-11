@@ -18,7 +18,8 @@ sketchup-mcp-server = "sketchup_mcp_server.__main__:main"
 [dependency-groups]
 dev = [
   "pytest>=8.3.5",
-  "ruff>=0.11.5"
+  "ruff>=0.11.5",
+  "python-semantic-release>=10.5.0",
 ]
 
 [tool.setuptools.package-dir]
@@ -31,3 +32,32 @@ where = ["python/src"]
 line-length = 100
 target-version = "py310"
 src = ["python/src", "python/tests"]
+
+[tool.semantic_release]
+allow_zero_version = true
+build_command = "bundle exec rake release:prepare"
+commit_message = "chore(release): {version} [skip ci]"
+commit_parser = "conventional"
+tag_format = "v{version}"
+version_toml = [
+  "pyproject.toml:project.version",
+]
+version_variables = [
+  "VERSION:*:nf",
+  "src/su_mcp/version.rb:VERSION",
+  "src/su_mcp/extension.json:version",
+  "python/src/sketchup_mcp_server/version.py:__version__",
+]
+
+[tool.semantic_release.changelog]
+exclude_commit_patterns = [
+  '''chore(?:\([^)]*?\))?: .+''',
+  '''ci(?:\([^)]*?\))?: .+''',
+  '''style(?:\([^)]*?\))?: .+''',
+  '''test(?:\([^)]*?\))?: .+''',
+  '''Initial [Cc]ommit.*''',
+]
+
+[tool.semantic_release.publish]
+dist_glob_patterns = ["dist/*.rbz"]
+upload_to_vcs_release = true

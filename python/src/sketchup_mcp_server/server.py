@@ -17,7 +17,9 @@ from typing import Any
 
 from fastmcp import Context, FastMCP
 
-VERSION = "0.1.0"
+from .version import __version__
+
+VERSION = __version__
 DEFAULT_TRANSPORT = "stdio"
 DEFAULT_HTTP_HOST = "127.0.0.1"
 DEFAULT_HTTP_PORT = 8000
@@ -564,4 +566,3 @@ def create_finger_joint(
 def eval_ruby(ctx: Context, code: str) -> dict[str, Any]:
     """Evaluate arbitrary Ruby code inside SketchUp."""
     return _call_bridge_tool(ctx, "eval_ruby", {"code": code})
-
