@@ -135,6 +135,8 @@ module ReleaseSupport
 
   def update_regex_file(path, pattern, replacement)
     content = path.read(encoding: 'utf-8')
+    return if content.include?(replacement)
+
     updated = content.sub(pattern, replacement)
     raise "Could not update #{path.relative_path_from(ROOT)}" if updated == content
 
