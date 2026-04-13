@@ -1,7 +1,8 @@
 # Task: PLAT-02 Extract Ruby SketchUp Adapters and Serializers
 **Task ID**: `PLAT-02`
 **Title**: `Extract Ruby SketchUp Adapters and Serializers`
-**Status**: `defined`
+**Status**: `planned`
+**Priority**: `P0`
 **Date**: `2026-04-13`
 
 ## Linked HLD
@@ -66,12 +67,11 @@ Scenario: Capability work can depend on shared adapter contracts
 
 - blocks capability work that depends on reusable SketchUp adapters
 - blocks `PLAT-05`
-- provides Ruby-side extracted boundaries for `PLAT-04`
 - informs `PLAT-06`
 
 ## Related Technical Plan
 
-- none yet
+- [Technical Plan](./plan.md)
 
 ## Success Metrics
 

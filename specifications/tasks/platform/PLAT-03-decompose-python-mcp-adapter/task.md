@@ -1,7 +1,8 @@
 # Task: PLAT-03 Decompose Python MCP Adapter
 **Task ID**: `PLAT-03`
 **Title**: `Decompose Python MCP Adapter`
-**Status**: `defined`
+**Status**: `planned`
+**Priority**: `P0`
 **Date**: `2026-04-13`
 
 ## Linked HLD
@@ -73,13 +74,12 @@ Scenario: Python decomposition preserves package and version ownership
 
 ## Relationships
 
-- blocks `PLAT-04`
 - blocks `PLAT-05`
 - informs `PLAT-06`
 
 ## Related Technical Plan
 
-- none yet
+- [Technical Plan](./plan.md)
 
 ## Success Metrics
 

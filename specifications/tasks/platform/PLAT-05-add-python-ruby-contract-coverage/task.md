@@ -66,7 +66,7 @@ Scenario: Contract coverage remains lower priority than the main delivery path
 ## Relationships
 
 - deferred low-priority platform task
-- complements `PLAT-04`
+- complements the unit coverage embedded in `PLAT-01`, `PLAT-02`, and `PLAT-03`
 
 ## Related Technical Plan
 

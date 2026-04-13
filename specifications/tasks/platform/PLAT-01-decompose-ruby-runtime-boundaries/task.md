@@ -1,12 +1,13 @@
 # Task: PLAT-01 Decompose Ruby Runtime Boundaries
 **Task ID**: `PLAT-01`
 **Title**: `Decompose Ruby Runtime Boundaries`
-**Status**: `defined`
+**Status**: `planned`
+**Priority**: `P0`
 **Date**: `2026-04-13`
 
 ## Linked HLD
 
-- [Platform Architecture and Repo Structure](../../../hlds/hld-platform-architecture-and-repo-structure.md)
+- [Platform Architecture and Repo Structure](specifications/hlds/hld-platform-architecture-and-repo-structure.md)
 
 ## Problem Statement
 
@@ -76,11 +77,10 @@ Scenario: Ruby refactoring preserves extension packaging assumptions
 - blocks `PLAT-03`
 - blocks `PLAT-05`
 - informs `PLAT-06`
-- enables the initial always-on verification work in `PLAT-04`
 
 ## Related Technical Plan
 
-- none yet
+- [Technical Plan](./plan.md)
 
 ## Success Metrics
 
