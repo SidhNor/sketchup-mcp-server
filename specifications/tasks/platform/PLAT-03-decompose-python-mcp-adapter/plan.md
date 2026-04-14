@@ -1,8 +1,8 @@
 # Technical Plan: PLAT-03 Decompose Python MCP Adapter
 **Task ID**: `PLAT-03`
 **Title**: `Decompose Python MCP Adapter`
-**Status**: `draft`
-**Date**: `2026-04-13`
+**Status**: `finalized`
+**Date**: `2026-04-14`
 
 ## Source Task
 
@@ -56,7 +56,8 @@ That concentration makes the adapter harder to review, harder to test, and harde
 - The current architectural issue is concentration, not incorrect runtime ownership. Python should remain a thin adapter, but it should not remain a single hotspot module.
 - `PLAT-03` is part of the core delivery path and should land focused unit coverage for the reviewable Python boundaries it introduces.
 - `PLAT-05` is intentionally deferred. This task should preserve the bridge contract and add focused Python unit protection, but it should not absorb full Python/Ruby contract testing.
-- The implemented baseline still has all Python adapter responsibilities in [python/src/sketchup_mcp_server/server.py](python/src/sketchup_mcp_server/server.py), and current Python automated coverage is still minimal at [python/tests/test_version.py](python/tests/test_version.py).
+- `PLAT-01` is implemented and done. The Ruby bridge contract now sits behind decomposed runtime seams such as [src/su_mcp/request_handler.rb](src/su_mcp/request_handler.rb), [src/su_mcp/request_processor.rb](src/su_mcp/request_processor.rb), [src/su_mcp/tool_dispatcher.rb](src/su_mcp/tool_dispatcher.rb), and [src/su_mcp/scene_query_commands.rb](src/su_mcp/scene_query_commands.rb), but those internal Ruby changes do not alter the Python-facing contract this task must preserve.
+- The implemented Python baseline still has all Python adapter responsibilities concentrated in [python/src/sketchup_mcp_server/server.py](python/src/sketchup_mcp_server/server.py), and current Python automated coverage is still minimal at [python/tests/test_version.py](python/tests/test_version.py).
 - External refinement support converged on the same recommendation: use a modest layer split, keep [server.py](python/src/sketchup_mcp_server/server.py) as a compatibility surface, centralize bridge error handling in the shared invocation layer, and group tools into a small number of capability-oriented modules instead of keeping them centralized or splitting into one module per tool.
 
 ## Technical Decisions
@@ -187,7 +188,7 @@ flowchart TD
 - `config.py` is the single owner of environment parsing and endpoint derivation so transport and endpoint values stay consistent across boot and platform tools.
 - `bridge.py` is the single owner of socket lifecycle, request shaping, response parsing, and bridge-side error interpretation so tool handlers remain thin.
 - Tool modules own MCP exposure by capability area and stay close to a 1:1 mapping with Ruby command names.
-- Real integration still exists at the Python/Ruby runtime boundary, so Python unit tests are necessary but not sufficient on their own.
+- Real integration still exists at the Python/Ruby runtime boundary, even though the Ruby side is now internally decomposed, so Python unit tests are necessary but not sufficient on their own.
 
 ## Acceptance Criteria
 
@@ -266,12 +267,17 @@ flowchart TD
 - Over-abstracting the Python layer: use a small fixed module split and explicit registration functions rather than a dynamic registry, plugin system, or per-tool file explosion.
 - Under-testing refactored seams: land focused tests in the same task for config, bridge, app, and representative tool wiring instead of deferring that safety to a follow-on cleanup task.
 - Environment-specific endpoint behavior: isolate WSL detection and endpoint resolution in config tests and include live verification on the normal runtime path when possible.
-- Dependency on current Ruby contract shape: treat [PLAT-01](specifications/tasks/platform/PLAT-01-decompose-ruby-runtime-boundaries/task.md) as dependency context and design guidance, not as implemented baseline, so this task remains compatible with the current Ruby bridge.
+- Dependency on current Ruby contract shape: treat the landed [PLAT-01](specifications/tasks/platform/PLAT-01-decompose-ruby-runtime-boundaries/task.md) seams as implemented baseline and preserve the current Ruby bridge contract rather than depending on Ruby internal file layout or pre-`PLAT-01` assumptions.
 
 ## Dependencies
 
 - Platform direction in [specifications/hlds/hld-platform-architecture-and-repo-structure.md](specifications/hlds/hld-platform-architecture-and-repo-structure.md)
 - Task dependency on [PLAT-01 Decompose Ruby Runtime Boundaries](specifications/tasks/platform/PLAT-01-decompose-ruby-runtime-boundaries/task.md)
+- Current Ruby bridge baseline in:
+  - [src/su_mcp/socket_server.rb](src/su_mcp/socket_server.rb)
+  - [src/su_mcp/request_handler.rb](src/su_mcp/request_handler.rb)
+  - [src/su_mcp/request_processor.rb](src/su_mcp/request_processor.rb)
+  - [src/su_mcp/tool_dispatcher.rb](src/su_mcp/tool_dispatcher.rb)
 - Follow-on verification dependencies:
   - [PLAT-05 Add Python/Ruby Contract Coverage Task](specifications/tasks/platform/PLAT-05-add-python-ruby-contract-coverage/task.md)
 - Current Python package and launch surfaces:
@@ -285,6 +291,23 @@ flowchart TD
   - [rakelib/python.rake](rakelib/python.rake)
   - [python/tests/test_version.py](python/tests/test_version.py)
 - A live SketchUp runtime for final manual verification of the preserved Python-to-Ruby path
+
+## Implementation Outcome
+
+- Completed the planned decomposition with:
+  - `config.py` for settings and endpoint resolution
+  - `bridge.py` for shared invocation and boundary error handling
+  - `app.py` for FastMCP composition, lifespan, and transport branching
+  - grouped tool registration under `python/src/sketchup_mcp_server/tools/`
+  - `server.py` reduced to a compatibility shim exporting `create_server`, `main`, and `mcp`
+- Added focused Python tests for configuration, bridge behavior, app boot/lifecycle, and representative tool wiring and ordering.
+- Completed local validation:
+  - `uv run pytest python/tests`
+  - `uv run ruff check python/src python/tests`
+  - `bundle exec rake python:lint`
+  - `bundle exec rake python:test`
+- Remaining follow-up:
+  - representative manual live verification against a running SketchUp bridge
 
 ## Quality Checks
 

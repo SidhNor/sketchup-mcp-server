@@ -1,7 +1,7 @@
 # Task: PLAT-03 Decompose Python MCP Adapter
 **Task ID**: `PLAT-03`
 **Title**: `Decompose Python MCP Adapter`
-**Status**: `planned`
+**Status**: `done`
 **Priority**: `P0`
 **Date**: `2026-04-13`
 
@@ -80,6 +80,14 @@ Scenario: Python decomposition preserves package and version ownership
 ## Related Technical Plan
 
 - [Technical Plan](./plan.md)
+
+## Completion Notes
+
+- implemented the Python adapter decomposition into explicit config, bridge, app, and tool-module seams
+- preserved the existing Python entrypoints and MCP-facing tool names and arguments
+- landed focused Python unit coverage for config, bridge behavior, app composition, and tool wiring
+- completed local Python validation with `bundle exec rake python:lint` and `bundle exec rake python:test`
+- manual live verification against a running SketchUp bridge is still pending
 
 ## Success Metrics
 
