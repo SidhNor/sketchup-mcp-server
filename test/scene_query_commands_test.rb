@@ -68,6 +68,19 @@ class SceneQueryCommandsTest < Minitest::Test
     assert_serialized_group(result[:entity])
   end
 
+  def test_scene_serialization_rounds_geometry_to_model_length_precision
+    Sketchup.active_model_override = build_precise_scene_query_model(length_precision: 2)
+
+    scene = @commands.get_scene_info('entity_limit' => 5)
+    entity = @commands.get_entity_info('id' => '101')
+
+    assert_equal([-5.33, 0.0, 0.0], scene.dig(:bounds, :min))
+    assert_equal([-4.33, 2.0, 3.0], scene.dig(:bounds, :max))
+    assert_equal([1.06, 1.0, 1.5], entity.dig(:entity, :origin))
+    assert_equal([0.56, 0.0, 0.0], entity.dig(:entity, :bounds, :min))
+    assert_equal([1.56, 2.0, 3.0], entity.dig(:entity, :bounds, :max))
+  end
+
   def test_list_entities_includes_hidden_entities_when_requested
     result = @commands.list_entities('include_hidden' => true, 'limit' => 10)
 

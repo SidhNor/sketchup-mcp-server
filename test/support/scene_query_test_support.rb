@@ -1,6 +1,27 @@
 # frozen_string_literal: true
 
+# rubocop:disable Metrics/ModuleLength
 module SceneQueryTestSupport
+  class FakeOptionsProvider
+    def initialize(values)
+      @values = values
+    end
+
+    def [](key)
+      @values[key]
+    end
+  end
+
+  class FakeOptionsManager
+    def initialize(providers)
+      @providers = providers
+    end
+
+    def [](key)
+      @providers[key]
+    end
+  end
+
   class FakePoint
     attr_reader :axis_x, :axis_y, :axis_z
 
@@ -162,9 +183,9 @@ module SceneQueryTestSupport
 
   class FakeModel
     attr_reader :entities, :active_entities, :selection, :materials, :layers, :bounds, :title,
-                :path, :active_path, :active_view, :saved_paths, :export_calls
+                :path, :active_path, :active_view, :saved_paths, :export_calls, :options
 
-    # rubocop:disable Metrics/MethodLength
+    # rubocop:disable Metrics/AbcSize, Metrics/MethodLength
     def initialize(state:, details: {})
       @entities = state.fetch(:entities)
       @active_entities = state.fetch(:active_entities)
@@ -176,10 +197,11 @@ module SceneQueryTestSupport
       @path = details.fetch(:path, '/tmp/test_model.skp')
       @active_path = details[:active_path]
       @active_view = details.fetch(:active_view, FakeView.new)
+      @options = details.fetch(:options)
       @saved_paths = []
       @export_calls = []
     end
-    # rubocop:enable Metrics/MethodLength
+    # rubocop:enable Metrics/AbcSize, Metrics/MethodLength
 
     def find_entity_by_id(id)
       (@entities + @active_entities).find { |entity| entity.entityID == id }
@@ -202,22 +224,59 @@ module SceneQueryTestSupport
     layer = FakeLayer.new('Layer0')
     material = FakeMaterial.new('Pine')
     state = build_scene_query_state(layer: layer, material: material)
-    FakeModel.new(state: state, details: { active_path: [:editing] })
+    FakeModel.new(
+      state: state,
+      details: { active_path: [:editing], options: default_options }
+    )
   end
 
-  def build_scene_query_state(layer:, material:)
-    top_level_group = build_scene_query_group(entity_id: 101, origin_x: 0, layer: layer,
-                                              material: material)
+  # rubocop:disable Metrics/MethodLength
+  def build_precise_scene_query_model(length_precision: 2)
+    layer = FakeLayer.new('Layer0')
+    material = FakeMaterial.new('Pine')
+    state = build_scene_query_state(
+      layer: layer,
+      material: material,
+      group_origin_x: 0.5555,
+      hidden_face_origin_x: 10.4444,
+      nested_face_origin_x: 20.6666,
+      model_bounds_origin_x: -5.3333
+    )
+    FakeModel.new(
+      state: state,
+      details: {
+        active_path: [:editing],
+        options: decimal_options(length_precision: length_precision)
+      }
+    )
+  end
+  # rubocop:enable Metrics/MethodLength
+
+  # rubocop:disable Metrics/MethodLength, Metrics/ParameterLists
+  def build_scene_query_state(layer:, material:, group_origin_x: 0, hidden_face_origin_x: 10,
+                              nested_face_origin_x: 20, model_bounds_origin_x: -5)
+    top_level_group = build_scene_query_group(
+      entity_id: 101,
+      origin_x: group_origin_x,
+      layer: layer,
+      material: material
+    )
 
     {
-      entities: [top_level_group, build_hidden_face(layer: layer, material: material)],
-      active_entities: [build_nested_face(layer: layer, material: material)],
+      entities: [
+        top_level_group,
+        build_hidden_face(layer: layer, material: material, origin_x: hidden_face_origin_x)
+      ],
+      active_entities: [
+        build_nested_face(layer: layer, material: material, origin_x: nested_face_origin_x)
+      ],
       selection: [top_level_group],
       materials: [material],
       layers: [layer],
-      bounds: build_bounds(origin_x: -5)
+      bounds: build_bounds(origin_x: model_bounds_origin_x)
     }
   end
+  # rubocop:enable Metrics/MethodLength, Metrics/ParameterLists
 
   def build_mutation_model(entity_id: 301, material_name: 'Pine')
     layer = FakeLayer.new('Layer0')
@@ -225,7 +284,10 @@ module SceneQueryTestSupport
     entity = build_scene_query_group(entity_id: entity_id, origin_x: 0, layer: layer,
                                      material: material)
 
-    FakeModel.new(state: mutation_model_state(entity: entity, layer: layer, material: material))
+    FakeModel.new(
+      state: mutation_model_state(entity: entity, layer: layer, material: material),
+      details: { options: default_options }
+    )
   end
 
   def build_scene_query_group(entity_id:, origin_x:, layer:, material:)
@@ -248,13 +310,13 @@ module SceneQueryTestSupport
     )
   end
 
-  def build_hidden_face(layer:, material:)
-    build_scene_query_face(entity_id: 102, origin_x: 10, layer: layer, material: material,
+  def build_hidden_face(layer:, material:, origin_x: 10)
+    build_scene_query_face(entity_id: 102, origin_x: origin_x, layer: layer, material: material,
                            details: { hidden: true, name: 'Hidden Face', persistent_id: 1002 })
   end
 
-  def build_nested_face(layer:, material:)
-    build_scene_query_face(entity_id: 201, origin_x: 20, layer: layer, material: material,
+  def build_nested_face(layer:, material:, origin_x: 20)
+    build_scene_query_face(entity_id: 201, origin_x: origin_x, layer: layer, material: material,
                            details: { name: 'Nested Face', persistent_id: 2001 })
   end
 
@@ -275,4 +337,18 @@ module SceneQueryTestSupport
       bounds: build_bounds(origin_x: -5)
     }
   end
+
+  def default_options
+    decimal_options(length_precision: 3)
+  end
+
+  def decimal_options(length_precision:)
+    FakeOptionsManager.new(
+      'UnitsOptions' => FakeOptionsProvider.new(
+        'LengthFormat' => Length::Decimal,
+        'LengthPrecision' => length_precision
+      )
+    )
+  end
 end
+# rubocop:enable Metrics/ModuleLength

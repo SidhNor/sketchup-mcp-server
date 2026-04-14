@@ -12,6 +12,7 @@ module SU_MCP
   }.freeze
 
   # Normalizes SketchUp entities and bounds into bridge-safe hashes.
+  # rubocop:disable Metrics/ClassLength
   class SceneQuerySerializer
     def bounds_to_h(bounds)
       return nil unless bounds&.valid?
@@ -60,13 +61,35 @@ module SU_MCP
     end
 
     def safe_float(value)
-      value.respond_to?(:to_f) ? value.to_f : value
+      return value unless value.respond_to?(:to_f)
+
+      rounded_float(value.to_f)
     end
 
     def point_to_a(point)
       return nil unless point
 
       [safe_float(point.x), safe_float(point.y), safe_float(point.z)]
+    end
+
+    def rounded_float(value)
+      precision = configured_length_precision
+      return value unless precision
+
+      value.round(precision)
+    end
+
+    def configured_length_precision
+      model = Sketchup.active_model
+      return nil unless model.respond_to?(:options)
+
+      units = model.options['UnitsOptions']
+      return nil unless units
+
+      precision = units['LengthPrecision']
+      precision.is_a?(Numeric) ? precision.to_i : nil
+    rescue StandardError
+      nil
     end
 
     def entity_name(entity)
@@ -140,4 +163,5 @@ module SU_MCP
       entity.is_a?(Sketchup::Group) || entity.is_a?(Sketchup::ComponentInstance)
     end
   end
+  # rubocop:enable Metrics/ClassLength
 end

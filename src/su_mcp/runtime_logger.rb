@@ -6,23 +6,30 @@ module SU_MCP
     module_function
 
     def bridge(message, console: default_console, output: $stdout)
-      console.write("MCP: #{message}\n")
+      write_line(console, "MCP: #{message}")
     rescue StandardError
-      output.puts("MCP: #{message}")
+      write_line(output, "MCP: #{message}")
     ensure
       output.flush if output.respond_to?(:flush)
     end
 
     def main(message, console: default_console, output: $stdout)
       console&.show
-      output.puts("SketchUp MCP: #{message}")
+      write_line(output, "SketchUp MCP: #{message}")
     rescue StandardError
-      output.puts("SketchUp MCP: #{message}")
+      write_line(output, "SketchUp MCP: #{message}")
+    ensure
+      output.flush if output.respond_to?(:flush)
     end
 
     def default_console
       defined?(SKETCHUP_CONSOLE) ? SKETCHUP_CONSOLE : nil
     end
     private_class_method :default_console
+
+    def write_line(target, message)
+      target.write("#{message}\n")
+    end
+    private_class_method :write_line
   end
 end
