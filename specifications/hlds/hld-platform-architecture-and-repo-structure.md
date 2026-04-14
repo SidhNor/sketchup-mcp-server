@@ -2,580 +2,517 @@
 
 ## System Overview
 
-### Purpose
-
 This document defines the product-agnostic platform architecture for the SketchUp MCP repository.
 
-It is intentionally separate from the capability HLDs. Its job is to define:
+It should be read as an update over an already implemented platform, not as a greenfield design. The repository already contains:
 
-- runtime boundaries
+- a Ruby SketchUp extension under `src/`
+- a Python FastMCP server under `python/src/`
+- a local socket bridge between the two runtimes
+- RBZ packaging, Python packaging, version alignment, and local CI entrypoints
+
+This HLD describes that current baseline and the intended refinement path introduced by the seeded HLD, PRD, and platform-task set. The seeded artifacts are an iteration on the existing design: they clarify boundaries, quality expectations, and growth direction for a system that already has substantial runtime behavior in place.
+
+This is the platform HLD for the repository. It covers shared architecture concerns such as:
+
+- runtime ownership boundaries
 - repository structure direction
-- packaging direction
-- test strategy
-- transport and extension platform concerns
-- cross-cutting development conventions
+- transport shape
+- packaging and release ownership
+- testing and quality-gate structure
+- shared runtime conventions
 
-It does not define the detailed implementation of any specific capability. Those concerns belong in:
+It does not define feature-specific behavior. Capability design belongs in:
 
 - [`hld-semantic-scene-modeling.md`](./hld-semantic-scene-modeling.md)
 - [`hld-asset-exemplar-reuse.md`](./hld-asset-exemplar-reuse.md)
 - [`hld-scene-validation-and-review.md`](./hld-scene-validation-and-review.md)
 
-### Scope
+The main source constraints for this HLD are:
 
-This HLD covers the base system that all capability work relies on:
-
-- Ruby extension bootstrapping
-- Python MCP server exposure
-- the Ruby/Python transport boundary
-- internal layering and module boundaries
-- packaging and distribution
-- test organization
-- logging, errors, and shared runtime infrastructure
-
-### Runtime Context
-
-```text
-External Agent / MCP Client
-          |
-          v
-Python MCP Adapter
-          |
-          v
-Ruby SketchUp Extension Runtime
-          |
-          v
-SketchUp Model + Extension Data
-```
-
-### Guiding Rule
-
-The platform exists to support a maintainable Ruby extension with a thin Python adapter. It should make capability work easier to add without forcing repeated structural redesign.
+- the current repository structure and runtime entrypoints
+- [`../domain-analysis.md`](../domain-analysis.md)
+- the seeded capability HLDs and PRDs
+- the seeded platform task set under [`../tasks/platform/`](../tasks/platform/README.md)
 
 ## Architecture Approach
 
-### Overall Style
+### Current Platform Shape
 
-The recommended style is a modular layered monolith:
+The repository already follows the correct macro-architecture:
 
 - one Ruby runtime inside SketchUp
 - one Python MCP adapter process
 - one explicit transport boundary between them
 
-This avoids two failure modes:
+Current entrypoints:
 
-- one giant Ruby file accumulating unrelated concerns
-- Python taking on capability behavior that belongs in Ruby
+- Ruby extension registration: `src/su_mcp.rb`
+- Ruby extension metadata and registration support: `src/su_mcp/extension.rb`, `src/su_mcp/extension.json`
+- Ruby runtime bootstrap: `src/su_mcp/main.rb`
+- Ruby bridge configuration and socket server: `src/su_mcp/bridge.rb`, `src/su_mcp/socket_server.rb`
+- Python MCP server boot and tool registration: `python/src/sketchup_mcp_server/server.py`
+- packaging and release wiring: `Rakefile`, `rakelib/`, `pyproject.toml`
+
+This current shape already enforces the most important architectural rule: SketchUp-facing behavior lives in Ruby and Python acts as the MCP-facing adapter.
+
+### Recommended Direction
+
+The recommended platform style remains a modular layered monolith across the existing two runtimes.
+
+The goal is not to replace the current architecture. The goal is to progressively decompose the current concentrated modules into clearer internal layers while preserving:
+
+- the small SketchUp loader pattern
+- the Ruby/Python runtime split
+- the socket bridge contract
+- packaged distribution for both runtimes
+
+The main architectural issue in the current repository is concentration of responsibility rather than incorrect runtime ownership:
+
+- `src/su_mcp/socket_server.rb` currently mixes transport ingress, request routing, result shaping, serialization helpers, and tool behavior
+- `python/src/sketchup_mcp_server/server.py` currently mixes app boot, connection management, endpoint resolution, shared invocation behavior, and all MCP tool definitions
 
 ### Boundary Rules
 
-- Ruby owns SketchUp-facing behavior, entity access, mutation, serialization, and capability logic
-- Python owns MCP tool registration, boundary validation, invocation, and error mapping
-- transport concerns must be isolated from both capability logic and low-level SketchUp API access
+- Ruby owns SketchUp API usage, entity traversal, mutation, geometry behavior, serialization of SketchUp-side results, and capability-defining logic.
+- Python owns MCP tool registration, boundary validation, request construction, transport failure handling, and MCP-facing response or error mapping.
+- The socket bridge owns message transport only. It must not become the home for capability policy.
+- Cross-runtime payloads must remain JSON-serializable.
+- One Ruby command should complete a coherent operation whenever possible; avoid chatty Python-to-Ruby round trips.
 
-### Internal Layering
+### Target Layering
 
-The target Ruby layering is:
+Target Ruby layering:
 
-- boot / extension registration
+- boot and extension registration
 - runtime bootstrap
-- transport and request routing
-- command or use-case layer
-- shared domain and support services
+- transport ingress and request routing
+- command or use-case execution
+- shared runtime infrastructure
 - SketchUp adapters
 
-The target Python layering is:
+Target Python layering:
 
 - MCP app boot
 - tool modules by capability area
 - shared invocation and connection modules
 - boundary error mapping
 
-These layers are architectural boundaries, not a promise of one exact directory shape. The repository should move toward them deliberately as the platform expands.
-
-### Design Principles
-
-1. Keep the extension loader small.
-2. Keep Ruby code namespaced and split by responsibility.
-3. Keep Python mechanical and reusable.
-4. Centralize cross-cutting runtime concerns.
-5. Treat tests and packaging as architectural concerns, not afterthoughts.
+These are architectural boundaries, not a required immediate directory rewrite. The seeded platform tasks should be understood as the implementation path for gradually extracting these layers from the current runtime hotspots.
 
 ## Component Breakdown
 
-### 1. Extension Registration Layer
+### 1. SketchUp Extension Registration
 
 **Responsibilities**
 
-- register the SketchUp extension
+- register the extension with SketchUp
 - expose extension metadata
-- load the support entrypoint
+- preserve the standard SketchUp packaging shape of one root loader plus one support tree
 
-**Constraints**
+**Must Not Own**
 
-- no capability logic
-- no transport logic
-- minimal side effects during load
+- transport logic
+- feature or capability behavior
+- broad runtime initialization beyond registration
 
 ### 2. Ruby Runtime Bootstrap
 
 **Responsibilities**
 
-- initialize the extension runtime
-- expose startup hooks or menus where needed
-- initialize shared services
-- start and stop the transport server when needed
+- activate the extension runtime inside SketchUp
+- install menu-level developer or operator affordances
+- initialize and manage the bridge server lifecycle
+- keep startup behavior understandable and minimal
 
-**Constraints**
+**Current Baseline**
 
-- no feature-specific command logic
-- no long direct dispatch logic as the permanent design
+- implemented primarily in `src/su_mcp/main.rb`
 
-### 3. Ruby Transport Layer
+**Must Not Own**
 
-**Responsibilities**
+- low-level transport parsing
+- command-level capability behavior
+- reusable SketchUp adapter logic
 
-- accept requests from the Python adapter
-- parse and validate transport envelopes
-- route requests into command handlers
-- return structured responses
-
-**Recommended subcomponents**
-
-- socket server
-- request parser
-- response builder
-- tool registry
-
-### 4. Ruby Command Layer
+### 3. Ruby Transport Boundary
 
 **Responsibilities**
 
-- expose a stable execution interface for capability behavior
-- translate tool requests into use-case execution
-- own command-local validation and orchestration
+- accept socket requests from Python
+- parse structured request envelopes
+- route requests to the Ruby execution boundary
+- return structured success or error responses
 
-**Constraints**
+**Current Baseline**
 
-- commands should not become a dumping ground for low-level SketchUp API sprawl
-- commands should delegate shared concerns to support and adapter layers
+- implemented inside `src/su_mcp/socket_server.rb`
 
-### 5. Ruby SketchUp Adapter Layer
+**Must Not Own**
 
-**Responsibilities**
+- long-term feature dispatch growth
+- low-level SketchUp business logic
+- duplicated cross-cutting result or error policy scattered per tool
 
-- encapsulate SketchUp API access
-- provide entity lookup helpers
-- manage tags, materials, components, bounds, operations, and serialization
-
-**Why it matters**
-
-This isolates SketchUp API details from higher-level command logic and reduces duplication across capabilities.
-
-### 6. Shared Runtime Infrastructure
+### 4. Ruby Command or Use-Case Layer
 
 **Responsibilities**
 
-- uniform result envelopes
-- shared error classes
-- logging
-- configuration
-- operation runner or operation-boundary helpers
-- serialization helpers
+- expose stable execution entrypoints for capability behavior
+- map tool calls to coherent Ruby-owned operations
+- orchestrate shared services and SketchUp adapters
 
-**Goal**
+**Improvement Direction**
 
-Cross-cutting behavior should have one platform home so future capability work reuses it rather than redefines it.
+- extract command ownership from the current large transport file so execution is distinct from ingress
 
-### 7. Python MCP Application Layer
+**Must Not Own**
 
-**Responsibilities**
+- socket server lifecycle
+- raw transport parsing
+- duplicated low-level SketchUp API mechanics where reusable adapters should exist
 
-- initialize the FastMCP app
-- register tools
-- group tools by capability area
-
-### 8. Python Invocation Layer
+### 5. Shared Ruby Runtime Infrastructure
 
 **Responsibilities**
 
-- build transport requests
-- manage retry and timeout behavior
+- result envelopes
+- error categories
+- logging and runtime messaging conventions
+- configuration handling
+- operation wrappers and serialization helpers used across commands
+
+**Improvement Direction**
+
+- move shared cross-cutting behavior out of individual transport or command implementations and into explicit platform-owned support modules
+
+**Must Not Own**
+
+- feature-specific behavior
+- Python-facing MCP registration concerns
+
+### 6. Ruby SketchUp Adapter Layer
+
+**Responsibilities**
+
+- isolate direct SketchUp API interaction
+- provide reusable access to entities, bounds, materials, tags, components, export helpers, and model operations
+- normalize SketchUp state into simple Ruby hashes, arrays, strings, numbers, and booleans before returning across the bridge
+
+**Current Baseline**
+
+- adapter-like behavior exists today, but much of it is embedded in `src/su_mcp/socket_server.rb`
+
+**Must Not Own**
+
+- MCP concerns
+- Python transport semantics
+- feature-policy decisions better expressed in higher-level commands
+
+### 7. Python MCP App Boot
+
+**Responsibilities**
+
+- create the FastMCP server
+- expose transport mode selection for stdio or HTTP
+- manage process lifecycle behavior such as startup ping and shutdown cleanup
+
+**Current Baseline**
+
+- implemented in `python/src/sketchup_mcp_server/server.py`
+
+**Must Not Own**
+
+- SketchUp business logic
+- detailed per-tool transport duplication
+
+### 8. Python Invocation and Connection Layer
+
+**Responsibilities**
+
+- resolve the SketchUp bridge endpoint
+- manage short-lived socket connections
+- build structured bridge requests
 - parse structured responses
-- map transport failures into MCP-facing errors
+- centralize transport failure handling for MCP-facing callers
 
-### 9. Packaging Layer
+**Current Baseline**
 
-**Responsibilities**
+- already present in `SketchupConnection`, endpoint helpers, and `_call_bridge_tool`
 
-- build the `.rbz` extension package
-- build the Python package
-- keep versioning and distribution metadata aligned
+**Must Not Own**
 
-**Design direction**
+- Ruby business rules
+- capability-specific validation duplicated from Ruby
 
-Packaging should support a growing Ruby support tree rather than assume a tiny fixed file set.
-
-### 10. Test Layer
+### 9. Python Tool Modules
 
 **Responsibilities**
 
-- support pure Ruby testing where SketchUp is not required
-- support Python adapter testing
-- support contract testing at the Ruby/Python boundary
-- support SketchUp-hosted integration or acceptance testing
+- expose MCP tools with clear names and argument surfaces
+- stay close to a 1:1 mapping with Ruby command names unless there is a strong adapter reason not to
+- group tools by capability area as the surface expands
 
-**Recommended sublayers**
+**Current Baseline**
 
-- Ruby unit tests for pure logic and support services
-- Python unit tests for MCP adapter and transport behavior
-- contract tests for request and response envelope shaping
-- SketchUp-hosted integration tests for end-to-end runtime behavior
-- fixture models and scenario data for repeatable acceptance coverage
+- all tool definitions currently live in `python/src/sketchup_mcp_server/server.py`
 
-**Quality rule**
+**Improvement Direction**
 
-New platform infrastructure should not be considered complete unless its behavior can be verified in at least one of these test layers.
+- split tool definitions by capability area while preserving thin handlers and shared invocation
 
-## Integration and Data Flows
+**Must Not Own**
 
-### 1. Extension Startup Flow
+- custom transport logic per tool
+- domain-policy duplication from Ruby
+
+### 10. Packaging and Release Layer
+
+**Responsibilities**
+
+- build the RBZ package
+- build and expose the Python package
+- keep version-bearing files aligned across both runtimes
+- verify packaged RBZ layout
+
+**Current Baseline**
+
+- implemented through `Rakefile`, `rakelib/`, `pyproject.toml`, `VERSION`, and release-support helpers
+
+**Must Not Own**
+
+- capability behavior
+- runtime-specific logic that should live in the product code
+
+### 11. Quality and Verification Layer
+
+**Responsibilities**
+
+- Ruby linting and unit-test entrypoints
+- Python linting and unit-test entrypoints
+- contract-test direction for the Ruby/Python boundary
+- SketchUp-hosted integration and fixture strategy direction
+- documentation and specification quality expectations
+
+**Current Baseline**
+
+- local CI and package verification are already present
+- current automated tests are still narrow compared with the intended layered quality model
+
+**Must Not Own**
+
+- feature behavior itself
+- hidden architecture assumptions not reflected in the HLD and task set
+
+## Integration & Data Flows
+
+### Extension Startup Flow
 
 ```text
-SketchUp loads extension registration file
--> Ruby bootstrap loads support runtime
--> runtime initializes shared services
--> menus / hooks / transport are prepared
+SketchUp
+-> src/su_mcp.rb
+-> src/su_mcp/extension.rb
+-> src/su_mcp/main.rb
+-> bridge configuration + socket server startup
+-> extension menu/status controls
 ```
 
-### 2. MCP Request Flow
+### MCP Tool Invocation Flow
 
 ```text
 MCP client
--> Python tool
--> Python invocation layer
--> transport request
--> Ruby transport layer
--> tool registry
--> Ruby command
--> shared services / SketchUp adapters
--> structured response
--> Python error mapping / response shaping
+-> Python FastMCP tool
+-> shared Python invocation/connection logic
+-> JSON request over local TCP socket
+-> Ruby transport boundary
+-> Ruby command or use-case execution
+-> SketchUp adapter calls and model interaction
+-> JSON-serializable Ruby result
+-> Python response/error mapping
 -> MCP response
 ```
 
-### 3. Packaging Flow
+### Packaging and Release Flow
 
 ```text
-source tree
--> Ruby packaging step builds RBZ
--> Python packaging step builds MCP package
--> release metadata is aligned
+VERSION + runtime metadata
+-> release support helpers
+-> RBZ packaging verification
+-> Python package metadata alignment
+-> release artifact production
 ```
 
-### 4. Test Flow
+### Quality Flow
 
 ```text
-Ruby unit tests -> pure shared logic
-Python tests -> adapter and transport shaping
-Contract tests -> request/response compatibility
-SketchUp-hosted tests -> end-to-end runtime behaviors
+Local change
+-> Ruby lint/test if Ruby-owned concerns changed
+-> Python lint/test if adapter concerns changed
+-> contract tests for bridge-envelope changes
+-> SketchUp-hosted tests for real runtime behavior
+-> package verification
 ```
 
-## Testing and Linting Setup
-
-### Testing Strategy
-
-The platform should support a layered quality model rather than relying on one heavy end-to-end suite.
-
-#### 1. Ruby Unit Tests
-
-**Purpose**
-
-- verify pure logic that does not require a live SketchUp process
-- verify result envelopes, metadata rules, configuration, and helper behavior
-
-**Typical targets**
-
-- shared support modules
-- metadata and validation helpers that do not require SketchUp
-- request normalization
-- serializer helpers that can be exercised without live entities
-- shared configuration or result-shaping logic
-
-**Expected characteristics**
-
-- fast
-- deterministic
-- runnable locally without SketchUp
-
-#### 2. Python Unit Tests
-
-**Purpose**
-
-- verify MCP tool registration
-- verify transport request shaping
-- verify timeout, retry, parsing, and error mapping behavior
-
-**Typical targets**
-
-- invocation helpers
-- tool wrappers
-- response parsing
-- MCP-facing error envelopes
-
-#### 3. Contract Tests
-
-**Purpose**
-
-- ensure Python and Ruby continue to agree on request and response envelopes
-- catch breaking changes in tool names, argument shape, and result schema
-
-**Typical targets**
-
-- JSON request envelopes
-- structured error payloads
-- normalized result envelopes
-
-#### 4. SketchUp-Hosted Integration Tests
-
-**Purpose**
-
-- verify behavior that depends on real SketchUp runtime semantics
-- verify mutation behavior, tags, materials, component interactions, and operation boundaries
-
-**Typical targets**
-
-- entity creation and mutation
-- attribute dictionary persistence
-- model fixtures
-- asset library protection rules
-- transport-to-command-to-model execution paths
-
-**Tooling direction**
-
-- TestUp 2 or an equivalent SketchUp-hosted integration approach should be the default direction for this layer
-
-#### 5. Scenario / Acceptance Tests
-
-**Purpose**
-
-- verify higher-level workflows against fixture `.skp` models
-- serve as regression coverage for important user flows
-
-**Typical targets**
-
-- startup and connection sanity
-- representative MCP request sequences
-- packaging smoke tests where feasible
-- key workflows called out in capability HLDs
-
-### Test Ownership Model
-
-| Layer | Primary Owner | What It Protects |
-| --- | --- | --- |
-| Ruby unit tests | Ruby/platform contributors | support services and non-SketchUp runtime logic |
-| Python unit tests | Python/MCP contributors | MCP adapter and invocation behavior |
-| contract tests | platform owners | runtime boundary compatibility |
-| SketchUp-hosted integration tests | platform + capability contributors | actual SketchUp behavior |
-| scenario / acceptance tests | capability owners | user-visible workflow regressions |
-
-### Fixture Strategy
-
-Fixture assets should be treated as part of the platform, not as throwaway test data.
-
-#### Fixture Types
-
-- minimal synthetic `.skp` models for low-level behaviors
-- capability-oriented `.skp` models for acceptance scenarios
-- structured request/response fixtures for contract tests
-- staged asset fixture libraries for asset-protection and instancing tests
-
-#### Fixture Rules
-
-- keep fixtures small and purpose-specific
-- version fixture models explicitly where practical
-- document what each fixture is meant to prove
-- avoid one giant "everything" fixture model
-- add fixtures close to the test layer that owns them
-
-### Linting and Static Quality Setup
-
-Linting should be explicit and language-specific.
-
-#### Ruby Quality Checks
-
-**Recommended tools**
-
-- RuboCop for style, consistency, and basic static checks
-
-**Scope**
-
-- extension loader
-- runtime code
-- support services
-- packaging scripts where practical
-
-#### Python Quality Checks
-
-**Recommended tools**
-
-- Ruff for linting and formatting checks
-
-**Scope**
-
-- MCP adapter modules
-- invocation and transport code
-- Python tests
-
-#### Documentation Quality Checks
-
-**Recommended approach**
-
-- markdown linting or lightweight review rules for `specifications/`
-- link checks for internal document references where practical
-
-### Local Development Quality Workflow
-
-The default local workflow should be:
-
-1. run fast Ruby unit tests if the change touches Ruby shared logic
-2. run Python unit tests if the change touches the MCP adapter
-3. run linting for the language or languages changed
-4. run the smallest relevant SketchUp-hosted or scenario test for runtime changes
-5. note any gaps when a layer cannot be exercised
-
-### CI Quality Gates
-
-The platform should evolve toward these default gates:
-
-- Ruby linting passes
-- Python linting passes
-- Python unit tests pass
-- contract tests pass
-- selected Ruby unit tests pass
-- selected scenario or smoke tests pass
-
-SketchUp-hosted integration tests may need a separate workflow or release gate if they are not practical in the main CI path, but they should still exist as a formal part of the platform.
-
-### Testability Requirements for Platform Changes
-
-Any new platform abstraction should be designed so that at least one of the following is possible:
-
-- isolated unit testing without SketchUp
-- contract testing at the Python/Ruby boundary
-- deterministic SketchUp-hosted integration testing
-
-If a platform change cannot be verified in any of those ways, it should be treated as a design smell and revisited.
+### Architecture Diagram
+
+```text
+                           +----------------------+
+                           |  External MCP Client |
+                           +----------+-----------+
+                                      |
+                                      v
+                         +------------+-------------+
+                         | Python MCP App Boot      |
+                         | FastMCP server process   |
+                         +------------+-------------+
+                                      |
+                     +----------------+----------------+
+                     |                                 |
+                     v                                 v
+         +-----------+-----------+         +-----------+-----------+
+         | Python Tool Modules   |         | Python Invocation /   |
+         | thin MCP handlers     |-------->| Connection Layer      |
+         +-----------------------+         +-----------+-----------+
+                                                        |
+                                     JSON over local TCP socket bridge
+                                                        |
+                                                        v
+                             +--------------------------+----------------------+
+                             | Ruby Transport Boundary / Request Routing       |
+                             +--------------------------+----------------------+
+                                                        |
+                                                        v
+                             +--------------------------+----------------------+
+                             | Ruby Command / Use-Case Execution               |
+                             +--------------------------+----------------------+
+                                                        |
+                               +------------------------+---------------------+
+                               |                                              |
+                               v                                              v
+                    +----------+-----------+                      +-----------+----------+
+                    | Shared Ruby Runtime  |                      | Ruby SketchUp        |
+                    | Infrastructure       |                      | Adapters             |
+                    +----------+-----------+                      +-----------+----------+
+                               |                                              |
+                               +------------------------+---------------------+
+                                                        |
+                                                        v
+                                             +----------+----------+
+                                             | SketchUp Runtime    |
+                                             | Model + API         |
+                                             +---------------------+
+
+Test boundaries:
+- Ruby unit tests: shared runtime logic
+- Python unit tests: app boot, invocation, tool wiring
+- contract tests: Python <-> Ruby request/response envelopes
+- SketchUp-hosted tests: command -> adapter -> model behavior
+```
 
 ## Key Architectural Decisions
 
-### 1. Ruby Remains the Source of Truth
+### 1. Keep Ruby as the Source of Truth for SketchUp and Capability Behavior
 
 **Decision**
 
-All SketchUp-facing and capability-defining behavior lives in Ruby.
+SketchUp-facing behavior, geometry or model logic, entity traversal, mutation, and behavior-defining command execution remain Ruby-owned.
 
 **Reason**
 
-It keeps the domain model close to the SketchUp API and prevents duplicated business rules.
+The SketchUp API lives in Ruby. Keeping execution semantics close to that runtime prevents drift, avoids duplicated business rules, and preserves a clean Python adapter boundary.
 
-### 2. Python Remains a Thin Adapter
+### 2. Keep Python Thin and Mechanical
 
 **Decision**
 
-Python should expose tools, validate boundary inputs, and invoke Ruby. It should not accumulate domain policy.
+Python remains responsible for MCP tool exposure, invocation, connection management, and boundary error mapping, not domain behavior.
 
 **Reason**
 
-This preserves a clear boundary and keeps the MCP adapter maintainable.
+This preserves a clear runtime split and keeps the MCP adapter maintainable as the tool surface grows.
 
-### 3. Small Loader, Large Support Tree
+### 3. Treat the Current Platform as the Baseline, Not a Temporary Placeholder
 
 **Decision**
 
-The extension registration file should stay small and load a support tree with the real runtime code.
+The HLD documents the existing dual-runtime implementation as the current platform baseline and frames seeded work as iterative refinement.
 
 **Reason**
 
-This matches common SketchUp extension practice and avoids boot files becoming implementation hotspots.
+The repository already has working runtime, packaging, and quality structure. Describing the architecture as if it does not yet exist would be inaccurate and would weaken the HLD's usefulness.
 
-### 4. Modular Support Tree Over Flat Growth
+### 4. Evolve by Extraction, Not Rewrite
 
 **Decision**
 
-The Ruby runtime should be split into transport, commands, support, and SketchUp adapter areas.
+Internal modularization should be achieved by extracting clearer layers from the current large files rather than by replacing the runtime shape wholesale.
 
 **Reason**
 
-This supports sustained growth without forcing feature logic into one file.
+The macro-architecture is already correct. The main risk is concentrated responsibility, so the design response should be evolutionary and low-churn.
 
-### 5. Shared Infrastructure Is Centralized
+### 5. Preserve the Small SketchUp Loader Pattern
 
 **Decision**
 
-Results, errors, logging, configuration, and operation boundaries should be centralized.
+`src/su_mcp.rb` stays a registration entrypoint, with runtime behavior living under the support tree.
 
 **Reason**
 
-Cross-cutting concerns become unstable quickly if scattered.
+This matches SketchUp extension conventions, keeps packaging predictable, and avoids turning boot files into implementation hotspots.
 
-### 6. Packaging Must Support Growth
+### 6. Keep the Socket Bridge as an Explicit Runtime Boundary
 
 **Decision**
 
-Packaging should operate on the whole support tree rather than a small fixed file list.
+Python and Ruby continue to communicate through structured JSON messages over the local socket bridge.
 
 **Reason**
 
-A modular runtime is incompatible with brittle packaging assumptions.
+The bridge already exists, fits the current runtime split, and provides a clean contract boundary for future contract testing and error mapping.
 
-### 7. Testing Is Part of the Platform
+### 7. Centralize Shared Runtime Contracts
 
 **Decision**
 
-Testing structure is part of the target platform design.
+Results, errors, configuration, logging, operation wrappers, and similar cross-cutting runtime behavior should be owned by shared platform infrastructure rather than by individual commands or tool handlers.
 
 **Reason**
 
-Capability HLDs will depend on platform-level confidence mechanisms and fixtures.
+Centralization reduces repeated reinvention and gives downstream tests and capabilities a stable platform contract to depend on.
 
-### 8. Linting Is a Required Quality Gate
+### 8. Treat Testing, Packaging, and Documentation Quality as Architectural Concerns
 
 **Decision**
 
-Linting and static quality checks should be first-class platform requirements, not optional cleanup tasks.
+Linting, tests, package verification, release metadata alignment, and specification quality are part of the platform architecture rather than optional maintenance work.
 
 **Reason**
 
-The repo spans Ruby, Python, packaging scripts, and specifications. Without explicit language-level gates, drift and inconsistency will compound quickly.
+This repository spans two runtimes and a growing specification set. Without explicit quality and packaging ownership, drift will accumulate faster than feature work can safely expand.
 
 ## Technology Stack
 
-| Layer | Technology | Purpose |
+| Concern | Technology / Approach | Purpose |
 | --- | --- | --- |
-| SketchUp runtime | SketchUp Ruby API | extension runtime and model access |
-| Core extension language | Ruby | extension behavior and capability logic |
-| MCP adapter | Python 3 + FastMCP | external tool exposure |
-| Transport | local TCP socket with structured JSON payloads | Python-to-Ruby invocation |
-| Ruby packaging | RBZ packaging script | extension distribution |
-| Python packaging | current Python packaging toolchain | MCP server distribution |
-| Ruby unit tests | lightweight Ruby test harness | pure Ruby support and domain logic |
-| Python tests | `pytest` | adapter and transport tests |
-| Python linting / formatting | Ruff | Python quality and consistency |
-| Ruby linting | RuboCop | code quality |
-| SketchUp-hosted tests | TestUp 2 or equivalent | in-SketchUp acceptance testing |
-| documentation checks | markdown linting / link checks where practical | specification hygiene |
+| SketchUp extension runtime | Ruby inside SketchUp | Own SketchUp API access and behavior-defining execution |
+| Extension registration | `sketchup.rb`, `extensions.rb`, root loader + support tree | Follow standard SketchUp extension packaging and load patterns |
+| Ruby transport | `TCPServer` over local socket bridge | Accept Python bridge requests inside SketchUp |
+| Ruby packaging | RBZ packaging via Rake and Zip | Produce distributable SketchUp extension artifacts |
+| MCP adapter runtime | Python 3.10+ with FastMCP | Expose MCP tools and process lifecycle |
+| Python bridge client | short-lived socket client per call | Forward MCP tool calls to the SketchUp runtime |
+| MCP process transport | stdio by default, optional HTTP | Support MCP-client subprocess launch and optional HTTP serving |
+| Release/version alignment | `VERSION`, `pyproject.toml`, Ruby/Python version files, extension metadata | Keep cross-runtime version metadata synchronized |
+| Ruby quality | RuboCop, Minitest-based task entrypoint | Maintain Ruby code quality and unit-test execution |
+| Python quality | Ruff, Pytest | Maintain Python adapter quality and test execution |
+| Contract verification direction | Python/Ruby request-response fixture and contract testing | Protect bridge compatibility as the surface grows |
+| SketchUp-hosted validation direction | SketchUp runtime integration tests and governed `.skp` fixtures | Validate behaviors that cannot be proven outside real SketchUp semantics |
 
-## Open Questions
+## Opened Questions
 
-1. What final directory layout should be considered the stable support-tree structure?
-2. Should the transport stay one-request-per-connection long-term or be optimized later?
-3. What shared response envelope should all Ruby commands standardize on?
-4. How should extension and Python package versioning be synchronized?
-5. What is the minimum acceptable Ruby unit-testing harness for non-SketchUp logic?
-6. Should the repo support separate developer packaging and release packaging flows?
-7. How should fixture `.skp` models be organized and versioned?
-8. Should the platform add explicit reload or development helper tooling for faster SketchUp iteration?
-9. Which subset of SketchUp-hosted tests should be mandatory in CI versus release validation only?
-10. What documentation quality checks are worth enforcing automatically versus keeping as review expectations?
+1. What is the exact first extraction boundary inside `src/su_mcp/socket_server.rb`: transport router, command registry, or shared serialization and operation support?
+2. What shared Ruby result and error envelope should be standardized first so Python contract tests can depend on it without locking in accidental current behavior?
+3. How should Python tool modules be grouped as capability areas expand while still keeping cross-cutting app boot and invocation code centralized?
+4. Which bridge behaviors should be mandatory contract-test coverage first: tool naming, request envelope shape, error payload shape, or success-envelope shape?
+5. What is the practical first SketchUp-hosted test harness for this repository, and how should fixture `.skp` assets be versioned and governed?
+6. Which documentation checks should become mandatory in the default quality workflow as the `specifications/` tree continues to grow?
