@@ -304,3 +304,9 @@ flowchart LR
 - [x] Test requirements specified
 - [x] Risks and dependencies documented
 - [x] Small reversible phases defined
+
+## Implementation Notes
+
+- The Ruby targeting logic was extracted into `src/su_mcp/targeting_query.rb` during implementation to keep query validation and exact-match filtering out of `SceneQueryCommands`.
+- The new Ruby `find_entities` behavior coverage was split into a dedicated `test/find_entities_scene_query_commands_test.rb` file rather than extending the existing scene-query test class further.
+- FastMCP tool introspection in local tests uses the registered tool object's `parameters` schema rather than an `inputSchema` attribute, so the Python schema assertion dereferences `tool.parameters` to confirm nested `query` fields.

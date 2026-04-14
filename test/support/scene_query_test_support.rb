@@ -132,6 +132,7 @@ module SceneQueryTestSupport
       @locked = details.fetch(:locked, false)
       @name = details.fetch(:name, '')
       @persistent_id = details[:persistent_id]
+      @attributes = details.fetch(:attributes, {})
     end
 
     def hidden?
@@ -148,6 +149,13 @@ module SceneQueryTestSupport
 
     def material=(material)
       @material = material
+    end
+
+    def get_attribute(dictionary_name, key, default = nil)
+      dictionary = @attributes[dictionary_name]
+      return default unless dictionary.is_a?(Hash)
+
+      dictionary.fetch(key, default)
     end
   end
 
@@ -290,13 +298,80 @@ module SceneQueryTestSupport
     )
   end
 
-  def build_scene_query_group(entity_id:, origin_x:, layer:, material:)
+  # rubocop:disable Metrics/MethodLength
+  def build_find_entities_model
+    trees = FakeLayer.new('Trees')
+    hardscape = FakeLayer.new('Hardscape')
+    bark = FakeMaterial.new('Bark')
+    leaf = FakeMaterial.new('Leaf')
+    concrete = FakeMaterial.new('Concrete')
+    mulch = FakeMaterial.new('Mulch')
+
+    entities = [
+      build_scene_query_group(
+        entity_id: 101,
+        origin_x: 0,
+        layer: trees,
+        material: bark,
+        details: {
+          name: 'Retained Oak',
+          persistent_id: 1001,
+          attributes: { 'su_mcp' => { 'sourceElementId' => 'tree-001' } }
+        }
+      ),
+      build_scene_query_group(
+        entity_id: 102,
+        origin_x: 5,
+        layer: trees,
+        material: leaf,
+        details: {
+          name: 'Retained Maple',
+          persistent_id: 1002
+        }
+      ),
+      build_scene_query_face(
+        entity_id: 103,
+        origin_x: 10,
+        layer: hardscape,
+        material: concrete,
+        details: {
+          name: 'Driveway',
+          persistent_id: 1003
+        }
+      ),
+      build_scene_query_group(
+        entity_id: 104,
+        origin_x: 15,
+        layer: trees,
+        material: mulch,
+        details: {
+          name: 'Retained Oak',
+          persistent_id: 1004
+        }
+      )
+    ]
+
+    FakeModel.new(
+      state: {
+        entities: entities,
+        active_entities: [],
+        selection: [],
+        materials: [bark, leaf, concrete, mulch],
+        layers: [trees, hardscape],
+        bounds: build_bounds(origin_x: -5)
+      },
+      details: { options: default_options }
+    )
+  end
+  # rubocop:enable Metrics/MethodLength
+
+  def build_scene_query_group(entity_id:, origin_x:, layer:, material:, details: {})
     FakeGroup.new(
       entity_id: entity_id,
       bounds: build_bounds(origin_x: origin_x),
       layer: layer,
       material: material,
-      details: { name: 'Top Group', persistent_id: 1001, entities: [Object.new] }
+      details: { name: 'Top Group', persistent_id: 1001, entities: [Object.new] }.merge(details)
     )
   end
 

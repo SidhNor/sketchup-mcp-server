@@ -1,7 +1,7 @@
 # Task: STI-01 Targeting MVP and `find_entities`
 **Task ID**: `STI-01`
 **Title**: `Targeting MVP and find_entities`
-**Status**: `planned`
+**Status**: `completed`
 **Priority**: `P0`
 **Date**: `2026-04-14`
 

@@ -37,6 +37,10 @@ module SU_MCP
         active_model!.selection.to_a
       end
 
+      def queryable_entities
+        active_model!.entities.to_a
+      end
+
       def export_scene(format:, width: nil, height: nil)
         model = active_model!
         normalized_format = normalize_format(format)

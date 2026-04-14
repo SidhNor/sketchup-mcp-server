@@ -2,6 +2,7 @@
 
 require_relative 'adapters/model_adapter'
 require_relative 'scene_query_serializer'
+require_relative 'targeting_query'
 
 module SU_MCP
   # Read-oriented SketchUp command behavior and entity serialization helpers.
@@ -10,6 +11,7 @@ module SU_MCP
       @logger = logger
       @adapter = adapter || Adapters::ModelAdapter.new
       @serializer = serializer || SceneQuerySerializer.new
+      @targeting_query = TargetingQuery.new(serializer: @serializer)
     end
 
     def list_resources
@@ -56,6 +58,18 @@ module SU_MCP
       }
     end
 
+    def find_entities(params)
+      adapter.active_model!
+      query = targeting_query.normalized_query(params['query'])
+      matches = targeting_query.filter(adapter.queryable_entities, query)
+
+      {
+        success: true,
+        resolution: targeting_query.resolution_for(matches),
+        matches: matches.map { |entity| serializer.serialize_target_match(entity) }
+      }
+    end
+
     def selection_info
       adapter.active_model!
       selection = adapter.selected_entities
@@ -68,7 +82,7 @@ module SU_MCP
 
     private
 
-    attr_reader :adapter, :serializer
+    attr_reader :adapter, :serializer, :targeting_query
 
     def model_summary(model)
       {

@@ -5,9 +5,19 @@ from __future__ import annotations
 from typing import Any
 
 from fastmcp import Context, FastMCP
+from pydantic import BaseModel
 
 from ..bridge import BridgeClient
 from ..config import ServerSettings
+
+
+class FindEntitiesQuery(BaseModel):
+    sourceElementId: str | None = None
+    persistentId: str | None = None
+    entityId: str | None = None
+    name: str | None = None
+    tag: str | None = None
+    material: str | None = None
 
 
 def register_tools(
@@ -37,6 +47,15 @@ def register_tools(
         return bridge_client.call_tool(
             "list_entities",
             {"limit": limit, "include_hidden": include_hidden},
+            request_id=_request_id(ctx),
+        )
+
+    @mcp.tool
+    def find_entities(ctx: Context, query: FindEntitiesQuery) -> dict[str, Any]:
+        """Find entities by the supported MVP targeting criteria."""
+        return bridge_client.call_tool(
+            "find_entities",
+            {"query": query.model_dump(exclude_none=True)},
             request_id=_request_id(ctx),
         )
 

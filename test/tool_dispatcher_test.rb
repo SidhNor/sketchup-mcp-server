@@ -26,7 +26,12 @@ class ToolDispatcherTest < Minitest::Test
       { success: true, selection: [] }
     end
 
-    private :get_scene_info, :export_scene, :selection_info
+    def find_entities(args)
+      @calls << [:find_entities, args]
+      { success: true, resolution: 'unique', matches: [args.fetch('query')] }
+    end
+
+    private :get_scene_info, :export_scene, :selection_info, :find_entities
   end
 
   class ExportOnlyTarget
@@ -78,6 +83,19 @@ class ToolDispatcherTest < Minitest::Test
 
     assert_equal({ success: true, selection: [] }, result)
     assert_equal([[:selection_info, nil]], @target.calls)
+  end
+
+  def test_dispatches_find_entities_to_the_scene_query_command
+    result = @dispatcher.call('find_entities', { 'query' => { 'persistentId' => '1001' } })
+
+    assert_equal(
+      { success: true, resolution: 'unique', matches: [{ 'persistentId' => '1001' }] },
+      result
+    )
+    assert_equal(
+      [[:find_entities, { 'query' => { 'persistentId' => '1001' } }]],
+      @target.calls
+    )
   end
 
   def test_raises_for_unknown_tool

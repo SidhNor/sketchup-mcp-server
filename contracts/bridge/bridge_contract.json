@@ -131,6 +131,142 @@
       }
     },
     {
+      "case_id": "find_entities_unique",
+      "kind": "tool_case",
+      "owner": "STI-01",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "params": {
+          "name": "find_entities",
+          "arguments": {
+            "query": {
+              "persistentId": "1001"
+            }
+          }
+        },
+        "id": "find-unique"
+      },
+      "response": {
+        "jsonrpc": "2.0",
+        "id": "find-unique",
+        "result": {
+          "success": true,
+          "resolution": "unique",
+          "matches": [
+            {
+              "sourceElementId": "tree-001",
+              "persistentId": "1001",
+              "entityId": "101",
+              "type": "group",
+              "name": "Retained Oak",
+              "tag": "Trees",
+              "material": "Bark"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "case_id": "find_entities_none",
+      "kind": "tool_case",
+      "owner": "STI-01",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "params": {
+          "name": "find_entities",
+          "arguments": {
+            "query": {
+              "material": "Brick"
+            }
+          }
+        },
+        "id": "find-none"
+      },
+      "response": {
+        "jsonrpc": "2.0",
+        "id": "find-none",
+        "result": {
+          "success": true,
+          "resolution": "none",
+          "matches": []
+        }
+      }
+    },
+    {
+      "case_id": "find_entities_ambiguous",
+      "kind": "tool_case",
+      "owner": "STI-01",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "params": {
+          "name": "find_entities",
+          "arguments": {
+            "query": {
+              "name": "Retained Oak"
+            }
+          }
+        },
+        "id": "find-ambiguous"
+      },
+      "response": {
+        "jsonrpc": "2.0",
+        "id": "find-ambiguous",
+        "result": {
+          "success": true,
+          "resolution": "ambiguous",
+          "matches": [
+            {
+              "sourceElementId": "tree-001",
+              "persistentId": "1001",
+              "entityId": "101",
+              "type": "group",
+              "name": "Retained Oak",
+              "tag": "Trees",
+              "material": "Bark"
+            },
+            {
+              "persistentId": "1004",
+              "entityId": "104",
+              "type": "group",
+              "name": "Retained Oak",
+              "tag": "Trees",
+              "material": "Mulch"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "case_id": "find_entities_malformed_request",
+      "kind": "tool_case",
+      "owner": "STI-01",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "params": {
+          "name": "find_entities",
+          "arguments": {
+            "query": {}
+          }
+        },
+        "id": "find-malformed"
+      },
+      "response": {
+        "jsonrpc": "2.0",
+        "id": "find-malformed",
+        "error": {
+          "code": -32603,
+          "message": "At least one query criterion is required",
+          "data": {
+            "success": false
+          }
+        }
+      }
+    },
+    {
       "case_id": "wave_ready_tool_call",
       "kind": "tool_case",
       "owner": "future-wave",

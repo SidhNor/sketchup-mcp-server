@@ -37,6 +37,18 @@ module SU_MCP
       end
     end
 
+    def serialize_target_match(entity)
+      {
+        sourceElementId: source_element_id_for(entity),
+        persistentId: stringify_identifier(persistent_id_for(entity)),
+        entityId: stringify_identifier(entity.entityID),
+        type: entity_type_key(entity),
+        name: entity_name(entity),
+        tag: layer_name(entity),
+        material: material_name_for(entity)
+      }.compact
+    end
+
     def entity_type_key(entity)
       SCENE_QUERY_TYPE_KEYS.each do |klass, key|
         return key if entity.is_a?(klass)
@@ -157,6 +169,21 @@ module SU_MCP
       # rubocop:disable SketchupSuggestions/Compatibility
       entity.persistent_id
       # rubocop:enable SketchupSuggestions/Compatibility
+    end
+
+    def source_element_id_for(entity)
+      return nil unless entity.respond_to?(:get_attribute)
+
+      source_element_id = entity.get_attribute('su_mcp', 'sourceElementId')
+      return nil if source_element_id.to_s.empty?
+
+      source_element_id.to_s
+    end
+
+    def stringify_identifier(value)
+      return nil if value.nil?
+
+      value.to_s
     end
 
     def group_or_component?(entity)

@@ -44,6 +44,10 @@ module BridgeContractCaseAssertions
       contract_case.dig('request', 'params', 'arguments')
     ]
   end
+
+  def contract_result(contract_case)
+    contract_case.dig('response', 'result').transform_keys(&:to_sym)
+  end
 end
 
 class BridgeContractRequestHandlerTest < Minitest::Test
@@ -115,6 +119,59 @@ class BridgeContractRequestHandlerTest < Minitest::Test
     assert_equal(contract_case.dig('response', 'id'), response[:id])
     assert_equal(contract_case.dig('response', 'result', 'success'),
                  response.dig(:result, :success))
+  end
+end
+
+class BridgeContractFindEntitiesRequestHandlerTest < Minitest::Test
+  include BridgeContractCaseAssertions
+
+  def test_find_entities_unique_matches_shared_contract_case
+    contract_case = contract_case('find_entities_unique')
+    response = successful_find_entities_response(contract_case)
+
+    assert_equal(contract_case.dig('response', 'id'), response[:id])
+    assert_equal(contract_case.dig('response', 'result', 'resolution'),
+                 response.dig(:result, :resolution))
+  end
+
+  def test_find_entities_none_matches_shared_contract_case
+    contract_case = contract_case('find_entities_none')
+    response = successful_find_entities_response(contract_case)
+
+    assert_equal(contract_case.dig('response', 'result', 'matches'),
+                 response.dig(:result, :matches))
+  end
+
+  def test_find_entities_ambiguous_matches_shared_contract_case
+    contract_case = contract_case('find_entities_ambiguous')
+    response = successful_find_entities_response(contract_case)
+    expected_matches = contract_case.dig('response', 'result', 'matches')
+
+    assert_equal(contract_case.dig('response', 'result', 'resolution'),
+                 response.dig(:result, :resolution))
+    assert_equal(expected_matches.length, response.dig(:result, :matches).length)
+  end
+
+  def test_find_entities_malformed_request_matches_shared_contract_case
+    contract_case = contract_case('find_entities_malformed_request')
+    response = build_handler(
+      tool_executor: lambda do |_tool_name, _args|
+        raise contract_case.dig('response', 'error', 'message')
+      end
+    ).handle(contract_case.fetch('request'))
+
+    assert_error_case(contract_case, response)
+  end
+
+  private
+
+  def successful_find_entities_response(contract_case)
+    build_handler(
+      tool_executor: lambda do |tool_name, args|
+        assert_equal(expected_tool_call(contract_case), [tool_name, args])
+        contract_result(contract_case)
+      end
+    ).handle(contract_case.fetch('request'))
   end
 end
 

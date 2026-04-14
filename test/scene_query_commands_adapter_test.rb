@@ -10,11 +10,12 @@ class SceneQueryCommandsAdapterTest < Minitest::Test
   class RecordingAdapter
     attr_reader :calls
 
-    def initialize(model:, top_level_entities:, selected_entities:, entity:)
+    def initialize(model:, top_level_entities:, selected_entities:, entity:, queryable_entities:)
       @model = model
       @top_level_entities = top_level_entities
       @selected_entities = selected_entities
       @entity = entity
+      @queryable_entities = queryable_entities
       @calls = []
     end
 
@@ -37,6 +38,11 @@ class SceneQueryCommandsAdapterTest < Minitest::Test
       @calls << [:find_entity!, id]
       @entity
     end
+
+    def queryable_entities
+      @calls << :queryable_entities
+      @queryable_entities
+    end
   end
 
   def setup
@@ -47,7 +53,8 @@ class SceneQueryCommandsAdapterTest < Minitest::Test
       model: @model,
       top_level_entities: @model.entities,
       selected_entities: @model.selection,
-      entity: @group
+      entity: @group,
+      queryable_entities: @model.entities
     )
     # rubocop:enable SketchupSuggestions/ModelEntities
   end
@@ -78,5 +85,13 @@ class SceneQueryCommandsAdapterTest < Minitest::Test
 
     assert_equal(101, result.dig(:entity, :id))
     assert_includes(@adapter.calls, [:find_entity!, '"101"'])
+  end
+
+  def test_find_entities_uses_adapter_owned_entity_enumeration
+    commands = SU_MCP::SceneQueryCommands.new(adapter: @adapter)
+
+    commands.find_entities('query' => { 'entityId' => '101' })
+
+    assert_includes(@adapter.calls, :queryable_entities)
   end
 end

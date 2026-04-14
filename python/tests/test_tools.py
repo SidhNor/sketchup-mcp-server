@@ -3,6 +3,7 @@ from __future__ import annotations
 import asyncio
 
 from fastmcp import FastMCP
+from fastmcp.utilities.json_schema import dereference_refs
 
 from .test_support import DummyContext, RecordingBridgeClient, require_module
 
@@ -19,12 +20,16 @@ def _settings():
 
 
 def _registered_tool(module_name: str, tool_name: str):
+    tool, bridge_client = _registered_tool_definition(module_name, tool_name)
+    return tool.fn, bridge_client
+
+
+def _registered_tool_definition(module_name: str, tool_name: str):
     module = require_module(module_name)
     mcp = FastMCP("test")
     bridge_client = RecordingBridgeClient(result={"ok": True})
     module.register_tools(mcp, settings=_settings(), bridge_client=bridge_client)
-    tool = asyncio.run(mcp.get_tool(tool_name))
-    return tool.fn, bridge_client
+    return asyncio.run(mcp.get_tool(tool_name)), bridge_client
 
 
 def test_register_all_tools_exposes_the_expected_names() -> None:
@@ -44,6 +49,7 @@ def test_register_all_tools_exposes_the_expected_names() -> None:
         "bridge_configuration",
         "get_scene_info",
         "list_entities",
+        "find_entities",
         "get_entity_info",
         "create_component",
         "delete_component",
@@ -72,6 +78,57 @@ def test_scene_tool_passthrough_uses_shared_bridge_client() -> None:
             "name": "get_scene_info",
             "arguments": {"entity_limit": 7},
             "request_id": "scene-1",
+        }
+    ]
+
+
+def test_find_entities_exposes_a_typed_nested_query_schema() -> None:
+    tool, _bridge_client = _registered_tool_definition(
+        "sketchup_mcp_server.tools.scene",
+        "find_entities",
+    )
+
+    schema = dereference_refs(tool.parameters)
+
+    assert schema["type"] == "object"
+    assert "query" in schema["required"]
+    assert schema["properties"]["query"] == {
+        "type": "object",
+        "properties": {
+            "sourceElementId": {
+                "anyOf": [{"type": "string"}, {"type": "null"}],
+                "default": None,
+            },
+            "persistentId": {
+                "anyOf": [{"type": "string"}, {"type": "null"}],
+                "default": None,
+            },
+            "entityId": {
+                "anyOf": [{"type": "string"}, {"type": "null"}],
+                "default": None,
+            },
+            "name": {"anyOf": [{"type": "string"}, {"type": "null"}], "default": None},
+            "tag": {"anyOf": [{"type": "string"}, {"type": "null"}], "default": None},
+            "material": {"anyOf": [{"type": "string"}, {"type": "null"}], "default": None},
+        },
+    }
+
+
+def test_find_entities_passthrough_preserves_query_shape_and_request_id() -> None:
+    scene_module = require_module("sketchup_mcp_server.tools.scene")
+    fn, bridge_client = _registered_tool("sketchup_mcp_server.tools.scene", "find_entities")
+
+    fn(
+        DummyContext("find-1"),
+        query=scene_module.FindEntitiesQuery(persistentId="1001", tag="Trees"),
+    )
+
+    assert bridge_client.calls == [
+        {
+            "kind": "tool",
+            "name": "find_entities",
+            "arguments": {"query": {"persistentId": "1001", "tag": "Trees"}},
+            "request_id": "find-1",
         }
     ]
 
