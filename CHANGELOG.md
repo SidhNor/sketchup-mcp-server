@@ -2,6 +2,14 @@
 
 <!-- version list -->
 
+## v0.2.2 (2026-04-14)
+
+### Bug Fixes
+
+- **release**: Explicitly declare assets for PSR
+  ([`d668bd5`](https://github.com/SidhNor/sketchup-mcp-server/commit/d668bd551617e7a79448d41d529e8f459d631b4a))
+
+
 ## v0.2.1 (2026-04-14)
 
 ### Bug Fixes
