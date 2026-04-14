@@ -2,6 +2,17 @@
 
 <!-- version list -->
 
+## v0.2.1 (2026-04-14)
+
+### Bug Fixes
+
+- **PLAT-02**: Extension loading and unit precision
+  ([`cd06667`](https://github.com/SidhNor/sketchup-mcp-server/commit/cd066678b1b4302ff7aa6e67bb6124e16a714475))
+
+- **release**: Ensure uv.lock version bump during release
+  ([`e44fa65`](https://github.com/SidhNor/sketchup-mcp-server/commit/e44fa65524ed9309ccc96ac8b091e83381c81a3b))
+
+
 ## v0.2.0 (2026-04-14)
 
 ### Documentation
