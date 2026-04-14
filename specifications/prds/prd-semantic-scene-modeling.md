@@ -2,14 +2,14 @@
 doc_type: prd
 title: Semantic Scene Modeling
 status: draft
-last_updated: 2026-04-12
+last_updated: 2026-04-14
 ---
 
 # PRD: Semantic Scene Modeling
 
 ## Problem statement
 
-The current SketchUp MCP surface is still too primitive-first for site, garden, and landscape workflows. Users and agents need to create and revise meaningful scene objects such as pads, paths, retaining edges, planting masses, tree proxies, and terrain patches without dropping into arbitrary Ruby or assembling low-level geometry by hand.
+The current SketchUp MCP surface is still too primitive-first for site, garden, landscape, and small-structure workflows. Users and agents need to create and revise meaningful scene objects such as structures, pads, paths, retaining edges, planting masses, and tree proxies without dropping into arbitrary Ruby or assembling low-level geometry by hand.
 
 Without a strong semantic modeling layer:
 
@@ -22,7 +22,7 @@ The product needs a compact semantic creation and mutation surface that makes Ma
 
 ## Goals
 
-1. Introduce a compact semantic creation surface for site-oriented scene objects.
+1. Introduce a compact semantic creation surface for site and structure-oriented scene objects.
 2. Make Managed Scene Objects the default unit of creation, revision, and lifecycle tracking.
 3. Ensure semantic objects carry stable metadata and business identity from the moment they are created.
 4. Support common revision and composition workflows without forcing recreate-from-scratch behavior.
@@ -32,36 +32,36 @@ The product needs a compact semantic creation and mutation surface that makes Ma
 
 | Metric | Baseline | Target | Measurement Method | Timeline |
 | --- | --- | --- | --- | --- |
-| Baseline site modeling tasks completed without `eval_ruby` | No formal baseline; current workflow is primitive-first and Ruby-heavy | >= 80% of representative baseline modeling tasks | Scenario-based workflow test set measuring tool usage per task | Within first MVP release cycle |
+| Baseline semantic scene modeling tasks completed without `eval_ruby` | No formal baseline; current workflow is primitive-first and Ruby-heavy | >= 80% of representative baseline modeling tasks | Scenario-based workflow test set measuring tool usage per task | Within first MVP release cycle |
 | MCP-created semantic objects with required metadata keys | No enforced metadata completeness standard today | >= 95% of semantic objects created through MCP | Structured validation over created scene objects and metadata completeness reports | Within first MVP release cycle |
 | Representative semantic creation requests completed through `create_site_element` without primitive-tool fallbacks | No semantic-constructor completion baseline today | >= 85% of representative requests | Scenario suite covering initial MVP element types and workflow outcomes | Within first MVP release cycle |
-| Median time to create a representative baseline site scene | Current primitive-first workflow time to be measured during discovery | >= 40% reduction from measured baseline | Timed benchmark scenarios comparing old and new workflows | Within two releases after MVP launch |
+| Median time to create a representative baseline semantic scene | Current primitive-first workflow time to be measured during discovery | >= 40% reduction from measured baseline | Timed benchmark scenarios comparing old and new workflows | Within two releases after MVP launch |
 | Scene revisions applied to existing Managed Scene Objects instead of recreate-from-scratch flows | No current revision-lineage baseline | >= 70% of target revisions reuse existing Managed Scene Objects | Workflow telemetry and scenario audits across revision tasks | Within two releases after MVP launch |
 
 **Primary KPI**
 
-- Baseline site modeling tasks completed without `eval_ruby`
+- Baseline semantic scene modeling tasks completed without `eval_ruby`
 
 **Secondary KPI**
 
 - MCP-created semantic objects with required metadata keys
 - Representative semantic creation requests completed through `create_site_element` without primitive-tool fallbacks
-- Median time to create a representative baseline site scene
+- Median time to create a representative baseline semantic scene
 - Scene revisions applied to existing Managed Scene Objects instead of recreate-from-scratch flows
 
 ## Target Users
 
 - AI agents executing structured design or modeling plans
-- Landscape and garden designers using SketchUp as an execution environment
+- Landscape, garden, and residential site designers using SketchUp as an execution environment
 - Technical operators revising or organizing managed scene objects
 - Developers extending the semantic modeling surface for domain workflows
 
 ## User Flows & Scenarios
 
-### Flow 1: Build a baseline site model
+### Flow 1: Build a baseline semantic scene
 
 1. The user or agent determines what semantic elements must be created.
-2. The system creates objects such as pads, paths, retaining edges, planting masses, and tree proxies through a constrained semantic constructor.
+2. The system creates objects such as structures, pads, paths, retaining edges, planting masses, and tree proxies through a constrained semantic constructor.
 3. The system assigns required metadata, status, and workflow organization fields to each created object.
 4. The resulting scene objects become Managed Scene Objects that can be revised later without losing business identity.
 
@@ -82,8 +82,15 @@ The product needs a compact semantic creation and mutation surface that makes Ma
 
 | Requirement | User Story | Acceptance Criteria | Priority |
 | --- | --- | --- | --- |
-| Support semantic scene creation through `create_site_element` | As an agent, I want one primary semantic constructor so that I can create site-relevant objects without assembling primitive geometry manually | `create_site_element` accepts a documented semantic contract and returns a structured, JSON-serializable Managed Scene Object result or a structured error when the request is invalid | P0 |
-| Support initial semantic element types of `pad`, `path`, `retaining_edge`, `planting_mass`, and `tree_proxy` | As a designer or agent, I want the first semantic constructor vocabulary to cover the highest-value site workflows so that routine work stays semantic instead of primitive-first | Each listed element type accepts a documented payload shape and produces a valid Managed Scene Object or a structured error if the request is incomplete or contradictory | P0 |
+| Support semantic scene creation through `create_site_element` | As an agent, I want one primary semantic constructor so that I can create site-relevant and structure-relevant objects without assembling primitive geometry manually | `create_site_element` accepts a documented semantic contract and returns a structured, JSON-serializable Managed Scene Object result or a structured error when the request is invalid | P0 |
+| Support initial semantic element types of `structure`, `pad`, `path`, `retaining_edge`, `planting_mass`, and `tree_proxy` | As a designer or agent, I want the first semantic constructor vocabulary to cover the highest-value baseline workflows so that routine work stays semantic instead of primitive-first | Each listed element type accepts a documented payload shape and produces a valid Managed Scene Object or a structured error if the request is incomplete or contradictory | P0 |
+| Support `structure` as a first-class semantic object for built-form scene work | As a designer or agent, I want to model houses, sheds, and house extensions as managed objects so that built forms are not forced into ambiguous pad-like or primitive-only representations | The `structure` element type supports a documented footprint-based contract for common built-form cases, includes polygon footprints as an explicit P0 capability for irregular house or extension outlines, and returns a valid Managed Scene Object or a structured error when the request is incomplete or contradictory | P0 |
+| Require subtype or category semantics for `structure` | As a workflow client, I want built forms to stay semantically legible after creation so that later validation, revision, and reporting can distinguish major structure classes | A created `structure` includes a documented subtype or category field such as `main_building`, `outbuilding`, `extension`, or similar approved values; requests that omit the required subtype/category are rejected or surfaced as structured failures | P0 |
+| Require minimum metadata for `structure` objects | As a workflow client, I want building-like objects to carry enough semantic identity from creation time so that they can be revised, validated, and reported on reliably | Every created `structure` includes at minimum `sourceElementId`, `status`, and the approved `structure` subtype/category field; requests that omit any of these required metadata fields are rejected or surfaced as structured failures | P0 |
+| Define the product boundary between `structure` and `pad` clearly | As a workflow author, I want consistent semantic distinctions so that slabs, terraces, decks, platforms, and enclosed built forms are modeled with predictable types | The product documentation states that `pad` is used for surface-first hardscape or platform-like elements, including elevated pads expressed through height or thickness, while `structure` is used for enclosed or clearly building-like built forms; representative examples cover concrete surfaces, terraces, decks, raised platforms, houses, sheds, and extensions, and ambiguous cases return a structured refusal unless the input explicitly resolves the intended type | P0 |
+| Require atomic and undo-safe semantic mutations | As a user, I want semantic creation and revision to succeed or fail as a single unit so that my model state and undo history stay clean and predictable | All semantic creation, metadata update, and identity-preserving rebuild flows execute inside one SketchUp operation boundary; failures result in a clean rollback | P0 |
+| Standardize `pad` height and thickness semantics for raised hardscape and platforms | As a workflow author, I want decks, terraces, and raised platforms to use one consistent pad contract so that vertical interpretation does not vary by prompt wording | The documented `pad` contract defines elevation as the intended top-surface reference and thickness as optional downward body depth from that surface; when thickness is omitted the pad remains valid as a surface-first element without requiring volumetric body semantics | P0 |
+| Validate the initial semantic vocabulary against representative built-form and hardscape examples | As a product owner, I want the MVP vocabulary to prove that it covers the most failure-prone real cases so that semantic modeling does not regress into primitive fallback | The documented MVP acceptance set includes at minimum a rectangular shed, a polygon-footprint house extension, a concrete terrace or slab, and at least one deck or raised platform modeled as a `pad` with documented height or thickness expectations | P0 |
 | Support next-wave semantic element types of `tree_instance`, `seat`, `water_feature_proxy`, and `terrain_patch` | As a designer or agent, I want the semantic vocabulary to expand to additional site objects once the first-wave constructor is established | Each listed element type accepts a documented payload shape and produces a valid Managed Scene Object or a structured error if the request is incomplete or contradictory | P1 |
 | Ensure each semantic creation produces a Managed Scene Object with required metadata | As a downstream workflow, I want created objects to be reliably revisable and validatable later | Every semantic object created through MCP includes the required metadata keys defined by the domain rules; objects missing required keys are rejected or surfaced as failed creation | P0 |
 | Preserve stable business identity across revisions and representation changes | As a workflow orchestrator, I want replacements and revisions to keep lineage intact so that downstream automation stays reliable | `sourceElementId` and required managed-object identity survive supported revise, regroup, replace, and representation-rebuild flows in accordance with domain rules | P0 |
@@ -95,7 +102,7 @@ The product needs a compact semantic creation and mutation surface that makes Ma
 | Support collection, tag, and status assignment as part of semantic scene workflows | As a workflow client, I want created and revised objects to remain organized in product-meaningful ways so that later automation can reason about them | Semantic creation and managed-object update flows can assign or preserve workflow-relevant collections, tags, and status fields without free-form interpretation | P1 |
 | Ensure all semantic modeling outputs remain structured and JSON-serializable | As an MCP client, I want semantic modeling responses that I can consume programmatically without text scraping | All creation, metadata, mutation, grouping, duplication, and deletion outputs serialize cleanly and do not expose raw SketchUp objects | P0 |
 
-Conflict flag: no functional requirements currently conflict with the business rules in [`domain-analysis.md`](../domain-analysis.md); the current domain model already reflects the separation between semantic modeling and the standalone targeting/interrogation slice.
+Conflict flag: no functional requirements currently conflict with the business rules in [`domain-analysis.md`](../domain-analysis.md); the domain analysis has been updated to reflect `structure` as a first-wave semantic object and to keep raised platforms under `pad` semantics.
 
 ## Non Functional Requirements
 
@@ -104,6 +111,8 @@ Conflict flag: no functional requirements currently conflict with the business r
 - The semantic constructor must reject ambiguous or underspecified requests clearly rather than guessing silently.
 - Output contracts must be consistent enough to support downstream asset reuse and validation.
 - The semantic modeling surface must remain maintainable as new semantic types are added over time.
+- Initial semantic structure support must cover common irregular footprints without requiring primitive fallback for non-rectangular house or extension outlines.
+- Built-form classification rules must be explicit enough that agents do not have to infer `pad` versus `structure` from weak natural-language hints alone.
 
 ## Constraints
 
@@ -125,7 +134,11 @@ Conflict flag: no functional requirements currently conflict with the business r
 
 ## Open Questions
 
-- What exact geometry schema should each initial semantic element type use in version 1?
+- What exact geometry schema should each initial semantic element type use in version 1, especially for `structure` footprints, height semantics, and roof/profile simplifications?
+- Which initial `structure` subcases are in scope for MVP: houses, sheds, house extensions, pergolas, or other small built forms?
+- What approved subtype/category vocabulary should `structure` require in MVP?
+- Should the MVP require any additional `structure` metadata beyond `sourceElementId`, `status`, and subtype/category for certain workflows such as retained existing buildings?
+- How should roof or enclosure expectations be represented for `structure` without turning the PRD into a building-modeling spec?
 - Should `terrain_patch` remain in the first semantic-modeling release or move to a later phase if terrain-authoring scope proves too broad?
 - How strict should metadata validation be at creation time versus update time?
 - What identity rules should apply when `duplicate_entity` creates a variant from an existing Managed Scene Object?
@@ -137,6 +150,8 @@ Conflict flag: no functional requirements currently conflict with the business r
 | Risk | Likelihood | Impact | Mitigation Strategy |
 | --- | --- | --- | --- |
 | Semantic commands become too broad and underspecified | Medium | High | Keep one constrained semantic command with explicit element schemas and reject ambiguous payloads |
+| Built forms remain semantically under-modeled if `structure` is omitted or under-specified | High | High | Make `structure` a first-wave element type with clear scope examples and a documented boundary versus `pad` |
+| `structure` becomes a catch-all type that erodes semantic precision | High | High | Require subtype/category semantics, define refusal behavior for ambiguous cases, and validate the vocabulary against representative built-form and hardscape examples |
 | Objects are created without sufficient metadata | High | High | Enforce required metadata at semantic creation time and validate metadata completeness continuously |
 | Revision flows recreate objects instead of preserving lineage | Medium | High | Preserve `sourceElementId` and managed-object rules across supported mutation, grouping, and replacement flows |
 | Agents continue to prefer `eval_ruby` | Medium | High | Make semantic tools expressive for common tasks and track escape-hatch usage as a product signal |
@@ -159,3 +174,6 @@ Conflict flag: no functional requirements currently conflict with the business r
 | 2026-04-11 | Refined the PRD to focus on semantic creation, metadata, identity, and mutation after splitting scene targeting and interrogation into its own PRD, and added lightweight front matter plus revision history. |
 | 2026-04-12 | Modestly clarified that semantic revision includes supported identity-preserving representation rebuild or replacement flows, while keeping workflow-specific branch/canonical lifecycle helpers out of scope. |
 | 2026-04-12 | Rebalanced priorities to match the guide's first-wave semantic scope, keeping `create_site_element`, metadata, and first-wave element types in P0 while moving later element types and broader mutation helpers to P1. |
+| 2026-04-14 | Expanded the PRD to treat `structure` as a first-wave semantic element, added product requirements for built-form coverage and the `structure` versus `pad` boundary, and called out polygon-footprint support for irregular house and extension outlines. |
+| 2026-04-14 | Refined the `structure` update after external review by requiring subtype/category semantics, tightening the `pad` versus `structure` rule, adding representative acceptance examples, and explicitly classifying decks and raised platforms under `pad` using height or thickness semantics. |
+| 2026-04-14 | Added explicit minimum metadata requirements for `structure` objects, standardized `pad` elevation and thickness semantics for raised hardscape and platform cases, and aligned the PRD conflict note with the updated domain analysis. |

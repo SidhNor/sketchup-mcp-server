@@ -2,7 +2,7 @@
 doc_type: domain_analysis
 title: SketchUp MCP Domain Analysis
 status: draft
-last_updated: 2026-04-11
+last_updated: 2026-04-14
 ---
 
 # SketchUp MCP Domain Analysis
@@ -53,6 +53,8 @@ The following conventions apply across this document and all PRDs in `specificat
 - **Target Reference** means a structured workflow-facing way to refer to a scene entity during targeting, measurement, or validation.
 - **Surface Sample** means the structured result of interrogating explicit geometry at one or more XY points.
 - **Topology Finding** means a structured defect or summary result produced when checking linework connectivity or edge-network validity.
+- **Footprint** means the structured 2D boundary used to define the plan shape of a semantic object such as a `structure` or a polygon-based `pad`.
+- **Structure Category** means the controlled semantic subtype used to distinguish major built-form classes such as `main_building`, `outbuilding`, or `extension`.
 - The phrase **staged asset** is treated as a synonym for **Asset Exemplar**, not as a separate domain entity.
 - The phrase **library asset** is treated as a synonym for **Asset Exemplar**, not as a separate domain entity.
 
@@ -66,6 +68,22 @@ The domain uses three identity layers:
 
 Product contracts should prefer `sourceElementId`, support `persistentId` where needed, and reserve `entityId` for compatibility or low-level cases.
 
+### Semantic Object Classification Rules
+
+The semantic modeling slice uses explicit classification rules to keep `pad` and `structure` distinct:
+
+- **`pad`** is the semantic type for surface-first hardscape or platform-like elements such as concrete surfaces, terraces, decks, and raised platforms.
+- **`structure`** is the semantic type for enclosed or clearly building-like built forms such as houses, sheds, and house extensions.
+- `pad` elevation is interpreted as the intended top-surface reference. Optional thickness represents downward body depth from that surface; if thickness is omitted, the pad remains valid as a surface-first element without requiring volumetric body semantics.
+- `structure` must support footprint-driven creation, including polygon footprints for irregular house or extension outlines.
+- `structure` requires a controlled Structure Category and the minimum metadata needed for stable workflow identity.
+- When a request could reasonably map to either `pad` or `structure`, the product should require explicit input or return a structured refusal rather than silently guessing.
+
+Representative examples:
+
+- concrete slab, terrace, deck, raised platform -> `pad`
+- house, shed, house extension -> `structure`
+
 ## Domain Categories
 
 ### 1. Scene Objects
@@ -75,7 +93,8 @@ These are objects that exist in the modeled scene and can be targeted, created, 
 | Entity | Description | Why It Matters |
 | --- | --- | --- |
 | Managed Scene Object | Any top-level MCP-managed object in the editable design scene | Primary unit of identity, mutation, validation, and reporting |
-| Site Element | A Managed Scene Object created through semantic tools such as `pad`, `path`, `planting_mass`, or `tree_proxy` | Replaces primitive-first geometry creation |
+| Site Element | A Managed Scene Object created through semantic tools such as `structure`, `pad`, `path`, `planting_mass`, or `tree_proxy` | Replaces primitive-first geometry creation with workflow-facing semantic objects |
+| Structure | Semantic built-form Managed Scene Object such as a house, shed, or extension, defined by a footprint and a controlled Structure Category | Keeps building context first-class instead of forcing built forms into ambiguous pad-like or primitive-only modeling |
 | Tree Proxy | Lightweight semantic representation of a tree | Supports early iteration and low-cost baseline modeling |
 | Tree Instance | Higher-fidelity tree object, often created from an Asset Exemplar | Supports mature design options and retained-tree fidelity |
 | Grouped Feature | Composite object containing related subparts | Supports feature-level mutation and validation |
@@ -90,7 +109,9 @@ These are entities used to make the scene automatable, searchable, and safe.
 | --- | --- | --- |
 | Collection | Logical scene bucket such as `existing_trees` or `proposed_hardscape` | Supports product workflows and high-level querying |
 | Tag | SketchUp tag or layer used for broad classification | Useful for visibility, filtering, and scene hygiene |
-| Metadata Record | Stable key or value identity attached to Managed Scene Objects or Asset Exemplars | Required for targeting, validation, replacement, and lineage |
+| Metadata Record | Stable key or value identity attached to Managed Scene Objects or Asset Exemplars, including required workflow identity fields for semantic objects | Required for targeting, validation, replacement, and lineage |
+| Structure Category | Controlled subtype that distinguishes major structure classes such as `main_building`, `outbuilding`, or `extension` | Keeps built-form semantics legible for validation, revision, and reporting |
+| Footprint Definition | Structured boundary shape used for polygonal or other plan-based semantic objects | Supports irregular structure outlines and non-rectangular pads without primitive fallback |
 | Material | Named material applied to a scene object or sub-geometry | Needed for design intent and validation |
 | Target Reference | Structured reference using `sourceElementId`, `persistentId`, or compatible identifiers | Supports stable targeting, measurement, and validation contracts |
 
@@ -135,7 +156,7 @@ These represent workflow inputs or expectations defined outside SketchUp but app
 | Target | Locate the intended scene object or collection using workflow-facing identity | Before revision, placement, measurement, or validation | find a retained tree by `sourceElementId` |
 | Interrogate Surface | Query explicit geometry for world-space behavior | Terrain-aware placement, reprojection, validation | sample Z values against `terrain-main` |
 | Analyze Topology | Determine whether linework is structurally usable | Path, retaining-edge, grading, or validation workflows | check if plot boundaries form one connected network |
-| Create | Build a semantic scene object in the editable scene | Baseline modeling, option generation | create `pad`, `path`, `planting_mass`, `tree_proxy` |
+| Create | Build a semantic scene object in the editable scene | Baseline modeling, option generation | create `structure`, `pad`, `path`, `planting_mass`, `tree_proxy` |
 | Classify | Assign semantic role, collection, tags, or metadata to an object | Immediately after creation or curation | mark an object as `existing-tree`, assign collection `existing_trees` |
 | Instantiate | Create a new scene object from an Asset Exemplar | Asset reuse, fidelity upgrade | place a curated apple tree into the live scene |
 | Replace | Change the representation of an object while preserving business identity | Proxy-to-asset upgrade, fidelity increase | replace `tree_proxy` with curated cherry Asset Instance |
@@ -156,7 +177,7 @@ These represent workflow inputs or expectations defined outside SketchUp but app
 | Product Slice | Primary Entities | Secondary Entities |
 | --- | --- | --- |
 | Scene targeting and interrogation | Target Reference, Surface Sample Request, Surface Sample Result, Edge Network Analysis Request, Topology Finding | Collection, Tag, Metadata Record, Managed Scene Object |
-| Semantic scene modeling | Managed Scene Object, Site Element, Metadata Record, Collection | Material, Grouped Feature, Tag |
+| Semantic scene modeling | Managed Scene Object, Site Element, Structure, Metadata Record, Structure Category, Collection | Footprint Definition, Material, Grouped Feature, Tag |
 | Staged asset reuse | Asset Exemplar, Asset Instance, Metadata Record, Collection | Material, Tag, Managed Scene Object |
 | Validation and review | Validation Rule, Validation Result, Measurement Request, Scene Snapshot | Managed Scene Object, Asset Exemplar, Topology Finding, Surface Sample Result |
 
@@ -203,3 +224,5 @@ Key rule: Asset Exemplars never transition into editable scene objects. Asset In
 | Date | Change |
 | --- | --- |
 | 2026-04-11 | Updated the domain analysis to match the four-PRD split, added the standalone targeting and interrogation slice, aligned capability groups to the updated guide, and added lightweight front matter plus revision history. |
+| 2026-04-14 | Updated the semantic scene modeling domain to include `structure` as a first-wave semantic object, aligned create/action examples with the expanded semantic vocabulary, and reflected the PRD decision that raised platforms remain under `pad` via height or thickness semantics. |
+| 2026-04-14 | Added explicit semantic object classification rules for `pad` versus `structure`, introduced Footprint and Structure Category terminology, and aligned the domain model with the PRD's built-form metadata and polygon-footprint requirements. |
