@@ -17,7 +17,7 @@ The authoritative task set is the folder-based set below.
 The current post-seeding breakdown is intentionally smaller than the recovered 10-task set. It reflects the revised platform HLD, the current repository baseline, and a refinement pass against hidden task coupling:
 
 - 3 core delivery tasks
-- 1 follow-on contract-preparation task for the replacement tool rollout
+- 2 follow-on preparation tasks for the replacement tool rollout
 - 1 deferred low-priority task for SketchUp-hosted verification
 
 ## Task Order
@@ -30,19 +30,21 @@ The current post-seeding breakdown is intentionally smaller than the recovered 1
 
 ### Follow-On Preparation
 
-4. [PLAT-05 Prepare Python/Ruby Contract Coverage Foundations](PLAT-05-add-python-ruby-contract-coverage/task.md)
+4. [PLAT-04 Define MCP Tool Decoration and Phase-Specific Metadata](PLAT-04-define-mcp-tool-decoration-and-phase-specific-metadata/task.md)
+5. [PLAT-05 Prepare Python/Ruby Contract Coverage Foundations](PLAT-05-add-python-ruby-contract-coverage/task.md)
 
 ### Deferred Low-Priority Tasks
 
-5. [PLAT-06 Add SketchUp-Hosted Smoke and Fixture Coverage](PLAT-06-add-sketchup-hosted-smoke-and-fixture-coverage/task.md)
+6. [PLAT-06 Add SketchUp-Hosted Smoke and Fixture Coverage](PLAT-06-add-sketchup-hosted-smoke-and-fixture-coverage/task.md)
 
 ## Dependency Summary
 
 | Task | Depends On | Unblocks |
 | --- | --- | --- |
-| `PLAT-01` | revised platform HLD | `PLAT-02`, `PLAT-03`, `PLAT-05`, `PLAT-06` |
+| `PLAT-01` | revised platform HLD | `PLAT-02`, `PLAT-03`, `PLAT-04`, `PLAT-05`, `PLAT-06` |
 | `PLAT-02` | `PLAT-01` | capability work, `PLAT-06` |
-| `PLAT-03` | `PLAT-01` | `PLAT-05` |
+| `PLAT-03` | `PLAT-01` | `PLAT-04`, `PLAT-05` |
+| `PLAT-04` | `PLAT-03` | phased MCP tool-metadata rollout for capability tasks |
 | `PLAT-05` | `PLAT-01`, `PLAT-03` | replacement-rollout contract preparation and wave-owned boundary checks |
 | `PLAT-06` | `PLAT-01`, `PLAT-02` | deferred runtime-hosted confidence work |
 
@@ -54,6 +56,7 @@ The current post-seeding breakdown is intentionally smaller than the recovered 1
 - Unit-test coverage belongs to the task that extracts or reorganizes the relevant boundary. It is not carried as a separate cleanup task.
 - There is no standalone CI-tightening task because the current CI already covers Ruby and Python linting, tests, package verification, and release automation reasonably well.
 - Packaging and version preservation are folded into the Ruby and Python decomposition tasks rather than carried as a separate slice.
+- `PLAT-04` makes MCP client-facing tool metadata a platform-owned concern so phased capability rollouts do not each invent their own decoration posture.
 - `PLAT-05` is no longer framed as broad coverage for the current tool catalog. It prepares durable contract-test foundations for the staged replacement tool surface and is meant to be extended by capability-wave work.
 - SketchUp-hosted smoke coverage remains defined, but intentionally deferred and low priority.
 - Tasks remain requirements-focused. They define what must be true when the task is complete, not how the implementation must be coded.

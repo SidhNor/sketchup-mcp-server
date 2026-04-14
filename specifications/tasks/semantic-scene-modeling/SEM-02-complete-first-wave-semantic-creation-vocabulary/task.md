@@ -1,7 +1,7 @@
 # Task: SEM-02 Complete First-Wave Semantic Creation Vocabulary
 **Task ID**: `SEM-02`
 **Title**: `Complete First-Wave Semantic Creation Vocabulary`
-**Status**: `draft`
+**Status**: `planned`
 **Priority**: `P0`
 **Date**: `2026-04-14`
 
@@ -79,7 +79,7 @@ Scenario: vocabulary expansion lands with unit and contract coverage
 
 ## Related Technical Plan
 
-- none yet
+- [Technical Plan](./plan.md)
 
 ## Success Metrics
 
