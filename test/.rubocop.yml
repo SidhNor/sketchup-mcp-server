@@ -1,0 +1,32 @@
+inherit_mode:
+  merge:
+    - Exclude
+
+inherit_from:
+  - ../.rubocop.yml
+
+Metrics/MethodLength:
+  Max: 20
+
+Metrics/AbcSize:
+  Max: 25
+
+Metrics/ParameterLists:
+  Max: 6
+
+Metrics/ClassLength:
+  Max: 200
+
+Metrics/CyclomaticComplexity:
+  Max: 10
+
+Metrics/PerceivedComplexity:
+  Max: 10
+
+SketchupSuggestions/ModelEntities:
+  Exclude:
+    - "**/*"
+
+SketchupSuggestions/Compatibility:
+  Exclude:
+    - "**/*"

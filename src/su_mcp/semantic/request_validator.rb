@@ -8,7 +8,7 @@ module SU_MCP
       APPROVED_STRUCTURE_CATEGORIES = %w[main_building outbuilding extension].freeze
       SUPPORTED_ELEMENT_TYPES = %w[pad structure].freeze
 
-      # rubocop:disable Metrics/AbcSize, Metrics/CyclomaticComplexity
+      # rubocop:disable Metrics/CyclomaticComplexity
       def refusal_for(params)
         element_type = params['elementType']
         return unsupported_element_type_refusal(params) unless supported_element_type?(element_type)
@@ -21,7 +21,7 @@ module SU_MCP
 
         nil
       end
-      # rubocop:enable Metrics/AbcSize, Metrics/CyclomaticComplexity
+      # rubocop:enable Metrics/CyclomaticComplexity
 
       private
 
@@ -83,7 +83,6 @@ module SU_MCP
         second_index == first_index + 1 || (first_index.zero? && second_index == point_count - 1)
       end
 
-      # rubocop:disable Metrics/MethodLength
       def segments_intersect?(first_edge, second_edge)
         first_start, first_end = first_edge
         second_start, second_end = second_edge
@@ -101,9 +100,7 @@ module SU_MCP
 
         false
       end
-      # rubocop:enable Metrics/MethodLength
 
-      # rubocop:disable Metrics/AbcSize
       def orientation(point_a, point_b, point_c)
         value = ((point_b[1] - point_a[1]) * (point_c[0] - point_b[0])) -
                 ((point_b[0] - point_a[0]) * (point_c[1] - point_b[1]))
@@ -111,7 +108,6 @@ module SU_MCP
 
         value.positive? ? 1 : -1
       end
-      # rubocop:enable Metrics/AbcSize
 
       def on_segment?(point_a, point_b, point_c)
         point_b[0].between?([point_a[0], point_c[0]].min, [point_a[0], point_c[0]].max) &&

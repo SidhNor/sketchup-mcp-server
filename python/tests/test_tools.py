@@ -167,6 +167,40 @@ def test_scene_tool_passthrough_uses_shared_bridge_client() -> None:
     ]
 
 
+def test_get_scene_info_exposes_explicit_metadata() -> None:
+    tool, _bridge_client = _registered_tool_definition(
+        "sketchup_mcp_server.tools.scene",
+        "get_scene_info",
+    )
+
+    assert tool.title == "Get Scene Summary"
+    assert (
+        tool.description
+        == "Get a structured summary of the current SketchUp scene for broad grounding"
+        " before more targeted inspection tools are used."
+    )
+    assert tool.annotations is not None
+    assert tool.annotations.readOnlyHint is True
+    assert tool.annotations.destructiveHint is False
+
+
+def test_list_entities_exposes_explicit_metadata() -> None:
+    tool, _bridge_client = _registered_tool_definition(
+        "sketchup_mcp_server.tools.scene",
+        "list_entities",
+    )
+
+    assert tool.title == "List Top-Level Entities"
+    assert (
+        tool.description
+        == "List top-level SketchUp model entities with an optional limit and optional"
+        " hidden-entity inclusion."
+    )
+    assert tool.annotations is not None
+    assert tool.annotations.readOnlyHint is True
+    assert tool.annotations.destructiveHint is False
+
+
 def test_find_entities_exposes_a_typed_nested_query_schema() -> None:
     tool, _bridge_client = _registered_tool_definition(
         "sketchup_mcp_server.tools.scene",
@@ -343,6 +377,19 @@ def test_sample_surface_z_passthrough_preserves_nested_shape_and_request_id() ->
             "request_id": "sample-1",
         }
     ]
+
+
+def test_get_entity_info_exposes_explicit_metadata() -> None:
+    tool, _bridge_client = _registered_tool_definition(
+        "sketchup_mcp_server.tools.scene",
+        "get_entity_info",
+    )
+
+    assert tool.title == "Get Entity Information"
+    assert tool.description == "Get structured information for a specific SketchUp entity by id."
+    assert tool.annotations is not None
+    assert tool.annotations.readOnlyHint is True
+    assert tool.annotations.destructiveHint is False
 
 
 def test_modeling_tool_omits_none_optional_arguments() -> None:

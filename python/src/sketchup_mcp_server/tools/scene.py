@@ -40,7 +40,16 @@ def register_tools(
 ) -> None:
     del settings
 
-    @mcp.tool
+    @mcp.tool(
+        **tool_metadata(
+            title="Get Scene Summary",
+            description=(
+                "Get a structured summary of the current SketchUp scene for broad "
+                "grounding before more targeted inspection tools are used."
+            ),
+            read_only=True,
+        )
+    )
     def get_scene_info(ctx: Context, entity_limit: int = 25) -> dict[str, Any]:
         """Get a structured summary of the current SketchUp scene."""
         return bridge_client.call_tool(
@@ -49,7 +58,16 @@ def register_tools(
             request_id=_request_id(ctx),
         )
 
-    @mcp.tool
+    @mcp.tool(
+        **tool_metadata(
+            title="List Top-Level Entities",
+            description=(
+                "List top-level SketchUp model entities with an optional limit and "
+                "optional hidden-entity inclusion."
+            ),
+            read_only=True,
+        )
+    )
     def list_entities(
         ctx: Context,
         limit: int = 100,
@@ -116,7 +134,15 @@ def register_tools(
             request_id=_request_id(ctx),
         )
 
-    @mcp.tool
+    @mcp.tool(
+        **tool_metadata(
+            title="Get Entity Information",
+            description=(
+                "Get structured information for a specific SketchUp entity by id."
+            ),
+            read_only=True,
+        )
+    )
     def get_entity_info(ctx: Context, id: str) -> dict[str, Any]:
         """Get structured information about a specific SketchUp entity by ID."""
         return bridge_client.call_tool(

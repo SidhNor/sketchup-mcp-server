@@ -1,7 +1,6 @@
 # frozen_string_literal: true
 
-# rubocop:disable Metrics/AbcSize, Metrics/CyclomaticComplexity, Metrics/MethodLength
-# rubocop:disable Metrics/PerceivedComplexity, Naming/MethodName, Style/OptionalBooleanParameter
+# rubocop:disable Style/OptionalBooleanParameter
 
 require_relative 'scene_query_test_support'
 
@@ -232,5 +231,4 @@ module SemanticTestSupport
     FakeModel.new
   end
 end
-# rubocop:enable Metrics/AbcSize, Metrics/CyclomaticComplexity, Metrics/MethodLength
-# rubocop:enable Metrics/PerceivedComplexity, Naming/MethodName, Style/OptionalBooleanParameter
+# rubocop:enable Style/OptionalBooleanParameter

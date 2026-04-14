@@ -1,7 +1,5 @@
 # frozen_string_literal: true
 
-# rubocop:disable Metrics/MethodLength
-
 require_relative 'test_helper'
 require_relative 'support/semantic_test_support'
 require_relative '../src/su_mcp/semantic/managed_object_metadata'
@@ -29,4 +27,3 @@ class SemanticMetadataTest < Minitest::Test
     assert_equal('extension', entity.get_attribute('su_mcp', 'structureCategory'))
   end
 end
-# rubocop:enable Metrics/MethodLength

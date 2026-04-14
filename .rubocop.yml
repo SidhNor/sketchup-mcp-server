@@ -21,11 +21,13 @@ Metrics/BlockLength:
     - "rakelib/**/*.rake"
 
 Metrics/MethodLength:
+  Max: 15
   Exclude:
     - "rakelib/**/*.rb"
     - "src/su_mcp/socket_server.rb"
 
 Metrics/AbcSize:
+  Max: 20
   Exclude:
     - "src/su_mcp/socket_server.rb"
 
@@ -34,10 +36,12 @@ Metrics/BlockNesting:
     - "src/su_mcp/socket_server.rb"
 
 Metrics/ClassLength:
+  Max: 150
   Exclude:
     - "src/su_mcp/socket_server.rb"
 
 Metrics/CyclomaticComplexity:
+  Max: 7
   Exclude:
     - "src/su_mcp/socket_server.rb"
 
@@ -46,10 +50,12 @@ Metrics/ModuleLength:
     - "rakelib/**/*.rb"
 
 Metrics/ParameterLists:
+  Max: 5
   Exclude:
     - "src/su_mcp/socket_server.rb"
 
 Metrics/PerceivedComplexity:
+  Max: 8
   Exclude:
     - "src/su_mcp/socket_server.rb"
 

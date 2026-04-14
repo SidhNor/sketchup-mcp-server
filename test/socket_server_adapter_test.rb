@@ -52,9 +52,7 @@ class SocketServerAdapterTest < Minitest::Test
 
   def setup
     @model = build_mutation_model
-    # rubocop:disable SketchupSuggestions/ModelEntities
     @entity = @model.entities.first
-    # rubocop:enable SketchupSuggestions/ModelEntities
     @adapter = RecordingAdapter.new(
       model: @model,
       entity: @entity,

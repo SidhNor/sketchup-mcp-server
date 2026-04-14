@@ -2,16 +2,18 @@
 
 require 'json'
 require 'extensions'
-require_relative 'version'
 
-# Extension registration and metadata loading for the SketchUp runtime.
+# Extension metadata support for the SketchUp runtime.
+# Root registration stays in `src/su_mcp.rb` to keep the loader minimal.
 module SU_MCP
-  metadata_path = File.join(__dir__, 'extension.json')
+  extension_dir = __dir__.dup
+  extension_dir.force_encoding('UTF-8') if extension_dir.respond_to?(:force_encoding)
+  metadata_path = File.join(extension_dir, 'extension.json')
   metadata = JSON.parse(File.read(metadata_path))
 
   extension = SketchupExtension.new(metadata.fetch('name'), 'su_mcp/main')
   extension.description = metadata.fetch('description')
-  extension.version = VERSION
+  extension.version = metadata.fetch('version')
   extension.copyright = metadata.fetch('copyright')
   extension.creator = metadata.fetch('creator')
 

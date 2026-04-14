@@ -10,7 +10,6 @@ module SU_MCP
         @scene_properties = scene_properties
       end
 
-      # rubocop:disable Metrics/AbcSize
       def build(model:, params:)
         structure_category = params['structureCategory']
         raise ArgumentError, 'structureCategory is required' if structure_category.to_s.empty?
@@ -24,7 +23,6 @@ module SU_MCP
 
         group
       end
-      # rubocop:enable Metrics/AbcSize
 
       private
 

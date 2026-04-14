@@ -1,7 +1,5 @@
 # frozen_string_literal: true
 
-# rubocop:disable Metrics/MethodLength
-
 require_relative 'test_helper'
 require_relative 'support/semantic_test_support'
 require_relative '../src/su_mcp/semantic/pad_builder'
@@ -81,4 +79,3 @@ class PadBuilderTest < Minitest::Test
     assert_equal([-0.3], group.entities.faces.first.pushpull_calls)
   end
 end
-# rubocop:enable Metrics/MethodLength

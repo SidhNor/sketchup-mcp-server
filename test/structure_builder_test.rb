@@ -1,7 +1,5 @@
 # frozen_string_literal: true
 
-# rubocop:disable Metrics/MethodLength
-
 require_relative 'test_helper'
 require_relative 'support/semantic_test_support'
 require_relative '../src/su_mcp/semantic/structure_builder'
@@ -65,4 +63,3 @@ class StructureBuilderTest < Minitest::Test
     assert_equal([2.4], group.entities.faces.first.pushpull_calls)
   end
 end
-# rubocop:enable Metrics/MethodLength

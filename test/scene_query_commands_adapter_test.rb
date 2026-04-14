@@ -47,7 +47,6 @@ class SceneQueryCommandsAdapterTest < Minitest::Test
 
   def setup
     @model = build_scene_query_model
-    # rubocop:disable SketchupSuggestions/ModelEntities
     @group = @model.entities.first
     @adapter = RecordingAdapter.new(
       model: @model,
@@ -56,7 +55,6 @@ class SceneQueryCommandsAdapterTest < Minitest::Test
       entity: @group,
       queryable_entities: @model.entities
     )
-    # rubocop:enable SketchupSuggestions/ModelEntities
   end
 
   def test_list_entities_accepts_an_adapter_dependency_and_uses_top_level_lookup

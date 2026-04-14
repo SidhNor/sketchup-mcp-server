@@ -1,6 +1,5 @@
 # frozen_string_literal: true
 
-# rubocop:disable Metrics/ModuleLength
 module SceneQueryTestSupport
   class FakeOptionsProvider
     def initialize(values)
@@ -103,12 +102,10 @@ module SceneQueryTestSupport
       @write_image_calls = []
     end
 
-    # rubocop:disable Naming/PredicateMethod
     def write_image(options)
       @write_image_calls << options
       true
     end
-    # rubocop:enable Naming/PredicateMethod
   end
 
   class FakeTransformation
@@ -139,7 +136,6 @@ module SceneQueryTestSupport
   module FakeEntityBehavior
     attr_reader :entity_id, :bounds, :layer, :material, :name, :persistent_id, :details
 
-    # rubocop:disable Metrics/MethodLength
     def initialize(entity_id:, bounds:, layer:, material:, details: {})
       super()
       @entity_id = entity_id
@@ -153,7 +149,6 @@ module SceneQueryTestSupport
       @details = details
       @attributes = details.fetch(:attributes, {})
     end
-    # rubocop:enable Metrics/MethodLength
 
     def hidden?
       @hidden
@@ -163,9 +158,7 @@ module SceneQueryTestSupport
       @locked
     end
 
-    # rubocop:disable Naming/MethodName
     define_method(:entityID) { entity_id }
-    # rubocop:enable Naming/MethodName
 
     def material=(material)
       @material = material
@@ -243,7 +236,6 @@ module SceneQueryTestSupport
     attr_reader :entities, :active_entities, :selection, :materials, :layers, :bounds, :title,
                 :path, :active_path, :active_view, :saved_paths, :export_calls, :options
 
-    # rubocop:disable Metrics/AbcSize, Metrics/MethodLength
     def initialize(state:, details: {})
       @entities = state.fetch(:entities)
       @active_entities = state.fetch(:active_entities)
@@ -259,13 +251,11 @@ module SceneQueryTestSupport
       @saved_paths = []
       @export_calls = []
     end
-    # rubocop:enable Metrics/AbcSize, Metrics/MethodLength
 
     def find_entity_by_id(id)
       (@entities + @active_entities).find { |entity| entity.entityID == id }
     end
 
-    # rubocop:disable Naming/PredicateMethod
     def save(path)
       @saved_paths << path
       true
@@ -275,7 +265,6 @@ module SceneQueryTestSupport
       @export_calls << [path, options]
       true
     end
-    # rubocop:enable Naming/PredicateMethod
   end
 
   def build_scene_query_model
@@ -288,7 +277,6 @@ module SceneQueryTestSupport
     )
   end
 
-  # rubocop:disable Metrics/MethodLength
   def build_precise_scene_query_model(length_precision: 2)
     layer = FakeLayer.new('Layer0')
     material = FakeMaterial.new('Pine')
@@ -308,9 +296,7 @@ module SceneQueryTestSupport
       }
     )
   end
-  # rubocop:enable Metrics/MethodLength
 
-  # rubocop:disable Metrics/MethodLength, Metrics/ParameterLists
   def build_scene_query_state(layer:, material:, group_origin_x: 0, hidden_face_origin_x: 10,
                               nested_face_origin_x: 20, model_bounds_origin_x: -5)
     top_level_group = build_scene_query_group(
@@ -334,7 +320,6 @@ module SceneQueryTestSupport
       bounds: build_bounds(origin_x: model_bounds_origin_x)
     }
   end
-  # rubocop:enable Metrics/MethodLength, Metrics/ParameterLists
 
   def build_mutation_model(entity_id: 301, material_name: 'Pine')
     layer = FakeLayer.new('Layer0')
@@ -348,7 +333,6 @@ module SceneQueryTestSupport
     )
   end
 
-  # rubocop:disable Metrics/MethodLength
   def build_find_entities_model
     trees = FakeLayer.new('Trees')
     hardscape = FakeLayer.new('Hardscape')
@@ -413,14 +397,12 @@ module SceneQueryTestSupport
       details: { options: default_options }
     )
   end
-  # rubocop:enable Metrics/MethodLength
 
   # This custom fixture overlay is needed because the existing scene-query support
   # only models broad inspection entities. Explicit surface interrogation needs
   # test-owned sampleable faces, nested faces, stacked candidates, and occluders.
   # Reusing the existing fakes directly would not let the skeleton suite express
   # face/group/component sampling or ambiguity scenarios credibly.
-  # rubocop:disable Metrics/AbcSize, Metrics/MethodLength
   def build_sample_surface_z_model
     terrain = FakeLayer.new('Terrain')
     structures = FakeLayer.new('Structures')
@@ -635,7 +617,6 @@ module SceneQueryTestSupport
       details: { options: default_options }
     )
   end
-  # rubocop:enable Metrics/AbcSize, Metrics/MethodLength
 
   def build_scene_query_group(entity_id:, origin_x:, layer:, material:, details: {})
     FakeGroup.new(
@@ -657,7 +638,6 @@ module SceneQueryTestSupport
     )
   end
 
-  # rubocop:disable Metrics/MethodLength
   def build_scene_query_component(entity_id:, origin_x:, layer:, material:, details: {})
     definition = details.fetch(:definition) do
       FakeComponentDefinition.new(name: details.fetch(:definition_name, 'Component Definition'),
@@ -672,7 +652,6 @@ module SceneQueryTestSupport
       details: details.merge(definition: definition)
     )
   end
-  # rubocop:enable Metrics/MethodLength
 
   def build_hidden_face(layer:, material:, origin_x: 10)
     build_scene_query_face(entity_id: 102, origin_x: origin_x, layer: layer, material: material,
@@ -684,7 +663,7 @@ module SceneQueryTestSupport
                            details: { name: 'Nested Face', persistent_id: 2001 })
   end
 
-  # rubocop:disable Metrics/MethodLength, Metrics/ParameterLists
+  # rubocop:disable Metrics/ParameterLists
   def build_sample_surface_face(entity_id:, persistent_id:, name:, layer:, material:, x_range:,
                                 y_range:, z_value:, source_element_id: nil, hidden: false,
                                 slope_x: 0.0, slope_y: 0.0)
@@ -708,9 +687,8 @@ module SceneQueryTestSupport
       }
     )
   end
-  # rubocop:enable Metrics/MethodLength, Metrics/ParameterLists
+  # rubocop:enable Metrics/ParameterLists
 
-  # rubocop:disable Metrics/MethodLength, Metrics/ParameterLists
   def build_sample_surface_group(entity_id:, persistent_id:, name:, layer:, material:, child_faces:,
                                  source_element_id: nil, transformation: nil)
     FakeGroup.new(
@@ -727,9 +705,8 @@ module SceneQueryTestSupport
       }
     )
   end
-  # rubocop:enable Metrics/MethodLength, Metrics/ParameterLists
 
-  # rubocop:disable Metrics/MethodLength, Metrics/ParameterLists
+  # rubocop:disable Metrics/ParameterLists
   def build_sample_surface_component(
     entity_id:,
     persistent_id:,
@@ -757,9 +734,9 @@ module SceneQueryTestSupport
       }
     )
   end
-  # rubocop:enable Metrics/MethodLength, Metrics/ParameterLists
+  # rubocop:enable Metrics/ParameterLists
 
-  # rubocop:disable Metrics/MethodLength, Metrics/ParameterLists
+  # rubocop:disable Metrics/ParameterLists
   def build_sample_surface_edge(entity_id:, persistent_id:, name:, layer:, material:, x_range:,
                                 y_range:, z_value:, source_element_id: nil)
     FakeEdge.new(
@@ -774,9 +751,8 @@ module SceneQueryTestSupport
       }
     )
   end
-  # rubocop:enable Metrics/MethodLength, Metrics/ParameterLists
+  # rubocop:enable Metrics/ParameterLists
 
-  # rubocop:disable Metrics/AbcSize, Metrics/MethodLength
   def build_sample_surface_bounds(x_range:, y_range:, z_value:)
     min = FakePoint.new(x_range.first, y_range.first, z_value)
     max = FakePoint.new(x_range.last, y_range.last, z_value)
@@ -792,7 +768,6 @@ module SceneQueryTestSupport
       size: [x_range.last - x_range.first, y_range.last - y_range.first, 0.0]
     )
   end
-  # rubocop:enable Metrics/AbcSize, Metrics/MethodLength
 
   def sample_surface_attributes(source_element_id)
     return {} if source_element_id.nil?
@@ -831,4 +806,3 @@ module SceneQueryTestSupport
     )
   end
 end
-# rubocop:enable Metrics/ModuleLength

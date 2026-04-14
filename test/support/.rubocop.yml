@@ -1,0 +1,41 @@
+inherit_mode:
+  merge:
+    - Exclude
+
+inherit_from:
+  - ../.rubocop.yml
+
+Metrics/MethodLength:
+  Exclude:
+    - "**/*"
+
+Metrics/AbcSize:
+  Exclude:
+    - "**/*"
+
+Metrics/ParameterLists:
+  Max: 8
+
+Metrics/ClassLength:
+  Exclude:
+    - "**/*"
+
+Metrics/ModuleLength:
+  Exclude:
+    - "**/*"
+
+Metrics/CyclomaticComplexity:
+  Exclude:
+    - "**/*"
+
+Metrics/PerceivedComplexity:
+  Exclude:
+    - "**/*"
+
+Naming/PredicateMethod:
+  Exclude:
+    - "**/*"
+
+Naming/MethodName:
+  Exclude:
+    - "**/*"

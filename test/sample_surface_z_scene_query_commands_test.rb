@@ -4,7 +4,6 @@ require_relative 'test_helper'
 require_relative 'support/scene_query_test_support'
 require_relative '../src/su_mcp/scene_query_commands'
 
-# rubocop:disable Metrics/ClassLength, Metrics/MethodLength
 class SampleSurfaceZSceneQueryCommandsTest < Minitest::Test
   include SceneQueryTestSupport
 
@@ -204,4 +203,3 @@ class SampleSurfaceZSceneQueryCommandsTest < Minitest::Test
     assert_equal(3.0, result.dig(:results, 0, :hitPoint, :z))
   end
 end
-# rubocop:enable Metrics/ClassLength, Metrics/MethodLength

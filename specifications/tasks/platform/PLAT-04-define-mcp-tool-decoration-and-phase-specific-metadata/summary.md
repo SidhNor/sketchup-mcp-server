@@ -7,8 +7,11 @@
   - `description`
   - `annotations`
 - Added explicit live FastMCP metadata for:
+  - `get_scene_info`
+  - `list_entities`
   - `find_entities`
   - `sample_surface_z`
+  - `get_entity_info`
   - `create_site_element`
 - Marked `find_entities` and `sample_surface_z` as read-only and non-destructive.
 - Marked `create_site_element` as mutating and non-destructive.

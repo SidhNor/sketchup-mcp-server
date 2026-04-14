@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-# rubocop:disable Metrics/MethodLength, Metrics/AbcSize
+# rubocop:disable Metrics/AbcSize
 
 require_relative 'test_helper'
 require_relative 'support/semantic_test_support'
@@ -30,11 +30,9 @@ class SemanticSerializerTest < Minitest::Test
     assert_equal('pad', payload[:semanticType])
     assert_equal('proposed', payload[:status])
     assert_equal('Created', payload[:state])
-    # rubocop:disable SketchupSuggestions/Compatibility
     assert_equal(entity.entityID.to_s, payload[:entityId])
     assert_equal(entity.persistent_id.to_s, payload[:persistentId])
-    # rubocop:enable SketchupSuggestions/Compatibility
     assert(payload[:bounds])
   end
 end
-# rubocop:enable Metrics/MethodLength, Metrics/AbcSize
+# rubocop:enable Metrics/AbcSize

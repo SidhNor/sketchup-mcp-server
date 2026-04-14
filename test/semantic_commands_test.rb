@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-# rubocop:disable Metrics/ClassLength, Metrics/MethodLength, Metrics/AbcSize
+# rubocop:disable Metrics/MethodLength
 
 require_relative 'test_helper'
 require_relative 'support/semantic_test_support'
@@ -216,4 +216,4 @@ class SemanticCommandsTest < Minitest::Test
     assert_equal('invalid_dimension', result.dig(:refusal, :code))
   end
 end
-# rubocop:enable Metrics/ClassLength, Metrics/MethodLength, Metrics/AbcSize
+# rubocop:enable Metrics/MethodLength
