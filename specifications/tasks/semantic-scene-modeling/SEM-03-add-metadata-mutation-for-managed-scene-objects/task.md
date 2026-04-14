@@ -1,7 +1,7 @@
 # Task: SEM-03 Add Metadata Mutation for Managed Scene Objects
 **Task ID**: `SEM-03`
 **Title**: `Add Metadata Mutation for Managed Scene Objects`
-**Status**: `draft`
+**Status**: `planned`
 **Priority**: `P0`
 **Date**: `2026-04-14`
 
@@ -13,7 +13,7 @@
 
 Semantic creation alone is not enough for revision-safe workflows. Managed Scene Objects also need an explicit product-owned path for updating provenance, status, and semantic metadata without rebuilding geometry or weakening the identity rules established at creation time.
 
-The PRD defines `set_entity_metadata` as a P0 part of the semantic surface, but the current repository does not yet provide a semantic-side metadata mutation command or a clear rule for how managed-object invariants are preserved during updates. This task delivers that mutation path while making the dependency on the targeting slice explicit instead of inventing a second lookup subsystem inside semantic modeling.
+The PRD defines `set_entity_metadata` as a P0 part of the semantic surface, but the current repository does not yet provide a semantic-side metadata mutation command or a clear rule for how managed-object invariants are preserved during updates. The current semantic core is only partially scaffolded in code, so this task must build on the delivered semantic-core baseline rather than introduce a second metadata or command path while making the dependency on the targeting slice explicit instead of inventing a second lookup subsystem inside semantic modeling.
 
 ## Goals
 
@@ -60,10 +60,12 @@ Scenario: metadata mutation lands with unit and contract coverage
 - metadata mutation must support revision-friendly workflows without forcing recreate-from-scratch behavior
 - the task must preserve stable business identity and required managed-object metadata instead of allowing silent degradation
 - the public semantic mutation surface must remain compact and predictable for workflow clients
+- the task must extend the existing semantic capability baseline rather than creating a separate metadata workflow outside Managed Scene Object ownership
 
 ## Technical Constraints
 
 - the task is explicitly blocked by `STI-01` or an equivalent delivered targeting contract because target resolution must not be reimplemented in the semantic slice
+- the task depends on `SEM-01` or an equivalent delivered semantic-core baseline because metadata mutation must reuse the managed-object metadata namespace, serializer posture, and semantic command path rather than bypass them
 - Ruby must own invariant enforcement, metadata writes, operation bracketing, and serialized mutation results
 - Python must remain a thin MCP adapter that validates boundary shape and forwards `set_entity_metadata` over the existing bridge
 - the task must add or update the shared contract artifact and native Ruby and Python contract suites for the new public mutation tool
@@ -80,7 +82,7 @@ Scenario: metadata mutation lands with unit and contract coverage
 
 ## Related Technical Plan
 
-- none yet
+- [Technical Plan](./plan.md)
 
 ## Success Metrics
 
