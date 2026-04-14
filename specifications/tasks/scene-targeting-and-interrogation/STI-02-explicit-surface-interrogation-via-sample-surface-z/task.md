@@ -1,7 +1,7 @@
 # Task: STI-02 Explicit Surface Interrogation via `sample_surface_z`
 **Task ID**: `STI-02`
 **Title**: `Explicit Surface Interrogation via sample_surface_z`
-**Status**: `draft`
+**Status**: `planned`
 **Priority**: `P0`
 **Date**: `2026-04-14`
 
@@ -87,7 +87,7 @@ Scenario: geometry-heavy behavior is verified beyond pure unit seams
 
 ## Related Technical Plan
 
-- none yet
+- [Technical Plan](./plan.md)
 
 ## Success Metrics
 
