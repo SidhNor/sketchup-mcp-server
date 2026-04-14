@@ -1,3 +1,7 @@
+inherit_mode:
+  merge:
+    - Exclude
+
 plugins:
   - rubocop-sketchup
 
@@ -19,10 +23,35 @@ Metrics/BlockLength:
 Metrics/MethodLength:
   Exclude:
     - "rakelib/**/*.rb"
+    - "src/su_mcp/socket_server.rb"
+
+Metrics/AbcSize:
+  Exclude:
+    - "src/su_mcp/socket_server.rb"
+
+Metrics/BlockNesting:
+  Exclude:
+    - "src/su_mcp/socket_server.rb"
+
+Metrics/ClassLength:
+  Exclude:
+    - "src/su_mcp/socket_server.rb"
+
+Metrics/CyclomaticComplexity:
+  Exclude:
+    - "src/su_mcp/socket_server.rb"
 
 Metrics/ModuleLength:
   Exclude:
     - "rakelib/**/*.rb"
+
+Metrics/ParameterLists:
+  Exclude:
+    - "src/su_mcp/socket_server.rb"
+
+Metrics/PerceivedComplexity:
+  Exclude:
+    - "src/su_mcp/socket_server.rb"
 
 Naming/FileName:
   Exclude:
@@ -39,8 +68,32 @@ SketchupRequirements/ExtensionNamespace:
     - "rakelib/**/*"
     - "test/**/*"
 
+SketchupRequirements/FileStructure:
+  Exclude:
+    - "Gemfile"
+    - "Rakefile"
+    - "rakelib/**/*"
+    - "test/**/*"
+
+SketchupRequirements/ApiNamespace:
+  Exclude:
+    - "test/**/*"
+
+SketchupRequirements/GlobalConstants:
+  Exclude:
+    - "test/**/*"
+
+SketchupRequirements/GlobalMethods:
+  Exclude:
+    - "test/**/*"
+
+SketchupRequirements/RubyCoreNamespace:
+  Exclude:
+    - "test/**/*"
+
 SketchupSuggestions/FileEncoding:
   Exclude:
     - "Rakefile"
     - "rakelib/**/*"
     - "test/**/*"
+    - "src/su_mcp/extension.rb"

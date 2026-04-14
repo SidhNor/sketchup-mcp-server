@@ -1,8 +1,8 @@
 # Technical Plan: PLAT-01 Decompose Ruby Runtime Boundaries
 **Task ID**: `PLAT-01`
 **Title**: `Decompose Ruby Runtime Boundaries`
-**Status**: `draft`
-**Date**: `2026-04-13`
+**Status**: `finalized`
+**Date**: `2026-04-14`
 
 ## Source Task
 
@@ -66,6 +66,10 @@ This task decomposes those Ruby runtime boundaries while preserving the current 
   - prioritized extracting non-SketchUp seams first so unit coverage can begin immediately
   - kept packaging-sensitive loader and support-tree behavior stable throughout the phases
   - defined a mixed verification model: Ruby unit tests for extracted runtime seams plus manual SketchUp verification for runtime-dependent paths
+- Current implementation capture:
+  - extracted read-oriented bridge commands into `scene_query_commands.rb` and a narrow `scene_query_serializer.rb` helper
+  - preserved the existing top-level scene listing contract by intentionally reading `model.entities` for bridge-facing scene summaries and listings
+  - rewired `SocketServer` dispatch so read/query commands route through the extracted seam while mutation-heavy commands remain in `socket_server.rb` for now
 
 ## Technical Decisions
 
@@ -104,6 +108,8 @@ This task decomposes those Ruby runtime boundaries while preserving the current 
   - `socket_server.rb` for transport lifecycle and socket I/O
   - a request handler/router module for bridge method handling
   - a dispatcher module for case-based tool selection
+  - `scene_query_commands.rb` for read-oriented bridge commands that should no longer live in transport
+  - `scene_query_serializer.rb` for narrow scene-query serialization support owned beside the extracted query seam
   - one or more shared runtime support modules for logging and response/error helpers
 - Do not treat these filenames as rigid requirements. The required decision is ownership split, not a frozen file map.
 
@@ -209,6 +215,11 @@ flowchart TD
 - Ruby unit tests for the simple case-based dispatcher:
   - supported tool selection
   - unsupported tool failure path
+- Ruby unit tests for the extracted scene-query seam:
+  - `list_resources` continues to enumerate top-level model entities rather than the active edit context
+  - `get_scene_info` reports top-level counts and serialized entities using the extracted query/serialization boundary
+  - `list_entities` continues to filter hidden top-level entities by default
+  - `get_entity_info` still resolves by model id lookup and returns serialized group metadata
 - Existing quality gates:
   - `bundle exec rake ruby:lint`
   - `bundle exec rake ruby:test`
@@ -228,6 +239,21 @@ flowchart TD
 3. Extract a simple case-based tool dispatcher and rewire tool selection away from the transport implementation while keeping current command behavior intact.
 4. Thin the socket server down to lifecycle and socket I/O responsibilities, update bootstrap wiring if needed, and keep packaging-sensitive entrypoints stable.
 5. Add or refine unit coverage for the extracted runtime seams, then run Ruby lint, Ruby tests, packaging verification, and representative manual SketchUp checks.
+
+## Implementation Outcome
+
+- Completed in this task:
+  - extracted read/query bridge behavior into `SceneQueryCommands`
+  - extracted narrow scene-query serialization support into `SceneQuerySerializer`
+  - rewired `SocketServer` and `ToolDispatcher` so `get_scene_info`, `list_entities`, `get_entity_info`, `get_selection`, and `resources/list` use the extracted read/query seam
+  - added Ruby unit coverage that locks the top-level entity contract and multi-target dispatcher wiring
+  - validated with `bundle exec rubocop Gemfile Rakefile rakelib test src/su_mcp`, `bundle exec rake ruby:test`, and `bundle exec rake package:verify`
+
+## Follow-On Notes
+
+- Mutation-heavy command behavior still lives in `socket_server.rb`; further extraction continues in the platform follow-on work rather than in this task closure.
+- Representative live SketchUp smoke verification remains useful for operational confidence and is better covered by the downstream SketchUp-hosted validation work.
+- Any further runtime decomposition should stay on the runtime-boundary side of the line and avoid absorbing the broader adapter/serializer ownership reserved for `PLAT-02`.
 
 ## Risks and Mitigations
 

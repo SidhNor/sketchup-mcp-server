@@ -1,9 +1,9 @@
 # Task: PLAT-01 Decompose Ruby Runtime Boundaries
 **Task ID**: `PLAT-01`
 **Title**: `Decompose Ruby Runtime Boundaries`
-**Status**: `planned`
+**Status**: `done`
 **Priority**: `P0`
-**Date**: `2026-04-13`
+**Date**: `2026-04-14`
 
 ## Linked HLD
 

@@ -7,7 +7,7 @@ namespace :ruby do
   task :lint do
     sh(
       { 'RUBOCOP_CACHE_ROOT' => 'tmp/.rubocop_cache' },
-      'bundle exec rubocop Gemfile Rakefile rakelib test src/su_mcp/version.rb'
+      'bundle exec rubocop Gemfile Rakefile rakelib test src/su_mcp'
     )
   end
 
