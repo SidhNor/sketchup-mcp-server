@@ -1,7 +1,7 @@
 # Task: SEM-01 Establish Semantic Core and First Vertical Slice
 **Task ID**: `SEM-01`
 **Title**: `Establish Semantic Core and First Vertical Slice`
-**Status**: `draft`
+**Status**: `planned`
 **Priority**: `P0`
 **Date**: `2026-04-14`
 
@@ -19,7 +19,7 @@ The semantic capability needs one architecture-shaping first slice that proves t
 
 - deliver `create_site_element` as the first public semantic creation path through the Python and Ruby runtimes
 - establish the Managed Scene Object metadata namespace, invariant model, operation boundary, and JSON-safe semantic serializer
-- prove the first semantic boundary through `structure` and `pad`, including explicit refusal for ambiguous built-form versus surface-first requests
+- prove the first semantic boundary through `structure` and `pad`, including explicit refusal when payload semantics conflict with the declared type or violate the documented `pad` versus `structure` boundary
 
 ## Acceptance Criteria
 
@@ -31,10 +31,10 @@ Scenario: create_site_element delivers the first semantic creation slice end to 
   And Ruby owns builder selection, operation bracketing, metadata writes, and result serialization
 
 Scenario: structure and pad establish the semantic boundary explicitly
-  Given a request describes a `structure`, a `pad`, or an ambiguous built-form versus hardscape case
+  Given a request describes a `structure`, a `pad`, or a contradictory built-form versus hardscape payload
   When the first semantic slice is reviewed
   Then `structure` and `pad` accept their documented MVP payload shapes with structured outputs
-  And ambiguous requests return a structured refusal instead of implicit type guessing
+  And contradictory or boundary-violating requests return a structured refusal instead of implicit type guessing or silent coercion
 
 Scenario: managed objects carry required semantic identity from creation time
   Given a supported `structure` or `pad` is created through `create_site_element`
@@ -59,7 +59,7 @@ Scenario: the first semantic slice is protected by unit and contract coverage
 
 - the first semantic slice must replace primitive-first behavior for representative built-form and hardscape requests without forcing normal workflows back to `eval_ruby`
 - semantic creation must make Managed Scene Objects the default unit of identity from the moment an object is created
-- the `pad` versus `structure` distinction must stay explicit and reviewable rather than prompt-dependent
+- the `pad` versus `structure` distinction must stay explicit and reviewable rather than prompt-dependent or silently coerced
 
 ## Technical Constraints
 
@@ -80,7 +80,7 @@ Scenario: the first semantic slice is protected by unit and contract coverage
 
 ## Related Technical Plan
 
-- none yet
+- [Technical Plan](./plan.md)
 
 ## Success Metrics
 
