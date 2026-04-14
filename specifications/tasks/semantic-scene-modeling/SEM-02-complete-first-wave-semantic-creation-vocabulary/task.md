@@ -86,3 +86,9 @@ Scenario: vocabulary expansion lands with unit and contract coverage
 - representative requests for `path`, `retaining_edge`, `planting_mass`, and `tree_proxy` complete through `create_site_element`
 - first-wave expansion preserves one stable semantic creation command and one consistent result contract
 - the expanded creation boundary is covered by Ruby tests, Python tests, and shared contract cases in the same task
+
+## MCP Decoration Guidance
+
+- Live tool title remains `Create Semantic Site Element`
+- Approved later-phase description for the `SEM-02` slice: `Create a managed semantic site element in SketchUp. Current support is limited to structure, pad, path, retaining_edge, planting_mass, and tree_proxy creation.`
+- MCP posture remains mutating and non-destructive

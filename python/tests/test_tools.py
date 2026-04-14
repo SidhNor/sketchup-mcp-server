@@ -94,6 +94,23 @@ def test_create_site_element_exposes_a_typed_semantic_request_schema() -> None:
     }
 
 
+def test_create_site_element_exposes_explicit_current_phase_metadata() -> None:
+    tool, _bridge_client = _registered_tool_definition(
+        "sketchup_mcp_server.tools.semantic",
+        "create_site_element",
+    )
+
+    assert tool.title == "Create Semantic Site Element"
+    assert (
+        tool.description
+        == "Create a managed semantic site element in SketchUp. Current support is"
+        " limited to footprint-based structure and pad creation."
+    )
+    assert tool.annotations is not None
+    assert tool.annotations.readOnlyHint is False
+    assert tool.annotations.destructiveHint is False
+
+
 def test_create_site_element_passthrough_preserves_semantic_shape_and_request_id() -> None:
     fn, bridge_client = _registered_tool(
         "sketchup_mcp_server.tools.semantic",
@@ -182,6 +199,24 @@ def test_find_entities_exposes_a_typed_nested_query_schema() -> None:
     }
 
 
+def test_find_entities_exposes_explicit_mvp_metadata() -> None:
+    tool, _bridge_client = _registered_tool_definition(
+        "sketchup_mcp_server.tools.scene",
+        "find_entities",
+    )
+
+    assert tool.title == "Find Scene Entities"
+    assert (
+        tool.description
+        == "Find scene entities using the supported MVP targeting fields and return"
+        " explicit match summaries. Supports identity references, name, tag, and"
+        " material only."
+    )
+    assert tool.annotations is not None
+    assert tool.annotations.readOnlyHint is True
+    assert tool.annotations.destructiveHint is False
+
+
 def test_find_entities_passthrough_preserves_query_shape_and_request_id() -> None:
     scene_module = require_module("sketchup_mcp_server.tools.scene")
     fn, bridge_client = _registered_tool("sketchup_mcp_server.tools.scene", "find_entities")
@@ -263,6 +298,24 @@ def test_sample_surface_z_exposes_typed_nested_schema() -> None:
         "default": None,
     }
     assert schema["properties"]["visibleOnly"] == {"type": "boolean", "default": True}
+
+
+def test_sample_surface_z_exposes_explicit_targeted_metadata() -> None:
+    tool, _bridge_client = _registered_tool_definition(
+        "sketchup_mcp_server.tools.scene",
+        "sample_surface_z",
+    )
+
+    assert tool.title == "Sample Target Surface Elevation"
+    assert (
+        tool.description
+        == "Sample world-space surface elevation from an explicit target at one or more"
+        " XY points in meters. Callers must provide the target and sample points; this"
+        " is not broad scene discovery."
+    )
+    assert tool.annotations is not None
+    assert tool.annotations.readOnlyHint is True
+    assert tool.annotations.destructiveHint is False
 
 
 def test_sample_surface_z_passthrough_preserves_nested_shape_and_request_id() -> None:

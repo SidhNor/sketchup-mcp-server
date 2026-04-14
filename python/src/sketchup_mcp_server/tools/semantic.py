@@ -8,6 +8,7 @@ from fastmcp import Context, FastMCP
 
 from ..bridge import BridgeClient
 from ..config import ServerSettings
+from .metadata import tool_metadata
 
 
 def register_tools(
@@ -18,7 +19,16 @@ def register_tools(
 ) -> None:
     del settings
 
-    @mcp.tool
+    @mcp.tool(
+        **tool_metadata(
+            title="Create Semantic Site Element",
+            description=(
+                "Create a managed semantic site element in SketchUp. Current support is "
+                "limited to footprint-based structure and pad creation."
+            ),
+            read_only=False,
+        )
+    )
     def create_site_element(
         ctx: Context,
         elementType: str,

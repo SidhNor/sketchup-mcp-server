@@ -17,10 +17,10 @@ The Python MCP adapter now has the layering needed to own client-facing tool met
 ## Goals
 
 - Define the platform-owned rules for live MCP tool metadata in the Python adapter.
-- Apply explicit `title`, `description`, and behavior annotations to the already-exposed targeted tools `find_entities` and `sample_surface_z`.
+- Apply explicit `title`, `description`, and behavior annotations to the already-exposed targeted tools `find_entities`, `sample_surface_z`, and `create_site_element`.
 - Keep current-phase descriptions aligned with delivered targeting and interrogation scope.
 - Distinguish read-only grounding tools from mutating tools through FastMCP-native annotations where the semantics are clear.
-- Require future public tools such as `create_site_element` to carry approved current-phase metadata in their owning task and plan artifacts before exposure.
+- Require later-phase public-tool expansions to carry approved current-phase metadata in their owning task and plan artifacts before exposure.
 
 ## Non-Goals
 
@@ -51,7 +51,7 @@ The Python MCP adapter now has the layering needed to own client-facing tool met
 - The installed FastMCP API already supports the fields this task needs directly on `@mcp.tool(...)`: `title`, `description`, `annotations`, `tags`, and `meta`.
 - Native FastMCP annotations include `readOnlyHint`, `destructiveHint`, `idempotentHint`, and `openWorldHint`; `readOnlyHint` and `destructiveHint` are the clearest immediate fit for this task.
 - `find_entities` and `sample_surface_z` are implemented today and already have stable Python tests that inspect registered `FunctionTool` definitions, which makes them the right first live rollout targets.
-- `create_site_element` is still planned rather than implemented. Its phase-specific live wording should remain in `SEM-01` / `SEM-02` planning artifacts until that tool is actually exposed.
+- `create_site_element` is now implemented through `SEM-01`, so its current-phase live wording should be attached directly to the exposed Python decorator while later expansion guidance remains in `SEM-02`.
 - The Python/Ruby bridge contract artifact currently models request/response invariants, not client-facing MCP presentation metadata, so `PLAT-04` should stay Python-local unless the public bridge boundary changes intentionally.
 
 ## Technical Decisions
@@ -72,7 +72,7 @@ The Python MCP adapter now has the layering needed to own client-facing tool met
 - For `PLAT-04`, the required behavior posture fields are:
   - `readOnlyHint`
   - `destructiveHint`
-- Future tools that are not yet exposed must not receive inactive Python metadata entries. Their approved current-phase wording belongs in the owning capability task and plan until implementation.
+- Future tools or later-phase expansions that are not yet exposed must not receive inactive Python metadata entries. Their approved current-phase wording belongs in the owning capability task and plan until implementation.
 
 ### API and Interface Design
 
@@ -80,10 +80,11 @@ The Python MCP adapter now has the layering needed to own client-facing tool met
 - The minimum required live rollout in this task is:
   - `find_entities`
   - `sample_surface_z`
+  - `create_site_element`
 - The authoritative client-facing metadata for those tools should move from implicit function-name/docstring behavior to explicit decorator fields.
 - Existing tool names, argument schemas, nested request models, and bridge passthrough behavior must remain unchanged.
 - Adjacent already-exposed tools may adopt the same pattern in this task only if the edits stay mechanical and do not broaden scope materially.
-- Future public tool tasks must specify approved live metadata before exposure:
+- Future public tool tasks or later-phase expansions must specify approved live metadata before exposure:
   - title
   - bounded current-phase description
   - read-only or mutating annotation posture
@@ -101,13 +102,16 @@ The Python MCP adapter now has the layering needed to own client-facing tool met
 
 - There is no new persistent metadata state or runtime phase-selection mechanism in this task.
 - Live tool decoration state is the code currently attached to exposed Python tool decorators.
-- Planned tool metadata remains owned by the relevant capability task and plan artifacts until the tool is exposed.
+- Planned tool metadata remains owned by the relevant capability task and plan artifacts until the tool or later-phase expansion is exposed.
 
 ### Integration Points
 
 - The live integration seam is FastMCP registration in Python tool modules.
 - Tool ordering remains owned by [python/src/sketchup_mcp_server/tools/__init__.py](python/src/sketchup_mcp_server/tools/__init__.py).
-- The targeted implementation surface is primarily [python/src/sketchup_mcp_server/tools/scene.py](python/src/sketchup_mcp_server/tools/scene.py).
+- The targeted implementation surface is primarily:
+  - [python/src/sketchup_mcp_server/tools/scene.py](python/src/sketchup_mcp_server/tools/scene.py)
+  - [python/src/sketchup_mcp_server/tools/semantic.py](python/src/sketchup_mcp_server/tools/semantic.py)
+  - one small shared decoration helper in the Python tool layer
 - Verification should inspect real registered `FunctionTool` metadata via FastMCP rather than only local constants or helper output.
 - Ruby command routing, bridge invocation, and contract suites should remain unchanged unless implementation accidentally alters the boundary.
 
@@ -141,20 +145,21 @@ flowchart TD
 
 - Python owns exposed MCP tool metadata; Ruby owns runtime behavior and bridge responses.
 - The shared platform contract in this task is expressed through one common rule set, consistent decorator usage, tests, and planning guidance rather than a new metadata registry.
-- `find_entities` and `sample_surface_z` are the immediate live targets because they are already exposed and have source-task-defined current boundaries.
-- Future tools such as `create_site_element` should not appear as inactive Python metadata; their approved live wording should be carried in capability planning artifacts until implementation.
+- `find_entities` and `sample_surface_z` are the read-only live targets because they are already exposed and have source-task-defined current boundaries.
+- `create_site_element` is now a live mutating target because `SEM-01` is completed, while `SEM-02` owns the approved later-phase wording for the expanded semantic vocabulary.
 - FastMCP-native annotations are sufficient for the immediate read-only versus mutating posture needs of this task.
 
 ## Acceptance Criteria
 
-- The Python MCP surface exposes explicit `title`, `description`, and behavior annotations for `find_entities` and `sample_surface_z` through live FastMCP tool definitions.
+- The Python MCP surface exposes explicit `title`, `description`, and behavior annotations for `find_entities`, `sample_surface_z`, and `create_site_element` through live FastMCP tool definitions.
 - The exposed `find_entities` metadata stays bounded to the delivered MVP targeting scope and does not claim metadata-aware or collection-aware filtering.
 - The exposed `sample_surface_z` metadata states that callers provide an explicit target plus world-space XY sample points and does not present broad scene probing as the normal path.
 - The exposed behavior annotations mark `find_entities` and `sample_surface_z` as read-only and non-destructive in a way that is visible on registered FastMCP tool definitions.
+- The exposed `create_site_element` metadata advertises only the `SEM-01` semantic slice of `structure` and `pad`, and marks the tool as mutating but non-destructive.
 - Existing tool names, argument schemas, request shaping, registration order, and Ruby bridge behavior for the targeted tools remain unchanged.
 - Python tests verify the live registered metadata for the targeted tools by inspecting actual FastMCP `FunctionTool` definitions.
-- The implementation guidance makes it explicit that future public tools must define approved current-phase metadata in their owning capability artifacts before exposure.
-- The implementation does not introduce inactive Python metadata entries for still-planned tools.
+- The implementation guidance makes it explicit that future public tools and later-phase expansions must define approved current-phase metadata in their owning capability artifacts before exposure.
+- The implementation does not introduce inactive Python metadata entries for still-planned tools or later-phase expansions.
 - The implementation does not require Ruby changes, bridge contract artifact changes, or Python/Ruby contract-suite updates unless the bridge boundary is changed intentionally.
 
 ## Test Strategy
@@ -167,14 +172,18 @@ flowchart TD
   - `description`
   - `annotations.readOnlyHint`
   - `annotations.destructiveHint`
-- After the tests fail, update the live tool decorators in [python/src/sketchup_mcp_server/tools/scene.py](python/src/sketchup_mcp_server/tools/scene.py) to satisfy the assertions while preserving request/response behavior.
-- If adjacent tools are normalized in the same change, add the corresponding metadata assertions before editing those decorators.
+- After the tests fail, update the live tool decorators in:
+  - [python/src/sketchup_mcp_server/tools/scene.py](python/src/sketchup_mcp_server/tools/scene.py)
+  - [python/src/sketchup_mcp_server/tools/semantic.py](python/src/sketchup_mcp_server/tools/semantic.py)
+  to satisfy the assertions while preserving request/response behavior.
+- Add a single small helper only if the shared required metadata shape is duplicated concretely during implementation.
 
 ### Required Test Coverage
 
 - Python tool tests for:
   - registered metadata exposure for `find_entities`
   - registered metadata exposure for `sample_surface_z`
+  - registered metadata exposure for `create_site_element`
   - preservation of existing request shaping and `request_id` propagation for the targeted tools
   - preservation of tool registration order if touched during the edits
 - Python lint/format validation for the touched Python surface
@@ -190,17 +199,17 @@ Recommended validation commands:
 
 ## Implementation Phases
 
-1. Add failing Python metadata assertions for `find_entities` and `sample_surface_z` in [python/tests/test_tools.py](python/tests/test_tools.py).
-2. Update the live decorators in [python/src/sketchup_mcp_server/tools/scene.py](python/src/sketchup_mcp_server/tools/scene.py) to declare explicit `title`, `description`, and read-only/non-destructive annotations while preserving existing tool behavior.
-3. If still small and mechanical, normalize directly adjacent already-exposed tool metadata in the same module or neighboring tool modules without changing tool names, schemas, or bridge behavior.
-4. Finalize the future-tool guidance in the relevant planning artifacts, run Python lint/tests, and confirm no Ruby or bridge-contract churn was introduced.
+1. Add failing Python metadata assertions for `find_entities`, `sample_surface_z`, and `create_site_element` in [python/tests/test_tools.py](python/tests/test_tools.py).
+2. Add one shared Python decoration helper for the required metadata shape only if duplication is concrete in the touched modules.
+3. Update the live decorators in [python/src/sketchup_mcp_server/tools/scene.py](python/src/sketchup_mcp_server/tools/scene.py) and [python/src/sketchup_mcp_server/tools/semantic.py](python/src/sketchup_mcp_server/tools/semantic.py) to declare explicit `title`, `description`, and read-only or mutating annotations while preserving existing tool behavior.
+4. Finalize the semantic-phase guidance in the relevant planning artifacts, run Python lint/tests, and confirm no Ruby or bridge-contract churn was introduced.
 
 ## Risks and Mitigations
 
-- Scope creep into full-catalog normalization: keep `find_entities` and `sample_surface_z` as the required minimum and expand only when additional edits remain mechanical.
+- Scope creep into full-catalog normalization: keep the rollout limited to `find_entities`, `sample_surface_z`, and the already-live `create_site_element`, and expand only when additional edits remain mechanical.
 - Overstated capability in descriptions: derive wording from [STI-01 Targeting MVP and `find_entities`](specifications/tasks/scene-targeting-and-interrogation/STI-01-targeting-mvp-and-find-entities/task.md) and [STI-02 Explicit Surface Interrogation via `sample_surface_z`](specifications/tasks/scene-targeting-and-interrogation/STI-02-explicit-surface-interrogation-via-sample-surface-z/task.md).
 - Premature abstraction: keep metadata on decorators and add a helper only if duplication becomes concrete during implementation.
-- Dead metadata for planned tools: keep future-tool wording in owning task/plan artifacts rather than inactive Python entries.
+- Dead metadata for planned tools: keep future-tool or later-phase wording in owning task/plan artifacts rather than inactive Python entries.
 - Accidental public-boundary churn: preserve names, schemas, request shaping, and registration order, and validate them with existing Python tests plus new metadata assertions.
 - Under-testing exposed metadata: inspect real registered FastMCP tool definitions instead of only checking local constants or helper output.
 

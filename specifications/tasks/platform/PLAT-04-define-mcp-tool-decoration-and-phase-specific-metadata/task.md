@@ -1,7 +1,7 @@
 # Task: PLAT-04 Define MCP Tool Decoration and Phase-Specific Metadata
 **Task ID**: `PLAT-04`
 **Title**: `Define MCP Tool Decoration and Phase-Specific Metadata`
-**Status**: `planned`
+**Status**: `completed`
 **Priority**: `P0`
 **Date**: `2026-04-14`
 
@@ -13,7 +13,7 @@
 
 The repository now has the Python layering needed to own MCP-facing tool metadata cleanly, but it still lacks a platform-owned contract for how tool titles, descriptions, and behavior annotations should be exposed to clients as capability waves roll out. Public tool metadata is currently minimal and phase-agnostic, which makes it too easy for tools to under-explain their intended use, over-advertise deferred scope, or fail to distinguish read-only grounding tools from mutating scene-editing tools.
 
-That gap matters because the current and next capability waves depend on first-class tools such as `find_entities`, `sample_surface_z`, and later `create_site_element` displacing fallback `eval_ruby` for normal workflows. Without an explicit platform-owned decoration contract, already-exposed tools can remain under-described today, future capability tasks may each improvise client-facing metadata differently, and agentic clients may continue to prefer the broad escape hatch because narrower tools are not described clearly enough at the MCP boundary.
+That gap matters because the current and next capability waves depend on first-class tools such as `find_entities`, `sample_surface_z`, and `create_site_element` displacing fallback `eval_ruby` for normal workflows. Without an explicit platform-owned decoration contract, already-exposed tools can remain under-described today, future capability tasks may each improvise client-facing metadata differently, and agentic clients may continue to prefer the broad escape hatch because narrower tools are not described clearly enough at the MCP boundary.
 
 This task establishes MCP tool decoration as a platform-owned contract concern. It must define one shared project-owned decoration contract and the rules for how phased tool metadata is sourced and exposed so that capability tasks can adopt one consistent decoration posture without redefining it for each tool wave.
 
@@ -37,8 +37,8 @@ Scenario: The platform defines one shared MCP decoration contract
 
 Scenario: Already-exposed public tools adopt the shared decoration contract
   Given the Python MCP adapter already exposes public tools today
-  When the currently exposed targeting and interrogation tools are inspected
-  Then `find_entities` and `sample_surface_z` use the shared decoration contract
+  When the currently exposed targeting, interrogation, and semantic tools are inspected
+  Then `find_entities`, `sample_surface_z`, and `create_site_element` use the shared decoration contract
   And their exposed metadata includes client-facing titles, descriptions, and behavior annotations
   And the platform does not require capability tasks to redefine those metadata rules independently
 
@@ -51,18 +51,18 @@ Scenario: Phase-specific descriptions remain aligned with delivered capability s
   And no current-phase description claims deferred behavior that is not yet delivered in the owning capability task
 
 Scenario: Current-phase decoration for targeted tools reflects their actual contract boundaries
-  Given the current capability tasks define specific public boundaries for `find_entities`, `sample_surface_z`, and future `create_site_element` rollout
+  Given the current capability tasks define specific public boundaries for `find_entities`, `sample_surface_z`, and `create_site_element`
   When the current-phase decoration entries are inspected against their owning task definitions
   Then `find_entities` does not advertise metadata-aware or collection-aware filtering before those behaviors are delivered
   And `sample_surface_z` states that callers provide an explicit target and world-space XY sample points rather than broad scene discovery
-  And planned `create_site_element` metadata is embedded in its owning semantic tasks rather than guessed during later implementation
-  And any future `create_site_element` current-phase description only advertises the semantic element types delivered in the owning semantic slice
+  And `create_site_element` only advertises the semantic element types delivered in `SEM-01`
+  And the later-phase `create_site_element` expansion guidance remains embedded in the owning semantic tasks rather than guessed during later implementation
 
 Scenario: Decoration exposes read-only versus mutating posture consistently at the MCP boundary
   Given agentic clients benefit from distinguishing grounding tools from scene-mutation tools
   When the shared decoration contract and exposed MCP metadata are inspected for the targeted tools
   Then `find_entities` and `sample_surface_z` are marked as read-only tools
-  And future tool definitions such as `create_site_element` have a defined mutating posture in their owning capability metadata before exposure
+  And `create_site_element` is marked with a mutating non-destructive posture
   And the exposed metadata remains consistent with the shared decoration contract
 ```
 
@@ -103,5 +103,5 @@ Scenario: Decoration exposes read-only versus mutating posture consistently at t
 ## Success Metrics
 
 - the project defines one shared project-owned decoration contract that capability tasks can adopt directly
-- phase-specific metadata exists in live decorator metadata for already-exposed targeted tools and in owning capability artifacts for planned tools such as `create_site_element`
+- phase-specific metadata exists in live decorator metadata for already-exposed targeted tools and in owning capability artifacts for later-phase expansions such as `SEM-02`
 - exposed tool metadata distinguishes read-only targeting or interrogation tools from mutating semantic-creation tools consistently at the MCP boundary

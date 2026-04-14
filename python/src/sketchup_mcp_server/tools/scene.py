@@ -9,6 +9,7 @@ from pydantic import BaseModel
 
 from ..bridge import BridgeClient
 from ..config import ServerSettings
+from .metadata import tool_metadata
 
 
 class FindEntitiesQuery(BaseModel):
@@ -61,7 +62,17 @@ def register_tools(
             request_id=_request_id(ctx),
         )
 
-    @mcp.tool
+    @mcp.tool(
+        **tool_metadata(
+            title="Find Scene Entities",
+            description=(
+                "Find scene entities using the supported MVP targeting fields and "
+                "return explicit match summaries. Supports identity references, name, "
+                "tag, and material only."
+            ),
+            read_only=True,
+        )
+    )
     def find_entities(ctx: Context, query: FindEntitiesQuery) -> dict[str, Any]:
         """Find entities by the supported MVP targeting criteria."""
         return bridge_client.call_tool(
@@ -70,7 +81,17 @@ def register_tools(
             request_id=_request_id(ctx),
         )
 
-    @mcp.tool
+    @mcp.tool(
+        **tool_metadata(
+            title="Sample Target Surface Elevation",
+            description=(
+                "Sample world-space surface elevation from an explicit target at one or "
+                "more XY points in meters. Callers must provide the target and sample "
+                "points; this is not broad scene discovery."
+            ),
+            read_only=True,
+        )
+    )
     def sample_surface_z(
         ctx: Context,
         target: SampleSurfaceTarget,

@@ -3,6 +3,10 @@
 ## Delivered
 
 - Added the public `create_site_element` MCP tool in the Python adapter and registered it in deterministic tool order ahead of primitive creation helpers.
+- Established the live MCP decoration contract for `create_site_element`:
+  - title: `Create Semantic Site Element`
+  - description limited to the delivered `structure` and `pad` slice
+  - mutating, non-destructive posture at the MCP boundary
 - Added the first Ruby semantic runtime slice under `src/su_mcp/semantic/` plus the `SemanticCommands` entrypoint.
 - Implemented Ruby-owned builder selection for the delivered MVP semantic types:
   - `pad`

@@ -20,6 +20,12 @@ The repository has the platform seams needed for semantic modeling, but it still
 - Return structured, JSON-serializable semantic results for successful creation and structured semantic refusals for well-formed but unsupported or ambiguous requests.
 - Land Ruby tests, Python tests, and shared contract coverage for the new public semantic boundary in the same change.
 
+## MCP Decoration Guidance
+
+- Live tool title: `Create Semantic Site Element`
+- Current-phase live description: `Create a managed semantic site element in SketchUp. Current support is limited to footprint-based structure and pad creation.`
+- MCP posture: mutating and non-destructive
+
 ## Non-Goals
 
 - Completing the remaining first-wave semantic types beyond `structure` and `pad`.

@@ -87,3 +87,9 @@ Scenario: the first semantic slice is protected by unit and contract coverage
 - representative `structure` and `pad` requests complete through `create_site_element` without primitive-tool fallback
 - created objects for the delivered slice return structured Managed Scene Object outputs with required semantic identity fields
 - the first semantic tool boundary is covered by Ruby tests, Python tests, and shared contract cases in the same task
+
+## MCP Decoration Guidance
+
+- Live tool title: `Create Semantic Site Element`
+- Current-phase live description: `Create a managed semantic site element in SketchUp. Current support is limited to footprint-based structure and pad creation.`
+- MCP posture: mutating and non-destructive
