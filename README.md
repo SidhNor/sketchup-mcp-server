@@ -105,7 +105,7 @@ Prepare a local versioned release artifact without running the GitHub release fl
 NEW_VERSION=0.1.1 bundle exec rake release:prepare
 ```
 
-This syncs version-bearing files and builds the RBZ.
+This syncs version-bearing files, refreshes `uv.lock`, and builds the RBZ.
 
 The release workflow uses `python-semantic-release` from `pyproject.toml`. To preview the next computed version locally without creating a release:
 
