@@ -37,6 +37,7 @@ src = ["python/src", "python/tests"]
 allow_zero_version = true
 assets = [
   "VERSION",
+  "uv.lock",
 ]
 build_command = "bundle exec rake release:prepare"
 commit_message = "chore(release): {version} [skip ci]"
