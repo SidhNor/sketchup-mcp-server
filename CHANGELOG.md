@@ -2,6 +2,46 @@
 
 <!-- version list -->
 
+## v0.3.0 (2026-04-14)
+
+### Documentation
+
+- **hlds**: Update hlds and PLAT-05 planning
+  ([`ed1bbf5`](https://github.com/SidhNor/sketchup-mcp-server/commit/ed1bbf504aa57f804387ca8c4570ecd20ad10a22))
+
+- **PLAT-04**: Add MCP tooling decorators
+  ([`6cf1234`](https://github.com/SidhNor/sketchup-mcp-server/commit/6cf12348073627e6c6a6b260ed4f7d62ac71e593))
+
+- **scene**: Refine scene modelling hld and prd
+  ([`7c356d9`](https://github.com/SidhNor/sketchup-mcp-server/commit/7c356d910d5fe1e6e54a181296dd12922db947bf))
+
+- **SEM**: Initial breakdown
+  ([`67a4823`](https://github.com/SidhNor/sketchup-mcp-server/commit/67a482342b7e70ae374b8797deb4f26333e6ac0e))
+
+- **SEM-01**: Planning
+  ([`0861719`](https://github.com/SidhNor/sketchup-mcp-server/commit/0861719e112fd3a45ecc063de72b288fae9e0589))
+
+- **signal**: Add suggestion for contract change
+  ([`95cb689`](https://github.com/SidhNor/sketchup-mcp-server/commit/95cb68980b025fbf6382e647fc440bba84179233))
+
+- **STI-01**: Planning
+  ([`154c352`](https://github.com/SidhNor/sketchup-mcp-server/commit/154c352b4076ecfd9938373fb3dc4881bfe40434))
+
+- **STI-02**: Planning
+  ([`d4fa3e3`](https://github.com/SidhNor/sketchup-mcp-server/commit/d4fa3e333c8af1a2800c5c465de6499d7f541f8b))
+
+- **targeting**: Mvp tasks for targeting
+  ([`b567ec5`](https://github.com/SidhNor/sketchup-mcp-server/commit/b567ec5f11323a7a18ff71363c1fb9720a1f2350))
+
+### Features
+
+- **STI-01**: Add find_entities MVP
+  ([`c91a3bd`](https://github.com/SidhNor/sketchup-mcp-server/commit/c91a3bdea98e38265d1e2a252b1df8f93ba1db19))
+
+- **STI-02**: Sample surface z implementation
+  ([`61c8ca4`](https://github.com/SidhNor/sketchup-mcp-server/commit/61c8ca4f88e0e910218cec977f0e0d99eda73a0b))
+
+
 ## v0.2.2 (2026-04-14)
 
 ### Bug Fixes
