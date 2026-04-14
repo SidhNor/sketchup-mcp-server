@@ -1,7 +1,7 @@
 # Technical Plan: PLAT-02 Extract Ruby SketchUp Adapters and Serializers
 **Task ID**: `PLAT-02`
 **Title**: `Extract Ruby SketchUp Adapters and Serializers`
-**Status**: `draft`
+**Status**: `finalized`
 **Date**: `2026-04-14`
 
 ## Source Task
@@ -91,7 +91,7 @@ This task extracts a reusable Ruby adapter boundary for those direct SketchUp in
 - Preserve existing Ruby exception messages where callers already depend on them, especially:
   - `"No active SketchUp model"`
   - `"Entity not found"`
-  - current unsupported export format or exporter-availability failures
+  - unsupported export format failures
 - Let `ModelAdapter` raise Ruby exceptions with those existing message semantics.
 - Keep JSON-RPC error-envelope ownership in the higher runtime layer established by `PLAT-01`.
 - Keep serializer code pure and non-rescuing except for compatibility-preserving defensive checks already implied by current behavior.
@@ -203,12 +203,27 @@ flowchart TD
 4. Reassess the remaining repeated lookup sites; only include additional substitutions if they are still obviously mechanical and do not drag the task into geometry-heavy refactoring.
 5. Run `bundle exec rake ruby:test`, `bundle exec rake ruby:lint`, and `bundle exec rake package:verify`, then perform representative manual SketchUp verification and document any remaining runtime-only gaps.
 
+## Implementation Outcome
+
+- Completed in this task:
+  - added `SU_MCP::Adapters::ModelAdapter` under `src/su_mcp/adapters/` as the shared Ruby owner for active-model access, entity lookup, top-level collection access, selection access, and export mechanics
+  - rewired `SceneQueryCommands` to consume `ModelAdapter` while preserving `SceneQuerySerializer` as the serializer owner
+  - rewired representative mechanical `SocketServer` paths so `delete_component`, `transform_component`, `apply_material`, and `export_scene` now use the shared adapter for low-level SketchUp access
+  - added focused Ruby coverage for the adapter seam and the representative rewired command paths
+  - removed the touched export preflight guard that depended on `Sketchup.require('sketchup.rb')` and aligned export behavior with the documented `Model#export` contract instead
+  - validated with focused adapter and seam tests plus `bundle exec rake ruby:test`, `bundle exec rake ruby:lint`, and `bundle exec rake package:verify`
+
+## Follow-On Notes
+
+- Manual live-SketchUp verification remains useful for runtime-only confirmation of export behavior, startup behavior, and representative command execution.
+- Geometry-heavy mutation paths in `socket_server.rb` still remain outside the extracted adapter set and should continue in later platform work only where the extractions stay mechanical.
+
 ## Risks and Mitigations
 
 - Bridge compatibility regression: keep tool names, response shapes, and established exception semantics stable for touched paths; preserve the existing query-seam tests and add representative mutation/export checks before broadening rewiring.
 - Scope bleed into geometry-heavy refactoring: limit the initial rewiring set to mechanical model, lookup, and export concerns; defer boolean and joint-heavy cleanup unless the remaining substitutions are trivial.
 - Shared adapter overreach: keep `ModelAdapter` small and mechanical; do not let it absorb command orchestration, response composition, or serializer duties.
-- Export-path runtime fragility: centralize export mechanics in the adapter, but keep manual SketchUp verification for exporter availability and environment-specific behavior.
+- Export-path runtime fragility: centralize export mechanics in the adapter, but keep manual SketchUp verification for environment-specific exporter behavior in the live host.
 - Weak or unrealistic tests: prefer the smallest practical unit boundary first, reuse the current Ruby test harness and SketchUp stubs, and avoid inventing oversized fake infrastructure when the read seam already provides stable integration coverage.
 - Follow-on architecture drift: keep the plan aligned to the implemented `PLAT-01` seams so `PLAT-02` builds on current code reality rather than reintroducing a hotspot-first model.
 

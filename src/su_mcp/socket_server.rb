@@ -5,6 +5,7 @@ require 'json'
 require 'socket'
 require 'fileutils'
 require 'tmpdir'
+require_relative 'adapters/model_adapter'
 require_relative 'request_handler'
 require_relative 'request_processor'
 require_relative 'response_helpers'
@@ -123,7 +124,11 @@ module SU_MCP
     end
 
     def scene_query_commands
-      @scene_query_commands ||= SceneQueryCommands.new(logger: method(:log))
+      @scene_query_commands ||= SceneQueryCommands.new(logger: method(:log), adapter: model_adapter)
+    end
+
+    def model_adapter
+      @model_adapter ||= Adapters::ModelAdapter.new
     end
 
     def dispatch_tool_call(tool_name, args)
@@ -350,15 +355,10 @@ module SU_MCP
     end
 
     def delete_component(params)
-      model = Sketchup.active_model
-
-      # Handle ID format - strip quotes if present
-      id_str = params['id'].to_s.gsub('"', '')
+      id_str = params['id'].to_s.delete('"')
       log "Looking for entity with ID: #{id_str}"
 
-      entity = model.find_entity_by_id(id_str.to_i)
-
-      raise 'Entity not found' unless entity
+      entity = model_adapter.find_entity!(params['id'])
 
       log "Found entity: #{entity.inspect}"
       entity.erase!
@@ -366,15 +366,10 @@ module SU_MCP
     end
 
     def transform_component(params)
-      model = Sketchup.active_model
-
-      # Handle ID format - strip quotes if present
-      id_str = params['id'].to_s.gsub('"', '')
+      id_str = params['id'].to_s.delete('"')
       log "Looking for entity with ID: #{id_str}"
 
-      entity = model.find_entity_by_id(id_str.to_i)
-
-      raise 'Entity not found' unless entity
+      entity = model_adapter.find_entity!(params['id'])
 
       log "Found entity: #{entity.inspect}"
 
@@ -434,96 +429,15 @@ module SU_MCP
 
     def export_scene(params)
       log "Exporting scene with params: #{params.inspect}"
-      model = Sketchup.active_model
-
-      format = params['format'] || 'skp'
 
       begin
-        # Create a temporary directory for exports
-        temp_dir = File.join(ENV['TEMP'] || ENV['TMP'] || Dir.tmpdir, 'sketchup_exports')
-        FileUtils.mkdir_p(temp_dir)
-
-        # Generate a unique filename
-        timestamp = Time.now.strftime('%Y%m%d_%H%M%S')
-        filename = "sketchup_export_#{timestamp}"
-
-        case format.downcase
-        when 'skp'
-          # Export as SketchUp file
-          export_path = File.join(temp_dir, "#{filename}.skp")
-          log "Exporting to SketchUp file: #{export_path}"
-          model.save(export_path)
-
-        when 'obj'
-          # Export as OBJ file
-          export_path = File.join(temp_dir, "#{filename}.obj")
-          log "Exporting to OBJ file: #{export_path}"
-
-          # Check if OBJ exporter is available
-          raise 'OBJ exporter not available' unless Sketchup.require('sketchup.rb')
-
-          options = {
-            triangulated_faces: true,
-            double_sided_faces: true,
-            edges: false,
-            texture_maps: true
-          }
-          model.export(export_path, options)
-
-        when 'dae'
-          # Export as COLLADA file
-          export_path = File.join(temp_dir, "#{filename}.dae")
-          log "Exporting to COLLADA file: #{export_path}"
-
-          # Check if COLLADA exporter is available
-          raise 'COLLADA exporter not available' unless Sketchup.require('sketchup.rb')
-
-          options = { triangulated_faces: true }
-          model.export(export_path, options)
-
-        when 'stl'
-          # Export as STL file
-          export_path = File.join(temp_dir, "#{filename}.stl")
-          log "Exporting to STL file: #{export_path}"
-
-          # Check if STL exporter is available
-          raise 'STL exporter not available' unless Sketchup.require('sketchup.rb')
-
-          options = { units: 'model' }
-          model.export(export_path, options)
-
-        when 'png', 'jpg', 'jpeg'
-          # Export as image
-          ext = format.downcase == 'jpg' ? 'jpeg' : format.downcase
-          export_path = File.join(temp_dir, "#{filename}.#{ext}")
-          log "Exporting to image file: #{export_path}"
-
-          # Get the current view
-          view = model.active_view
-
-          # Set up options for the export
-          options = {
-            filename: export_path,
-            width: params['width'] || 1920,
-            height: params['height'] || 1080,
-            antialias: true,
-            transparent: (ext == 'png')
-          }
-
-          # Export the image
-          view.write_image(options)
-
-        else
-          raise "Unsupported export format: #{format}"
-        end
-
-        log "Export completed successfully to: #{export_path}"
-
-        {
-          success: true,
-          path: export_path,
-          format: format
-        }
+        result = model_adapter.export_scene(
+          format: params['format'],
+          width: params['width'],
+          height: params['height']
+        )
+        log "Export completed successfully to: #{result[:path]}"
+        result
       rescue StandardError => e
         log "Error in export_scene: #{e.message}"
         log e.backtrace.join("\n")
@@ -533,15 +447,11 @@ module SU_MCP
 
     def apply_material(params)
       log "Setting material with params: #{params.inspect}"
-      model = Sketchup.active_model
-
-      # Handle ID format - strip quotes if present
-      id_str = params['id'].to_s.gsub('"', '')
+      model = model_adapter.active_model!
+      id_str = params['id'].to_s.delete('"')
       log "Looking for entity with ID: #{id_str}"
 
-      entity = model.find_entity_by_id(id_str.to_i)
-
-      raise 'Entity not found' unless entity
+      entity = model_adapter.find_entity!(params['id'])
 
       log "Found entity: #{entity.inspect}"
 

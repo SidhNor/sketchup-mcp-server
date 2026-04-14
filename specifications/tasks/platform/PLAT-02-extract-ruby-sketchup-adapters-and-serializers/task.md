@@ -1,7 +1,7 @@
 # Task: PLAT-02 Extract Ruby SketchUp Adapters and Serializers
 **Task ID**: `PLAT-02`
 **Title**: `Extract Ruby SketchUp Adapters and Serializers`
-**Status**: `planned`
+**Status**: `done`
 **Priority**: `P0`
 **Date**: `2026-04-13`
 

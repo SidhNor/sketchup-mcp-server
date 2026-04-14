@@ -1,30 +1,33 @@
 # frozen_string_literal: true
 
+require_relative 'adapters/model_adapter'
 require_relative 'scene_query_serializer'
 
 module SU_MCP
   # Read-oriented SketchUp command behavior and entity serialization helpers.
   class SceneQueryCommands
-    def initialize(logger: nil)
+    def initialize(logger: nil, adapter: nil, serializer: nil)
       @logger = logger
-      @serializer = SceneQuerySerializer.new
+      @adapter = adapter || Adapters::ModelAdapter.new
+      @serializer = serializer || SceneQuerySerializer.new
     end
 
     def list_resources
-      model = Sketchup.active_model
-      return [] unless model
-
-      top_level_entities(model).map do |entity|
+      adapter.top_level_entities(include_hidden: true).map do |entity|
         {
           id: entity.entityID,
           type: serializer.entity_type_key(entity)
         }
       end
+    rescue RuntimeError => e
+      return [] if e.message == 'No active SketchUp model'
+
+      raise
     end
 
     def get_scene_info(params = {})
-      model = active_model!
-      entities = top_level_entities(model)
+      model = adapter.active_model!
+      entities = adapter.top_level_entities(include_hidden: true)
 
       {
         success: true,
@@ -36,11 +39,8 @@ module SU_MCP
     end
 
     def list_entities(params = {})
-      model = active_model!
-      entities = filtered_entities(
-        top_level_entities(model),
-        include_hidden: params['include_hidden'] == true
-      )
+      adapter.active_model!
+      entities = adapter.top_level_entities(include_hidden: params['include_hidden'] == true)
 
       {
         success: true,
@@ -52,13 +52,13 @@ module SU_MCP
     def get_entity_info(params)
       {
         success: true,
-        entity: serializer.serialize_entity(find_entity(params))
+        entity: serializer.serialize_entity(adapter.find_entity!(params['id']))
       }
     end
 
     def selection_info
-      model = active_model!
-      selection = model.selection
+      adapter.active_model!
+      selection = adapter.selected_entities
 
       log "Getting selection, count: #{selection.length}"
 
@@ -68,24 +68,7 @@ module SU_MCP
 
     private
 
-    attr_reader :serializer
-
-    def active_model!
-      model = Sketchup.active_model
-      raise 'No active SketchUp model' unless model
-
-      model
-    end
-
-    def find_entity(params)
-      id_str = params['id'].to_s.delete('"')
-      raise 'Entity id is required' if id_str.empty?
-
-      entity = active_model!.find_entity_by_id(id_str.to_i)
-      raise 'Entity not found' unless entity
-
-      entity
-    end
+    attr_reader :adapter, :serializer
 
     def model_summary(model)
       {
@@ -109,14 +92,6 @@ module SU_MCP
       entities.map { |entity| serializer.serialize_entity(entity) }
     end
 
-    def filtered_entities(entities, include_hidden:)
-      return entities if include_hidden
-
-      entities.reject do |entity|
-        entity.respond_to?(:hidden?) && entity.hidden?
-      end
-    end
-
     def limit_from(params, key, default)
       limit = (params[key] || default).to_i
       [limit, 1].max
@@ -125,13 +100,5 @@ module SU_MCP
     def log(message)
       @logger&.call(message)
     end
-
-    # These bridge-facing read commands intentionally report top-level model content,
-    # not the active edit context, to preserve the existing Python/Ruby contract.
-    # rubocop:disable SketchupSuggestions/ModelEntities
-    def top_level_entities(model)
-      model.entities.to_a
-    end
-    # rubocop:enable SketchupSuggestions/ModelEntities
   end
 end
