@@ -1,7 +1,7 @@
 # Task: PLAT-05 Prepare Python/Ruby Contract Coverage Foundations
 **Task ID**: `PLAT-05`
 **Title**: `Prepare Python/Ruby Contract Coverage Foundations`
-**Status**: `planned`
+**Status**: `done`
 **Priority**: `P1`
 **Date**: `2026-04-14`
 

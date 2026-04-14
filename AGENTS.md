@@ -69,10 +69,12 @@ These are architectural boundaries, not a frozen directory layout. Keep code mov
 - The Ruby extension accepts a request, responds, and closes the client socket; Python reconnects per call.
 - Keep the MCP transport choice separate from the Python-to-Ruby socket bridge design.
 - Prefer one Ruby command that completes a full operation over multiple cross-runtime round trips.
+- Treat `contracts/bridge/bridge_contract.json` as the shared test artifact for durable Python/Ruby bridge invariants. It is test data for the runtime boundary, not runtime configuration.
 - When adding or changing a tool, keep the contract explicit on both sides:
   - Python MCP tool name and arguments
   - Ruby `handle_tool_call` dispatch name
   - Ruby response shape returned across the socket
+- When a public bridge or tool contract changes, update the shared contract artifact and the owning Python and Ruby contract suites in the same change.
 
 ## Change guidance
 
@@ -120,6 +122,14 @@ Testing should become stricter as the server grows. Prefer tests at the layer th
 
 If a change expands behavior without adding appropriate tests, call that out as a gap rather than silently accepting it.
 
+When a change touches the Python/Ruby boundary:
+
+- keep unit tests and contract tests separate so boundary failures stay visible
+- run the dedicated contract suites for the affected surface:
+  - `bundle exec rake ruby:contract`
+  - `bundle exec rake python:contract`
+- prefer updating the shared contract artifact and native contract suites over duplicating bridge rules in one runtime only
+
 New platform abstractions should be designed so they can be verified by at least one of:
 
 - isolated unit tests without SketchUp
@@ -138,6 +148,7 @@ New platform abstractions should be designed so they can be verified by at least
 When interface or setup behavior changes, review the relevant docs:
 
 - `README.md` for installation, usage, and exposed tools
+- `contracts/bridge/bridge_contract.json` and the contract suites under `python/tests/contracts/` and `test/contracts/` when the public Python/Ruby boundary changes
 - packaging metadata files when extension or Python package behavior changes
 - `specifications/hlds/hld-platform-architecture-and-repo-structure.md` for platform direction when architecture or repo structure changes materially
 - `sketchup_mcp_guide.md` for higher-level MCP surface guidance when the tool surface changes materially
@@ -164,6 +175,7 @@ Before finishing, verify:
 - Python and Ruby tool names/arguments still line up
 - outputs are explicit and serializable
 - errors are mapped clearly across the socket boundary
+- shared contract artifacts and contract suites were updated if the public boundary changed
 - transport, command, support, and SketchUp adapter responsibilities are still separated appropriately for the current size of the repo
 - the structure remains maintainable as the Ruby surface grows
 - packaging/docs/examples were updated if the exposed contract changed

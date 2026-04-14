@@ -13,6 +13,20 @@ namespace :ruby do
 
   desc 'Run Ruby tests'
   task :test do
-    sh %(bundle exec ruby -Itest -e 'Dir["test/**/*_test.rb"].sort.each { |path| load path }')
+    script = [
+      'Dir["test/**/*_test.rb"]',
+      '.reject { |path| path.start_with?("test/contracts/") }',
+      '.sort.each { |path| load path }'
+    ].join
+    sh %(bundle exec ruby -Itest -e '#{script}')
+  end
+
+  desc 'Run Ruby bridge contract tests'
+  task :contract do
+    script = [
+      'Dir["test/contracts/**/*_test.rb"]',
+      '.sort.each { |path| load path }'
+    ].join
+    sh %(bundle exec ruby -Itest -e '#{script}')
   end
 end

@@ -82,6 +82,26 @@ SKETCHUP_PORT=9876
 
 When the Python server runs under WSL, it will try to auto-detect the Windows host if `SKETCHUP_HOST` is not set.
 
+## Bridge contract coverage
+
+Shared bridge contract coverage lives in `contracts/bridge/bridge_contract.json`.
+It captures durable Python/Ruby boundary invariants and wave-owned tool cases without moving behavior ownership out of Ruby.
+
+Any change that introduces or modifies a public bridge or tool contract should update in the same change:
+
+- the shared contract artifact
+- the Python contract suite under `python/tests/contracts/`
+- the Ruby contract suite under `test/contracts/`
+
+Run the contract suites directly with:
+
+```bash
+bundle exec rake ruby:contract
+bundle exec rake python:contract
+```
+
+These checks also run in CI as a separate `contract` job so boundary regressions stay visible rather than blending into generic unit-test output.
+
 ## Local CI and release tasks
 
 Run the local CI task set:
@@ -95,8 +115,10 @@ This currently runs:
 - `version:assert`
 - `ruby:lint`
 - `ruby:test`
+- `ruby:contract`
 - `python:lint`
 - `python:test`
+- `python:contract`
 - `package:verify`
 
 Prepare a local versioned release artifact without running the GitHub release flow:

@@ -10,6 +10,11 @@ namespace :python do
 
   desc 'Run Python tests'
   task :test do
-    sh 'uv run pytest python/tests'
+    sh 'uv run pytest python/tests --ignore=python/tests/contracts'
+  end
+
+  desc 'Run Python bridge contract tests'
+  task :contract do
+    sh 'uv run pytest python/tests/contracts'
   end
 end

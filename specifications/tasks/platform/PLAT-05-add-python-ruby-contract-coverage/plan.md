@@ -76,7 +76,7 @@ This task should instead prepare the contract layer for the replacement rollout:
 ### Data Model
 
 - Introduce a small neutral shared contract artifact for the Python/Ruby bridge under a repo-level location such as `contracts/bridge/`.
-- Use a simple machine-readable format such as YAML for readability and low parsing cost in both Python and Ruby.
+- Use a simple machine-readable format with no new runtime dependency burden in either language. The implemented foundation uses JSON at `contracts/bridge/bridge_contract.json` so both Python and Ruby can load the artifact with standard-library tooling only.
 - Keep the artifact intentionally small and explicit. Each contract case should describe only boundary-relevant facts, for example:
   - `case_id`
   - `kind` such as `invariant` or `tool_case`
@@ -147,6 +147,23 @@ This task should instead prepare the contract layer for the replacement rollout:
 - Do not introduce a separate contract-test runner or special CI mode in this task unless existing test entrypoints cannot reasonably host the new checks.
 - If lightweight schema validation for the shared artifact is added, keep it local to the test suites and not as a runtime dependency.
 - Add the new contract tasks to the existing CI workflow as a separate required step, not as an independent pipeline and not hidden inside unit-test steps.
+
+## Implementation Notes
+
+- Implemented shared artifact:
+  - `contracts/bridge/bridge_contract.json`
+- Implemented contract suites:
+  - `python/tests/contracts/`
+  - `test/contracts/`
+- Implemented dedicated contract entrypoints:
+  - `bundle exec rake ruby:contract`
+  - `bundle exec rake python:contract`
+- Implemented CI visibility:
+  - separate `contract` job in `.github/workflows/ci.yml`
+- Final local validation:
+  - `bundle exec rake ci`
+- Final external review:
+  - `mcp__pal__codereview` with Grok reported no findings on the scoped `PLAT-05` change set
 
 ## Architecture Context
 

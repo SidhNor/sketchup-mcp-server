@@ -1,0 +1,164 @@
+{
+  "schema_version": 1,
+  "cases": [
+    {
+      "case_id": "ping_request",
+      "kind": "invariant",
+      "owner": "PLAT-05",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "ping",
+        "params": {},
+        "id": 7
+      },
+      "response": {
+        "jsonrpc": "2.0",
+        "id": 7,
+        "result": {
+          "success": true,
+          "message": "pong"
+        }
+      }
+    },
+    {
+      "case_id": "tools_call_request",
+      "kind": "invariant",
+      "owner": "PLAT-05",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "params": {
+          "name": "contract_tool",
+          "arguments": {
+            "entity_limit": 3
+          }
+        },
+        "id": "req-tools-call"
+      },
+      "response": {
+        "jsonrpc": "2.0",
+        "id": "req-tools-call",
+        "result": {
+          "success": true
+        }
+      }
+    },
+    {
+      "case_id": "request_id_round_trip",
+      "kind": "invariant",
+      "owner": "PLAT-05",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "params": {
+          "name": "contract_tool",
+          "arguments": {
+            "target": "fixture"
+          }
+        },
+        "id": "req-contract-123"
+      },
+      "response": {
+        "jsonrpc": "2.0",
+        "id": "req-contract-123",
+        "result": {
+          "success": true,
+          "echoed": true
+        }
+      }
+    },
+    {
+      "case_id": "parse_error",
+      "kind": "invariant",
+      "owner": "PLAT-05",
+      "raw_request": "{\"jsonrpc\":\"2.0\",\"id\":9,\"method\":",
+      "response": {
+        "jsonrpc": "2.0",
+        "id": 9,
+        "error": {
+          "code": -32700,
+          "message": "Parse error"
+        }
+      }
+    },
+    {
+      "case_id": "method_not_found",
+      "kind": "invariant",
+      "owner": "PLAT-05",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "unknown/method",
+        "params": {},
+        "id": 6
+      },
+      "response": {
+        "jsonrpc": "2.0",
+        "id": 6,
+        "error": {
+          "code": -32601,
+          "message": "Method not found",
+          "data": {
+            "success": false
+          }
+        }
+      }
+    },
+    {
+      "case_id": "operation_failure",
+      "kind": "invariant",
+      "owner": "PLAT-05",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "params": {
+          "name": "wave_tool",
+          "arguments": {
+            "target": "fixture"
+          }
+        },
+        "id": "wave-error"
+      },
+      "response": {
+        "jsonrpc": "2.0",
+        "id": "wave-error",
+        "error": {
+          "code": -32603,
+          "message": "Operation failed",
+          "data": {
+            "success": false
+          }
+        }
+      }
+    },
+    {
+      "case_id": "wave_ready_tool_call",
+      "kind": "tool_case",
+      "owner": "future-wave",
+      "wave": "replacement-proof",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "params": {
+          "name": "wave_tool",
+          "arguments": {
+            "target": "fixture",
+            "mode": "preview"
+          }
+        },
+        "id": "wave-success"
+      },
+      "response": {
+        "jsonrpc": "2.0",
+        "id": "wave-success",
+        "result": {
+          "success": true,
+          "tool_name": "wave_tool",
+          "arguments": {
+            "target": "fixture",
+            "mode": "preview"
+          }
+        }
+      }
+    }
+  ]
+}

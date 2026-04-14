@@ -1,0 +1,30 @@
+from __future__ import annotations
+
+from .support import contract_artifact_path, contract_cases_by_id, load_contract_artifact
+
+
+def test_contract_artifact_exists_and_declares_schema_version() -> None:
+    assert contract_artifact_path().is_file()
+    assert load_contract_artifact()["schema_version"] == 1
+
+
+def test_seed_contract_cases_cover_required_bridge_invariants() -> None:
+    assert set(contract_cases_by_id()) >= {
+        "ping_request",
+        "tools_call_request",
+        "request_id_round_trip",
+        "parse_error",
+        "method_not_found",
+        "operation_failure",
+        "wave_ready_tool_call",
+    }
+
+
+def test_each_contract_case_declares_minimum_metadata() -> None:
+    for contract_case in load_contract_artifact()["cases"]:
+        assert set(contract_case) >= {"case_id", "kind", "owner"}
+        assert "response" in contract_case
+        if contract_case["case_id"] == "parse_error":
+            assert "raw_request" in contract_case
+        else:
+            assert "request" in contract_case
