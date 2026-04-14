@@ -18,6 +18,7 @@ Tasks are organized by scope area. Each task should:
 
 - [Platform Tasks](platform/README.md)
 - [Scene Targeting and Interrogation Tasks](scene-targeting-and-interrogation/README.md)
+- [Semantic Scene Modeling Tasks](semantic-scene-modeling/README.md)
 
 ## Relationship to Other Specifications
 
