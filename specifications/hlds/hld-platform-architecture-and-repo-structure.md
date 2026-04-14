@@ -24,6 +24,7 @@ This is the platform HLD for the repository. It covers shared architecture conce
 
 It does not define feature-specific behavior. Capability design belongs in:
 
+- [`hld-scene-targeting-and-interrogation.md`](./hld-scene-targeting-and-interrogation.md)
 - [`hld-semantic-scene-modeling.md`](./hld-semantic-scene-modeling.md)
 - [`hld-asset-exemplar-reuse.md`](./hld-asset-exemplar-reuse.md)
 - [`hld-scene-validation-and-review.md`](./hld-scene-validation-and-review.md)
