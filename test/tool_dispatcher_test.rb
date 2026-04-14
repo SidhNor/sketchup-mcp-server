@@ -31,7 +31,12 @@ class ToolDispatcherTest < Minitest::Test
       { success: true, resolution: 'unique', matches: [args.fetch('query')] }
     end
 
-    private :get_scene_info, :export_scene, :selection_info, :find_entities
+    def sample_surface_z(args)
+      @calls << [:sample_surface_z, args]
+      { success: true, results: [{ samplePoint: args.fetch('samplePoints').first, status: 'hit' }] }
+    end
+
+    private :get_scene_info, :export_scene, :selection_info, :find_entities, :sample_surface_z
   end
 
   class ExportOnlyTarget
@@ -97,6 +102,33 @@ class ToolDispatcherTest < Minitest::Test
       @target.calls
     )
   end
+
+  # rubocop:disable Metrics/MethodLength
+  def test_dispatches_sample_surface_z_to_the_scene_query_command
+    result = @dispatcher.call(
+      'sample_surface_z',
+      {
+        'target' => { 'persistentId' => '4001' },
+        'samplePoints' => [{ 'x' => 5.0, 'y' => 5.0 }]
+      }
+    )
+
+    assert_equal(
+      { success: true, results: [{ samplePoint: { 'x' => 5.0, 'y' => 5.0 }, status: 'hit' }] },
+      result
+    )
+    assert_equal(
+      [[
+        :sample_surface_z,
+        {
+          'target' => { 'persistentId' => '4001' },
+          'samplePoints' => [{ 'x' => 5.0, 'y' => 5.0 }]
+        }
+      ]],
+      @target.calls
+    )
+  end
+  # rubocop:enable Metrics/MethodLength
 
   def test_raises_for_unknown_tool
     error = assert_raises(RuntimeError) do

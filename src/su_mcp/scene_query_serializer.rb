@@ -49,6 +49,17 @@ module SU_MCP
       }.compact
     end
 
+    def serialize_xy_sample_point(x_value, y_value)
+      {
+        x: public_meter_value(x_value),
+        y: public_meter_value(y_value)
+      }
+    end
+
+    def serialize_xyz_sample_point(x_value, y_value, z_value)
+      serialize_xy_sample_point(x_value, y_value).merge(z: public_meter_value(z_value))
+    end
+
     def entity_type_key(entity)
       SCENE_QUERY_TYPE_KEYS.each do |klass, key|
         return key if entity.is_a?(klass)
@@ -184,6 +195,10 @@ module SU_MCP
       return nil if value.nil?
 
       value.to_s
+    end
+
+    def public_meter_value(value)
+      rounded_float(value.to_f)
     end
 
     def group_or_component?(entity)

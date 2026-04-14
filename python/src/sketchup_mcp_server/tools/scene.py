@@ -20,6 +20,17 @@ class FindEntitiesQuery(BaseModel):
     material: str | None = None
 
 
+class SampleSurfaceTarget(BaseModel):
+    sourceElementId: str | None = None
+    persistentId: str | None = None
+    entityId: str | None = None
+
+
+class SampleSurfacePoint(BaseModel):
+    x: float
+    y: float
+
+
 def register_tools(
     mcp: FastMCP,
     *,
@@ -56,6 +67,31 @@ def register_tools(
         return bridge_client.call_tool(
             "find_entities",
             {"query": query.model_dump(exclude_none=True)},
+            request_id=_request_id(ctx),
+        )
+
+    @mcp.tool
+    def sample_surface_z(
+        ctx: Context,
+        target: SampleSurfaceTarget,
+        samplePoints: list[SampleSurfacePoint],
+        ignoreTargets: list[SampleSurfaceTarget] | None = None,
+        visibleOnly: bool = True,
+    ) -> dict[str, Any]:
+        """Sample explicit target geometry at one or more world-space XY points in meters."""
+        arguments: dict[str, Any] = {
+            "target": target.model_dump(exclude_none=True),
+            "samplePoints": [point.model_dump() for point in samplePoints],
+            "visibleOnly": visibleOnly,
+        }
+        if ignoreTargets is not None:
+            arguments["ignoreTargets"] = [
+                ignore_target.model_dump(exclude_none=True) for ignore_target in ignoreTargets
+            ]
+
+        return bridge_client.call_tool(
+            "sample_surface_z",
+            arguments,
             request_id=_request_id(ctx),
         )
 

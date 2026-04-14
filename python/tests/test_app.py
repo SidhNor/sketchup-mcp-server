@@ -32,6 +32,7 @@ def test_create_server_registers_expected_tool_names() -> None:
         "get_scene_info",
         "list_entities",
         "find_entities",
+        "sample_surface_z",
         "get_entity_info",
         "create_component",
         "delete_component",

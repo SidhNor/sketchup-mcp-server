@@ -82,6 +82,18 @@ SKETCHUP_PORT=9876
 
 When the Python server runs under WSL, it will try to auto-detect the Windows host if `SKETCHUP_HOST` is not set.
 
+## Current tool surface
+
+The current cross-runtime tool surface includes scene inspection and targeting helpers such as:
+
+- `get_scene_info`
+- `list_entities`
+- `get_entity_info`
+- `find_entities`
+- `sample_surface_z`
+
+`find_entities` resolves explicit targets through the supported MVP identifier and exact-match query paths. `sample_surface_z` samples explicit target geometry at one or more world-space XY points in meters and returns compact per-point `hit`, `miss`, or `ambiguous` outcomes.
+
 ## Bridge contract coverage
 
 Shared bridge contract coverage lives in `contracts/bridge/bridge_contract.json`.

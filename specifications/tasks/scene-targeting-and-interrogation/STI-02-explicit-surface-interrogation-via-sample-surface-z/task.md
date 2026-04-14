@@ -1,7 +1,7 @@
 # Task: STI-02 Explicit Surface Interrogation via `sample_surface_z`
 **Task ID**: `STI-02`
 **Title**: `Explicit Surface Interrogation via sample_surface_z`
-**Status**: `planned`
+**Status**: `completed`
 **Priority**: `P0`
 **Date**: `2026-04-14`
 

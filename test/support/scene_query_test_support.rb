@@ -114,14 +114,32 @@ module SceneQueryTestSupport
   class FakeTransformation
     attr_reader :origin
 
-    def initialize(origin)
+    def initialize(origin, translation: nil)
       @origin = origin
+      @translation = translation || [0.0, 0.0, 0.0]
+    end
+
+    def apply(x_value, y_value, z_value)
+      [
+        x_value + @translation[0],
+        y_value + @translation[1],
+        z_value + @translation[2]
+      ]
+    end
+
+    def inverse_apply(x_value, y_value, z_value)
+      [
+        x_value - @translation[0],
+        y_value - @translation[1],
+        z_value - @translation[2]
+      ]
     end
   end
 
   module FakeEntityBehavior
-    attr_reader :entity_id, :bounds, :layer, :material, :name, :persistent_id
+    attr_reader :entity_id, :bounds, :layer, :material, :name, :persistent_id, :details
 
+    # rubocop:disable Metrics/MethodLength
     def initialize(entity_id:, bounds:, layer:, material:, details: {})
       super()
       @entity_id = entity_id
@@ -132,8 +150,10 @@ module SceneQueryTestSupport
       @locked = details.fetch(:locked, false)
       @name = details.fetch(:name, '')
       @persistent_id = details[:persistent_id]
+      @details = details
       @attributes = details.fetch(:attributes, {})
     end
+    # rubocop:enable Metrics/MethodLength
 
     def hidden?
       @hidden
@@ -185,7 +205,37 @@ module SceneQueryTestSupport
     end
   end
 
+  class FakeComponentDefinition
+    attr_reader :name, :entities
+
+    def initialize(name:, entities:)
+      @name = name
+      @entities = entities
+    end
+  end
+
+  class FakeComponentInstance < Sketchup::ComponentInstance
+    include FakeEntityBehavior
+
+    attr_reader :definition, :transformation, :transformations
+
+    def initialize(entity_id:, bounds:, layer:, material:, details: {})
+      super
+      @definition = details.fetch(:definition)
+      @transformation = details.fetch(:transformation, FakeTransformation.new(bounds.center))
+      @transformations = []
+    end
+
+    def transform!(transformation)
+      @transformations << transformation
+    end
+  end
+
   class FakeFace < Sketchup::Face
+    include FakeEntityBehavior
+  end
+
+  class FakeEdge < Sketchup::Edge
     include FakeEntityBehavior
   end
 
@@ -365,6 +415,228 @@ module SceneQueryTestSupport
   end
   # rubocop:enable Metrics/MethodLength
 
+  # This custom fixture overlay is needed because the existing scene-query support
+  # only models broad inspection entities. Explicit surface interrogation needs
+  # test-owned sampleable faces, nested faces, stacked candidates, and occluders.
+  # Reusing the existing fakes directly would not let the skeleton suite express
+  # face/group/component sampling or ambiguity scenarios credibly.
+  # rubocop:disable Metrics/AbcSize, Metrics/MethodLength
+  def build_sample_surface_z_model
+    terrain = FakeLayer.new('Terrain')
+    structures = FakeLayer.new('Structures')
+    soil = FakeMaterial.new('Soil')
+    concrete = FakeMaterial.new('Concrete')
+    steel = FakeMaterial.new('Steel')
+
+    visible_face_target = build_sample_surface_face(
+      entity_id: 401,
+      persistent_id: 4001,
+      source_element_id: 'surface-face-001',
+      name: 'Visible Face Target',
+      layer: terrain,
+      material: soil,
+      x_range: [0.0, 10.0],
+      y_range: [0.0, 10.0],
+      z_value: 2.5
+    )
+
+    group_target = build_sample_surface_group(
+      entity_id: 402,
+      persistent_id: 4002,
+      source_element_id: 'surface-group-001',
+      name: 'Grouped Surface Target',
+      layer: terrain,
+      material: soil,
+      child_faces: [
+        build_sample_surface_face(
+          entity_id: 421,
+          persistent_id: 4201,
+          name: 'Grouped Face',
+          layer: terrain,
+          material: soil,
+          x_range: [0.0, 10.0],
+          y_range: [0.0, 10.0],
+          z_value: 3.5
+        )
+      ],
+      transformation: FakeTransformation.new(
+        FakePoint.new(20.0, 0.0, 0.0),
+        translation: [20.0, 0.0, 0.0]
+      )
+    )
+
+    component_target = build_sample_surface_component(
+      entity_id: 403,
+      persistent_id: 4003,
+      source_element_id: 'surface-component-001',
+      name: 'Component Surface Target',
+      definition_name: 'Surface Component',
+      layer: terrain,
+      material: concrete,
+      child_faces: [
+        build_sample_surface_face(
+          entity_id: 431,
+          persistent_id: 4301,
+          name: 'Component Face',
+          layer: terrain,
+          material: concrete,
+          x_range: [0.0, 10.0],
+          y_range: [0.0, 10.0],
+          z_value: 4.25
+        )
+      ],
+      transformation: FakeTransformation.new(
+        FakePoint.new(40.0, 0.0, 0.0),
+        translation: [40.0, 0.0, 0.0]
+      )
+    )
+
+    ambiguous_target = build_sample_surface_group(
+      entity_id: 404,
+      persistent_id: 4004,
+      source_element_id: 'surface-ambiguous-001',
+      name: 'Ambiguous Surface Target',
+      layer: structures,
+      material: steel,
+      child_faces: [
+        build_sample_surface_face(
+          entity_id: 441,
+          persistent_id: 4401,
+          name: 'Lower Deck',
+          layer: structures,
+          material: steel,
+          x_range: [60.0, 70.0],
+          y_range: [0.0, 10.0],
+          z_value: 5.0
+        ),
+        build_sample_surface_face(
+          entity_id: 442,
+          persistent_id: 4402,
+          name: 'Upper Deck',
+          layer: structures,
+          material: steel,
+          x_range: [60.0, 70.0],
+          y_range: [0.0, 10.0],
+          z_value: 7.0
+        )
+      ]
+    )
+
+    clustered_target = build_sample_surface_group(
+      entity_id: 405,
+      persistent_id: 4005,
+      source_element_id: 'surface-clustered-001',
+      name: 'Clustered Surface Target',
+      layer: terrain,
+      material: soil,
+      child_faces: [
+        build_sample_surface_face(
+          entity_id: 451,
+          persistent_id: 4501,
+          name: 'Clustered Lower',
+          layer: terrain,
+          material: soil,
+          x_range: [80.0, 90.0],
+          y_range: [0.0, 10.0],
+          z_value: 8.0
+        ),
+        build_sample_surface_face(
+          entity_id: 452,
+          persistent_id: 4502,
+          name: 'Clustered Upper',
+          layer: terrain,
+          material: soil,
+          x_range: [80.0, 90.0],
+          y_range: [0.0, 10.0],
+          z_value: 8.0004
+        )
+      ]
+    )
+
+    occluded_target = build_sample_surface_face(
+      entity_id: 406,
+      persistent_id: 4006,
+      source_element_id: 'surface-occluded-001',
+      name: 'Occluded Surface Target',
+      layer: terrain,
+      material: soil,
+      x_range: [100.0, 110.0],
+      y_range: [0.0, 10.0],
+      z_value: 1.5
+    )
+
+    occluder = build_sample_surface_face(
+      entity_id: 407,
+      persistent_id: 4007,
+      source_element_id: 'surface-occluder-001',
+      name: 'Occluding Face',
+      layer: structures,
+      material: steel,
+      x_range: [100.0, 110.0],
+      y_range: [0.0, 10.0],
+      z_value: 9.0
+    )
+
+    empty_group_target = build_sample_surface_group(
+      entity_id: 408,
+      persistent_id: 4008,
+      source_element_id: 'surface-empty-001',
+      name: 'Empty Group Target',
+      layer: terrain,
+      material: soil,
+      child_faces: []
+    )
+
+    unsupported_edge_target = build_sample_surface_edge(
+      entity_id: 409,
+      persistent_id: 4009,
+      source_element_id: 'surface-edge-001',
+      name: 'Unsupported Edge Target',
+      layer: terrain,
+      material: soil,
+      x_range: [120.0, 130.0],
+      y_range: [0.0, 0.0],
+      z_value: 0.0
+    )
+
+    sloped_face_target = build_sample_surface_face(
+      entity_id: 410,
+      persistent_id: 4010,
+      source_element_id: 'surface-sloped-001',
+      name: 'Sloped Face Target',
+      layer: terrain,
+      material: soil,
+      x_range: [140.0, 150.0],
+      y_range: [0.0, 10.0],
+      z_value: 1.0,
+      slope_x: 0.5
+    )
+
+    FakeModel.new(
+      state: {
+        entities: [
+          visible_face_target,
+          group_target,
+          component_target,
+          ambiguous_target,
+          clustered_target,
+          occluded_target,
+          occluder,
+          empty_group_target,
+          unsupported_edge_target,
+          sloped_face_target
+        ],
+        active_entities: [],
+        selection: [],
+        materials: [soil, concrete, steel],
+        layers: [terrain, structures],
+        bounds: build_bounds(origin_x: -10)
+      },
+      details: { options: default_options }
+    )
+  end
+  # rubocop:enable Metrics/AbcSize, Metrics/MethodLength
+
   def build_scene_query_group(entity_id:, origin_x:, layer:, material:, details: {})
     FakeGroup.new(
       entity_id: entity_id,
@@ -385,6 +657,23 @@ module SceneQueryTestSupport
     )
   end
 
+  # rubocop:disable Metrics/MethodLength
+  def build_scene_query_component(entity_id:, origin_x:, layer:, material:, details: {})
+    definition = details.fetch(:definition) do
+      FakeComponentDefinition.new(name: details.fetch(:definition_name, 'Component Definition'),
+                                  entities: details.fetch(:entities, []))
+    end
+
+    FakeComponentInstance.new(
+      entity_id: entity_id,
+      bounds: build_bounds(origin_x: origin_x),
+      layer: layer,
+      material: material,
+      details: details.merge(definition: definition)
+    )
+  end
+  # rubocop:enable Metrics/MethodLength
+
   def build_hidden_face(layer:, material:, origin_x: 10)
     build_scene_query_face(entity_id: 102, origin_x: origin_x, layer: layer, material: material,
                            details: { hidden: true, name: 'Hidden Face', persistent_id: 1002 })
@@ -393,6 +682,122 @@ module SceneQueryTestSupport
   def build_nested_face(layer:, material:, origin_x: 20)
     build_scene_query_face(entity_id: 201, origin_x: origin_x, layer: layer, material: material,
                            details: { name: 'Nested Face', persistent_id: 2001 })
+  end
+
+  # rubocop:disable Metrics/MethodLength, Metrics/ParameterLists
+  def build_sample_surface_face(entity_id:, persistent_id:, name:, layer:, material:, x_range:,
+                                y_range:, z_value:, source_element_id: nil, hidden: false,
+                                slope_x: 0.0, slope_y: 0.0)
+    FakeFace.new(
+      entity_id: entity_id,
+      bounds: build_sample_surface_bounds(x_range: x_range, y_range: y_range, z_value: z_value),
+      layer: layer,
+      material: material,
+      details: {
+        hidden: hidden,
+        name: name,
+        persistent_id: persistent_id,
+        attributes: sample_surface_attributes(source_element_id),
+        sample_surface: {
+          x_range: x_range,
+          y_range: y_range,
+          z: z_value,
+          slope_x: slope_x,
+          slope_y: slope_y
+        }
+      }
+    )
+  end
+  # rubocop:enable Metrics/MethodLength, Metrics/ParameterLists
+
+  # rubocop:disable Metrics/MethodLength, Metrics/ParameterLists
+  def build_sample_surface_group(entity_id:, persistent_id:, name:, layer:, material:, child_faces:,
+                                 source_element_id: nil, transformation: nil)
+    FakeGroup.new(
+      entity_id: entity_id,
+      bounds: build_bounds(origin_x: child_faces.empty? ? 0 : child_faces.first.bounds.min.x),
+      layer: layer,
+      material: material,
+      details: {
+        name: name,
+        persistent_id: persistent_id,
+        attributes: sample_surface_attributes(source_element_id),
+        entities: child_faces,
+        transformation: transformation
+      }
+    )
+  end
+  # rubocop:enable Metrics/MethodLength, Metrics/ParameterLists
+
+  # rubocop:disable Metrics/MethodLength, Metrics/ParameterLists
+  def build_sample_surface_component(
+    entity_id:,
+    persistent_id:,
+    name:,
+    definition_name:,
+    layer:,
+    material:,
+    child_faces:,
+    source_element_id: nil,
+    transformation: nil
+  )
+    definition = FakeComponentDefinition.new(name: definition_name, entities: child_faces)
+    build_scene_query_component(
+      entity_id: entity_id,
+      origin_x: child_faces.empty? ? 0 : child_faces.first.bounds.min.x,
+      layer: layer,
+      material: material,
+      details: {
+        name: name,
+        persistent_id: persistent_id,
+        attributes: sample_surface_attributes(source_element_id),
+        definition_name: definition_name,
+        definition: definition,
+        transformation: transformation
+      }
+    )
+  end
+  # rubocop:enable Metrics/MethodLength, Metrics/ParameterLists
+
+  # rubocop:disable Metrics/MethodLength, Metrics/ParameterLists
+  def build_sample_surface_edge(entity_id:, persistent_id:, name:, layer:, material:, x_range:,
+                                y_range:, z_value:, source_element_id: nil)
+    FakeEdge.new(
+      entity_id: entity_id,
+      bounds: build_sample_surface_bounds(x_range: x_range, y_range: y_range, z_value: z_value),
+      layer: layer,
+      material: material,
+      details: {
+        name: name,
+        persistent_id: persistent_id,
+        attributes: sample_surface_attributes(source_element_id)
+      }
+    )
+  end
+  # rubocop:enable Metrics/MethodLength, Metrics/ParameterLists
+
+  # rubocop:disable Metrics/AbcSize, Metrics/MethodLength
+  def build_sample_surface_bounds(x_range:, y_range:, z_value:)
+    min = FakePoint.new(x_range.first, y_range.first, z_value)
+    max = FakePoint.new(x_range.last, y_range.last, z_value)
+    center = FakePoint.new(
+      (x_range.first + x_range.last) / 2.0,
+      (y_range.first + y_range.last) / 2.0,
+      z_value
+    )
+    FakeBounds.new(
+      min: min,
+      max: max,
+      center: center,
+      size: [x_range.last - x_range.first, y_range.last - y_range.first, 0.0]
+    )
+  end
+  # rubocop:enable Metrics/AbcSize, Metrics/MethodLength
+
+  def sample_surface_attributes(source_element_id)
+    return {} if source_element_id.nil?
+
+    { 'su_mcp' => { 'sourceElementId' => source_element_id } }
   end
 
   def build_bounds(origin_x:)

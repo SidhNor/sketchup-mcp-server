@@ -175,6 +175,72 @@ class BridgeContractFindEntitiesRequestHandlerTest < Minitest::Test
   end
 end
 
+class BridgeContractSampleSurfaceZRequestHandlerTest < Minitest::Test
+  include BridgeContractCaseAssertions
+
+  def test_sample_surface_z_hit_matches_shared_contract_case
+    contract_case = contract_case('sample_surface_z_hit')
+    response = successful_sample_surface_z_response(contract_case)
+
+    assert_equal(contract_case.dig('response', 'result', 'results'),
+                 response.dig(:result, :results))
+  end
+
+  def test_sample_surface_z_miss_matches_shared_contract_case
+    contract_case = contract_case('sample_surface_z_miss')
+    response = successful_sample_surface_z_response(contract_case)
+
+    assert_equal(contract_case.dig('response', 'result', 'results'),
+                 response.dig(:result, :results))
+  end
+
+  def test_sample_surface_z_ambiguous_matches_shared_contract_case
+    contract_case = contract_case('sample_surface_z_ambiguous')
+    response = successful_sample_surface_z_response(contract_case)
+
+    assert_equal(contract_case.dig('response', 'result', 'results'),
+                 response.dig(:result, :results))
+  end
+
+  def test_sample_surface_z_mixed_results_matches_shared_contract_case
+    contract_case = contract_case('sample_surface_z_mixed_results')
+    response = successful_sample_surface_z_response(contract_case)
+
+    assert_equal(contract_case.dig('response', 'result', 'results'),
+                 response.dig(:result, :results))
+  end
+
+  def test_sample_surface_z_ignore_targets_matches_shared_contract_case
+    contract_case = contract_case('sample_surface_z_ignore_targets')
+    response = successful_sample_surface_z_response(contract_case)
+
+    assert_equal(contract_case.dig('response', 'result', 'results'),
+                 response.dig(:result, :results))
+  end
+
+  def test_sample_surface_z_unsupported_target_matches_shared_contract_case
+    contract_case = contract_case('sample_surface_z_unsupported_target')
+    response = build_handler(
+      tool_executor: lambda do |_tool_name, _args|
+        raise contract_case.dig('response', 'error', 'message')
+      end
+    ).handle(contract_case.fetch('request'))
+
+    assert_error_case(contract_case, response)
+  end
+
+  private
+
+  def successful_sample_surface_z_response(contract_case)
+    build_handler(
+      tool_executor: lambda do |tool_name, args|
+        assert_equal(expected_tool_call(contract_case), [tool_name, args])
+        contract_result(contract_case)
+      end
+    ).handle(contract_case.fetch('request'))
+  end
+end
+
 class BridgeContractRequestProcessorTest < Minitest::Test
   include BridgeContractCaseAssertions
 

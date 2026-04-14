@@ -267,6 +267,273 @@
       }
     },
     {
+      "case_id": "sample_surface_z_hit",
+      "kind": "tool_case",
+      "owner": "STI-02",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "params": {
+          "name": "sample_surface_z",
+          "arguments": {
+            "target": {
+              "persistentId": "4001"
+            },
+            "samplePoints": [
+              {
+                "x": 5.0,
+                "y": 5.0
+              }
+            ]
+          }
+        },
+        "id": "sample-hit"
+      },
+      "response": {
+        "jsonrpc": "2.0",
+        "id": "sample-hit",
+        "result": {
+          "success": true,
+          "results": [
+            {
+              "samplePoint": {
+                "x": 5.0,
+                "y": 5.0
+              },
+              "status": "hit",
+              "hitPoint": {
+                "x": 5.0,
+                "y": 5.0,
+                "z": 2.5
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "case_id": "sample_surface_z_miss",
+      "kind": "tool_case",
+      "owner": "STI-02",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "params": {
+          "name": "sample_surface_z",
+          "arguments": {
+            "target": {
+              "persistentId": "4001"
+            },
+            "samplePoints": [
+              {
+                "x": 15.0,
+                "y": 15.0
+              }
+            ]
+          }
+        },
+        "id": "sample-miss"
+      },
+      "response": {
+        "jsonrpc": "2.0",
+        "id": "sample-miss",
+        "result": {
+          "success": true,
+          "results": [
+            {
+              "samplePoint": {
+                "x": 15.0,
+                "y": 15.0
+              },
+              "status": "miss"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "case_id": "sample_surface_z_ambiguous",
+      "kind": "tool_case",
+      "owner": "STI-02",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "params": {
+          "name": "sample_surface_z",
+          "arguments": {
+            "target": {
+              "persistentId": "4004"
+            },
+            "samplePoints": [
+              {
+                "x": 65.0,
+                "y": 5.0
+              }
+            ]
+          }
+        },
+        "id": "sample-ambiguous"
+      },
+      "response": {
+        "jsonrpc": "2.0",
+        "id": "sample-ambiguous",
+        "result": {
+          "success": true,
+          "results": [
+            {
+              "samplePoint": {
+                "x": 65.0,
+                "y": 5.0
+              },
+              "status": "ambiguous"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "case_id": "sample_surface_z_mixed_results",
+      "kind": "tool_case",
+      "owner": "STI-02",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "params": {
+          "name": "sample_surface_z",
+          "arguments": {
+            "target": {
+              "persistentId": "4001"
+            },
+            "samplePoints": [
+              {
+                "x": 5.0,
+                "y": 5.0
+              },
+              {
+                "x": 15.0,
+                "y": 15.0
+              }
+            ],
+            "visibleOnly": true
+          }
+        },
+        "id": "sample-mixed"
+      },
+      "response": {
+        "jsonrpc": "2.0",
+        "id": "sample-mixed",
+        "result": {
+          "success": true,
+          "results": [
+            {
+              "samplePoint": {
+                "x": 5.0,
+                "y": 5.0
+              },
+              "status": "hit",
+              "hitPoint": {
+                "x": 5.0,
+                "y": 5.0,
+                "z": 2.5
+              }
+            },
+            {
+              "samplePoint": {
+                "x": 15.0,
+                "y": 15.0
+              },
+              "status": "miss"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "case_id": "sample_surface_z_ignore_targets",
+      "kind": "tool_case",
+      "owner": "STI-02",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "params": {
+          "name": "sample_surface_z",
+          "arguments": {
+            "target": {
+              "persistentId": "4006"
+            },
+            "ignoreTargets": [
+              {
+                "persistentId": "4007"
+              }
+            ],
+            "samplePoints": [
+              {
+                "x": 105.0,
+                "y": 5.0
+              }
+            ]
+          }
+        },
+        "id": "sample-ignore"
+      },
+      "response": {
+        "jsonrpc": "2.0",
+        "id": "sample-ignore",
+        "result": {
+          "success": true,
+          "results": [
+            {
+              "samplePoint": {
+                "x": 105.0,
+                "y": 5.0
+              },
+              "status": "hit",
+              "hitPoint": {
+                "x": 105.0,
+                "y": 5.0,
+                "z": 1.5
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "case_id": "sample_surface_z_unsupported_target",
+      "kind": "tool_case",
+      "owner": "STI-02",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "params": {
+          "name": "sample_surface_z",
+          "arguments": {
+            "target": {
+              "persistentId": "4009"
+            },
+            "samplePoints": [
+              {
+                "x": 125.0,
+                "y": 0.0
+              }
+            ]
+          }
+        },
+        "id": "sample-unsupported"
+      },
+      "response": {
+        "jsonrpc": "2.0",
+        "id": "sample-unsupported",
+        "error": {
+          "code": -32603,
+          "message": "Target type edge is not supported by sample_surface_z",
+          "data": {
+            "success": false
+          }
+        }
+      }
+    },
+    {
       "case_id": "wave_ready_tool_call",
       "kind": "tool_case",
       "owner": "future-wave",

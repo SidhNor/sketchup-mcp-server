@@ -7,6 +7,7 @@ module SU_MCP
       'get_scene_info' => :get_scene_info,
       'list_entities' => :list_entities,
       'find_entities' => :find_entities,
+      'sample_surface_z' => :sample_surface_z,
       'get_entity_info' => :get_entity_info,
       'create_component' => :create_component,
       'delete_component' => :delete_component,

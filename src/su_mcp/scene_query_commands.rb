@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require_relative 'adapters/model_adapter'
+require_relative 'sample_surface_query'
 require_relative 'scene_query_serializer'
 require_relative 'targeting_query'
 
@@ -12,6 +13,7 @@ module SU_MCP
       @adapter = adapter || Adapters::ModelAdapter.new
       @serializer = serializer || SceneQuerySerializer.new
       @targeting_query = TargetingQuery.new(serializer: @serializer)
+      @sample_surface_query = SampleSurfaceQuery.new(serializer: @serializer)
     end
 
     def list_resources
@@ -70,6 +72,11 @@ module SU_MCP
       }
     end
 
+    def sample_surface_z(params)
+      adapter.active_model!
+      sample_surface_query.execute(entities: adapter.queryable_entities, params: params)
+    end
+
     def selection_info
       adapter.active_model!
       selection = adapter.selected_entities
@@ -82,7 +89,7 @@ module SU_MCP
 
     private
 
-    attr_reader :adapter, :serializer, :targeting_query
+    attr_reader :adapter, :serializer, :targeting_query, :sample_surface_query
 
     def model_summary(model)
       {

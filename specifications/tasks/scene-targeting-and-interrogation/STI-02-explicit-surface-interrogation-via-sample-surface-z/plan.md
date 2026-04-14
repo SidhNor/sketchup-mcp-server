@@ -319,12 +319,20 @@ flowchart LR
 
 ## Risks and Mitigations
 
-- `STI-01` target-resolution behavior is not yet implemented: sequence `STI-02` after the targeting contract and shared Ruby target-resolution internals are available, and do not duplicate targeting semantics inside sampling.
-- Public geometry units may drift if inspection-style serialization is reused accidentally: add a dedicated sampling serializer path and explicit tests for world-space meter output.
-- Group and component-instance sampling may expose transformation or nested-face edge cases: keep v1 support bounded to sampleable face resolution, require world-space transformation handling in the sampling path, add targeted Ruby tests, and include manual SketchUp verification for transformed geometry.
-- Ambiguity behavior may be underdefined in pure fake-scene tests: define ambiguity at the Z-cluster level rather than raw face count, keep the rule deterministic, and verify representative competing-surface cases manually in SketchUp.
-- A generic `raytest`-style approach could accidentally reintroduce scene-probing semantics or first-hit bias: keep the plan explicit that v1 uses target-bounded face evaluation instead.
-- Hosted-runtime verification infrastructure is still deferred under `PLAT-06`: keep manual verification explicit in this task rather than assuming confidence from non-hosted tests alone.
+- Public geometry units may drift if inspection-style serialization is reused accidentally: keep the dedicated sampling serializer path in `src/su_mcp/scene_query_serializer.rb` and preserve explicit tests for world-space meter output.
+- Group and component-instance sampling can expose transformation or nested-face edge cases: keep transform-aware traversal in the Ruby sampling path, preserve targeted Ruby tests for transformed targets, and manually verify transformed geometry in live SketchUp.
+- Ambiguity behavior can be underdefined in pure fake-scene tests: keep ambiguity defined at the Z-cluster level rather than raw face count, preserve deterministic clustering tests, and manually verify representative competing-surface scenarios in SketchUp.
+- A generic `raytest`-style approach could accidentally reintroduce scene-probing semantics or first-hit bias: keep the implementation target-bounded and preserve explicit `hit` / `miss` / `ambiguous` contract cases.
+- Hosted-runtime verification infrastructure is still deferred under `PLAT-06`: keep manual verification explicit in this task rather than assuming full confidence from non-hosted tests alone.
+
+## Implementation Notes
+
+- The Ruby sampling path was extracted into `src/su_mcp/sample_surface_query.rb` during implementation so explicit target resolution, face collection, occlusion handling, clustering, and result shaping stay out of `SceneQueryCommands`.
+- Public `sample_surface_z` point serialization now uses dedicated meter-space helpers in `src/su_mcp/scene_query_serializer.rb` instead of reusing the broader scene-inspection point arrays.
+- The Ruby test surface needed a narrow custom overlay in `test/support/scene_query_test_support.rb` because the existing scene-query fakes modeled inspection entities but could not credibly express explicit sampleable faces, stacked target surfaces, visible occluders, transformed nested targets, or sloped faces.
+- Local TDD used dedicated Ruby command coverage in `test/sample_surface_z_scene_query_commands_test.rb`, dispatcher coverage in `test/tool_dispatcher_test.rb`, Python tool-schema coverage in `python/tests/test_tools.py`, and shared-contract updates in both native contract suites.
+- The final Ruby helper carries nested group/component transformations while traversing sampleable faces and uses a runtime face-plane intersection plus `classify_point` path for non-fixture SketchUp faces, replacing the earlier bounds-center shortcut that review flagged as unsafe.
+- Manual SketchUp verification still remains outstanding after the automated pass, so live runtime confidence for real SketchUp geometry depends on executing the representative runtime scenarios from this plan and the deferred hosted verification work under `PLAT-06`.
 
 ## Dependencies
 

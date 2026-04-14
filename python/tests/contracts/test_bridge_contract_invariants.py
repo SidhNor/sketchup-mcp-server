@@ -192,3 +192,130 @@ def test_find_entities_malformed_request_maps_remote_error_from_shared_contract_
             contract_case["request"]["params"]["arguments"],
             request_id=contract_case["request"]["id"],
         )
+
+
+def test_sample_surface_z_hit_matches_shared_contract_case() -> None:
+    bridge = require_module("sketchup_mcp_server.bridge")
+    contract_case = contract_cases_by_id().get("sample_surface_z_hit")
+
+    assert contract_case is not None
+
+    fake_socket = FakeSocket(
+        responses=[json.dumps(contract_case["response"]).encode("utf-8")]
+    )
+    client = bridge.BridgeClient(_settings(), socket_factory=lambda *_args, **_kwargs: fake_socket)
+
+    result = client.call_tool(
+        contract_case["request"]["params"]["name"],
+        contract_case["request"]["params"]["arguments"],
+        request_id=contract_case["request"]["id"],
+    )
+
+    assert _sent_json(fake_socket) == contract_case["request"]
+    assert result == contract_case["response"]["result"]
+
+
+def test_sample_surface_z_miss_matches_shared_contract_case() -> None:
+    bridge = require_module("sketchup_mcp_server.bridge")
+    contract_case = contract_cases_by_id().get("sample_surface_z_miss")
+
+    assert contract_case is not None
+
+    fake_socket = FakeSocket(
+        responses=[json.dumps(contract_case["response"]).encode("utf-8")]
+    )
+    client = bridge.BridgeClient(_settings(), socket_factory=lambda *_args, **_kwargs: fake_socket)
+
+    result = client.call_tool(
+        contract_case["request"]["params"]["name"],
+        contract_case["request"]["params"]["arguments"],
+        request_id=contract_case["request"]["id"],
+    )
+
+    assert _sent_json(fake_socket) == contract_case["request"]
+    assert result == contract_case["response"]["result"]
+
+
+def test_sample_surface_z_ambiguous_matches_shared_contract_case() -> None:
+    bridge = require_module("sketchup_mcp_server.bridge")
+    contract_case = contract_cases_by_id().get("sample_surface_z_ambiguous")
+
+    assert contract_case is not None
+
+    fake_socket = FakeSocket(
+        responses=[json.dumps(contract_case["response"]).encode("utf-8")]
+    )
+    client = bridge.BridgeClient(_settings(), socket_factory=lambda *_args, **_kwargs: fake_socket)
+
+    result = client.call_tool(
+        contract_case["request"]["params"]["name"],
+        contract_case["request"]["params"]["arguments"],
+        request_id=contract_case["request"]["id"],
+    )
+
+    assert _sent_json(fake_socket) == contract_case["request"]
+    assert result == contract_case["response"]["result"]
+
+
+def test_sample_surface_z_mixed_results_matches_shared_contract_case() -> None:
+    bridge = require_module("sketchup_mcp_server.bridge")
+    contract_case = contract_cases_by_id().get("sample_surface_z_mixed_results")
+
+    assert contract_case is not None
+
+    fake_socket = FakeSocket(
+        responses=[json.dumps(contract_case["response"]).encode("utf-8")]
+    )
+    client = bridge.BridgeClient(_settings(), socket_factory=lambda *_args, **_kwargs: fake_socket)
+
+    result = client.call_tool(
+        contract_case["request"]["params"]["name"],
+        contract_case["request"]["params"]["arguments"],
+        request_id=contract_case["request"]["id"],
+    )
+
+    assert _sent_json(fake_socket) == contract_case["request"]
+    assert result == contract_case["response"]["result"]
+
+
+def test_sample_surface_z_ignore_targets_matches_shared_contract_case() -> None:
+    bridge = require_module("sketchup_mcp_server.bridge")
+    contract_case = contract_cases_by_id().get("sample_surface_z_ignore_targets")
+
+    assert contract_case is not None
+
+    fake_socket = FakeSocket(
+        responses=[json.dumps(contract_case["response"]).encode("utf-8")]
+    )
+    client = bridge.BridgeClient(_settings(), socket_factory=lambda *_args, **_kwargs: fake_socket)
+
+    result = client.call_tool(
+        contract_case["request"]["params"]["name"],
+        contract_case["request"]["params"]["arguments"],
+        request_id=contract_case["request"]["id"],
+    )
+
+    assert _sent_json(fake_socket) == contract_case["request"]
+    assert result == contract_case["response"]["result"]
+
+
+def test_sample_surface_z_unsupported_target_maps_remote_error_from_shared_contract_case() -> None:
+    bridge = require_module("sketchup_mcp_server.bridge")
+    contract_case = contract_cases_by_id().get("sample_surface_z_unsupported_target")
+
+    assert contract_case is not None
+
+    fake_socket = FakeSocket(
+        responses=[json.dumps(contract_case["response"]).encode("utf-8")]
+    )
+    client = bridge.BridgeClient(_settings(), socket_factory=lambda *_args, **_kwargs: fake_socket)
+
+    with pytest.raises(
+        bridge.BridgeRemoteError,
+        match=contract_case["response"]["error"]["message"],
+    ):
+        client.call_tool(
+            contract_case["request"]["params"]["name"],
+            contract_case["request"]["params"]["arguments"],
+            request_id=contract_case["request"]["id"],
+        )

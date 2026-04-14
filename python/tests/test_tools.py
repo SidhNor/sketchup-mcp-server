@@ -50,6 +50,7 @@ def test_register_all_tools_exposes_the_expected_names() -> None:
         "get_scene_info",
         "list_entities",
         "find_entities",
+        "sample_surface_z",
         "get_entity_info",
         "create_component",
         "delete_component",
@@ -129,6 +130,97 @@ def test_find_entities_passthrough_preserves_query_shape_and_request_id() -> Non
             "name": "find_entities",
             "arguments": {"query": {"persistentId": "1001", "tag": "Trees"}},
             "request_id": "find-1",
+        }
+    ]
+
+
+def test_sample_surface_z_exposes_typed_nested_schema() -> None:
+    tool, _bridge_client = _registered_tool_definition(
+        "sketchup_mcp_server.tools.scene",
+        "sample_surface_z",
+    )
+
+    schema = dereference_refs(tool.parameters)
+
+    assert schema["type"] == "object"
+    assert schema["required"] == ["target", "samplePoints"]
+    assert schema["properties"]["target"] == {
+        "type": "object",
+        "properties": {
+            "sourceElementId": {
+                "anyOf": [{"type": "string"}, {"type": "null"}],
+                "default": None,
+            },
+            "persistentId": {
+                "anyOf": [{"type": "string"}, {"type": "null"}],
+                "default": None,
+            },
+            "entityId": {
+                "anyOf": [{"type": "string"}, {"type": "null"}],
+                "default": None,
+            },
+        },
+    }
+    assert schema["properties"]["samplePoints"] == {
+        "type": "array",
+        "items": {
+            "type": "object",
+            "properties": {"x": {"type": "number"}, "y": {"type": "number"}},
+            "required": ["x", "y"],
+        },
+    }
+    assert schema["properties"]["ignoreTargets"] == {
+        "anyOf": [
+            {
+                "type": "array",
+                "items": {
+                    "type": "object",
+                    "properties": {
+                        "sourceElementId": {
+                            "anyOf": [{"type": "string"}, {"type": "null"}],
+                            "default": None,
+                        },
+                        "persistentId": {
+                            "anyOf": [{"type": "string"}, {"type": "null"}],
+                            "default": None,
+                        },
+                        "entityId": {
+                            "anyOf": [{"type": "string"}, {"type": "null"}],
+                            "default": None,
+                        },
+                    },
+                },
+            },
+            {"type": "null"},
+        ],
+        "default": None,
+    }
+    assert schema["properties"]["visibleOnly"] == {"type": "boolean", "default": True}
+
+
+def test_sample_surface_z_passthrough_preserves_nested_shape_and_request_id() -> None:
+    scene_module = require_module("sketchup_mcp_server.tools.scene")
+    fn, bridge_client = _registered_tool("sketchup_mcp_server.tools.scene", "sample_surface_z")
+
+    fn(
+        DummyContext("sample-1"),
+        target=scene_module.SampleSurfaceTarget(persistentId="4006"),
+        samplePoints=[scene_module.SampleSurfacePoint(x=105.0, y=5.0)],
+        ignoreTargets=[scene_module.SampleSurfaceTarget(persistentId="4007")],
+        visibleOnly=True,
+    )
+
+    assert bridge_client.calls == [
+        {
+            "kind": "tool",
+            "name": "sample_surface_z",
+            "arguments": {
+                "target": {"persistentId": "4006"},
+                "samplePoints": [{"x": 105.0, "y": 5.0}],
+                "ignoreTargets": [{"persistentId": "4007"}],
+                "visibleOnly": True,
+            },
+            "request_id": "sample-1",
         }
     ]
 

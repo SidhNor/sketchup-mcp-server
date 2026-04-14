@@ -20,6 +20,17 @@ def test_seed_contract_cases_cover_required_bridge_invariants() -> None:
     }
 
 
+def test_seed_contract_cases_cover_required_sample_surface_z_tool_cases() -> None:
+    assert set(contract_cases_by_id()) >= {
+        "sample_surface_z_hit",
+        "sample_surface_z_miss",
+        "sample_surface_z_ambiguous",
+        "sample_surface_z_mixed_results",
+        "sample_surface_z_ignore_targets",
+        "sample_surface_z_unsupported_target",
+    }
+
+
 def test_each_contract_case_declares_minimum_metadata() -> None:
     for contract_case in load_contract_artifact()["cases"]:
         assert set(contract_case) >= {"case_id", "kind", "owner"}
