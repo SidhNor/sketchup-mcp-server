@@ -2,6 +2,14 @@
 
 <!-- version list -->
 
+## v0.5.1 (2026-04-14)
+
+### Bug Fixes
+
+- **PLAT-04**: Add additional tool descriptions
+  ([`6c7d7d1`](https://github.com/SidhNor/sketchup-mcp-server/commit/6c7d7d1a65bbf7ecf837ec295ceb0bc004a56713))
+
+
 ## v0.5.0 (2026-04-14)
 
 ### Features
