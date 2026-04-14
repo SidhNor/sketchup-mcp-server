@@ -2,6 +2,14 @@
 
 <!-- version list -->
 
+## v0.5.0 (2026-04-14)
+
+### Features
+
+- **PLAT-04**: Add MCP tool decoration contract
+  ([`7cd1584`](https://github.com/SidhNor/sketchup-mcp-server/commit/7cd1584e7cd0d06fdabaf6f0ed1b07dd64d0ea54))
+
+
 ## v0.4.0 (2026-04-14)
 
 ### Documentation
