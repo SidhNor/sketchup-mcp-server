@@ -1,7 +1,7 @@
 # Task: STI-01 Targeting MVP and `find_entities`
 **Task ID**: `STI-01`
 **Title**: `Targeting MVP and find_entities`
-**Status**: `draft`
+**Status**: `planned`
 **Priority**: `P0`
 **Date**: `2026-04-14`
 
@@ -46,6 +46,7 @@ Scenario: the MVP boundary is explicit and testable
   Given metadata and workflow collection conventions are not yet implemented for this capability
   When the task is reviewed
   Then automated Ruby and Python tests cover the supported MVP request and response behavior
+  And the shared contract artifact and both native contract suites cover the new public tool boundary
   And the task does not claim metadata-aware or collection-aware filtering as completed behavior
 ```
 
@@ -66,6 +67,7 @@ Scenario: the MVP boundary is explicit and testable
 - Ruby must own entity resolution, ambiguity handling, and JSON-safe match serialization
 - Python must remain a thin MCP adapter over the Ruby command and must not reimplement targeting logic
 - the targeting contract must align with the HLD's explicit resolution-state model and stay compatible with the existing bridge boundary
+- the task must add or update the shared contract artifact and native Ruby and Python contract suites for the new public tool
 - the task must build on the current shared Ruby adapter and serializer seams rather than bypassing them
 
 ## Dependencies
@@ -80,10 +82,10 @@ Scenario: the MVP boundary is explicit and testable
 
 ## Related Technical Plan
 
-- none yet
+- [Technical Plan](./plan.md)
 
 ## Success Metrics
 
 - representative supported lookup scenarios can resolve targets through `find_entities` without falling back to broad scene inspection
 - ambiguous and not-found targeting outcomes are visible as explicit structured states rather than inferred from missing data
-- the Python/Ruby contract for `find_entities` is covered by automated tests for supported MVP request and response behavior
+- the Python/Ruby contract for `find_entities` is covered by automated tests for supported MVP request and response behavior, including the shared contract artifact and both native contract suites
