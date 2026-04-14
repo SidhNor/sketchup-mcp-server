@@ -2,6 +2,25 @@
 
 <!-- version list -->
 
+## v0.4.0 (2026-04-14)
+
+### Documentation
+
+- **PLAT-04**: Planned mcp tool description updates
+  ([`4db2b29`](https://github.com/SidhNor/sketchup-mcp-server/commit/4db2b2974e93ff95eedfe5980dc35ad1b5bdae47))
+
+- **SEM-02**: Planning
+  ([`4ed7fa9`](https://github.com/SidhNor/sketchup-mcp-server/commit/4ed7fa9199ae6306869e9692e6b04f1e85ae65b0))
+
+- **SEM-03**: Planned entity metadata
+  ([`d0a1ef0`](https://github.com/SidhNor/sketchup-mcp-server/commit/d0a1ef04961b13ca8457a143798651f0da4009c4))
+
+### Features
+
+- **SEM-01**: Implement initial create site element
+  ([`c3bd634`](https://github.com/SidhNor/sketchup-mcp-server/commit/c3bd6342eb260ffffe3c7a57b65d1df91ef6fbc8))
+
+
 ## v0.3.0 (2026-04-14)
 
 ### Documentation
