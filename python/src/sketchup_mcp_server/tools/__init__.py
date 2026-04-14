@@ -6,7 +6,7 @@ from fastmcp import FastMCP
 
 from ..bridge import BridgeClient
 from ..config import ServerSettings
-from . import developer, modeling, platform, scene
+from . import developer, modeling, platform, scene, semantic
 
 
 def register_all_tools(
@@ -19,6 +19,7 @@ def register_all_tools(
     # capability-oriented modules.
     platform.register_tools(mcp, settings=settings, bridge_client=bridge_client)
     scene.register_tools(mcp, settings=settings, bridge_client=bridge_client)
+    semantic.register_tools(mcp, settings=settings, bridge_client=bridge_client)
     modeling.register_primary_tools(mcp, settings=settings, bridge_client=bridge_client)
     scene.register_selection_tool(mcp, settings=settings, bridge_client=bridge_client)
     modeling.register_secondary_tools(mcp, settings=settings, bridge_client=bridge_client)

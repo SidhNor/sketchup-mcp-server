@@ -31,6 +31,15 @@ def test_seed_contract_cases_cover_required_sample_surface_z_tool_cases() -> Non
     }
 
 
+def test_seed_contract_cases_cover_required_create_site_element_tool_cases() -> None:
+    assert set(contract_cases_by_id()) >= {
+        "create_site_element_structure_created",
+        "create_site_element_pad_created",
+        "create_site_element_contradictory_payload_refused",
+        "create_site_element_unsupported_type_refused",
+    }
+
+
 def test_each_contract_case_declares_minimum_metadata() -> None:
     for contract_case in load_contract_artifact()["cases"]:
         assert set(contract_case) >= {"case_id", "kind", "owner"}

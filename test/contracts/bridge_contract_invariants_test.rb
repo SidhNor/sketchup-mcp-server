@@ -241,6 +241,57 @@ class BridgeContractSampleSurfaceZRequestHandlerTest < Minitest::Test
   end
 end
 
+class BridgeContractCreateSiteElementRequestHandlerTest < Minitest::Test
+  include BridgeContractCaseAssertions
+
+  def test_create_site_element_structure_created_matches_shared_contract_case
+    contract_case = contract_case('create_site_element_structure_created')
+    response = successful_create_site_element_response(contract_case)
+
+    assert_equal(contract_case.dig('response', 'result', 'managedObject', 'semanticType'),
+                 response.dig(:result, :managedObject, 'semanticType'))
+  end
+
+  def test_create_site_element_pad_created_matches_shared_contract_case
+    contract_case = contract_case('create_site_element_pad_created')
+    response = successful_create_site_element_response(contract_case)
+
+    assert_equal(contract_case.dig('response', 'result', 'managedObject', 'semanticType'),
+                 response.dig(:result, :managedObject, 'semanticType'))
+  end
+
+  def test_create_site_element_contradictory_payload_refused_matches_shared_contract_case
+    contract_case = contract_case('create_site_element_contradictory_payload_refused')
+    response = successful_create_site_element_response(contract_case)
+
+    assert_equal(contract_case.dig('response', 'result', 'outcome'),
+                 response.dig(:result, :outcome))
+    assert_equal(contract_case.dig('response', 'result', 'refusal', 'code'),
+                 response.dig(:result, :refusal, 'code'))
+  end
+
+  def test_create_site_element_unsupported_type_refused_matches_shared_contract_case
+    contract_case = contract_case('create_site_element_unsupported_type_refused')
+    response = successful_create_site_element_response(contract_case)
+
+    assert_equal(contract_case.dig('response', 'result', 'outcome'),
+                 response.dig(:result, :outcome))
+    assert_equal(contract_case.dig('response', 'result', 'refusal', 'code'),
+                 response.dig(:result, :refusal, 'code'))
+  end
+
+  private
+
+  def successful_create_site_element_response(contract_case)
+    build_handler(
+      tool_executor: lambda do |tool_name, args|
+        assert_equal(expected_tool_call(contract_case), [tool_name, args])
+        contract_result(contract_case)
+      end
+    ).handle(contract_case.fetch('request'))
+  end
+end
+
 class BridgeContractRequestProcessorTest < Minitest::Test
   include BridgeContractCaseAssertions
 

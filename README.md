@@ -91,8 +91,9 @@ The current cross-runtime tool surface includes scene inspection and targeting h
 - `get_entity_info`
 - `find_entities`
 - `sample_surface_z`
+- `create_site_element`
 
-`find_entities` resolves explicit targets through the supported MVP identifier and exact-match query paths. `sample_surface_z` samples explicit target geometry at one or more world-space XY points in meters and returns compact per-point `hit`, `miss`, or `ambiguous` outcomes.
+`find_entities` resolves explicit targets through the supported MVP identifier and exact-match query paths. `sample_surface_z` samples explicit target geometry at one or more world-space XY points in meters and returns compact per-point `hit`, `miss`, or `ambiguous` outcomes. `create_site_element` is the first semantic creation path and currently delivers the SEM-01 MVP slice for `pad` and `structure`, including structured refusal outcomes for unsupported or contradictory semantic payloads.
 
 ## Bridge contract coverage
 

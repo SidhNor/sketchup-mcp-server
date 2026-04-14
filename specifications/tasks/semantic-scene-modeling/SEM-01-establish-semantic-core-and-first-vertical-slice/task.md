@@ -1,7 +1,7 @@
 # Task: SEM-01 Establish Semantic Core and First Vertical Slice
 **Task ID**: `SEM-01`
 **Title**: `Establish Semantic Core and First Vertical Slice`
-**Status**: `planned`
+**Status**: `completed`
 **Priority**: `P0`
 **Date**: `2026-04-14`
 

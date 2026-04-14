@@ -562,6 +562,173 @@
           }
         }
       }
+    },
+    {
+      "case_id": "create_site_element_structure_created",
+      "kind": "tool_case",
+      "owner": "SEM-01",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "params": {
+          "name": "create_site_element",
+          "arguments": {
+            "elementType": "structure",
+            "sourceElementId": "house-extension-001",
+            "status": "proposed",
+            "footprint": [[0, 0], [6, 0], [6, 4], [0, 4]],
+            "elevation": 0.0,
+            "height": 3.2,
+            "structureCategory": "extension",
+            "name": "Rear Extension",
+            "tag": "Proposed",
+            "material": "Siding"
+          }
+        },
+        "id": "semantic-structure-created"
+      },
+      "response": {
+        "jsonrpc": "2.0",
+        "id": "semantic-structure-created",
+        "result": {
+          "success": true,
+          "outcome": "created",
+          "managedObject": {
+            "sourceElementId": "house-extension-001",
+            "persistentId": "1234",
+            "entityId": "56",
+            "semanticType": "structure",
+            "status": "proposed",
+            "state": "Created",
+            "structureCategory": "extension",
+            "name": "Rear Extension",
+            "tag": "Proposed",
+            "material": "Siding",
+            "bounds": {
+              "min": [0.0, 0.0, 0.0],
+              "max": [6.0, 4.0, 3.2]
+            }
+          }
+        }
+      }
+    },
+    {
+      "case_id": "create_site_element_pad_created",
+      "kind": "tool_case",
+      "owner": "SEM-01",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "params": {
+          "name": "create_site_element",
+          "arguments": {
+            "elementType": "pad",
+            "sourceElementId": "terrace-001",
+            "status": "proposed",
+            "footprint": [[0, 0], [5, 0], [5, 3], [0, 3]],
+            "elevation": 0.15,
+            "thickness": 0.2,
+            "name": "Front Terrace",
+            "tag": "Proposed",
+            "material": "Concrete"
+          }
+        },
+        "id": "semantic-pad-created"
+      },
+      "response": {
+        "jsonrpc": "2.0",
+        "id": "semantic-pad-created",
+        "result": {
+          "success": true,
+          "outcome": "created",
+          "managedObject": {
+            "sourceElementId": "terrace-001",
+            "persistentId": "2234",
+            "entityId": "57",
+            "semanticType": "pad",
+            "status": "proposed",
+            "state": "Created",
+            "name": "Front Terrace",
+            "tag": "Proposed",
+            "material": "Concrete",
+            "bounds": {
+              "min": [0.0, 0.0, -0.05],
+              "max": [5.0, 3.0, 0.15]
+            }
+          }
+        }
+      }
+    },
+    {
+      "case_id": "create_site_element_contradictory_payload_refused",
+      "kind": "tool_case",
+      "owner": "SEM-01",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "params": {
+          "name": "create_site_element",
+          "arguments": {
+            "elementType": "pad",
+            "sourceElementId": "deck-001",
+            "status": "proposed",
+            "footprint": [[0, 0], [4, 0], [4, 3], [0, 3]],
+            "elevation": 1.2,
+            "height": 2.8,
+            "structureCategory": "extension"
+          }
+        },
+        "id": "semantic-contradictory-refused"
+      },
+      "response": {
+        "jsonrpc": "2.0",
+        "id": "semantic-contradictory-refused",
+        "result": {
+          "success": true,
+          "outcome": "refused",
+          "refusal": {
+            "code": "contradictory_semantic_payload",
+            "message": "Request includes conflicting pad and structure semantics.",
+            "details": {
+              "elementType": "pad"
+            }
+          }
+        }
+      }
+    },
+    {
+      "case_id": "create_site_element_unsupported_type_refused",
+      "kind": "tool_case",
+      "owner": "SEM-01",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "params": {
+          "name": "create_site_element",
+          "arguments": {
+            "elementType": "tree_proxy",
+            "sourceElementId": "tree-001",
+            "status": "proposed",
+            "footprint": [[0, 0], [1, 0], [0, 1]]
+          }
+        },
+        "id": "semantic-unsupported-refused"
+      },
+      "response": {
+        "jsonrpc": "2.0",
+        "id": "semantic-unsupported-refused",
+        "result": {
+          "success": true,
+          "outcome": "refused",
+          "refusal": {
+            "code": "unsupported_element_type",
+            "message": "Element type is not supported in SEM-01.",
+            "details": {
+              "elementType": "tree_proxy"
+            }
+          }
+        }
+      }
     }
   ]
 }

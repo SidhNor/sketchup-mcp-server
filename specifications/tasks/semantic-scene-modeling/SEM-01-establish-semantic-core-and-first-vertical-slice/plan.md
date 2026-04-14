@@ -383,3 +383,20 @@ Implement the slice contract-first and outside-in:
 - [x] Test requirements specified
 - [x] Risks and dependencies documented
 - [x] Small reversible phases defined
+
+## Implementation Notes
+
+- The implementation followed the planned outside-in order:
+  - shared contract shell and Python tool tests
+  - Ruby dispatcher and socket-server wiring
+  - Ruby semantic core helpers
+  - `pad` and `structure` builders
+- A narrow test-owned semantic fixture overlay was added at `test/support/semantic_test_support.rb`.
+  - Reason: the existing `scene_query_test_support.rb` helpers were read-oriented and could not credibly model operation boundaries, wrapper-group creation, attribute writes, or face `pushpull` behavior for semantic creation tests.
+- The shipped Ruby validation layer currently covers:
+  - unsupported semantic type refusal
+  - contradictory `pad` versus `structure` payload refusal
+  - invalid footprint refusal for degenerate polygons
+  - required `structureCategory` refusal
+  - approved `structureCategory` vocabulary checks
+  - positive numeric checks for `structure.height` and `pad.thickness`

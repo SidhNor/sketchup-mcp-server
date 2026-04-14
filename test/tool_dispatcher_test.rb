@@ -36,7 +36,17 @@ class ToolDispatcherTest < Minitest::Test
       { success: true, results: [{ samplePoint: args.fetch('samplePoints').first, status: 'hit' }] }
     end
 
-    private :get_scene_info, :export_scene, :selection_info, :find_entities, :sample_surface_z
+    def create_site_element(args)
+      @calls << [:create_site_element, args]
+      {
+        success: true,
+        outcome: 'created',
+        managedObject: { sourceElementId: args.fetch('sourceElementId') }
+      }
+    end
+
+    private :get_scene_info, :export_scene, :selection_info, :find_entities, :sample_surface_z,
+            :create_site_element
   end
 
   class ExportOnlyTarget
@@ -126,6 +136,37 @@ class ToolDispatcherTest < Minitest::Test
         }
       ]],
       @target.calls
+    )
+  end
+  # rubocop:enable Metrics/MethodLength
+
+  # rubocop:disable Metrics/MethodLength
+  def test_dispatches_create_site_element_to_the_semantic_command
+    result = @dispatcher.call(
+      'create_site_element',
+      {
+        'elementType' => 'pad',
+        'sourceElementId' => 'terrace-001',
+        'status' => 'proposed',
+        'footprint' => [[0.0, 0.0], [3.0, 0.0], [3.0, 2.0]]
+      }
+    )
+
+    assert_equal(
+      { success: true, outcome: 'created', managedObject: { sourceElementId: 'terrace-001' } },
+      result
+    )
+    assert_equal(
+      [[
+        :create_site_element,
+        {
+          'elementType' => 'pad',
+          'sourceElementId' => 'terrace-001',
+          'status' => 'proposed',
+          'footprint' => [[0.0, 0.0], [3.0, 0.0], [3.0, 2.0]]
+        }
+      ]],
+      @target.calls.last(1)
     )
   end
   # rubocop:enable Metrics/MethodLength

@@ -9,6 +9,7 @@ module SU_MCP
       'find_entities' => :find_entities,
       'sample_surface_z' => :sample_surface_z,
       'get_entity_info' => :get_entity_info,
+      'create_site_element' => :create_site_element,
       'create_component' => :create_component,
       'delete_component' => :delete_component,
       'transform_component' => :transform_component,

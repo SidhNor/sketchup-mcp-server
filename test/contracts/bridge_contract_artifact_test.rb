@@ -25,6 +25,17 @@ class BridgeContractArtifactTest < Minitest::Test
     assert_empty(expected_case_ids - contract_cases_by_id.keys)
   end
 
+  def test_seed_contract_cases_cover_required_create_site_element_tool_cases
+    expected_case_ids = %w[
+      create_site_element_structure_created
+      create_site_element_pad_created
+      create_site_element_contradictory_payload_refused
+      create_site_element_unsupported_type_refused
+    ]
+
+    assert_empty(expected_case_ids - contract_cases_by_id.keys)
+  end
+
   def test_each_contract_case_declares_minimum_metadata
     load_contract_artifact.fetch('cases').each do |contract_case|
       assert_empty(%w[case_id kind owner] - contract_case.keys)

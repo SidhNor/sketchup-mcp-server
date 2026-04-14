@@ -11,6 +11,7 @@ require_relative 'request_processor'
 require_relative 'response_helpers'
 require_relative 'runtime_logger'
 require_relative 'scene_query_commands'
+require_relative 'semantic_commands'
 require_relative 'tool_dispatcher'
 
 module SU_MCP
@@ -120,11 +121,17 @@ module SU_MCP
     end
 
     def tool_dispatcher
-      @tool_dispatcher ||= ToolDispatcher.new(command_targets: [scene_query_commands, self])
+      @tool_dispatcher ||= ToolDispatcher.new(
+        command_targets: [scene_query_commands, semantic_commands, self]
+      )
     end
 
     def scene_query_commands
       @scene_query_commands ||= SceneQueryCommands.new(logger: method(:log), adapter: model_adapter)
+    end
+
+    def semantic_commands
+      @semantic_commands ||= SemanticCommands.new(model: Sketchup.active_model)
     end
 
     def model_adapter

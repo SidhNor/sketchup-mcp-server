@@ -52,6 +52,7 @@ def test_register_all_tools_exposes_the_expected_names() -> None:
         "find_entities",
         "sample_surface_z",
         "get_entity_info",
+        "create_site_element",
         "create_component",
         "delete_component",
         "transform_component",
@@ -65,6 +66,72 @@ def test_register_all_tools_exposes_the_expected_names() -> None:
         "create_dovetail",
         "create_finger_joint",
         "eval_ruby",
+    ]
+
+
+def test_create_site_element_exposes_a_typed_semantic_request_schema() -> None:
+    tool, _bridge_client = _registered_tool_definition(
+        "sketchup_mcp_server.tools.semantic",
+        "create_site_element",
+    )
+
+    schema = dereference_refs(tool.parameters)
+
+    assert schema["type"] == "object"
+    assert schema["required"] == ["elementType", "sourceElementId", "status", "footprint"]
+    assert set(schema["properties"]) >= {
+        "elementType",
+        "sourceElementId",
+        "status",
+        "footprint",
+        "elevation",
+        "height",
+        "structureCategory",
+        "thickness",
+        "name",
+        "tag",
+        "material",
+    }
+
+
+def test_create_site_element_passthrough_preserves_semantic_shape_and_request_id() -> None:
+    fn, bridge_client = _registered_tool(
+        "sketchup_mcp_server.tools.semantic",
+        "create_site_element",
+    )
+
+    fn(
+        DummyContext("semantic-1"),
+        elementType="structure",
+        sourceElementId="house-extension-001",
+        status="proposed",
+        footprint=[[0.0, 0.0], [6.0, 0.0], [6.0, 4.0], [0.0, 4.0]],
+        elevation=0.0,
+        height=3.2,
+        structureCategory="extension",
+        name="Rear Extension",
+        tag="Proposed",
+        material="Siding",
+    )
+
+    assert bridge_client.calls == [
+        {
+            "kind": "tool",
+            "name": "create_site_element",
+            "arguments": {
+                "elementType": "structure",
+                "sourceElementId": "house-extension-001",
+                "status": "proposed",
+                "footprint": [[0.0, 0.0], [6.0, 0.0], [6.0, 4.0], [0.0, 4.0]],
+                "elevation": 0.0,
+                "height": 3.2,
+                "structureCategory": "extension",
+                "name": "Rear Extension",
+                "tag": "Proposed",
+                "material": "Siding",
+            },
+            "request_id": "semantic-1",
+        }
     ]
 
 

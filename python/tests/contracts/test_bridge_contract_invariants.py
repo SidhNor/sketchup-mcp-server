@@ -319,3 +319,87 @@ def test_sample_surface_z_unsupported_target_maps_remote_error_from_shared_contr
             contract_case["request"]["params"]["arguments"],
             request_id=contract_case["request"]["id"],
         )
+
+
+def test_create_site_element_structure_created_matches_shared_contract_case() -> None:
+    bridge = require_module("sketchup_mcp_server.bridge")
+    contract_case = contract_cases_by_id().get("create_site_element_structure_created")
+
+    assert contract_case is not None
+
+    fake_socket = FakeSocket(
+        responses=[json.dumps(contract_case["response"]).encode("utf-8")]
+    )
+    client = bridge.BridgeClient(_settings(), socket_factory=lambda *_args, **_kwargs: fake_socket)
+
+    result = client.call_tool(
+        contract_case["request"]["params"]["name"],
+        contract_case["request"]["params"]["arguments"],
+        request_id=contract_case["request"]["id"],
+    )
+
+    assert _sent_json(fake_socket) == contract_case["request"]
+    assert result == contract_case["response"]["result"]
+
+
+def test_create_site_element_pad_created_matches_shared_contract_case() -> None:
+    bridge = require_module("sketchup_mcp_server.bridge")
+    contract_case = contract_cases_by_id().get("create_site_element_pad_created")
+
+    assert contract_case is not None
+
+    fake_socket = FakeSocket(
+        responses=[json.dumps(contract_case["response"]).encode("utf-8")]
+    )
+    client = bridge.BridgeClient(_settings(), socket_factory=lambda *_args, **_kwargs: fake_socket)
+
+    result = client.call_tool(
+        contract_case["request"]["params"]["name"],
+        contract_case["request"]["params"]["arguments"],
+        request_id=contract_case["request"]["id"],
+    )
+
+    assert _sent_json(fake_socket) == contract_case["request"]
+    assert result == contract_case["response"]["result"]
+
+
+def test_create_site_element_contradictory_payload_refused_matches_shared_contract_case() -> None:
+    bridge = require_module("sketchup_mcp_server.bridge")
+    contract_case = contract_cases_by_id().get("create_site_element_contradictory_payload_refused")
+
+    assert contract_case is not None
+
+    fake_socket = FakeSocket(
+        responses=[json.dumps(contract_case["response"]).encode("utf-8")]
+    )
+    client = bridge.BridgeClient(_settings(), socket_factory=lambda *_args, **_kwargs: fake_socket)
+
+    result = client.call_tool(
+        contract_case["request"]["params"]["name"],
+        contract_case["request"]["params"]["arguments"],
+        request_id=contract_case["request"]["id"],
+    )
+
+    assert _sent_json(fake_socket) == contract_case["request"]
+    assert result == contract_case["response"]["result"]
+
+
+def test_create_site_element_unsupported_type_refused_matches_shared_contract_case() -> None:
+    bridge = require_module("sketchup_mcp_server.bridge")
+    contract_case = contract_cases_by_id().get("create_site_element_unsupported_type_refused")
+
+    assert contract_case is not None
+
+    fake_socket = FakeSocket(
+        responses=[json.dumps(contract_case["response"]).encode("utf-8")]
+    )
+    client = bridge.BridgeClient(_settings(), socket_factory=lambda *_args, **_kwargs: fake_socket)
+
+    result = client.call_tool(
+        contract_case["request"]["params"]["name"],
+        contract_case["request"]["params"]["arguments"],
+        request_id=contract_case["request"]["id"],
+    )
+
+    assert _sent_json(fake_socket) == contract_case["request"]
+    assert result == contract_case["response"]["result"]
