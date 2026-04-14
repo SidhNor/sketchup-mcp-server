@@ -17,6 +17,7 @@ Tasks are organized by scope area. Each task should:
 ## Current Task Sets
 
 - [Platform Tasks](platform/README.md)
+- [Scene Targeting and Interrogation Tasks](scene-targeting-and-interrogation/README.md)
 
 ## Relationship to Other Specifications
 
