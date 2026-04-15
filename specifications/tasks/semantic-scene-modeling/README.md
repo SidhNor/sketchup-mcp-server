@@ -9,19 +9,21 @@ These tasks are derived from:
 
 ## Task Set Intent
 
-This task set covers the first iteration for the semantic scene modeling capability.
+This task set covers the first iteration for the semantic scene modeling capability and the first captured follow-up geometry refinement that emerged from validating the shipped tree proxy against an accepted scene exemplar.
 
-The current iteration persists only the three confirmed core tasks:
+The current task set persists the three confirmed core tasks plus one follow-up refinement task:
 
 - semantic core plus the first `create_site_element` vertical slice
 - completion of the remaining first-wave semantic creation vocabulary
 - explicit metadata mutation for Managed Scene Objects
+- alignment of shipped `tree_proxy` geometry with the accepted volumetric baseline captured during validation
 
 ## Current Task Order
 
 1. [SEM-01 Establish Semantic Core and First Vertical Slice](SEM-01-establish-semantic-core-and-first-vertical-slice/task.md)
 2. [SEM-02 Complete First-Wave Semantic Creation Vocabulary](SEM-02-complete-first-wave-semantic-creation-vocabulary/task.md)
 3. [SEM-03 Add Metadata Mutation for Managed Scene Objects](SEM-03-add-metadata-mutation-for-managed-scene-objects/task.md)
+4. [SEM-04 Align Tree Proxy Geometry With Accepted Volumetric Baseline](SEM-04-align-tree-proxy-geometry-with-accepted-volumetric-baseline/task.md)
 
 ## Deferred Follow-Ons
 
@@ -37,3 +39,4 @@ The following follow-ons were intentionally kept out of the active task folders 
 - `SEM-03` is explicitly blocked by `STI-01` because semantic metadata mutation must reuse the delivered targeting contract rather than introduce a semantic-side lookup subsystem.
 - Contract updates are embedded into each active task that changes the public Python/Ruby tool surface. There is no standalone semantic contract task.
 - The active set is intentionally narrower than the full PRD. It proves the semantic capability in three core slices before expanding into rebuild, compatibility, or next-wave semantic work.
+- `SEM-04` is a refinement follow-up created after live geometry review. It preserves the existing semantic contract while capturing a stricter accepted baseline for `tree_proxy` output.
