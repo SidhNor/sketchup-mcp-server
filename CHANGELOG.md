@@ -2,6 +2,22 @@
 
 <!-- version list -->
 
+## v0.6.0 (2026-04-15)
+
+### Documentation
+
+- **SEM-02**: Refene plan with premortem
+  ([`42a0b78`](https://github.com/SidhNor/sketchup-mcp-server/commit/42a0b78dff707f6d9a9986f7cb9713d97af8adab))
+
+- **SEM-03**: Catter for nested objects
+  ([`4696ca7`](https://github.com/SidhNor/sketchup-mcp-server/commit/4696ca7eb3e0db76fb0dd49601671316c27b823a))
+
+### Features
+
+- **SEM-02**: Additional semantic creation shapes
+  ([`ff80896`](https://github.com/SidhNor/sketchup-mcp-server/commit/ff808961dff98c504721a3a4c4d60e8ef0a353a1))
+
+
 ## v0.5.1 (2026-04-14)
 
 ### Bug Fixes

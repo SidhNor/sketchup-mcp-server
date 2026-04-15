@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "sketchup-mcp-server"
-version = "0.5.1"
+version = "0.6.0"
 description = "FastMCP server for the SketchUp MCP extension."
 readme = "README.md"
 requires-python = ">=3.10"
