@@ -2,6 +2,14 @@
 
 <!-- version list -->
 
+## v0.7.0 (2026-04-15)
+
+### Features
+
+- **SEM-03**: Add metadata mutation to managed objects
+  ([`ccca259`](https://github.com/SidhNor/sketchup-mcp-server/commit/ccca2599b78d0c94286ed2ad7951c53a4513f09a))
+
+
 ## v0.6.0 (2026-04-15)
 
 ### Documentation
