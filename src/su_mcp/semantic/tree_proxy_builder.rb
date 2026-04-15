@@ -13,82 +13,37 @@ module SU_MCP
 
       SEGMENTS = 12
       ROTATION_RADIANS = Math::PI / 6.0
+      LOBE_PHASE_RADIANS = ROTATION_RADIANS
+      MIN_LOBE_SCALE = 0.58
 
-      # Ratios extracted from the accepted 2026-04-15 baseline tree proxy.
-      CANOPY_BASE_RATIO = 0.450482
       TRUNK_ANCHOR_RATIO = 0.477409
       TRUNK_TOP_RATIO = 0.536117
 
       CANOPY_RING_DEFINITIONS = [
-        {
-          kind: :canopy, z_ratio: CANOPY_BASE_RATIO,
-          radius_ratio: 0.42, lobe_strength: 0.10, trunk_multiplier: 1.45
-        },
-        {
-          kind: :canopy, z_ratio: 0.463882,
-          radius_ratio: 0.24, lobe_strength: 0.05, trunk_multiplier: 1.30
-        },
-        { kind: :trunk_anchor },
-        {
-          kind: :canopy, z_ratio: 0.490624,
-          radius_ratio: 0.20, lobe_strength: 0.05, trunk_multiplier: 1.05
-        },
-        {
-          kind: :canopy, z_ratio: 0.502622,
-          radius_ratio: 0.22, lobe_strength: 0.05, trunk_multiplier: 1.10
-        },
         { kind: :trunk_top },
         {
-          kind: :canopy, z_ratio: 0.551048,
-          radius_ratio: 0.25, lobe_strength: 0.06, trunk_multiplier: 1.18
+          kind: :canopy, z_ratio: 0.60,
+          radius_ratio: 0.24, lobe_strength: 0.0, trunk_multiplier: 1.45
         },
         {
-          kind: :canopy, z_ratio: 0.564857,
-          radius_ratio: 0.29, lobe_strength: 0.07, trunk_multiplier: 1.22
+          kind: :canopy, z_ratio: 0.69,
+          radius_ratio: 0.48, lobe_strength: 0.16, trunk_multiplier: 1.75
         },
         {
-          kind: :canopy, z_ratio: 0.571153,
-          radius_ratio: 0.33, lobe_strength: 0.08, trunk_multiplier: 1.25
+          kind: :canopy, z_ratio: 0.78,
+          radius_ratio: 0.72, lobe_strength: 0.22, trunk_multiplier: 1.00
         },
         {
-          kind: :canopy, z_ratio: 0.651518,
-          radius_ratio: 0.52, lobe_strength: 0.12, trunk_multiplier: 1.00
+          kind: :canopy, z_ratio: 0.85,
+          radius_ratio: 0.86, lobe_strength: 0.25, trunk_multiplier: 1.00
         },
         {
-          kind: :canopy, z_ratio: 0.665052,
-          radius_ratio: 0.59, lobe_strength: 0.14, trunk_multiplier: 1.00
+          kind: :canopy, z_ratio: 0.91,
+          radius_ratio: 0.74, lobe_strength: 0.18, trunk_multiplier: 1.00
         },
         {
-          kind: :canopy, z_ratio: 0.672419,
-          radius_ratio: 0.63, lobe_strength: 0.15, trunk_multiplier: 1.00
-        },
-        {
-          kind: :canopy, z_ratio: 0.751731,
-          radius_ratio: 0.80, lobe_strength: 0.18, trunk_multiplier: 1.00
-        },
-        {
-          kind: :canopy, z_ratio: 0.758437,
-          radius_ratio: 0.84, lobe_strength: 0.19, trunk_multiplier: 1.00
-        },
-        {
-          kind: :canopy, z_ratio: 0.791372,
-          radius_ratio: 0.92, lobe_strength: 0.17, trunk_multiplier: 1.00
-        },
-        {
-          kind: :canopy, z_ratio: 0.825405,
-          radius_ratio: 1.00, lobe_strength: 0.16, trunk_multiplier: 1.00
-        },
-        {
-          kind: :canopy, z_ratio: 0.852271,
-          radius_ratio: 0.93, lobe_strength: 0.13, trunk_multiplier: 1.00
-        },
-        {
-          kind: :canopy, z_ratio: 0.898963,
-          radius_ratio: 0.70, lobe_strength: 0.09, trunk_multiplier: 1.00
-        },
-        {
-          kind: :canopy, z_ratio: 0.973453,
-          radius_ratio: 0.34, lobe_strength: 0.04, trunk_multiplier: 1.00
+          kind: :canopy, z_ratio: 0.965,
+          radius_ratio: 0.40, lobe_strength: 0.10, trunk_multiplier: 1.00
         }
       ].freeze
 
@@ -231,8 +186,8 @@ module SU_MCP
       # rubocop:enable Metrics/AbcSize
 
       def lobed_radius_scale(angle, lobe_strength)
-        normalized_wave = (Math.cos((angle * 3.0) - ROTATION_RADIANS) + 1.0) / 2.0
-        1.0 - lobe_strength.to_f + (lobe_strength.to_f * normalized_wave)
+        wave = Math.cos(3.0 * (angle - LOBE_PHASE_RADIANS))
+        [1.0 + (lobe_strength.to_f * wave), MIN_LOBE_SCALE].max
       end
 
       def apex_point(payload)

@@ -44,6 +44,7 @@ The current retrospective implementation already moved the Ruby builder toward t
 - The live public contract for `tree_proxy` already exposes the right size-driving parameters: `height`, `canopyDiameterX`, `canopyDiameterY`, and `trunkDiameter`.
 - The public MCP surface does not need to change for this refinement; the work belongs entirely in the Ruby builder and Ruby-owned verification.
 - The current retrospective implementation replaced the old square-trunk plus three-extrusion layout with one connected child mesh built from ring definitions extracted from the accepted exemplar.
+- The latest refinement simplified the canopy away from irregular deformation and toward a calmer three-lobe crown built from a small number of centered tier rings.
 - The current builder test proves structural invariants of the refined proxy, but it does not prove exact face-for-face reproduction of the accepted 256-face exemplar.
 
 ## Technical Decisions
@@ -70,7 +71,7 @@ The current retrospective implementation already moved the Ruby builder toward t
   - `SEGMENTS = 12`
   - a rotated circular trunk ring
   - trunk base, anchor, and top rings
-  - a fixed set of canopy ring definitions derived from exemplar ratios
+  - a fixed set of canopy ring definitions that form a deliberate three-lobe crown
   - planar ring segments emitted as quads only when valid and split into triangles otherwise
   - triangle fan closure at the apex
 

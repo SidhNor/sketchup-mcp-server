@@ -44,10 +44,6 @@ class TreeProxyBuilderTest < Minitest::Test
     proxy_mesh = group.entities.groups.first
     assert_instance_of(SemanticTestSupport::FakeGroup, proxy_mesh)
     assert_equal(0, proxy_mesh.entities.groups.length)
-    assert_equal(470, proxy_mesh.entities.faces.length)
-    assert_equal(24, proxy_mesh.entities.faces.count { |face| face.points.length == 4 })
-    assert_equal(444, proxy_mesh.entities.faces.count { |face| face.points.length == 3 })
-
     horizontal_caps = proxy_mesh.entities.faces.select do |face|
       face.points.length == 12 && face.points.map { |point| point[2] }.uniq.length == 1
     end
@@ -70,9 +66,22 @@ class TreeProxyBuilderTest < Minitest::Test
                          .flat_map { |face| face.points.map { |point| point[2] } }
                          .uniq
                          .sort
-    assert_equal(21, z_levels.length)
-    assert_in_delta(5.5 * SU_MCP::Semantic::TreeProxyBuilder::CANOPY_BASE_RATIO, z_levels[1], 1e-9)
+    assert_equal(10, z_levels.length)
     assert_in_delta(5.5, z_levels.last, 1e-9)
+
+    widest_canopy_ring = widest_ring_points(
+      proxy_mesh,
+      center_x: 14.0,
+      center_y: 37.7,
+      lower_z: cap_levels.last,
+      upper_z: 5.5
+    )
+    assert_equal(12, widest_canopy_ring.length)
+
+    radii = ordered_ring_points(widest_canopy_ring, center_x: 14.0, center_y: 37.7).map do |point|
+      radial_distance(point, center_x: 14.0, center_y: 37.7)
+    end
+    assert_three_lobe_profile(radii)
   end
   # rubocop:enable Metrics/AbcSize
 
@@ -128,6 +137,70 @@ class TreeProxyBuilderTest < Minitest::Test
 
   def near_zero_vector?(vector, tolerance: 1e-9)
     vector.all? { |value| value.abs <= tolerance }
+  end
+
+  def widest_ring_points(group, center_x:, center_y:, lower_z:, upper_z:)
+    ring_points = ring_levels(group)
+                  .select { |z| z > lower_z && z < upper_z }
+                  .map { |z| unique_points_at_z(group, z) }
+                  .select { |points| points.length == 12 }
+
+    ring_points.max_by do |points|
+      points.sum { |point| radial_distance(point, center_x: center_x, center_y: center_y) }
+    end
+  end
+
+  def ring_levels(group)
+    group.entities.faces
+         .flat_map { |face| face.points.map { |point| point[2] } }
+         .uniq
+         .sort
+  end
+
+  def unique_points_at_z(group, z_height, tolerance: 1e-9)
+    group.entities.faces
+         .flat_map(&:points)
+         .select { |point| (point[2] - z_height).abs <= tolerance }
+         .uniq { |point| point.map { |value| value.round(9) } }
+  end
+
+  def ordered_ring_points(points, center_x:, center_y:)
+    points.sort_by do |point|
+      Math.atan2(point[1] - center_y, point[0] - center_x)
+    end
+  end
+
+  def radial_distance(point, center_x:, center_y:)
+    Math.hypot(point[0] - center_x, point[1] - center_y)
+  end
+
+  # rubocop:disable Metrics/AbcSize
+  def assert_three_lobe_profile(radii)
+    peak_indices = local_extrema_indices(radii, :>)
+    valley_indices = local_extrema_indices(radii, :<)
+
+    assert_equal(3, peak_indices.length)
+    assert_equal(3, valley_indices.length)
+
+    peak_indices.each_cons(2) do |left, right|
+      assert_equal(4, right - left)
+    end
+    assert_equal(4, (peak_indices.first + radii.length) - peak_indices.last)
+
+    peak_radii = peak_indices.map { |index| radii[index] }
+    valley_radii = valley_indices.map { |index| radii[index] }
+    assert_operator(peak_radii.max / peak_radii.min, :<, 1.1)
+    assert_operator(valley_radii.max, :<, peak_radii.min)
+  end
+  # rubocop:enable Metrics/AbcSize
+
+  def local_extrema_indices(values, operator)
+    values.each_index.select do |index|
+      current = values[index]
+      previous = values[(index - 1) % values.length]
+      following = values[(index + 1) % values.length]
+      current.public_send(operator, previous) && current.public_send(operator, following)
+    end
   end
 
   def span(points, axis:)
