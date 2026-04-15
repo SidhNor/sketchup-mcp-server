@@ -35,6 +35,11 @@ def test_seed_contract_cases_cover_required_create_site_element_tool_cases() -> 
     assert set(contract_cases_by_id()) >= {
         "create_site_element_structure_created",
         "create_site_element_pad_created",
+        "create_site_element_path_created",
+        "create_site_element_retaining_edge_created",
+        "create_site_element_planting_mass_created",
+        "create_site_element_tree_proxy_created",
+        "create_site_element_missing_payload_refused",
         "create_site_element_contradictory_payload_refused",
         "create_site_element_unsupported_type_refused",
     }

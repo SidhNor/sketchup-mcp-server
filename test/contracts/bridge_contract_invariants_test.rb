@@ -260,6 +260,48 @@ class BridgeContractCreateSiteElementRequestHandlerTest < Minitest::Test
                  response.dig(:result, :managedObject, 'semanticType'))
   end
 
+  def test_create_site_element_path_created_matches_shared_contract_case
+    contract_case = contract_case('create_site_element_path_created')
+    response = successful_create_site_element_response(contract_case)
+
+    assert_equal(contract_case.dig('response', 'result', 'managedObject', 'semanticType'),
+                 response.dig(:result, :managedObject, 'semanticType'))
+  end
+
+  def test_create_site_element_retaining_edge_created_matches_shared_contract_case
+    contract_case = contract_case('create_site_element_retaining_edge_created')
+    response = successful_create_site_element_response(contract_case)
+
+    assert_equal(contract_case.dig('response', 'result', 'managedObject', 'semanticType'),
+                 response.dig(:result, :managedObject, 'semanticType'))
+  end
+
+  def test_create_site_element_planting_mass_created_matches_shared_contract_case
+    contract_case = contract_case('create_site_element_planting_mass_created')
+    response = successful_create_site_element_response(contract_case)
+
+    assert_equal(contract_case.dig('response', 'result', 'managedObject', 'semanticType'),
+                 response.dig(:result, :managedObject, 'semanticType'))
+  end
+
+  def test_create_site_element_tree_proxy_created_matches_shared_contract_case
+    contract_case = contract_case('create_site_element_tree_proxy_created')
+    response = successful_create_site_element_response(contract_case)
+
+    assert_equal(contract_case.dig('response', 'result', 'managedObject', 'semanticType'),
+                 response.dig(:result, :managedObject, 'semanticType'))
+  end
+
+  def test_create_site_element_missing_payload_refused_matches_shared_contract_case
+    contract_case = contract_case('create_site_element_missing_payload_refused')
+    response = successful_create_site_element_response(contract_case)
+
+    assert_equal(contract_case.dig('response', 'result', 'outcome'),
+                 response.dig(:result, :outcome))
+    assert_equal(contract_case.dig('response', 'result', 'refusal', 'code'),
+                 response.dig(:result, :refusal, 'code'))
+  end
+
   def test_create_site_element_contradictory_payload_refused_matches_shared_contract_case
     contract_case = contract_case('create_site_element_contradictory_payload_refused')
     response = successful_create_site_element_response(contract_case)

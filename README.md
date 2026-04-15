@@ -93,7 +93,7 @@ The current cross-runtime tool surface includes scene inspection and targeting h
 - `sample_surface_z`
 - `create_site_element`
 
-`find_entities` resolves explicit targets through the supported MVP identifier and exact-match query paths. `sample_surface_z` samples explicit target geometry at one or more world-space XY points in meters and returns compact per-point `hit`, `miss`, or `ambiguous` outcomes. `create_site_element` is the first semantic creation path and currently delivers the SEM-01 MVP slice for `pad` and `structure`, including structured refusal outcomes for unsupported or contradictory semantic payloads.
+`find_entities` resolves explicit targets through the supported MVP identifier and exact-match query paths. `sample_surface_z` samples explicit target geometry at one or more world-space XY points in meters and returns compact per-point `hit`, `miss`, or `ambiguous` outcomes. `create_site_element` is the semantic creation path and currently delivers the SEM-02 first-wave slice for `structure`, `pad`, `path`, `retaining_edge`, `planting_mass`, and `tree_proxy`, including structured refusal outcomes for unsupported types, missing payloads, contradictory payloads, invalid geometry, and invalid numeric values. Public geometric dimensions for `create_site_element` are interpreted and returned in meters, independent of the active SketchUp model unit display settings.
 
 ## Bridge contract coverage
 

@@ -1,7 +1,7 @@
 # Task: SEM-02 Complete First-Wave Semantic Creation Vocabulary
 **Task ID**: `SEM-02`
 **Title**: `Complete First-Wave Semantic Creation Vocabulary`
-**Status**: `planned`
+**Status**: `completed`
 **Priority**: `P0`
 **Date**: `2026-04-14`
 
@@ -15,11 +15,14 @@ The semantic core is only valuable to the product if the first-wave vocabulary c
 
 This task completes the remaining first-wave `create_site_element` coverage on top of the semantic core established in `SEM-01` while preserving one stable command surface, one managed-object contract, and one shared result shape.
 
+The current landed slice expands the semantic vocabulary, but a post-implementation audit found that the public geometry contract is still only meter-based by intent. Numeric inputs are currently forwarded into SketchUp as raw internal lengths, which makes `create_site_element` behave like inches instead of meters at runtime. The remaining work for `SEM-02` is to make the public creation surface explicitly meter-safe for every supported semantic type without moving unit semantics into Python or changing the public tool shape.
+
 ## Goals
 
 - extend `create_site_element` to cover the remaining first-wave semantic element types of `path`, `retaining_edge`, `planting_mass`, and `tree_proxy`
 - preserve the semantic metadata conventions, structured refusal posture, and result-envelope shape established by `SEM-01`
 - demonstrate that the semantic constructor now covers the intended baseline site-object vocabulary without fragmenting into multiple public creation tools
+- make the public `create_site_element` surface accept meter-valued dimensions and return meter-valued semantic outputs consistently for every supported type, regardless of active SketchUp model units
 
 ## Acceptance Criteria
 
@@ -47,6 +50,13 @@ Scenario: vocabulary expansion lands with unit and contract coverage
   When the task is reviewed
   Then automated Ruby and Python tests cover the delivered request and response behavior for the newly supported types
   And the shared contract artifact and both native contract suites are updated in the same change
+
+Scenario: create_site_element enforces the public meter contract
+  Given the public semantic tool surface is documented in meters rather than active-model units
+  When any supported `create_site_element` type is created through the MCP boundary
+  Then all public geometric inputs are interpreted in meters at the Ruby boundary
+  And all returned semantic numeric dimensions and bounds are serialized back in meters
+  And the active SketchUp model unit configuration does not silently change the public contract
 ```
 
 ## Non-Goals
@@ -67,6 +77,8 @@ Scenario: vocabulary expansion lands with unit and contract coverage
 - Python must remain a thin MCP adapter over the expanded Ruby command behavior
 - the task must add or update shared contract cases and both native contract suites for the expanded public `create_site_element` behavior
 - the task must preserve the registry-oriented extension path established by `SEM-01` rather than introducing ad hoc dispatch logic for each added type
+- Ruby must explicitly convert public meter-valued semantic dimensions into SketchUp internal lengths on input and convert public semantic outputs back to meters on serialization
+- Python must not infer, convert, or reinterpret public length units beyond basic schema typing
 
 ## Dependencies
 
@@ -86,6 +98,7 @@ Scenario: vocabulary expansion lands with unit and contract coverage
 - representative requests for `path`, `retaining_edge`, `planting_mass`, and `tree_proxy` complete through `create_site_element`
 - first-wave expansion preserves one stable semantic creation command and one consistent result contract
 - the expanded creation boundary is covered by Ruby tests, Python tests, and shared contract cases in the same task
+- representative numeric dimensions for every supported semantic type round-trip through the public boundary in meters instead of SketchUp internal inches
 
 ## MCP Decoration Guidance
 

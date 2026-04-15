@@ -2,43 +2,166 @@
 
 module SU_MCP
   module Semantic
-    # Validates the SEM-01 semantic request surface before builder execution.
+    # Validates the SEM-02 semantic request surface before builder execution.
     # rubocop:disable Metrics/ClassLength
     class RequestValidator
       APPROVED_STRUCTURE_CATEGORIES = %w[main_building outbuilding extension].freeze
-      SUPPORTED_ELEMENT_TYPES = %w[pad structure].freeze
+      SUPPORTED_ELEMENT_TYPES = %w[
+        pad
+        structure
+        path
+        retaining_edge
+        planting_mass
+        tree_proxy
+      ].freeze
+      NESTED_PAYLOAD_TYPES = %w[path retaining_edge planting_mass tree_proxy].freeze
 
-      # rubocop:disable Metrics/CyclomaticComplexity
       def refusal_for(params)
-        element_type = params['elementType']
+        element_type = params['elementType'].to_s
         return unsupported_element_type_refusal(params) unless supported_element_type?(element_type)
-        return contradictory_payload_refusal(params) if contradictory_payload?(params)
-        return invalid_footprint_refusal if invalid_footprint?(params['footprint'])
-        return missing_structure_category_refusal if missing_structure_category?(params)
-        return invalid_structure_category_refusal(params) if invalid_structure_category?(params)
-        return invalid_structure_height_refusal if invalid_structure_height?(params)
-        return invalid_pad_thickness_refusal if invalid_pad_thickness?(params)
 
-        nil
+        first_matching_refusal(validation_rules(params, element_type))
       end
-      # rubocop:enable Metrics/CyclomaticComplexity
 
       private
+
+      # rubocop:disable Metrics/AbcSize, Metrics/MethodLength
+      def validation_rules(params, element_type)
+        [
+          [contradictory_payload?(params), -> { contradictory_payload_refusal(params) }],
+          [missing_matching_payload?(params), -> { missing_element_payload_refusal(params) }],
+          [
+            footprint_type?(element_type) && invalid_polygon?(params['footprint']),
+            -> { invalid_geometry_refusal(field: 'footprint') }
+          ],
+          [
+            missing_structure_category?(params),
+            -> { missing_required_field_refusal(field: 'structureCategory') }
+          ],
+          [
+            invalid_structure_category?(params),
+            lambda do
+              unsupported_option_refusal(
+                field: 'structureCategory',
+                value: params['structureCategory']
+              )
+            end
+          ],
+          [
+            invalid_structure_height?(params),
+            -> { invalid_numeric_value_refusal(field: 'height') }
+          ],
+          [
+            invalid_pad_thickness?(params),
+            -> { invalid_numeric_value_refusal(field: 'thickness') }
+          ],
+          [
+            invalid_path_geometry?(params),
+            -> { invalid_geometry_refusal(field: 'path.centerline') }
+          ],
+          [invalid_path_width?(params), -> { invalid_numeric_value_refusal(field: 'path.width') }],
+          [
+            invalid_path_thickness?(params),
+            -> { invalid_numeric_value_refusal(field: 'path.thickness') }
+          ],
+          [
+            invalid_path_elevation?(params),
+            -> { invalid_numeric_value_refusal(field: 'path.elevation') }
+          ],
+          [
+            invalid_retaining_edge_geometry?(params),
+            -> { invalid_geometry_refusal(field: 'retaining_edge.polyline') }
+          ],
+          [
+            invalid_retaining_edge_height?(params),
+            -> { invalid_numeric_value_refusal(field: 'retaining_edge.height') }
+          ],
+          [
+            invalid_retaining_edge_thickness?(params),
+            -> { invalid_numeric_value_refusal(field: 'retaining_edge.thickness') }
+          ],
+          [
+            invalid_retaining_edge_elevation?(params),
+            -> { invalid_numeric_value_refusal(field: 'retaining_edge.elevation') }
+          ],
+          [
+            invalid_planting_mass_geometry?(params),
+            -> { invalid_geometry_refusal(field: 'planting_mass.boundary') }
+          ],
+          [
+            invalid_planting_mass_height?(params),
+            -> { invalid_numeric_value_refusal(field: 'planting_mass.averageHeight') }
+          ],
+          [
+            invalid_planting_mass_elevation?(params),
+            -> { invalid_numeric_value_refusal(field: 'planting_mass.elevation') }
+          ],
+          [
+            invalid_tree_proxy_position?(params),
+            -> { invalid_numeric_value_refusal(field: 'tree_proxy.position') }
+          ],
+          [
+            invalid_tree_proxy_canopy_x?(params),
+            -> { invalid_numeric_value_refusal(field: 'tree_proxy.canopyDiameterX') }
+          ],
+          [
+            invalid_tree_proxy_canopy_y?(params),
+            -> { invalid_numeric_value_refusal(field: 'tree_proxy.canopyDiameterY') }
+          ],
+          [
+            invalid_tree_proxy_height?(params),
+            -> { invalid_numeric_value_refusal(field: 'tree_proxy.height') }
+          ],
+          [
+            invalid_tree_proxy_trunk_diameter?(params),
+            -> { invalid_numeric_value_refusal(field: 'tree_proxy.trunkDiameter') }
+          ],
+          [
+            invalid_tree_proxy_trunk_to_canopy_ratio?(params),
+            -> { invalid_numeric_value_refusal(field: 'tree_proxy.trunkDiameter') }
+          ]
+        ]
+      end
+      # rubocop:enable Metrics/AbcSize, Metrics/MethodLength
+
+      def first_matching_refusal(rules)
+        matched_rule = rules.find { |condition, _builder| condition }
+        matched_rule&.last&.call
+      end
 
       def supported_element_type?(element_type)
         SUPPORTED_ELEMENT_TYPES.include?(element_type.to_s)
       end
 
+      def footprint_type?(element_type)
+        %w[pad structure].include?(element_type)
+      end
+
+      def payload_for(params, key)
+        value = params[key]
+        value.is_a?(Hash) ? value : nil
+      end
+
+      def payload_section_keys(params)
+        params.keys & NESTED_PAYLOAD_TYPES
+      end
+
+      def missing_matching_payload?(params)
+        element_type = params['elementType'].to_s
+        NESTED_PAYLOAD_TYPES.include?(element_type) && !payload_for(params, element_type)
+      end
+
       def contradictory_payload?(params)
         element_type = params['elementType'].to_s
+        return true if payload_section_keys(params).any? { |key| key != element_type }
+
         (element_type == 'pad' && (params.key?('height') || params.key?('structureCategory'))) ||
           (element_type == 'structure' && params.key?('thickness'))
       end
 
-      def invalid_footprint?(footprint)
-        return true unless footprint.is_a?(Array)
-
-        normalized = normalize_footprint(footprint)
+      def invalid_polygon?(footprint)
+        normalized = normalize_polygon(footprint)
+        return true if normalized.nil?
         return true if normalized.length < 3 || normalized.uniq.length < 3
 
         consecutive_duplicate_points?(normalized) ||
@@ -46,8 +169,36 @@ module SU_MCP
           polygon_area(normalized).zero?
       end
 
-      def normalize_footprint(footprint)
-        footprint.map { |point| Array(point).first(2).map(&:to_f) }
+      def normalize_polygon(footprint)
+        return nil unless footprint.is_a?(Array)
+
+        points = footprint.map { |point| normalize_xy_point(point) }
+        return nil if points.any?(&:nil?)
+
+        remove_repeated_closing_point(points)
+      end
+
+      def normalize_polyline(points)
+        return nil unless points.is_a?(Array)
+
+        normalized = points.map { |point| normalize_xy_point(point) }
+        return nil if normalized.any?(&:nil?)
+
+        normalized
+      end
+
+      def normalize_xy_point(point)
+        values = Array(point).first(2)
+        return nil unless values.length == 2
+        return nil unless values.all? { |value| finite_numeric?(value) }
+
+        values.map(&:to_f)
+      end
+
+      def remove_repeated_closing_point(points)
+        return points unless points.length > 1 && points.first == points.last
+
+        points[0...-1]
       end
 
       def consecutive_duplicate_points?(points)
@@ -125,72 +276,208 @@ module SU_MCP
       end
 
       def invalid_structure_height?(params)
-        params['elementType'] == 'structure' && invalid_positive_dimension?(params['height'])
+        params['elementType'] == 'structure' && invalid_positive_number?(params['height'])
       end
 
       def invalid_pad_thickness?(params)
         params['elementType'] == 'pad' &&
           params.key?('thickness') &&
-          invalid_positive_dimension?(params['thickness'])
+          invalid_positive_number?(params['thickness'])
       end
 
-      def invalid_positive_dimension?(value)
-        value.is_a?(Numeric) ? !value.finite? || value <= 0 : true
+      def invalid_path_geometry?(params)
+        return false unless params['elementType'] == 'path'
+
+        invalid_polyline?(payload_for(params, 'path')&.fetch('centerline', nil))
+      end
+
+      def invalid_path_width?(params)
+        return false unless params['elementType'] == 'path'
+
+        invalid_positive_number?(payload_for(params, 'path')&.fetch('width', nil))
+      end
+
+      def invalid_path_thickness?(params)
+        return false unless params['elementType'] == 'path'
+
+        path_payload = payload_for(params, 'path')
+        path_payload&.key?('thickness') && invalid_positive_number?(path_payload['thickness'])
+      end
+
+      def invalid_path_elevation?(params)
+        return false unless params['elementType'] == 'path'
+
+        path_payload = payload_for(params, 'path')
+        path_payload&.key?('elevation') && !finite_numeric?(path_payload['elevation'])
+      end
+
+      def invalid_retaining_edge_geometry?(params)
+        return false unless params['elementType'] == 'retaining_edge'
+
+        invalid_polyline?(payload_for(params, 'retaining_edge')&.fetch('polyline', nil))
+      end
+
+      def invalid_retaining_edge_height?(params)
+        return false unless params['elementType'] == 'retaining_edge'
+
+        invalid_positive_number?(payload_for(params, 'retaining_edge')&.fetch('height', nil))
+      end
+
+      def invalid_retaining_edge_thickness?(params)
+        return false unless params['elementType'] == 'retaining_edge'
+
+        invalid_positive_number?(payload_for(params, 'retaining_edge')&.fetch('thickness', nil))
+      end
+
+      def invalid_retaining_edge_elevation?(params)
+        return false unless params['elementType'] == 'retaining_edge'
+
+        retaining_payload = payload_for(params, 'retaining_edge')
+        retaining_payload&.key?('elevation') && !finite_numeric?(retaining_payload['elevation'])
+      end
+
+      def invalid_planting_mass_geometry?(params)
+        return false unless params['elementType'] == 'planting_mass'
+
+        invalid_polygon?(payload_for(params, 'planting_mass')&.fetch('boundary', nil))
+      end
+
+      def invalid_planting_mass_height?(params)
+        return false unless params['elementType'] == 'planting_mass'
+
+        invalid_positive_number?(payload_for(params, 'planting_mass')&.fetch('averageHeight', nil))
+      end
+
+      def invalid_planting_mass_elevation?(params)
+        return false unless params['elementType'] == 'planting_mass'
+
+        planting_payload = payload_for(params, 'planting_mass')
+        planting_payload&.key?('elevation') && !finite_numeric?(planting_payload['elevation'])
+      end
+
+      def invalid_tree_proxy_position?(params)
+        return false unless params['elementType'] == 'tree_proxy'
+
+        position = payload_for(params, 'tree_proxy')&.fetch('position', nil)
+        return true unless position.is_a?(Hash)
+
+        x_value = position['x']
+        y_value = position['y']
+        z_value = position.fetch('z', 0.0)
+
+        [x_value, y_value, z_value].any? { |value| !finite_numeric?(value) }
+      end
+
+      def invalid_tree_proxy_canopy_x?(params)
+        return false unless params['elementType'] == 'tree_proxy'
+
+        invalid_positive_number?(payload_for(params, 'tree_proxy')&.fetch('canopyDiameterX', nil))
+      end
+
+      def invalid_tree_proxy_canopy_y?(params)
+        return false unless params['elementType'] == 'tree_proxy'
+
+        tree_payload = payload_for(params, 'tree_proxy')
+        tree_payload&.key?('canopyDiameterY') &&
+          invalid_positive_number?(tree_payload['canopyDiameterY'])
+      end
+
+      def invalid_tree_proxy_height?(params)
+        return false unless params['elementType'] == 'tree_proxy'
+
+        invalid_positive_number?(payload_for(params, 'tree_proxy')&.fetch('height', nil))
+      end
+
+      def invalid_tree_proxy_trunk_diameter?(params)
+        return false unless params['elementType'] == 'tree_proxy'
+
+        invalid_positive_number?(payload_for(params, 'tree_proxy')&.fetch('trunkDiameter', nil))
+      end
+
+      def invalid_tree_proxy_trunk_to_canopy_ratio?(params)
+        return false unless params['elementType'] == 'tree_proxy'
+
+        tree_payload = payload_for(params, 'tree_proxy')
+        return true unless tree_payload
+
+        canopy_x = tree_payload['canopyDiameterX']
+        canopy_y = tree_payload.fetch('canopyDiameterY', canopy_x)
+        trunk_diameter = tree_payload['trunkDiameter']
+        return false unless [canopy_x, canopy_y, trunk_diameter].all? do |value|
+          finite_numeric?(value)
+        end
+
+        trunk_diameter.to_f >= [canopy_x.to_f, canopy_y.to_f].min
+      end
+
+      def invalid_polyline?(points)
+        normalized = normalize_polyline(points)
+        return true if normalized.nil?
+
+        normalized.uniq.length < 2
+      end
+
+      def invalid_positive_number?(value)
+        !finite_numeric?(value) || value.to_f <= 0
+      end
+
+      def finite_numeric?(value)
+        value.is_a?(Numeric) && value.finite?
       end
 
       def unsupported_element_type_refusal(params)
         semantic_refusal(
           code: 'unsupported_element_type',
-          message: 'Element type is not supported in SEM-01.',
+          message: 'Element type is not supported for semantic site creation.',
+          details: { elementType: params['elementType'] }
+        )
+      end
+
+      def missing_element_payload_refusal(params)
+        semantic_refusal(
+          code: 'missing_element_payload',
+          message: 'Request must include the payload matching elementType.',
           details: { elementType: params['elementType'] }
         )
       end
 
       def contradictory_payload_refusal(params)
         semantic_refusal(
-          code: 'contradictory_semantic_payload',
-          message: 'Request includes conflicting pad and structure semantics.',
+          code: 'contradictory_payload',
+          message: 'Request includes payload sections or fields that contradict elementType.',
           details: { elementType: params['elementType'] }
         )
       end
 
-      def invalid_footprint_refusal
+      def invalid_geometry_refusal(field:)
         semantic_refusal(
-          code: 'invalid_footprint',
-          message: 'Footprint must define a non-degenerate polygon.',
-          details: {}
+          code: 'invalid_geometry',
+          message: 'Geometry input is invalid for the requested semantic element.',
+          details: { field: field }
         )
       end
 
-      def missing_structure_category_refusal
+      def missing_required_field_refusal(field:)
         semantic_refusal(
-          code: 'missing_semantic_requirement',
-          message: 'Structure requests require structureCategory.',
-          details: { field: 'structureCategory' }
+          code: 'missing_required_field',
+          message: 'A required field is missing for the requested semantic element.',
+          details: { field: field }
         )
       end
 
-      def invalid_structure_category_refusal(params)
+      def unsupported_option_refusal(field:, value:)
         semantic_refusal(
-          code: 'invalid_structure_category',
-          message: 'Structure category is not approved for SEM-01.',
-          details: { structureCategory: params['structureCategory'] }
+          code: 'unsupported_option',
+          message: 'The provided option is not supported for the requested semantic element.',
+          details: { field: field, value: value }
         )
       end
 
-      def invalid_structure_height_refusal
+      def invalid_numeric_value_refusal(field:)
         semantic_refusal(
-          code: 'invalid_dimension',
-          message: 'Structure height must be finite and greater than zero.',
-          details: { field: 'height' }
-        )
-      end
-
-      def invalid_pad_thickness_refusal
-        semantic_refusal(
-          code: 'invalid_dimension',
-          message: 'Pad thickness must be finite and greater than zero.',
-          details: { field: 'thickness' }
+          code: 'invalid_numeric_value',
+          message: 'Numeric input must be finite and within the supported range.',
+          details: { field: field }
         )
       end
 

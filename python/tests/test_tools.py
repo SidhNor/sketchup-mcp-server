@@ -78,7 +78,7 @@ def test_create_site_element_exposes_a_typed_semantic_request_schema() -> None:
     schema = dereference_refs(tool.parameters)
 
     assert schema["type"] == "object"
-    assert schema["required"] == ["elementType", "sourceElementId", "status", "footprint"]
+    assert schema["required"] == ["elementType", "sourceElementId", "status"]
     assert set(schema["properties"]) >= {
         "elementType",
         "sourceElementId",
@@ -91,6 +91,10 @@ def test_create_site_element_exposes_a_typed_semantic_request_schema() -> None:
         "name",
         "tag",
         "material",
+        "path",
+        "retaining_edge",
+        "planting_mass",
+        "tree_proxy",
     }
 
 
@@ -104,7 +108,8 @@ def test_create_site_element_exposes_explicit_current_phase_metadata() -> None:
     assert (
         tool.description
         == "Create a managed semantic site element in SketchUp. Current support is"
-        " limited to footprint-based structure and pad creation."
+        " limited to structure, pad, path, retaining_edge, planting_mass, and"
+        " tree_proxy creation."
     )
     assert tool.annotations is not None
     assert tool.annotations.readOnlyHint is False
@@ -119,16 +124,18 @@ def test_create_site_element_passthrough_preserves_semantic_shape_and_request_id
 
     fn(
         DummyContext("semantic-1"),
-        elementType="structure",
-        sourceElementId="house-extension-001",
+        elementType="path",
+        sourceElementId="main-walk-001",
         status="proposed",
-        footprint=[[0.0, 0.0], [6.0, 0.0], [6.0, 4.0], [0.0, 4.0]],
-        elevation=0.0,
-        height=3.2,
-        structureCategory="extension",
-        name="Rear Extension",
+        path={
+            "centerline": [[0.0, 0.0], [4.0, 1.0], [8.0, 1.0]],
+            "width": 1.6,
+            "elevation": 0.0,
+            "thickness": 0.1,
+        },
+        name="Main Walk",
         tag="Proposed",
-        material="Siding",
+        material="Gravel",
     )
 
     assert bridge_client.calls == [
@@ -136,16 +143,18 @@ def test_create_site_element_passthrough_preserves_semantic_shape_and_request_id
             "kind": "tool",
             "name": "create_site_element",
             "arguments": {
-                "elementType": "structure",
-                "sourceElementId": "house-extension-001",
+                "elementType": "path",
+                "sourceElementId": "main-walk-001",
                 "status": "proposed",
-                "footprint": [[0.0, 0.0], [6.0, 0.0], [6.0, 4.0], [0.0, 4.0]],
-                "elevation": 0.0,
-                "height": 3.2,
-                "structureCategory": "extension",
-                "name": "Rear Extension",
+                "path": {
+                    "centerline": [[0.0, 0.0], [4.0, 1.0], [8.0, 1.0]],
+                    "width": 1.6,
+                    "elevation": 0.0,
+                    "thickness": 0.1,
+                },
+                "name": "Main Walk",
                 "tag": "Proposed",
-                "material": "Siding",
+                "material": "Gravel",
             },
             "request_id": "semantic-1",
         }

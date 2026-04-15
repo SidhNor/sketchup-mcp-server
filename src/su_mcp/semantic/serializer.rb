@@ -1,19 +1,37 @@
 # frozen_string_literal: true
 
 require_relative '../scene_query_serializer'
+require_relative 'length_converter'
 require_relative 'managed_object_metadata'
 
 module SU_MCP
   module Semantic
     # Normalizes a SEM-01 Managed Scene Object into a JSON-safe payload.
     class Serializer
-      def initialize(bounds_serializer: SceneQuerySerializer.new)
+      TYPE_SPECIFIC_ATTRIBUTE_KEYS = %w[
+        width
+        thickness
+        height
+        averageHeight
+        plantingCategory
+        canopyDiameterX
+        canopyDiameterY
+        trunkDiameter
+        speciesHint
+      ].freeze
+
+      def initialize(
+        bounds_serializer: SceneQuerySerializer.new,
+        length_converter: LengthConverter.new
+      )
         @bounds_serializer = bounds_serializer
+        @length_converter = length_converter
       end
 
       def serialize(entity)
         {
           **identity_attributes(entity),
+          **type_specific_attributes(entity),
           **presentation_attributes(entity),
           bounds: semantic_bounds(entity)
         }.compact
@@ -39,6 +57,13 @@ module SU_MCP
           tag: layer_name(entity),
           material: material_name(entity)
         }
+      end
+
+      def type_specific_attributes(entity)
+        TYPE_SPECIFIC_ATTRIBUTE_KEYS.each_with_object({}) do |key, attributes|
+          value = attribute(entity, key)
+          attributes[key.to_sym] = value unless value.nil?
+        end
       end
 
       def attribute(entity, key)
@@ -85,9 +110,19 @@ module SU_MCP
         return nil unless bounds
 
         {
-          min: bounds[:min],
-          max: bounds[:max]
+          min: convert_point_to_public_meters(bounds[:min]),
+          max: convert_point_to_public_meters(bounds[:max])
         }
+      end
+
+      def convert_point_to_public_meters(point)
+        return nil unless point
+
+        point.map do |value|
+          next nil if value.nil?
+
+          @length_converter.internal_to_public_meters(value)
+        end
       end
     end
   end

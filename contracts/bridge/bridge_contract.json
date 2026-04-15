@@ -660,22 +660,264 @@
       }
     },
     {
-      "case_id": "create_site_element_contradictory_payload_refused",
+      "case_id": "create_site_element_path_created",
       "kind": "tool_case",
-      "owner": "SEM-01",
+      "owner": "SEM-02",
       "request": {
         "jsonrpc": "2.0",
         "method": "tools/call",
         "params": {
           "name": "create_site_element",
           "arguments": {
-            "elementType": "pad",
-            "sourceElementId": "deck-001",
+            "elementType": "path",
+            "sourceElementId": "main-walk-001",
             "status": "proposed",
-            "footprint": [[0, 0], [4, 0], [4, 3], [0, 3]],
-            "elevation": 1.2,
-            "height": 2.8,
-            "structureCategory": "extension"
+            "path": {
+              "centerline": [[0, 0], [4, 1], [8, 1]],
+              "width": 1.6,
+              "elevation": 0.0,
+              "thickness": 0.1
+            },
+            "name": "Main Walk",
+            "tag": "Paths",
+            "material": "Gravel"
+          }
+        },
+        "id": "semantic-path-created"
+      },
+      "response": {
+        "jsonrpc": "2.0",
+        "id": "semantic-path-created",
+        "result": {
+          "success": true,
+          "outcome": "created",
+          "managedObject": {
+            "sourceElementId": "main-walk-001",
+            "persistentId": "3234",
+            "entityId": "58",
+            "semanticType": "path",
+            "status": "proposed",
+            "state": "Created",
+            "width": 1.6,
+            "thickness": 0.1,
+            "name": "Main Walk",
+            "tag": "Paths",
+            "material": "Gravel",
+            "bounds": {
+              "min": [-0.8, -0.8, -0.1],
+              "max": [8.8, 1.8, 0.0]
+            }
+          }
+        }
+      }
+    },
+    {
+      "case_id": "create_site_element_retaining_edge_created",
+      "kind": "tool_case",
+      "owner": "SEM-02",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "params": {
+          "name": "create_site_element",
+          "arguments": {
+            "elementType": "retaining_edge",
+            "sourceElementId": "ret-edge-001",
+            "status": "proposed",
+            "retaining_edge": {
+              "polyline": [[2, 0], [8, 0], [8, 4]],
+              "height": 0.45,
+              "thickness": 0.25,
+              "elevation": 0.0
+            },
+            "tag": "Edges",
+            "material": "Stone"
+          }
+        },
+        "id": "semantic-retaining-edge-created"
+      },
+      "response": {
+        "jsonrpc": "2.0",
+        "id": "semantic-retaining-edge-created",
+        "result": {
+          "success": true,
+          "outcome": "created",
+          "managedObject": {
+            "sourceElementId": "ret-edge-001",
+            "persistentId": "4234",
+            "entityId": "59",
+            "semanticType": "retaining_edge",
+            "status": "proposed",
+            "state": "Created",
+            "height": 0.45,
+            "thickness": 0.25,
+            "tag": "Edges",
+            "material": "Stone",
+            "bounds": {
+              "min": [1.875, -0.125, 0.0],
+              "max": [8.125, 4.125, 0.45]
+            }
+          }
+        }
+      }
+    },
+    {
+      "case_id": "create_site_element_planting_mass_created",
+      "kind": "tool_case",
+      "owner": "SEM-02",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "params": {
+          "name": "create_site_element",
+          "arguments": {
+            "elementType": "planting_mass",
+            "sourceElementId": "hedge-001",
+            "status": "proposed",
+            "planting_mass": {
+              "boundary": [[0, 0], [4, 0], [4, 2], [0, 2]],
+              "averageHeight": 1.8,
+              "plantingCategory": "hedge",
+              "elevation": 0.0
+            },
+            "name": "Hedge Mass"
+          }
+        },
+        "id": "semantic-planting-mass-created"
+      },
+      "response": {
+        "jsonrpc": "2.0",
+        "id": "semantic-planting-mass-created",
+        "result": {
+          "success": true,
+          "outcome": "created",
+          "managedObject": {
+            "sourceElementId": "hedge-001",
+            "persistentId": "5234",
+            "entityId": "60",
+            "semanticType": "planting_mass",
+            "status": "proposed",
+            "state": "Created",
+            "averageHeight": 1.8,
+            "plantingCategory": "hedge",
+            "name": "Hedge Mass",
+            "bounds": {
+              "min": [0.0, 0.0, 0.0],
+              "max": [4.0, 2.0, 1.8]
+            }
+          }
+        }
+      }
+    },
+    {
+      "case_id": "create_site_element_tree_proxy_created",
+      "kind": "tool_case",
+      "owner": "SEM-02",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "params": {
+          "name": "create_site_element",
+          "arguments": {
+            "elementType": "tree_proxy",
+            "sourceElementId": "tree-001",
+            "status": "retained",
+            "tree_proxy": {
+              "position": { "x": 14.0, "y": 37.7, "z": 0.0 },
+              "canopyDiameterX": 6.0,
+              "canopyDiameterY": 5.6,
+              "height": 5.5,
+              "trunkDiameter": 0.45,
+              "speciesHint": "cherry"
+            },
+            "name": "Cherry Proxy",
+            "tag": "Trees"
+          }
+        },
+        "id": "semantic-tree-proxy-created"
+      },
+      "response": {
+        "jsonrpc": "2.0",
+        "id": "semantic-tree-proxy-created",
+        "result": {
+          "success": true,
+          "outcome": "created",
+          "managedObject": {
+            "sourceElementId": "tree-001",
+            "persistentId": "6234",
+            "entityId": "61",
+            "semanticType": "tree_proxy",
+            "status": "retained",
+            "state": "Created",
+            "height": 5.5,
+            "canopyDiameterX": 6.0,
+            "canopyDiameterY": 5.6,
+            "trunkDiameter": 0.45,
+            "speciesHint": "cherry",
+            "name": "Cherry Proxy",
+            "tag": "Trees",
+            "bounds": {
+              "min": [11.0, 34.9, 0.0],
+              "max": [17.0, 40.5, 5.5]
+            }
+          }
+        }
+      }
+    },
+    {
+      "case_id": "create_site_element_missing_payload_refused",
+      "kind": "tool_case",
+      "owner": "SEM-02",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "params": {
+          "name": "create_site_element",
+          "arguments": {
+            "elementType": "tree_proxy",
+            "sourceElementId": "tree-001",
+            "status": "retained"
+          }
+        },
+        "id": "semantic-missing-payload-refused"
+      },
+      "response": {
+        "jsonrpc": "2.0",
+        "id": "semantic-missing-payload-refused",
+        "result": {
+          "success": true,
+          "outcome": "refused",
+          "refusal": {
+            "code": "missing_element_payload",
+            "message": "Request must include the payload matching elementType.",
+            "details": {
+              "elementType": "tree_proxy"
+            }
+          }
+        }
+      }
+    },
+    {
+      "case_id": "create_site_element_contradictory_payload_refused",
+      "kind": "tool_case",
+      "owner": "SEM-02",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "params": {
+          "name": "create_site_element",
+          "arguments": {
+            "elementType": "path",
+            "sourceElementId": "main-walk-001",
+            "status": "proposed",
+            "path": {
+              "centerline": [[0, 0], [4, 1], [8, 1]],
+              "width": 1.6
+            },
+            "planting_mass": {
+              "boundary": [[0, 0], [4, 0], [4, 2], [0, 2]],
+              "averageHeight": 1.8
+            }
           }
         },
         "id": "semantic-contradictory-refused"
@@ -687,10 +929,10 @@
           "success": true,
           "outcome": "refused",
           "refusal": {
-            "code": "contradictory_semantic_payload",
-            "message": "Request includes conflicting pad and structure semantics.",
+            "code": "contradictory_payload",
+            "message": "Request includes payload sections or fields that contradict elementType.",
             "details": {
-              "elementType": "pad"
+              "elementType": "path"
             }
           }
         }
@@ -699,15 +941,15 @@
     {
       "case_id": "create_site_element_unsupported_type_refused",
       "kind": "tool_case",
-      "owner": "SEM-01",
+      "owner": "SEM-02",
       "request": {
         "jsonrpc": "2.0",
         "method": "tools/call",
         "params": {
           "name": "create_site_element",
           "arguments": {
-            "elementType": "tree_proxy",
-            "sourceElementId": "tree-001",
+            "elementType": "water_feature_proxy",
+            "sourceElementId": "water-001",
             "status": "proposed",
             "footprint": [[0, 0], [1, 0], [0, 1]]
           }
@@ -722,9 +964,9 @@
           "outcome": "refused",
           "refusal": {
             "code": "unsupported_element_type",
-            "message": "Element type is not supported in SEM-01.",
+            "message": "Element type is not supported for semantic site creation.",
             "details": {
-              "elementType": "tree_proxy"
+              "elementType": "water_feature_proxy"
             }
           }
         }

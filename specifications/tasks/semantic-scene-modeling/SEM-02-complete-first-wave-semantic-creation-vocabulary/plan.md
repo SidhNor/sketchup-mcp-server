@@ -12,6 +12,8 @@
 
 `SEM-02` completes the remaining first-wave semantic creation surface on top of the `SEM-01` semantic core. The task must extend `create_site_element` to support `path`, `retaining_edge`, `planting_mass`, and `tree_proxy` without reopening the public command contract, fragmenting the public tool surface, or leaking semantic behavior into Python. The resulting slice must preserve the `SEM-01` managed-object envelope, Ruby-owned builder registry, metadata ownership, structured refusal posture, and shared Python/Ruby contract model.
 
+The shipped vocabulary expansion is not yet fully complete against the intended public contract. A post-implementation audit found that `create_site_element` currently forwards raw numeric lengths into SketchUp builders without an explicit public-meters to SketchUp-internal conversion, and it serializes semantic numeric outputs and bounds back out without converting from internal units to meters. The remaining `SEM-02` work is therefore a bounded remediation: preserve the current public tool shape and builder ownership, but make the semantic create boundary explicitly meter-safe end to end.
+
 ## Goals
 
 - Extend `create_site_element` to support `path`, `retaining_edge`, `planting_mass`, and `tree_proxy` through the existing semantic command path.
@@ -50,6 +52,25 @@
 - The 2026-04-15 lifecycle signal shows that creation breadth alone does not guarantee the broader PRD outcome; `SEM-02` must prove baseline creation coverage without assuming the broader lifecycle gaps are already solved.
 
 ## Technical Decisions
+
+### Unit Contract Addendum
+
+- `create_site_element` continues to expose one stable public numeric contract in meters for every supported semantic type:
+  - `structure`
+  - `pad`
+  - `path`
+  - `retaining_edge`
+  - `planting_mass`
+  - `tree_proxy`
+- Active SketchUp model units must not affect the public MCP meaning of numeric semantic dimensions.
+- Ruby must own the unit boundary explicitly:
+  - convert public meter-valued inputs into SketchUp internal lengths before geometry creation
+  - convert semantic numeric outputs and serialized bounds back into meters before returning them across the bridge
+- Python remains a thin typed adapter and must not add unit conversion logic.
+- The preferred implementation shape is one shared Ruby semantic request-normalization seam at the `SemanticCommands` boundary plus one semantic output-conversion seam in serialization.
+- Builders must not become their own unit boundaries. They should continue to consume already-normalized internal SketchUp lengths for geometric fields and stay focused on geometry creation.
+- Type-specific managed-object metadata fields that are persisted from the public request remain meter-valued semantic data and must not be converted into internal inches before storage.
+- Contract and regression coverage must prove meter semantics at the public boundary for both creation inputs and returned semantic outputs.
 
 ### Data Model
 
@@ -178,6 +199,7 @@
   - `state = Created`
   - `schemaVersion = 1`
 - No additional hard metadata invariants are introduced for the new types in `SEM-02`; optional fields such as `speciesHint` and `plantingCategory` remain semantic attributes rather than required invariants.
+- All public numeric geometry fields in the semantic request payloads are measured in meters, even though SketchUp stores internal lengths differently.
 
 ### API and Interface Design
 
@@ -191,6 +213,7 @@
 - Python does not validate semantic geometry rules such as polygon area, self-intersection, minimum distinct-point counts after normalization, or cross-field numeric relationships.
 - Ruby extends the semantic command support tree established by `SEM-01`:
   - semantic command entrypoint
+  - shared semantic request normalizer for public-units-to-internal-units conversion
   - builder registry
   - one builder per new type
   - shared metadata helper
@@ -198,7 +221,7 @@
   - shared normalization helpers for polygonal and linear payloads where useful
 - The builder registry remains the only semantic extension point. `semantic_commands.rb` should not grow new ad hoc branching for each type.
 - Each builder should conform to one explicit interface:
-  - input: normalized semantic payload for its `elementType`
+  - input: normalized semantic payload for its `elementType`, with geometric lengths already converted into SketchUp internal units
   - output: one top-level managed `Sketchup::Group`
   - responsibilities: geometry creation only for its type, delegation to shared metadata persistence, and no direct response-envelope shaping
 - All new builders return one top-level managed `Sketchup::Group`.
@@ -215,6 +238,7 @@
   - `retaining_edge`: `height`, `thickness`
   - `planting_mass`: `averageHeight`, `plantingCategory` when present
   - `tree_proxy`: `height`, `canopyDiameterX`, `canopyDiameterY`, `trunkDiameter`, `speciesHint` when present
+- Any numeric dimensions and semantic bounds returned in the `managedObject` envelope must be expressed in meters, not SketchUp internal inches or active-model display units.
 - The response should not echo full input geometry arrays such as `centerline`, `polyline`, or `boundary` in `SEM-02`.
 
 ### Error Handling
@@ -326,6 +350,7 @@ flowchart TD
 - Python stays responsible for MCP registration and shape validation only; Ruby owns all semantic interpretation and SketchUp-facing behavior.
 - The builder registry remains the semantic extension seam, so new first-wave types do not force public tool sprawl or transport-adjacent branching.
 - Metadata persistence and serialization remain centralized so builder geometry code does not accumulate cross-cutting managed-object rules.
+- Public-units ownership belongs at the semantic command and semantic serializer seams, not inside each per-type builder.
 - `tree_proxy` geometry complexity belongs in Ruby builder code, not in the public payload or Python adapter.
 - Real integration must still be validated at the SketchUp operation boundary because undo behavior and geometry outcomes cannot be proven by mocks alone.
 
@@ -341,6 +366,7 @@ flowchart TD
 - The shared semantic serializer returns one stable `managedObject` envelope for all new types with core identity fields and the agreed minimal type-specific fields.
 - Requests with unsupported types, missing payload sections, invalid geometry, invalid numeric values, or contradictory payloads return structured refusals using the shared semantic refusal taxonomy.
 - Created geometry for each new type respects the repo's public meter-based contract within explicit tolerance checks at the SketchUp-hosted boundary.
+- The already-landed vocabulary expansion is not treated as complete until the public meter contract is explicitly enforced in code and covered by automated tests for all supported semantic types.
 - `tree_proxy` creates a lightweight deterministic proxy with a simple trunk and a low-poly clustered canopy consisting of one primary crown and two secondary lobes, rather than a box or single regular canopy primitive.
 - The shared contract artifact and both native contract suites are updated together for the expanded semantic surface.
 - Ruby tests, Python tests, and contract tests cover the delivered request and response behavior for the new types, and any remaining SketchUp-hosted verification gaps are explicitly documented.
@@ -355,13 +381,17 @@ Implement `SEM-02` contract-first and builder-by-builder:
 2. Add failing Python schema and passthrough tests for the expanded `create_site_element` boundary, including no-implicit-semantic-logic assertions.
 3. Add failing Ruby dispatcher, registry-routing, metadata, serializer, and sourceElementId-targetability tests for the new semantic surface.
 4. Add failing SketchUp-hosted or harness-backed checks for public meter semantics and representative scenario outcomes before treating builder work as complete.
-5. Implement shared normalization helpers only where they clearly remove duplicated builder logic.
-6. Implement one builder at a time in business-critical order while preserving shared seams:
+5. Add failing regression checks proving the current implementation incorrectly treats public semantic dimensions as SketchUp internal lengths.
+6. Implement shared normalization helpers only where they clearly remove duplicated builder logic.
+7. Add one shared Ruby semantic request normalizer that converts public meter-valued geometry into internal SketchUp lengths before registry dispatch, plus one semantic output-conversion seam for managed-object bounds serialization.
+8. Update builders only as needed to consume the normalized payload shape without introducing per-builder conversion logic.
+9. Implement one builder at a time in business-critical order while preserving shared seams:
    1. `path`
    2. `planting_mass`
    3. `retaining_edge`
    4. `tree_proxy`
-7. Run contract suites, unit tests, scenario checks, and language-appropriate linting, then document any remaining SketchUp-hosted verification gaps and any follow-on lifecycle gaps outside `SEM-02`.
+10. Update structure and pad to use the same centralized normalization seam so the whole public semantic surface is unit-consistent.
+11. Run contract suites, unit tests, scenario checks, and language-appropriate linting, then document any remaining SketchUp-hosted verification gaps and any follow-on lifecycle gaps outside `SEM-02`.
 
 ### Required Test Coverage
 
@@ -378,16 +408,21 @@ Implement `SEM-02` contract-first and builder-by-builder:
   - dispatcher mapping for `create_site_element`
   - registry dispatch for all four new types
   - payload normalization and required-field handling
+  - public meters-to-internal normalization at the semantic command boundary before builder dispatch
   - geometry validation for `centerline`, `polyline`, and `boundary`
   - numeric validation for widths, heights, thicknesses, canopy diameters, and trunk diameters
   - metadata persistence to `su_mcp`
-  - shared serializer output and identifier normalization
+  - shared serializer output, identifier normalization, and internal-to-meters conversion on semantic bounds
+  - builders consuming already-normalized internal lengths rather than performing their own unit conversion
   - post-create targetability through `find_entities` by `sourceElementId`
   - deterministic `tree_proxy` geometry shape expectations at the builder level, including stable structural invariants such as expected canopy sub-mass count or equivalent builder-owned geometry assertions
   - refusal outcomes for missing payloads, invalid geometry, invalid numeric values, and contradictory payloads
 - Contract artifact updates for at least:
   - one created case per new semantic type
   - one refusal case per major validation family that is expected to stay stable across runtimes
+- Regression checks for at least:
+  - one representative dimension assertion on each supported semantic type proving that public numeric inputs are normalized to internal SketchUp lengths before geometry creation
+  - one returned-dimension or bounds assertion proving semantic outputs remain meter-valued across the Ruby/Python boundary
 - Scenario or evaluation coverage for:
   - one representative baseline creation request per new semantic type using only the intended public semantic surface for the create step
   - one mixed baseline site-scene slice that proves the new vocabulary reduces primitive-first fallback for covered creation requests
@@ -409,12 +444,12 @@ Implement `SEM-02` contract-first and builder-by-builder:
 
 1. Extend the semantic boundary shell and outcome-proof scaffolding.
    Add Python schema coverage, dispatcher mapping, registry routing, shared contract cases, representative scenario definitions, and a local capability-alignment check for the four new semantic types.
-2. Extend shared semantic support.
-   Add or refine shared normalization helpers, metadata handling, serializer support, and sourceElementId-targetability coverage only where the new types need them.
-3. Implement highest-value baseline creation types first.
-   Land `path`, then `planting_mass`, so partial progress still improves the most common semantic baseline authoring surface.
-4. Complete the remaining first-wave breadth.
-   Land `retaining_edge`, then `tree_proxy`, reusing shared helpers and preserving the shared refusal model.
+2. Reopen the unit boundary explicitly.
+   Add failing regression checks that demonstrate the current semantic create surface behaves like SketchUp internal inches instead of public meters.
+3. Extend shared semantic support.
+   Add or refine one semantic request normalizer at the command boundary, one semantic bounds-output conversion seam, metadata handling, and sourceElementId-targetability coverage only where the semantic slice needs them.
+4. Make the full semantic create surface meter-safe.
+   Normalize `structure`, `pad`, `path`, `retaining_edge`, `planting_mass`, and `tree_proxy` requests once before builder dispatch so all create-site-element types share one unit contract without duplicating conversion logic in each builder.
 5. Tighten verification and completion checks.
    Run Python and Ruby tests, both contract suites, representative scenario checks, Ruff, RuboCop, and SketchUp-hosted meter and targetability checks before treating the task as complete.
 
@@ -423,6 +458,8 @@ Implement `SEM-02` contract-first and builder-by-builder:
 - Builder-level proof substitutes for workflow-level proof and the product still feels primitive-first for covered creation requests: require representative scenario coverage tied to the covered create step.
 - Local capability assumptions drift from the running bridge and contract artifact: require a running-bridge smoke checklist across all four new types before treating the task as complete.
 - New semantic types inherit hidden unit-conversion bugs and create physically wrong geometry: add explicit SketchUp-hosted meter-conformance checks for each type before completion.
+- The public meter contract is documented but not enforced in the current implementation: add dedicated regression tests first, then fix conversion in one centralized Ruby normalization seam and one semantic output seam rather than one-off builder patches.
+- Unit conversion gets duplicated across builders and drifts over time: keep builders geometry-only, centralize request normalization in `SemanticCommands`, and add regression coverage that proves builders receive normalized internal lengths.
 - Partial delivery lands lower-value types first and still misses the baseline workflow goal: sequence implementation by business-critical coverage and validate partial progress against the highest-value path-like cases first.
 - Creation succeeds but downstream automation still cannot reliably target the new objects: require immediate post-create `find_entities` coverage by `sourceElementId` for each new type.
 - `SEM-02` is judged against lifecycle outcomes it does not yet own: keep the task boundary scoped to creation breadth and explicitly retain lifecycle follow-on dependency visibility through `SEM-03` and related maintenance work.
@@ -474,6 +511,14 @@ Enable the remaining first-wave site-object requests to stay on one semantic cre
   - Classification: Requires implementation-time instrumentation or acceptance testing.
   - Mitigation now: add SketchUp-hosted meter-conformance checks for key dimensions and treat them as completion blockers for the new types.
   - Required validation: compare payload dimensions with created geometry or serialized bounds within explicit tolerance for each new type.
+- **Shortcuts that could weaken the outcome**
+  - Business-plan mismatch: the business needs one stable public units contract, but the intermediate fix path was trending toward distributing unit conversion responsibility across multiple builders.
+  - Root-cause failure path: conversion logic gets copied into each builder, then one type drifts or a future semantic type forgets the conversion and silently reintroduces inch-based geometry on part of the public surface.
+  - Why this misses the goal: the semantic API would appear meter-safe in aggregate while still creating type-specific correctness holes and higher regression risk on every extension.
+  - Likely cognitive bias: locality bias, where fixing the nearest code path feels simpler than correcting ownership at the true runtime boundary.
+  - Classification: Can be validated before implementation.
+  - Mitigation now: centralize public-meters-to-internal normalization in `SemanticCommands` before registry dispatch, keep builders unit-agnostic, and centralize semantic bounds conversion at serialization.
+  - Required validation: the finalized plan names one owning normalization seam, builder-level tests assert already-normalized internal inputs, and no builder is required to implement its own unit conversion policy.
 - **Tests and evaluations needed to stay on track**
   - Business-plan mismatch: the task needs local capability truth, but the original plan did not require a direct proof that the running bridge and contract artifact agree on supported types.
   - Root-cause failure path: the task artifacts and assumptions move ahead of the actual running bridge, so local validation targets unsupported types and gives misleading confidence about task completion.
@@ -500,6 +545,14 @@ Enable the remaining first-wave site-object requests to stay on one semantic cre
   - Required validation: task boundaries and follow-on dependencies explicitly distinguish creation coverage from lifecycle maintenance coverage.
 
 ## Quality Checks
+
+- Implementation update:
+  - The shipped adapter preserved the SEM-01 flat `structure` and `pad` request fields while adding discriminated nested payload sections for `path`, `retaining_edge`, `planting_mass`, and `tree_proxy`.
+  - This compatibility choice emerged from the landed SEM-01 Ruby/Python surface and avoided an unrelated public-contract redesign during `SEM-02`.
+  - A shared Ruby planar-geometry helper was introduced before the new builders so the added line- and polygon-based types stayed inside the semantic builder layer rather than growing `semantic_commands.rb`.
+  - Post-implementation audit update: the landed semantic create surface still treats public numeric lengths as raw SketchUp internal lengths at runtime, so `SEM-02` is reopened until the Ruby semantic boundary explicitly enforces meters on input and output.
+  - Step-10 premortem update: the implementation plan now centralizes public-units normalization at the semantic command boundary and semantic bounds serialization at one output seam, instead of treating each builder as a separate unit-conversion owner.
+  - Meter-contract remediation shipped: `SemanticCommands` now normalizes public meter-valued geometry once before builder dispatch, semantic metadata remains persisted in public units, and the semantic serializer converts managed-object bounds back to meters without changing the broader scene-query serializer contract.
 
 - [x] All required inputs validated
 - [x] Problem statement documented
