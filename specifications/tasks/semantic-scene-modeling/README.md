@@ -11,12 +11,13 @@ These tasks are derived from:
 
 This task set covers the first iteration for the semantic scene modeling capability and the first captured follow-up geometry refinement that emerged from validating the shipped tree proxy against an accepted scene exemplar.
 
-The current task set persists the three confirmed core tasks plus one follow-up refinement task:
+The current task set persists the three confirmed core tasks, one follow-up refinement task, and one contract-validation spike task:
 
 - semantic core plus the first `create_site_element` vertical slice
 - completion of the remaining first-wave semantic creation vocabulary
 - explicit metadata mutation for Managed Scene Objects
 - alignment of shipped `tree_proxy` geometry with the accepted volumetric baseline captured during validation
+- validation of the exploratory semantic `v2` contract direction through a minimal Ruby normalizer spike
 
 ## Current Task Order
 
@@ -24,6 +25,7 @@ The current task set persists the three confirmed core tasks plus one follow-up 
 2. [SEM-02 Complete First-Wave Semantic Creation Vocabulary](SEM-02-complete-first-wave-semantic-creation-vocabulary/task.md)
 3. [SEM-03 Add Metadata Mutation for Managed Scene Objects](SEM-03-add-metadata-mutation-for-managed-scene-objects/task.md)
 4. [SEM-04 Align Tree Proxy Geometry With Accepted Volumetric Baseline](SEM-04-align-tree-proxy-geometry-with-accepted-volumetric-baseline/task.md)
+5. [SEM-05 Validate V2 Semantic Contract Via Ruby Normalizer Spike](SEM-05-validate-v2-semantic-contract-via-ruby-normalizer-spike/task.md)
 
 ## Deferred Follow-Ons
 
@@ -40,3 +42,4 @@ The following follow-ons were intentionally kept out of the active task folders 
 - Contract updates are embedded into each active task that changes the public Python/Ruby tool surface. There is no standalone semantic contract task.
 - The active set is intentionally narrower than the full PRD. It proves the semantic capability in three core slices before expanding into rebuild, compatibility, or next-wave semantic work.
 - `SEM-04` is a refinement follow-up created after live geometry review. It preserves the existing semantic contract while capturing a stricter accepted baseline for `tree_proxy` output.
+- `SEM-05` is a validation spike task. It does not adopt the exploratory `v2` contract direction by itself; it exists to prove or falsify that direction through the smallest practical Ruby-owned normalization slice before any future contract decision.
