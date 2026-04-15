@@ -2,6 +2,14 @@
 
 <!-- version list -->
 
+## v0.8.1 (2026-04-15)
+
+### Bug Fixes
+
+- **SEM-04**: Planar shape updates
+  ([`104f304`](https://github.com/SidhNor/sketchup-mcp-server/commit/104f304e5d4eea47816287ede5601ded2025cc4f))
+
+
 ## v0.8.0 (2026-04-15)
 
 ### Features
