@@ -2,6 +2,14 @@
 
 <!-- version list -->
 
+## v0.8.2 (2026-04-15)
+
+### Bug Fixes
+
+- **SEM-04**: Tree proxy updates
+  ([`135ffe2`](https://github.com/SidhNor/sketchup-mcp-server/commit/135ffe2f217e447fa9ba58db1900082231e00912))
+
+
 ## v0.8.1 (2026-04-15)
 
 ### Bug Fixes
