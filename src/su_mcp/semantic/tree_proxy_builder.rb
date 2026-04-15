@@ -248,11 +248,12 @@ module SU_MCP
       def connect_rings_with_quads(group:, lower_ring:, upper_ring:)
         SEGMENTS.times do |index|
           next_index = (index + 1) % SEGMENTS
-          group.entities.add_face(
-            lower_ring[index],
-            lower_ring[next_index],
-            upper_ring[next_index],
-            upper_ring[index]
+          add_ring_segment_face(
+            group: group,
+            lower_start: lower_ring[index],
+            lower_finish: lower_ring[next_index],
+            upper_finish: upper_ring[next_index],
+            upper_start: upper_ring[index]
           )
         end
       end
@@ -262,6 +263,59 @@ module SU_MCP
           next_index = (index + 1) % SEGMENTS
           group.entities.add_face(ring[index], ring[next_index], apex)
         end
+      end
+
+      def add_ring_segment_face(group:, lower_start:, lower_finish:, upper_finish:, upper_start:)
+        quad_points = [lower_start, lower_finish, upper_finish, upper_start]
+        if planar_points?(quad_points)
+          group.entities.add_face(*quad_points)
+          return
+        end
+
+        group.entities.add_face(lower_start, lower_finish, upper_finish)
+        group.entities.add_face(lower_start, upper_finish, upper_start)
+      end
+
+      def planar_points?(points, tolerance: 1e-6)
+        return true if points.length <= 3
+
+        origin = points[0]
+        normal = triangle_normal(origin, points[1], points[2])
+        return true if near_zero_vector?(normal)
+
+        points[3..].all? do |point|
+          vector = subtract_points(point, origin)
+          dot_product(normal, vector).abs <= tolerance
+        end
+      end
+
+      def triangle_normal(point_a, point_b, point_c)
+        cross_product(
+          subtract_points(point_b, point_a),
+          subtract_points(point_c, point_a)
+        )
+      end
+
+      def subtract_points(point, origin)
+        [
+          point[0].to_f - origin[0].to_f,
+          point[1].to_f - origin[1].to_f,
+          point[2].to_f - origin[2].to_f
+        ]
+      end
+
+      # rubocop:disable Metrics/AbcSize
+      def cross_product(left, right)
+        [
+          (left[1].to_f * right[2].to_f) - (left[2].to_f * right[1].to_f),
+          (left[2].to_f * right[0].to_f) - (left[0].to_f * right[2].to_f),
+          (left[0].to_f * right[1].to_f) - (left[1].to_f * right[0].to_f)
+        ]
+      end
+      # rubocop:enable Metrics/AbcSize
+
+      def near_zero_vector?(vector, tolerance: 1e-9)
+        vector.all? { |value| value.abs <= tolerance }
       end
     end
     # rubocop:enable Metrics/ClassLength

@@ -71,7 +71,7 @@ The current retrospective implementation already moved the Ruby builder toward t
   - a rotated circular trunk ring
   - trunk base, anchor, and top rings
   - a fixed set of canopy ring definitions derived from exemplar ratios
-  - quad connections between rings
+  - planar ring segments emitted as quads only when valid and split into triangles otherwise
   - triangle fan closure at the apex
 
 ### Error Handling

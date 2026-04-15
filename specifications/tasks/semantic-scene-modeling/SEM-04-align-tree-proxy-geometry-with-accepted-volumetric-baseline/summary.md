@@ -18,6 +18,7 @@
   - `trunkDiameter`
 - Added a 12-sided rotated trunk ring structure with explicit trunk base, trunk anchor, and trunk top levels.
 - Added stepped canopy ring definitions and apex closure so the proxy reads as a connected volumetric tree mass rather than a set of separate primitives.
+- Fixed live SketchUp planarity failures by splitting non-planar canopy ring segments into triangles instead of sending invalid 4-point faces to `add_face`.
 - Kept the refinement entirely in Ruby; no Python tool or bridge contract changes were required.
 
 ## Tests Added
@@ -40,9 +41,9 @@
 - The current fixture-level builder output produces:
   - one wrapper group
   - one connected child mesh group
-  - `254` faces
-  - `240` quads
-  - `12` triangles
+  - `470` faces
+  - `24` quads
+  - `444` triangles
   - `21` unique z levels in the current test seam
 - The current builder remains dynamic in size:
   - canopy width scales from `canopyDiameterX` and `canopyDiameterY`
