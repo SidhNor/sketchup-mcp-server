@@ -53,6 +53,7 @@ def test_register_all_tools_exposes_the_expected_names() -> None:
         "sample_surface_z",
         "get_entity_info",
         "create_site_element",
+        "set_entity_metadata",
         "create_component",
         "delete_component",
         "transform_component",
@@ -157,6 +158,102 @@ def test_create_site_element_passthrough_preserves_semantic_shape_and_request_id
                 "material": "Gravel",
             },
             "request_id": "semantic-1",
+        }
+    ]
+
+
+def test_set_entity_metadata_exposes_a_typed_semantic_mutation_schema() -> None:
+    tool, _bridge_client = _registered_tool_definition(
+        "sketchup_mcp_server.tools.semantic",
+        "set_entity_metadata",
+    )
+
+    schema = dereference_refs(tool.parameters)
+
+    assert schema["type"] == "object"
+    assert schema["required"] == ["target"]
+    assert set(schema["properties"]) >= {"target", "set", "clear"}
+    assert schema["properties"]["target"] == {
+        "type": "object",
+        "properties": {
+            "sourceElementId": {
+                "anyOf": [{"type": "string"}, {"type": "null"}],
+                "default": None,
+            },
+            "persistentId": {
+                "anyOf": [{"type": "string"}, {"type": "null"}],
+                "default": None,
+            },
+            "entityId": {
+                "anyOf": [{"type": "string"}, {"type": "null"}],
+                "default": None,
+            },
+        },
+    }
+    assert schema["properties"]["set"] == {
+        "anyOf": [
+            {
+                "type": "object",
+                "properties": {
+                    "status": {
+                        "anyOf": [{"type": "string"}, {"type": "null"}],
+                        "default": None,
+                    },
+                    "structureCategory": {
+                        "anyOf": [{"type": "string"}, {"type": "null"}],
+                        "default": None,
+                    },
+                },
+            },
+            {"type": "null"},
+        ],
+        "default": None,
+    }
+    assert schema["properties"]["clear"] == {
+        "anyOf": [{"items": {"type": "string"}, "type": "array"}, {"type": "null"}],
+        "default": None,
+    }
+
+
+def test_set_entity_metadata_exposes_explicit_semantic_mutation_metadata() -> None:
+    tool, _bridge_client = _registered_tool_definition(
+        "sketchup_mcp_server.tools.semantic",
+        "set_entity_metadata",
+    )
+
+    assert tool.title == "Set Entity Metadata"
+    assert (
+        tool.description
+        == "Update semantic metadata on an existing managed object in SketchUp."
+        " Current support is limited to status updates for managed objects and"
+        " structureCategory updates for managed structure objects."
+    )
+    assert tool.annotations is not None
+    assert tool.annotations.readOnlyHint is False
+    assert tool.annotations.destructiveHint is False
+
+
+def test_set_entity_metadata_passthrough_preserves_request_shape_and_request_id() -> None:
+    fn, bridge_client = _registered_tool(
+        "sketchup_mcp_server.tools.semantic",
+        "set_entity_metadata",
+    )
+
+    fn(
+        DummyContext("semantic-2"),
+        target={"sourceElementId": "house-extension-001"},
+        set={"status": "existing"},
+    )
+
+    assert bridge_client.calls == [
+        {
+            "kind": "tool",
+            "name": "set_entity_metadata",
+            "arguments": {
+                "target": {"sourceElementId": "house-extension-001"},
+                "set": {"status": "existing"},
+            },
+            "request_id": "semantic-2",
         }
     ]
 

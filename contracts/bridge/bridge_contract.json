@@ -971,6 +971,367 @@
           }
         }
       }
+    },
+    {
+      "case_id": "set_entity_metadata_updated",
+      "kind": "tool_case",
+      "owner": "SEM-03",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "params": {
+          "name": "set_entity_metadata",
+          "arguments": {
+            "target": {
+              "sourceElementId": "house-extension-001"
+            },
+            "set": {
+              "status": "existing"
+            }
+          }
+        },
+        "id": "semantic-metadata-updated"
+      },
+      "response": {
+        "jsonrpc": "2.0",
+        "id": "semantic-metadata-updated",
+        "result": {
+          "success": true,
+          "outcome": "updated",
+          "managedObject": {
+            "sourceElementId": "house-extension-001",
+            "persistentId": "1234",
+            "entityId": "56",
+            "semanticType": "structure",
+            "status": "existing",
+            "state": "Created",
+            "structureCategory": "extension",
+            "name": "Rear Extension",
+            "tag": "Proposed",
+            "material": "Siding",
+            "bounds": {
+              "min": [0.0, 0.0, 0.0],
+              "max": [6.0, 4.0, 3.2]
+            }
+          }
+        }
+      }
+    },
+    {
+      "case_id": "set_entity_metadata_nested_updated",
+      "kind": "tool_case",
+      "owner": "SEM-03",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "params": {
+          "name": "set_entity_metadata",
+          "arguments": {
+            "target": {
+              "persistentId": "7002"
+            },
+            "set": {
+              "status": "retained"
+            }
+          }
+        },
+        "id": "semantic-metadata-nested-updated"
+      },
+      "response": {
+        "jsonrpc": "2.0",
+        "id": "semantic-metadata-nested-updated",
+        "result": {
+          "success": true,
+          "outcome": "updated",
+          "managedObject": {
+            "sourceElementId": "garden-shed-001",
+            "persistentId": "7002",
+            "entityId": "72",
+            "semanticType": "structure",
+            "status": "retained",
+            "state": "Created",
+            "structureCategory": "outbuilding",
+            "name": "Garden Shed",
+            "tag": "Existing",
+            "material": "Timber",
+            "bounds": {
+              "min": [12.0, 4.0, 0.0],
+              "max": [15.0, 6.5, 2.8]
+            }
+          }
+        }
+      }
+    },
+    {
+      "case_id": "set_entity_metadata_missing_change_refused",
+      "kind": "tool_case",
+      "owner": "SEM-03",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "params": {
+          "name": "set_entity_metadata",
+          "arguments": {
+            "target": {
+              "sourceElementId": "house-extension-001"
+            }
+          }
+        },
+        "id": "semantic-metadata-missing-change-refused"
+      },
+      "response": {
+        "jsonrpc": "2.0",
+        "id": "semantic-metadata-missing-change-refused",
+        "result": {
+          "success": true,
+          "outcome": "refused",
+          "refusal": {
+            "code": "missing_metadata_change",
+            "message": "At least one metadata change is required."
+          }
+        }
+      }
+    },
+    {
+      "case_id": "set_entity_metadata_protected_refused",
+      "kind": "tool_case",
+      "owner": "SEM-03",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "params": {
+          "name": "set_entity_metadata",
+          "arguments": {
+            "target": {
+              "sourceElementId": "house-extension-001"
+            },
+            "set": {
+              "sourceElementId": "house-extension-002"
+            }
+          }
+        },
+        "id": "semantic-metadata-protected-refused"
+      },
+      "response": {
+        "jsonrpc": "2.0",
+        "id": "semantic-metadata-protected-refused",
+        "result": {
+          "success": true,
+          "outcome": "refused",
+          "refusal": {
+            "code": "protected_metadata_field",
+            "message": "Field cannot be modified for a Managed Scene Object.",
+            "details": {
+              "field": "sourceElementId"
+            }
+          }
+        }
+      }
+    },
+    {
+      "case_id": "set_entity_metadata_required_clear_refused",
+      "kind": "tool_case",
+      "owner": "SEM-03",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "params": {
+          "name": "set_entity_metadata",
+          "arguments": {
+            "target": {
+              "sourceElementId": "house-extension-001"
+            },
+            "clear": ["status"]
+          }
+        },
+        "id": "semantic-metadata-required-clear-refused"
+      },
+      "response": {
+        "jsonrpc": "2.0",
+        "id": "semantic-metadata-required-clear-refused",
+        "result": {
+          "success": true,
+          "outcome": "refused",
+          "refusal": {
+            "code": "required_metadata_field",
+            "message": "Field cannot be cleared for a Managed Scene Object.",
+            "details": {
+              "field": "status"
+            }
+          }
+        }
+      }
+    },
+    {
+      "case_id": "set_entity_metadata_structure_category_clear_refused",
+      "kind": "tool_case",
+      "owner": "SEM-03",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "params": {
+          "name": "set_entity_metadata",
+          "arguments": {
+            "target": {
+              "sourceElementId": "house-extension-001"
+            },
+            "clear": ["structureCategory"]
+          }
+        },
+        "id": "semantic-metadata-structure-category-clear-refused"
+      },
+      "response": {
+        "jsonrpc": "2.0",
+        "id": "semantic-metadata-structure-category-clear-refused",
+        "result": {
+          "success": true,
+          "outcome": "refused",
+          "refusal": {
+            "code": "required_metadata_field",
+            "message": "Field cannot be cleared for a Managed Scene Object.",
+            "details": {
+              "field": "structureCategory"
+            }
+          }
+        }
+      }
+    },
+    {
+      "case_id": "set_entity_metadata_invalid_structure_category_refused",
+      "kind": "tool_case",
+      "owner": "SEM-03",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "params": {
+          "name": "set_entity_metadata",
+          "arguments": {
+            "target": {
+              "sourceElementId": "house-extension-001"
+            },
+            "set": {
+              "structureCategory": "garage"
+            }
+          }
+        },
+        "id": "semantic-metadata-invalid-structure-category-refused"
+      },
+      "response": {
+        "jsonrpc": "2.0",
+        "id": "semantic-metadata-invalid-structure-category-refused",
+        "result": {
+          "success": true,
+          "outcome": "refused",
+          "refusal": {
+            "code": "unsupported_option",
+            "message": "Option is not supported for this Managed Scene Object.",
+            "details": {
+              "field": "structureCategory",
+              "value": "garage",
+              "allowedValues": ["main_building", "outbuilding", "extension"]
+            }
+          }
+        }
+      }
+    },
+    {
+      "case_id": "set_entity_metadata_none_refused",
+      "kind": "tool_case",
+      "owner": "SEM-03",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "params": {
+          "name": "set_entity_metadata",
+          "arguments": {
+            "target": {
+              "sourceElementId": "missing-element-001"
+            },
+            "set": {
+              "status": "existing"
+            }
+          }
+        },
+        "id": "semantic-metadata-none-refused"
+      },
+      "response": {
+        "jsonrpc": "2.0",
+        "id": "semantic-metadata-none-refused",
+        "result": {
+          "success": true,
+          "outcome": "refused",
+          "refusal": {
+            "code": "target_not_found",
+            "message": "Target reference resolves to no entity."
+          }
+        }
+      }
+    },
+    {
+      "case_id": "set_entity_metadata_ambiguous_refused",
+      "kind": "tool_case",
+      "owner": "SEM-03",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "params": {
+          "name": "set_entity_metadata",
+          "arguments": {
+            "target": {
+              "sourceElementId": "duplicate-managed-001"
+            },
+            "set": {
+              "status": "existing"
+            }
+          }
+        },
+        "id": "semantic-metadata-ambiguous-refused"
+      },
+      "response": {
+        "jsonrpc": "2.0",
+        "id": "semantic-metadata-ambiguous-refused",
+        "result": {
+          "success": true,
+          "outcome": "refused",
+          "refusal": {
+            "code": "ambiguous_target",
+            "message": "Target reference resolves ambiguously."
+          }
+        }
+      }
+    },
+    {
+      "case_id": "set_entity_metadata_unmanaged_refused",
+      "kind": "tool_case",
+      "owner": "SEM-03",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "params": {
+          "name": "set_entity_metadata",
+          "arguments": {
+            "target": {
+              "entityId": "77"
+            },
+            "set": {
+              "status": "existing"
+            }
+          }
+        },
+        "id": "semantic-metadata-unmanaged-refused"
+      },
+      "response": {
+        "jsonrpc": "2.0",
+        "id": "semantic-metadata-unmanaged-refused",
+        "result": {
+          "success": true,
+          "outcome": "refused",
+          "refusal": {
+            "code": "unmanaged_object",
+            "message": "Entity is not a Managed Scene Object."
+          }
+        }
+      }
     }
   ]
 }

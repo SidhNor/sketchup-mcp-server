@@ -1,7 +1,7 @@
 # Task: SEM-03 Add Metadata Mutation for Managed Scene Objects
 **Task ID**: `SEM-03`
 **Title**: `Add Metadata Mutation for Managed Scene Objects`
-**Status**: `planned`
+**Status**: `completed`
 **Priority**: `P0`
 **Date**: `2026-04-14`
 
@@ -82,6 +82,14 @@ Scenario: metadata mutation lands with unit and contract coverage
 - Python must remain a thin MCP adapter that validates boundary shape and forwards `set_entity_metadata` over the existing bridge
 - the task must add or update the shared contract artifact and native Ruby and Python contract suites for the new public mutation tool
 - supported metadata mutation must work for nested Managed Scene Objects while preserving current parent placement; hierarchy reassignment remains a separate follow-on
+
+## Approved MCP Tool Metadata
+
+- Title: `Set Entity Metadata`
+- Current-phase description: `Update semantic metadata on an existing managed object in SketchUp. Current support is limited to status updates for managed objects and structureCategory updates for managed structure objects.`
+- Behavior annotations:
+  - `readOnlyHint: false`
+  - `destructiveHint: false`
 
 ## Dependencies
 

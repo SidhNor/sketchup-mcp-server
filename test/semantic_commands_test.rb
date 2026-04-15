@@ -40,15 +40,57 @@ class SemanticCommandsTest < Minitest::Test
   end
 
   class FakeMetadataWriter
-    attr_reader :calls
+    attr_reader :calls, :prepare_calls, :apply_calls
 
-    def initialize
+    def initialize(update_result: { outcome: 'updated' })
       @calls = []
+      @prepare_calls = []
+      @apply_calls = []
+      @update_result = update_result
     end
 
     def write!(entity, attributes)
       @calls << [entity, attributes]
       entity
+    end
+
+    def prepare_update(entity, set:, clear:)
+      @prepare_calls << [entity, set, clear]
+      @update_result
+    end
+
+    def apply_prepared_update(entity, prepared_update)
+      @apply_calls << [entity, prepared_update]
+      { outcome: 'updated' }
+    end
+
+    def update(entity, set:, clear:)
+      prepared_update = prepare_update(entity, set: set, clear: clear)
+      return prepared_update unless prepared_update[:outcome] == 'ready'
+
+      apply_prepared_update(entity, prepared_update)
+    end
+  end
+
+  class FakeTargetResolver
+    attr_reader :calls
+
+    def initialize(result)
+      @result = result
+      @calls = []
+    end
+
+    def resolve(query)
+      @calls << query
+      @result
+    end
+  end
+
+  class FakeManagedEntity
+    attr_reader :parent
+
+    def initialize(parent:)
+      @parent = parent
     end
   end
 
@@ -261,6 +303,10 @@ class SemanticCommandsTest < Minitest::Test
     assert_equal(true, result[:success])
     assert_equal('refused', result[:outcome])
     assert_equal('unsupported_option', result.dig(:refusal, :code))
+    assert_equal(
+      %w[main_building outbuilding extension],
+      result.dig(:refusal, :details, :allowedValues)
+    )
   end
 
   def test_create_site_element_refuses_non_positive_structure_height
@@ -295,5 +341,149 @@ class SemanticCommandsTest < Minitest::Test
     assert_equal('refused', result[:outcome])
     assert_equal('invalid_numeric_value', result.dig(:refusal, :code))
   end
+
+  # rubocop:disable Layout/LineLength
+  def test_set_entity_metadata_wraps_successful_mutation_in_one_operation_and_serializes_updated_object
+    parent = Object.new
+    entity = FakeManagedEntity.new(parent: parent)
+    metadata_writer = FakeMetadataWriter.new(
+      update_result: {
+        outcome: 'ready',
+        updates: { 'status' => 'existing' },
+        clears: []
+      }
+    )
+    serializer = FakeSerializer.new(
+      sourceElementId: 'house-extension-001',
+      semanticType: 'structure',
+      status: 'existing'
+    )
+    target_resolver = FakeTargetResolver.new(resolution: 'unique', entity: entity)
+
+    commands = SU_MCP::SemanticCommands.new(
+      model: @model,
+      metadata_writer: metadata_writer,
+      serializer: serializer,
+      target_resolver: target_resolver
+    )
+    result = commands.set_entity_metadata(
+      'target' => { 'sourceElementId' => 'house-extension-001' },
+      'set' => { 'status' => 'existing' },
+      'clear' => []
+    )
+
+    assert_equal(true, result[:success])
+    assert_equal('updated', result[:outcome])
+    assert_equal(
+      [[:start_operation, 'Set Entity Metadata', true], [:commit_operation]],
+      @model.operations
+    )
+    assert_equal([{ 'sourceElementId' => 'house-extension-001' }], target_resolver.calls)
+    assert_equal([[entity, { 'status' => 'existing' }, []]], metadata_writer.prepare_calls)
+    assert_equal(
+      [[entity, { outcome: 'ready', updates: { 'status' => 'existing' }, clears: [] }]],
+      metadata_writer.apply_calls
+    )
+    assert_equal([entity], serializer.calls)
+    assert_same(parent, entity.parent)
+  end
+
+  def test_set_entity_metadata_returns_structured_refusal_when_target_resolves_to_no_entity
+    target_resolver = FakeTargetResolver.new(resolution: 'none')
+    commands = SU_MCP::SemanticCommands.new(model: @model, target_resolver: target_resolver)
+
+    result = commands.set_entity_metadata(
+      'target' => { 'sourceElementId' => 'missing-element-001' },
+      'set' => { 'status' => 'existing' }
+    )
+
+    assert_equal(true, result[:success])
+    assert_equal('refused', result[:outcome])
+    assert_equal('target_not_found', result.dig(:refusal, :code))
+  end
+
+  def test_set_entity_metadata_refuses_when_no_metadata_change_is_requested
+    commands = SU_MCP::SemanticCommands.new(model: @model)
+
+    result = commands.set_entity_metadata('target' => { 'sourceElementId' => 'house-extension-001' })
+
+    assert_equal(true, result[:success])
+    assert_equal('refused', result[:outcome])
+    assert_equal('missing_metadata_change', result.dig(:refusal, :code))
+    assert_equal('At least one metadata change is required.', result.dig(:refusal, :message))
+    assert_equal([], @model.operations)
+  end
+
+  def test_set_entity_metadata_returns_structured_refusal_when_target_resolves_ambiguously
+    target_resolver = FakeTargetResolver.new(resolution: 'ambiguous')
+    commands = SU_MCP::SemanticCommands.new(model: @model, target_resolver: target_resolver)
+
+    result = commands.set_entity_metadata(
+      'target' => { 'sourceElementId' => 'duplicate-managed-001' },
+      'set' => { 'status' => 'existing' }
+    )
+
+    assert_equal(true, result[:success])
+    assert_equal('refused', result[:outcome])
+    assert_equal('ambiguous_target', result.dig(:refusal, :code))
+  end
+
+  def test_set_entity_metadata_returns_structured_refusal_for_unmanaged_targets
+    entity = FakeManagedEntity.new(parent: Object.new)
+    metadata_writer = FakeMetadataWriter.new(
+      update_result: {
+        outcome: 'refused',
+        refusal: { code: 'unmanaged_object', message: 'Entity is not a Managed Scene Object.' }
+      }
+    )
+    target_resolver = FakeTargetResolver.new(resolution: 'unique', entity: entity)
+    commands = SU_MCP::SemanticCommands.new(
+      model: @model,
+      metadata_writer: metadata_writer,
+      target_resolver: target_resolver
+    )
+
+    result = commands.set_entity_metadata(
+      'target' => { 'entityId' => '77' },
+      'set' => { 'status' => 'existing' }
+    )
+
+    assert_equal(true, result[:success])
+    assert_equal('refused', result[:outcome])
+    assert_equal('unmanaged_object', result.dig(:refusal, :code))
+  end
+
+  def test_set_entity_metadata_routes_metadata_policy_refusals_without_serializing_success
+    entity = FakeManagedEntity.new(parent: Object.new)
+    metadata_writer = FakeMetadataWriter.new(
+      update_result: {
+        outcome: 'refused',
+        refusal: {
+          code: 'protected_metadata_field',
+          message: 'Field cannot be modified for a Managed Scene Object.'
+        }
+      }
+    )
+    serializer = FakeSerializer.new(sourceElementId: 'house-extension-001')
+    target_resolver = FakeTargetResolver.new(resolution: 'unique', entity: entity)
+    commands = SU_MCP::SemanticCommands.new(
+      model: @model,
+      metadata_writer: metadata_writer,
+      serializer: serializer,
+      target_resolver: target_resolver
+    )
+
+    result = commands.set_entity_metadata(
+      'target' => { 'sourceElementId' => 'house-extension-001' },
+      'set' => { 'sourceElementId' => 'house-extension-002' }
+    )
+
+    assert_equal(true, result[:success])
+    assert_equal('refused', result[:outcome])
+    assert_equal('protected_metadata_field', result.dig(:refusal, :code))
+    assert_equal([], @model.operations)
+    assert_equal([], serializer.calls)
+  end
+  # rubocop:enable Layout/LineLength
 end
 # rubocop:enable Metrics/MethodLength, Metrics/ClassLength

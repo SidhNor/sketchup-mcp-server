@@ -96,6 +96,20 @@ module SemanticTestSupport
       @attributes.fetch(dictionary_name, {}).fetch(key, default)
     end
 
+    def delete_attribute(dictionary_name, key = nil)
+      return @attributes.delete(dictionary_name) if key.nil?
+
+      @attributes.fetch(dictionary_name, {}).delete(key)
+    end
+
+    def attribute_dictionary(name, create = false)
+      dictionary = @attributes[name]
+      return dictionary if dictionary
+      return nil unless create
+
+      @attributes[name] = {}
+    end
+
     private
 
     def build_bounds(min: [0.0, 0.0, 0.0], max: [1.0, 1.0, 1.0])

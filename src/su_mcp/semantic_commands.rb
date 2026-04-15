@@ -7,11 +7,14 @@ require_relative 'semantic/request_normalizer'
 require_relative 'semantic/request_validator'
 require_relative 'semantic/serializer'
 require_relative 'semantic/structure_builder'
+require_relative 'semantic/target_resolver'
 
 module SU_MCP
   # Coordinates the Ruby-owned SEM-01 semantic creation slice.
+  # rubocop:disable Metrics/ClassLength
   class SemanticCommands
     OPERATION_NAME = 'Create Site Element'
+    METADATA_OPERATION_NAME = 'Set Entity Metadata'
     SCHEMA_VERSION = 1
 
     # rubocop:disable Metrics/ParameterLists
@@ -21,7 +24,8 @@ module SU_MCP
       validator: Semantic::RequestValidator.new,
       request_normalizer: Semantic::RequestNormalizer.new,
       metadata_writer: Semantic::ManagedObjectMetadata.new,
-      serializer: Semantic::Serializer.new
+      serializer: Semantic::Serializer.new,
+      target_resolver: Semantic::TargetResolver.new
     )
       @model = model
       @registry = registry
@@ -29,6 +33,7 @@ module SU_MCP
       @request_normalizer = request_normalizer
       @metadata_writer = metadata_writer
       @serializer = serializer
+      @target_resolver = target_resolver
     end
     # rubocop:enable Metrics/ParameterLists
 
@@ -56,9 +61,95 @@ module SU_MCP
     end
     # rubocop:enable Metrics/AbcSize, Metrics/MethodLength
 
+    # rubocop:disable Naming/AccessorMethodName
+    def set_entity_metadata(params)
+      refusal = missing_metadata_change_refusal(params)
+      return refusal if refusal
+
+      resolution = target_resolver.resolve(params.fetch('target'))
+      refusal = refusal_for_resolution(resolution)
+      return refusal if refusal
+
+      apply_metadata_update(resolution.fetch(:entity), params)
+    end
+    # rubocop:enable Naming/AccessorMethodName
+
     private
 
-    attr_reader :model, :registry, :validator, :request_normalizer, :metadata_writer, :serializer
+    attr_reader :model, :registry, :validator, :request_normalizer, :metadata_writer, :serializer,
+                :target_resolver
+
+    def refusal_for_resolution(resolution)
+      return target_not_found_refusal if resolution[:resolution] == 'none'
+      return ambiguous_target_refusal if resolution[:resolution] == 'ambiguous'
+
+      nil
+    end
+
+    # rubocop:disable Metrics/MethodLength
+    def apply_metadata_update(entity, params)
+      operation_started = false
+      prepared_update = metadata_writer.prepare_update(entity, **metadata_mutation_params(params))
+      refusal = metadata_update_refusal(prepared_update)
+      return refusal if refusal
+
+      model.start_operation(METADATA_OPERATION_NAME, true)
+      operation_started = true
+      metadata_writer.apply_prepared_update(entity, prepared_update)
+      result = {
+        success: true,
+        outcome: 'updated',
+        managedObject: serializer.serialize(entity)
+      }
+      model.commit_operation
+      result
+    rescue StandardError
+      model.abort_operation if operation_started && model.respond_to?(:abort_operation)
+      raise
+    end
+    # rubocop:enable Metrics/MethodLength
+
+    def missing_metadata_change_refusal(params)
+      set_attributes = params.fetch('set', {})
+      clear_attributes = params.fetch('clear', [])
+      return nil unless set_attributes.empty? && clear_attributes.empty?
+
+      refusal('missing_metadata_change', 'At least one metadata change is required.')
+    end
+
+    def metadata_mutation_params(params)
+      {
+        set: params.fetch('set', {}),
+        clear: params.fetch('clear', [])
+      }
+    end
+
+    def metadata_update_refusal(prepared_update)
+      return nil unless prepared_update[:outcome] == 'refused'
+
+      { success: true, outcome: 'refused', refusal: prepared_update[:refusal] }
+    end
+
+    def target_not_found_refusal
+      refusal('target_not_found', 'Target reference resolves to no entity.')
+    end
+
+    def ambiguous_target_refusal
+      refusal('ambiguous_target', 'Target reference resolves ambiguously.')
+    end
+
+    def refusal(code, message, details = nil)
+      response = {
+        success: true,
+        outcome: 'refused',
+        refusal: {
+          code: code,
+          message: message
+        }
+      }
+      response[:refusal][:details] = details if details
+      response
+    end
 
     def metadata_attributes(params)
       public_params = public_params_for_metadata(params)
@@ -138,4 +229,5 @@ module SU_MCP
       attributes
     end
   end
+  # rubocop:enable Metrics/ClassLength
 end

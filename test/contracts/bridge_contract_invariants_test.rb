@@ -334,6 +334,121 @@ class BridgeContractCreateSiteElementRequestHandlerTest < Minitest::Test
   end
 end
 
+class BridgeContractSetEntityMetadataRequestHandlerTest < Minitest::Test
+  include BridgeContractCaseAssertions
+
+  def test_set_entity_metadata_updated_matches_shared_contract_case
+    contract_case = contract_case('set_entity_metadata_updated')
+    response = successful_set_entity_metadata_response(contract_case)
+
+    assert_equal(contract_case.dig('response', 'result', 'outcome'),
+                 response.dig(:result, :outcome))
+    assert_equal(contract_case.dig('response', 'result', 'managedObject', 'status'),
+                 response.dig(:result, :managedObject, 'status'))
+  end
+
+  def test_set_entity_metadata_nested_updated_matches_shared_contract_case
+    contract_case = contract_case('set_entity_metadata_nested_updated')
+    response = successful_set_entity_metadata_response(contract_case)
+
+    assert_equal(contract_case.dig('response', 'result', 'managedObject', 'persistentId'),
+                 response.dig(:result, :managedObject, 'persistentId'))
+    assert_equal(contract_case.dig('response', 'result', 'managedObject', 'status'),
+                 response.dig(:result, :managedObject, 'status'))
+  end
+
+  def test_set_entity_metadata_missing_change_refused_matches_shared_contract_case
+    contract_case = contract_case('set_entity_metadata_missing_change_refused')
+    response = successful_set_entity_metadata_response(contract_case)
+
+    assert_equal(contract_case.dig('response', 'result', 'outcome'),
+                 response.dig(:result, :outcome))
+    assert_equal(contract_case.dig('response', 'result', 'refusal', 'code'),
+                 response.dig(:result, :refusal, 'code'))
+  end
+
+  def test_set_entity_metadata_protected_refused_matches_shared_contract_case
+    contract_case = contract_case('set_entity_metadata_protected_refused')
+    response = successful_set_entity_metadata_response(contract_case)
+
+    assert_equal(contract_case.dig('response', 'result', 'outcome'),
+                 response.dig(:result, :outcome))
+    assert_equal(contract_case.dig('response', 'result', 'refusal', 'code'),
+                 response.dig(:result, :refusal, 'code'))
+  end
+
+  def test_set_entity_metadata_required_clear_refused_matches_shared_contract_case
+    contract_case = contract_case('set_entity_metadata_required_clear_refused')
+    response = successful_set_entity_metadata_response(contract_case)
+
+    assert_equal(contract_case.dig('response', 'result', 'outcome'),
+                 response.dig(:result, :outcome))
+    assert_equal(contract_case.dig('response', 'result', 'refusal', 'code'),
+                 response.dig(:result, :refusal, 'code'))
+  end
+
+  def test_set_entity_metadata_structure_category_clear_refused_matches_shared_contract_case
+    contract_case = contract_case('set_entity_metadata_structure_category_clear_refused')
+    response = successful_set_entity_metadata_response(contract_case)
+
+    assert_equal(contract_case.dig('response', 'result', 'outcome'),
+                 response.dig(:result, :outcome))
+    assert_equal(contract_case.dig('response', 'result', 'refusal', 'code'),
+                 response.dig(:result, :refusal, 'code'))
+  end
+
+  def test_set_entity_metadata_invalid_structure_category_refused_matches_shared_contract_case
+    contract_case = contract_case('set_entity_metadata_invalid_structure_category_refused')
+    response = successful_set_entity_metadata_response(contract_case)
+
+    assert_equal(contract_case.dig('response', 'result', 'outcome'),
+                 response.dig(:result, :outcome))
+    assert_equal(contract_case.dig('response', 'result', 'refusal', 'code'),
+                 response.dig(:result, :refusal, 'code'))
+  end
+
+  def test_set_entity_metadata_none_refused_matches_shared_contract_case
+    contract_case = contract_case('set_entity_metadata_none_refused')
+    response = successful_set_entity_metadata_response(contract_case)
+
+    assert_equal(contract_case.dig('response', 'result', 'outcome'),
+                 response.dig(:result, :outcome))
+    assert_equal(contract_case.dig('response', 'result', 'refusal', 'code'),
+                 response.dig(:result, :refusal, 'code'))
+  end
+
+  def test_set_entity_metadata_ambiguous_refused_matches_shared_contract_case
+    contract_case = contract_case('set_entity_metadata_ambiguous_refused')
+    response = successful_set_entity_metadata_response(contract_case)
+
+    assert_equal(contract_case.dig('response', 'result', 'outcome'),
+                 response.dig(:result, :outcome))
+    assert_equal(contract_case.dig('response', 'result', 'refusal', 'code'),
+                 response.dig(:result, :refusal, 'code'))
+  end
+
+  def test_set_entity_metadata_unmanaged_refused_matches_shared_contract_case
+    contract_case = contract_case('set_entity_metadata_unmanaged_refused')
+    response = successful_set_entity_metadata_response(contract_case)
+
+    assert_equal(contract_case.dig('response', 'result', 'outcome'),
+                 response.dig(:result, :outcome))
+    assert_equal(contract_case.dig('response', 'result', 'refusal', 'code'),
+                 response.dig(:result, :refusal, 'code'))
+  end
+
+  private
+
+  def successful_set_entity_metadata_response(contract_case)
+    build_handler(
+      tool_executor: lambda do |tool_name, args|
+        assert_equal(expected_tool_call(contract_case), [tool_name, args])
+        contract_result(contract_case)
+      end
+    ).handle(contract_case.fetch('request'))
+  end
+end
+
 class BridgeContractRequestProcessorTest < Minitest::Test
   include BridgeContractCaseAssertions
 

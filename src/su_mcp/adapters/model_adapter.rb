@@ -41,6 +41,10 @@ module SU_MCP
         active_model!.entities.to_a
       end
 
+      def all_entities_recursive
+        collect_entities(active_model!.entities.to_a)
+      end
+
       def export_scene(format:, width: nil, height: nil)
         model = active_model!
         normalized_format = normalize_format(format)
@@ -55,6 +59,24 @@ module SU_MCP
       end
 
       private
+
+      def collect_entities(entities)
+        Array(entities).flat_map do |entity|
+          next [] unless entity
+
+          [entity] + child_entities_for(entity)
+        end
+      end
+
+      def child_entities_for(entity)
+        if entity.is_a?(Sketchup::Group)
+          collect_entities(entity.entities.to_a)
+        elsif entity.is_a?(Sketchup::ComponentInstance)
+          collect_entities(entity.definition.entities.to_a)
+        else
+          []
+        end
+      end
 
       def normalize_format(format)
         (format || 'skp').downcase

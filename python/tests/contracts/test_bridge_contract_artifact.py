@@ -45,6 +45,21 @@ def test_seed_contract_cases_cover_required_create_site_element_tool_cases() -> 
     }
 
 
+def test_seed_contract_cases_cover_required_set_entity_metadata_tool_cases() -> None:
+    assert set(contract_cases_by_id()) >= {
+        "set_entity_metadata_updated",
+        "set_entity_metadata_nested_updated",
+        "set_entity_metadata_missing_change_refused",
+        "set_entity_metadata_protected_refused",
+        "set_entity_metadata_required_clear_refused",
+        "set_entity_metadata_structure_category_clear_refused",
+        "set_entity_metadata_invalid_structure_category_refused",
+        "set_entity_metadata_none_refused",
+        "set_entity_metadata_ambiguous_refused",
+        "set_entity_metadata_unmanaged_refused",
+    }
+
+
 def test_each_contract_case_declares_minimum_metadata() -> None:
     for contract_case in load_contract_artifact()["cases"]:
         assert set(contract_case) >= {"case_id", "kind", "owner"}

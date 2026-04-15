@@ -10,6 +10,7 @@ module SU_MCP
       'sample_surface_z' => :sample_surface_z,
       'get_entity_info' => :get_entity_info,
       'create_site_element' => :create_site_element,
+      'set_entity_metadata' => :set_entity_metadata,
       'create_component' => :create_component,
       'delete_component' => :delete_component,
       'transform_component' => :transform_component,

@@ -45,8 +45,19 @@ class ToolDispatcherTest < Minitest::Test
       }
     end
 
+    # rubocop:disable Naming/AccessorMethodName
+    def set_entity_metadata(args)
+      @calls << [:set_entity_metadata, args]
+      {
+        success: true,
+        outcome: 'updated',
+        managedObject: { sourceElementId: args.dig('target', 'sourceElementId') }
+      }
+    end
+    # rubocop:enable Naming/AccessorMethodName
+
     private :get_scene_info, :export_scene, :selection_info, :find_entities, :sample_surface_z,
-            :create_site_element
+            :create_site_element, :set_entity_metadata
   end
 
   class ExportOnlyTarget
@@ -164,6 +175,37 @@ class ToolDispatcherTest < Minitest::Test
           'sourceElementId' => 'terrace-001',
           'status' => 'proposed',
           'footprint' => [[0.0, 0.0], [3.0, 0.0], [3.0, 2.0]]
+        }
+      ]],
+      @target.calls.last(1)
+    )
+  end
+  # rubocop:enable Metrics/MethodLength
+
+  # rubocop:disable Metrics/MethodLength
+  def test_dispatches_set_entity_metadata_to_the_semantic_command
+    result = @dispatcher.call(
+      'set_entity_metadata',
+      {
+        'target' => { 'sourceElementId' => 'house-extension-001' },
+        'set' => { 'status' => 'existing' }
+      }
+    )
+
+    assert_equal(
+      {
+        success: true,
+        outcome: 'updated',
+        managedObject: { sourceElementId: 'house-extension-001' }
+      },
+      result
+    )
+    assert_equal(
+      [[
+        :set_entity_metadata,
+        {
+          'target' => { 'sourceElementId' => 'house-extension-001' },
+          'set' => { 'status' => 'existing' }
         }
       ]],
       @target.calls.last(1)

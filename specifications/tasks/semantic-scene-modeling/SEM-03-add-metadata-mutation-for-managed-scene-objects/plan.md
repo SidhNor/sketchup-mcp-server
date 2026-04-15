@@ -123,6 +123,13 @@ The task also needs to stay valid in hierarchy-heavy scenes. Managed Scene Objec
   - patch application
   - required-field clear checks
 
+Approved live MCP tool metadata:
+- Title: `Set Entity Metadata`
+- Current-phase description: `Update semantic metadata on an existing managed object in SketchUp. Current support is limited to status updates for managed objects and structureCategory updates for managed structure objects.`
+- Behavior annotations:
+  - `readOnlyHint: false`
+  - `destructiveHint: false`
+
 Recommended public request shape:
 
 ```json
@@ -180,6 +187,7 @@ Recommended refusal shape:
   - `outcome: "updated"` for a successful mutation
   - `outcome: "refused"` for a domain-valid request that cannot be accepted
 - Treat the following as structured refusals:
+  - neither `set` nor `clear` provided
   - target resolves to no entity
   - target resolves ambiguously
   - target entity is not a Managed Scene Object
@@ -191,7 +199,6 @@ Recommended refusal shape:
   - missing `target`
   - unsupported keys in `target`
   - no usable identifier in `target`
-  - neither `set` nor `clear` provided
   - non-list `clear`
   - shape/type mismatches that break the public contract
 - Keep Python validation limited to typed shape and scalar types so Python remains mechanical.
@@ -413,3 +420,25 @@ flowchart LR
 - [x] Test requirements specified
 - [x] Risks and dependencies documented
 - [x] Small reversible phases defined
+
+## Implementation Notes
+
+- Added the public `set_entity_metadata` bridge contract surface for successful updates, nested-target updates, and representative refusal outcomes.
+- Implemented Ruby-owned metadata mutation in `SemanticCommands`, backed by a dedicated semantic target resolver and managed-object metadata policy layer.
+- Added recursive model enumeration in the shared Ruby model adapter so compact target references can resolve nested managed objects without widening the public scene-query surface.
+- Kept Python as a thin MCP adapter by adding typed nested request models and direct passthrough registration for `set_entity_metadata`.
+- Tightened the live `set_entity_metadata` tool metadata to the shipped current-phase mutation slice and recorded the approved PLAT-04 wording in the SEM-03 artifacts.
+- Preserved the managed-object serializer posture and in-place mutation semantics so successful updates do not reparent or replace the resolved object.
+
+## Validation Results
+
+- `bundle exec rake ruby:lint`
+- `bundle exec rake ruby:test`
+- `bundle exec rake ruby:contract`
+- `bundle exec rake python:lint`
+- `bundle exec rake python:test`
+- `bundle exec rake python:contract`
+
+## Remaining Manual Verification
+
+- Live SketchUp verification is still recommended for one representative top-level managed object update and one nested managed object update to confirm undo behavior and parent placement in the hosted runtime.

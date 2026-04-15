@@ -30,6 +30,7 @@ The architecture in this HLD is centered on:
 - `set_entity_metadata`
 - Managed Scene Object metadata storage and invariant enforcement
 - semantic serialization for Managed Scene Objects
+- hierarchy-aware lifecycle behavior for Managed Scene Objects inside nested scene structure
 - compatibility boundaries for existing mutation tools such as `transform_component` and `set_material`
 - identity-preserving rebuild or replacement support for semantic revision flows
 
@@ -72,6 +73,7 @@ The design should stay intentionally concrete:
 - `create_site_element` remains one compact public semantic constructor
 - element-specific geometry behavior lives behind internal builders, not separate public tools
 - Managed Scene Object truth lives on SketchUp entities through capability-owned metadata, not in long-lived Ruby memory
+- semantic lifecycle behavior must remain valid for managed objects nested inside grouped scene structure, not only for top-level objects
 - semantic revision and replacement preserve business identity through explicit metadata handoff rules
 - Python remains a thin MCP adapter over Ruby-owned semantic behavior
 
@@ -126,6 +128,28 @@ This HLD should treat semantic metadata in two categories:
 - hard invariants that cannot be broken silently once the object is managed
 - soft fields that may be updated through supported semantic metadata flows
 
+Managed Scene Objects should also remain maintainable when they sit inside nested groups or components used for scene organization. That means semantic lifecycle behavior must preserve intended parent placement and scene context during supported metadata updates, regrouping, duplication, rebuild, or replacement flows rather than silently flattening or relocating managed objects.
+
+### Hierarchy-Aware Lifecycle Posture
+
+Nested scene structure is a normal organization mechanism in the product domain, not an edge case. The semantic capability should therefore assume that many Managed Scene Objects may live below the top level inside grouped scene hierarchy used for accepted-scene management.
+
+This does not mean semantic modeling should absorb a second scene-query subsystem or broad workflow orchestration rules. It means supported semantic lifecycle flows must:
+
+- resolve managed targets correctly when they are nested
+- preserve existing parent placement when the operation is an in-place metadata or compatibility-safe mutation
+- make parent reassignment explicit when a future lifecycle operation intentionally reparents or replaces an object
+- return structured refusal when a requested hierarchy-affecting change would violate identity or managed-object invariants
+
+The smallest planned first-class lifecycle primitives for this area are:
+
+- inspect active edit context
+- reparent
+- duplicate into a target parent while preserving metadata and geometry
+- replace with identity handoff
+
+Those primitives remain follow-on semantic lifecycle work rather than being folded into metadata mutation by default.
+
 ### Undo and Atomicity Posture
 
 Semantic create, metadata update, and identity-preserving rebuild flows should execute inside one SketchUp operation boundary so they appear as one undo step and can roll back coherently on failure.
@@ -158,6 +182,7 @@ This is a capability-level requirement, not an incidental implementation detail.
 - normalize command input into capability-local execution paths
 - open and close SketchUp operation boundaries for semantic mutations
 - coordinate builders, metadata or invariant helpers, and serializers
+- preserve existing parent context for supported hierarchy-safe mutations and lifecycle operations
 - keep public tool naming aligned with the Python MCP surface
 
 **Must Not Own**
@@ -175,6 +200,7 @@ This is a capability-level requirement, not an incidental implementation detail.
 - enforce hard invariants such as required management markers and protected identity fields
 - explicitly enforce the PRD-mandated minimum metadata set (e.g., `sourceElementId`, `status`, and `subtype/category` for structures) at creation time
 - support metadata handoff when a managed object is rebuilt or replaced while preserving business identity
+- support lifecycle-safe maintenance for managed objects nested inside grouped scene structure without creating a parallel hierarchy-specific metadata system
 - provide semantic metadata-key conventions to adjacent capabilities without making them semantic-aware
 
 **Must Not Own**
@@ -226,6 +252,7 @@ This is a capability-level requirement, not an incidental implementation detail.
 - convert a managed SketchUp entity plus semantic metadata into a JSON-serializable result
 - expose identity, semantic type, status, and other documented fields consistently across semantic commands
 - normalize geometry-adjacent output such as bounds or material summaries when those are part of the semantic response contract
+- remain compatible with nested managed objects and expose parent-context or hierarchy-summary fields when the public semantic contract requires them
 
 **Must Not Own**
 
@@ -240,6 +267,7 @@ This is a capability-level requirement, not an incidental implementation detail.
 - support identity-preserving rebuild or replacement flows for Managed Scene Objects
 - transfer protected semantic metadata from an old representation to a new one within one operation boundary
 - preserve business identity even when SketchUp runtime identifiers or representation types change
+- preserve or intentionally reassign parent placement as part of supported hierarchy-aware lifecycle operations
 - surface structured refusal when a requested rebuild would violate semantic invariants
 
 **Must Not Own**

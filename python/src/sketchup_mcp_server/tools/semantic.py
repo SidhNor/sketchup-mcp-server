@@ -48,6 +48,17 @@ class TreeProxyPayload(BaseModel):
     speciesHint: str | None = None
 
 
+class TargetReference(BaseModel):
+    sourceElementId: str | None = None
+    persistentId: str | None = None
+    entityId: str | None = None
+
+
+class MetadataPatch(BaseModel):
+    status: str | None = None
+    structureCategory: str | None = None
+
+
 def register_tools(
     mcp: FastMCP,
     *,
@@ -118,6 +129,36 @@ def register_tools(
 
         return bridge_client.call_tool(
             "create_site_element",
+            arguments,
+            request_id=_request_id(ctx),
+        )
+
+    @mcp.tool(
+        **tool_metadata(
+            title="Set Entity Metadata",
+            description=(
+                "Update semantic metadata on an existing managed object in SketchUp."
+                " Current support is limited to status updates for managed objects and"
+                " structureCategory updates for managed structure objects."
+            ),
+            read_only=False,
+        )
+    )
+    def set_entity_metadata(
+        ctx: Context,
+        target: TargetReference,
+        set: MetadataPatch | None = None,
+        clear: list[str] | None = None,
+    ) -> dict[str, Any]:
+        """Update the current semantic metadata mutation slice for a managed object."""
+        arguments: dict[str, Any] = {"target": _payload_dict(target)}
+        if set is not None:
+            arguments["set"] = _payload_dict(set)
+        if clear is not None:
+            arguments["clear"] = clear
+
+        return bridge_client.call_tool(
+            "set_entity_metadata",
             arguments,
             request_id=_request_id(ctx),
         )

@@ -466,10 +466,13 @@ module SU_MCP
       end
 
       def unsupported_option_refusal(field:, value:)
+        details = { field: field, value: value }
+        details[:allowedValues] = APPROVED_STRUCTURE_CATEGORIES if field == 'structureCategory'
+
         semantic_refusal(
           code: 'unsupported_option',
           message: 'The provided option is not supported for the requested semantic element.',
-          details: { field: field, value: value }
+          details: details
         )
       end
 

@@ -41,6 +41,23 @@ class BridgeContractArtifactTest < Minitest::Test
     assert_empty(expected_case_ids - contract_cases_by_id.keys)
   end
 
+  def test_seed_contract_cases_cover_required_set_entity_metadata_tool_cases
+    expected_case_ids = %w[
+      set_entity_metadata_updated
+      set_entity_metadata_nested_updated
+      set_entity_metadata_missing_change_refused
+      set_entity_metadata_protected_refused
+      set_entity_metadata_required_clear_refused
+      set_entity_metadata_structure_category_clear_refused
+      set_entity_metadata_invalid_structure_category_refused
+      set_entity_metadata_none_refused
+      set_entity_metadata_ambiguous_refused
+      set_entity_metadata_unmanaged_refused
+    ]
+
+    assert_empty(expected_case_ids - contract_cases_by_id.keys)
+  end
+
   def test_each_contract_case_declares_minimum_metadata
     load_contract_artifact.fetch('cases').each do |contract_case|
       assert_empty(%w[case_id kind owner] - contract_case.keys)

@@ -92,8 +92,9 @@ The current cross-runtime tool surface includes scene inspection and targeting h
 - `find_entities`
 - `sample_surface_z`
 - `create_site_element`
+- `set_entity_metadata`
 
-`find_entities` resolves explicit targets through the supported MVP identifier and exact-match query paths. `sample_surface_z` samples explicit target geometry at one or more world-space XY points in meters and returns compact per-point `hit`, `miss`, or `ambiguous` outcomes. `create_site_element` is the semantic creation path and currently delivers the SEM-02 first-wave slice for `structure`, `pad`, `path`, `retaining_edge`, `planting_mass`, and `tree_proxy`, including structured refusal outcomes for unsupported types, missing payloads, contradictory payloads, invalid geometry, and invalid numeric values. Public geometric dimensions for `create_site_element` are interpreted and returned in meters, independent of the active SketchUp model unit display settings.
+`find_entities` resolves explicit targets through the supported MVP identifier and exact-match query paths. `sample_surface_z` samples explicit target geometry at one or more world-space XY points in meters and returns compact per-point `hit`, `miss`, or `ambiguous` outcomes. `create_site_element` is the semantic creation path and currently delivers the SEM-02 first-wave slice for `structure`, `pad`, `path`, `retaining_edge`, `planting_mass`, and `tree_proxy`, including structured refusal outcomes for unsupported types, missing payloads, contradictory payloads, invalid geometry, and invalid numeric values. `set_entity_metadata` is the semantic mutation path for existing managed objects. Current support is limited to `status` updates for managed objects and `structureCategory` updates for managed `structure` objects, with structured refusals for empty mutation requests, protected fields, required-field clears, unmanaged targets, and ambiguous or missing target references. Public geometric dimensions for `create_site_element` are interpreted and returned in meters, independent of the active SketchUp model unit display settings.
 
 ## Bridge contract coverage
 

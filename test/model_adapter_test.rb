@@ -69,6 +69,18 @@ class ModelAdapterTest < Minitest::Test
     assert_equal([101], @adapter.selected_entities.map(&:entityID))
   end
 
+  def test_all_entities_recursive_enumerates_nested_groups_and_component_contents
+    nested_model = build_sample_surface_z_model
+    Sketchup.active_model_override = nested_model
+
+    entity_ids = @adapter.all_entities_recursive.map(&:entityID)
+
+    assert_includes(entity_ids, 402)
+    assert_includes(entity_ids, 421)
+    assert_includes(entity_ids, 403)
+    assert_includes(entity_ids, 431)
+  end
+
   def test_export_scene_saves_skp_exports_with_a_returned_path
     export = @adapter.export_scene(format: 'skp')
 
