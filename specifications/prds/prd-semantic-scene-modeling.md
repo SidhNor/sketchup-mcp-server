@@ -69,13 +69,13 @@ The product needs a compact semantic creation and mutation surface that makes Ma
 
 1. The user supplies a new plan or scenario identifier.
 2. The workflow selects existing Managed Scene Objects that should be revised, replaced, grouped, or removed.
-3. The system applies semantic creation and mutation actions while preserving `sourceElementId` and required metadata rules, including supported cases where an existing Managed Scene Object keeps its business identity while its representation is rebuilt or replaced.
+3. The system applies semantic creation and mutation actions while preserving `sourceElementId`, required metadata rules, and intended parent placement in the scene hierarchy, including supported cases where an existing Managed Scene Object keeps its business identity while its representation is rebuilt or replaced.
 4. The resulting scene reflects the new option without forcing wholesale scene reconstruction.
 
 ### Flow 3: Refine and compose a feature
 
 1. The user or agent creates or selects one or more Managed Scene Objects that belong to the same feature.
-2. The system applies transforms, materials, grouping, duplication, or metadata updates as needed.
+2. The system applies transforms, materials, grouping, duplication, or metadata updates as needed, including cases where the managed objects live inside nested groups or components.
 3. The feature remains semantically legible and revision-friendly after those edits.
 
 ## Functional Requirements
@@ -94,6 +94,7 @@ The product needs a compact semantic creation and mutation surface that makes Ma
 | Support next-wave semantic element types of `tree_instance`, `seat`, `water_feature_proxy`, and `terrain_patch` | As a designer or agent, I want the semantic vocabulary to expand to additional site objects once the first-wave constructor is established | Each listed element type accepts a documented payload shape and produces a valid Managed Scene Object or a structured error if the request is incomplete or contradictory | P1 |
 | Ensure each semantic creation produces a Managed Scene Object with required metadata | As a downstream workflow, I want created objects to be reliably revisable and validatable later | Every semantic object created through MCP includes the required metadata keys defined by the domain rules; objects missing required keys are rejected or surfaced as failed creation | P0 |
 | Preserve stable business identity across revisions and representation changes | As a workflow orchestrator, I want replacements and revisions to keep lineage intact so that downstream automation stays reliable | `sourceElementId` and required managed-object identity survive supported revise, regroup, replace, and representation-rebuild flows in accordance with domain rules | P0 |
+| Support hierarchy-aware maintenance of Managed Scene Objects | As an agent or operator, I want to maintain managed objects even when they live inside nested scene structure so that governed scene work does not depend on fallback Ruby for normal hierarchy-heavy workflows | Supported semantic lifecycle flows can target and update Managed Scene Objects inside nested groups or components while preserving business identity, intended parent placement, and structured downstream references, or else return a structured refusal when the requested change would violate product rules | P0 |
 | Support explicit metadata creation and updates through `set_entity_metadata` | As an agent, I want to update provenance and semantic identity without rebuilding geometry | Metadata can be added or updated on Managed Scene Objects while preserving required identity rules; removal of required keys is blocked or surfaced as a product-level failure | P0 |
 | Support mutation of Managed Scene Objects through `transform_component` and `set_material` | As an agent, I want to revise created objects without recreating them so that iteration stays efficient and traceable | Managed Scene Objects can be transformed and assigned materials while retaining identity, structured metadata, and serializable state | P1 |
 | Support revision-safe replacement or rebuild of Managed Scene Objects where the workflow intent is to keep the same business object | As an agent or operator, I want to update the representation of an existing Managed Scene Object without breaking lineage so that revision workflows do not collapse into delete-and-recreate patterns | Supported semantic revision flows can replace or rebuild the representation of a Managed Scene Object while preserving required identity, metadata invariants, and structured downstream references, or else return a structured refusal when the requested revision would violate product rules | P1 |
@@ -113,6 +114,7 @@ Conflict flag: no functional requirements currently conflict with the business r
 - The semantic modeling surface must remain maintainable as new semantic types are added over time.
 - Initial semantic structure support must cover common irregular footprints without requiring primitive fallback for non-rectangular house or extension outlines.
 - Built-form classification rules must be explicit enough that agents do not have to infer `pad` versus `structure` from weak natural-language hints alone.
+- Normal semantic maintenance workflows must remain reliable when Managed Scene Objects are nested inside grouped scene structure rather than living only at the top level.
 
 ## Constraints
 
@@ -177,3 +179,4 @@ Conflict flag: no functional requirements currently conflict with the business r
 | 2026-04-14 | Expanded the PRD to treat `structure` as a first-wave semantic element, added product requirements for built-form coverage and the `structure` versus `pad` boundary, and called out polygon-footprint support for irregular house and extension outlines. |
 | 2026-04-14 | Refined the `structure` update after external review by requiring subtype/category semantics, tightening the `pad` versus `structure` rule, adding representative acceptance examples, and explicitly classifying decks and raised platforms under `pad` using height or thickness semantics. |
 | 2026-04-14 | Added explicit minimum metadata requirements for `structure` objects, standardized `pad` elevation and thickness semantics for raised hardscape and platform cases, and aligned the PRD conflict note with the updated domain analysis. |
+| 2026-04-15 | Clarified that semantic lifecycle behavior must remain reliable for Managed Scene Objects inside nested scene hierarchy, and made parent-placement preservation explicit in revision-friendly workflows. |

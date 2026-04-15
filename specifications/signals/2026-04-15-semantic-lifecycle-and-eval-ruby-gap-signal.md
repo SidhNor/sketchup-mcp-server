@@ -9,7 +9,7 @@
 **Related Tasks**:
 - [SEM-02 Complete First-Wave Semantic Creation Vocabulary](../tasks/semantic-scene-modeling/SEM-02-complete-first-wave-semantic-creation-vocabulary/task.md)
 - [SEM-03 Add Metadata Mutation For Managed Scene Objects](../tasks/semantic-scene-modeling/SEM-03-add-metadata-mutation-for-managed-scene-objects/task.md)
-**Status**: `captured`
+**Status**: `actioned`
 **Disposition**: `follow-up recommended across semantic lifecycle and bridge tooling`
 
 ## Summary
@@ -240,3 +240,148 @@ when the actual operator pain is increasingly:
 ## Follow-On Question Preserved By This Signal
 
 `What is the smallest first-class MCP lifecycle surface that would let agents replace, reparent, inspect metadata, and repair accepted semantic scene objects without falling back to eval_ruby for governed scene maintenance?`
+
+## Structured Expansion Plan
+
+### Expansion Outcome
+
+This signal expansion preserves the original capability ownership:
+
+- the owning capability remains `semantic scene modeling`
+- no new capability is needed at this stage
+- no new PRD is needed at this stage
+
+The expansion also narrows the planning posture:
+
+- hierarchy-aware managed-object maintenance is the most important follow-on gap
+- rare accepted objects that still lack semantic metadata do not justify a dedicated adoption or backfill slice right now
+- `SEM-03` should be refined while still unimplemented so it does not assume a flat scene
+- full reparent, replace, and duplicate-into-parent lifecycle operations should remain a dedicated follow-on after `SEM-03`
+
+### Required Specification Edits
+
+#### 1. Semantic PRD update
+
+Target file:
+
+- `specifications/prds/prd-semantic-scene-modeling.md`
+
+Required edits:
+
+- add explicit product language that Managed Scene Objects may live inside nested groups or components and must remain maintainable there through normal semantic workflows
+- clarify that supported revision, regroup, duplicate, and replacement flows must preserve intended parent placement and business identity
+- add an explicit hierarchy-aware maintenance expectation so the semantic surface is not interpreted as top-level-only scene management
+
+Purpose:
+
+- make hierarchy-aware lifecycle behavior a planned product requirement rather than only an implementation concern inferred from signals and HLD language
+
+#### 2. Semantic HLD update
+
+Target file:
+
+- `specifications/hlds/hld-semantic-scene-modeling.md`
+
+Required edits:
+
+- add an explicit architecture posture for nested managed objects in grouped scene structure
+- state that semantic lifecycle helpers must work against nested scene hierarchy without introducing a second lookup subsystem
+- describe parent-context preservation as part of semantic mutation and lifecycle safety
+- explicitly name the planned follow-on lifecycle primitives:
+  - inspect active edit context
+  - reparent
+  - duplicate into a target parent while preserving metadata and geometry
+  - replace with identity handoff
+
+Purpose:
+
+- keep hierarchy-aware lifecycle behavior within the semantic capability while preserving the existing targeting and platform boundaries
+
+#### 3. `SEM-03` task update
+
+Target file:
+
+- `specifications/tasks/semantic-scene-modeling/SEM-03-add-metadata-mutation-for-managed-scene-objects/task.md`
+
+Required edits:
+
+- update the task acceptance criteria so `set_entity_metadata` must work for nested Managed Scene Objects rather than only easy top-level cases
+- clarify that target resolution and metadata mutation must preserve the object's existing parent placement and scene context
+- keep reparent or replacement behavior out of scope for `SEM-03`
+
+Purpose:
+
+- prevent `SEM-03` from landing with a flat-scene assumption that would make later hierarchy work more expensive
+
+#### 4. `SEM-03` technical plan update
+
+Target file:
+
+- `specifications/tasks/semantic-scene-modeling/SEM-03-add-metadata-mutation-for-managed-scene-objects/plan.md`
+
+Required edits:
+
+- add explicit nested-hierarchy targeting cases to the technical design
+- require tests and contract coverage for nested managed objects
+- add manual or hosted verification expectations for nested managed-object mutation where practical
+- preserve the current non-goal boundary:
+  - no full reparent tool
+  - no full replacement flow
+  - no broad hierarchy query surface
+
+Purpose:
+
+- make the implementation plan reflect the real scene-management constraints already visible in authoring sessions
+
+#### 5. Follow-on semantic lifecycle task definition
+
+Target area:
+
+- `specifications/tasks/semantic-scene-modeling/`
+
+Required edits:
+
+- add a new post-`SEM-03` follow-on task or task set for hierarchy-aware semantic lifecycle operations
+- scope that follow-on around:
+  - active edit context inspection
+  - reparent
+  - duplicate into target parent
+  - identity-preserving replacement
+- keep the ownership in semantic modeling rather than splitting it into a new capability unless later discovery shows the workflow abstraction is broader than managed-object maintenance
+
+Purpose:
+
+- separate metadata mutation from heavier lifecycle operations while preserving the right next implementation path
+
+#### 6. Unit-contract follow-on review
+
+Target files:
+
+- semantic capability artifacts and any owning contract or implementation tasks that define semantic authoring boundaries
+
+Required edits:
+
+- confirm where strict meter-based semantic authoring requirements should be made explicit if they are not already captured strongly enough in the owning artifacts
+- ensure future lifecycle work does not treat unit correctness as an implementation-only detail
+
+Purpose:
+
+- preserve the strongest correctness finding from the originating session without forcing this signal to over-prescribe the exact owning task prematurely
+
+### Explicit No-Change Decisions
+
+The expansion also records decisions about what should **not** be added right now:
+
+- do not add a new capability for this signal
+- do not create a new PRD solely for this signal
+- do not add a dedicated metadata adoption or backfill workflow for the small number of accepted objects that currently lack semantic metadata
+- do not widen `SEM-03` into full reparent, replacement, or duplicate-into-parent behavior
+
+### Planning Order
+
+Recommended order for the resulting edits:
+
+1. Update the semantic PRD and semantic HLD to make the hierarchy-aware lifecycle posture explicit.
+2. Update the `SEM-03` task and technical plan so metadata mutation is designed and tested for nested managed objects.
+3. After `SEM-03`, define the dedicated follow-on semantic lifecycle task for hierarchy operations.
+4. During that follow-on planning, tighten the owning meter-contract language if the relevant semantic or platform artifacts still leave room for ambiguity.

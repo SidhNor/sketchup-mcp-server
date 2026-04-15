@@ -15,11 +15,14 @@ Semantic creation alone is not enough for revision-safe workflows. Managed Scene
 
 The PRD defines `set_entity_metadata` as a P0 part of the semantic surface, but the current repository does not yet provide a semantic-side metadata mutation command or a clear rule for how managed-object invariants are preserved during updates. The current semantic core is only partially scaffolded in code, so this task must build on the delivered semantic-core baseline rather than introduce a second metadata or command path while making the dependency on the targeting slice explicit instead of inventing a second lookup subsystem inside semantic modeling.
 
+This task also needs to avoid a flat-scene assumption. Managed Scene Objects may live inside nested groups or components used for scene organization, so metadata mutation must work for those nested objects while preserving their existing parent placement and scene context.
+
 ## Goals
 
 - deliver `set_entity_metadata` as the public metadata mutation path for Managed Scene Objects
 - preserve hard identity and management invariants while allowing supported semantic metadata updates
 - make semantic metadata mutation depend on the delivered targeting contract rather than duplicating lookup behavior inside the semantic capability
+- ensure metadata mutation works for nested Managed Scene Objects without silently relocating them or requiring fallback Ruby for normal hierarchy-heavy cases
 
 ## Acceptance Criteria
 
@@ -42,6 +45,13 @@ Scenario: metadata mutation reuses the delivered targeting dependency
   Then the task consumes the delivered targeting contract from `STI-01` or its equivalent
   And the task does not introduce a second semantic-owned lookup subsystem
 
+Scenario: metadata mutation remains hierarchy-safe for nested managed objects
+  Given a Managed Scene Object may live inside nested groups or components used for scene organization
+  When `set_entity_metadata` updates supported metadata on that object
+  Then the task resolves the nested target through the delivered compact targeting posture
+  And the update preserves the object's existing parent placement and scene context
+  And the task does not implicitly reparent, flatten, or replace the object
+
 Scenario: metadata mutation lands with unit and contract coverage
   Given this task adds a new public semantic command
   When the task is reviewed
@@ -54,6 +64,7 @@ Scenario: metadata mutation lands with unit and contract coverage
 - defining managed-object compatibility behavior for `transform_component` or `set_material`
 - delivering identity-preserving rebuild or replacement flows
 - broad semantic query or collection-discovery behavior beyond the delivered targeting dependency
+- introducing full hierarchy-editing operations such as explicit reparent, active edit-context control, or duplicate-into-parent flows
 
 ## Business Constraints
 
@@ -61,6 +72,7 @@ Scenario: metadata mutation lands with unit and contract coverage
 - the task must preserve stable business identity and required managed-object metadata instead of allowing silent degradation
 - the public semantic mutation surface must remain compact and predictable for workflow clients
 - the task must extend the existing semantic capability baseline rather than creating a separate metadata workflow outside Managed Scene Object ownership
+- the task must remain usable in hierarchy-heavy scenes where managed objects are nested for organization rather than living only at the top level
 
 ## Technical Constraints
 
@@ -69,6 +81,7 @@ Scenario: metadata mutation lands with unit and contract coverage
 - Ruby must own invariant enforcement, metadata writes, operation bracketing, and serialized mutation results
 - Python must remain a thin MCP adapter that validates boundary shape and forwards `set_entity_metadata` over the existing bridge
 - the task must add or update the shared contract artifact and native Ruby and Python contract suites for the new public mutation tool
+- supported metadata mutation must work for nested Managed Scene Objects while preserving current parent placement; hierarchy reassignment remains a separate follow-on
 
 ## Dependencies
 
@@ -89,3 +102,4 @@ Scenario: metadata mutation lands with unit and contract coverage
 - supported metadata updates can be applied to Managed Scene Objects through `set_entity_metadata` without rebuilding geometry
 - invalid attempts to remove or corrupt required managed-object identity fields are surfaced as structured failures
 - the metadata mutation boundary is covered by Ruby tests, Python tests, and shared contract cases in the same task
+- representative nested Managed Scene Objects can be updated through `set_entity_metadata` without losing targetability or parent placement
