@@ -2,6 +2,14 @@
 
 <!-- version list -->
 
+## v0.8.0 (2026-04-15)
+
+### Features
+
+- **SEM-04**: Tree proxy shape decoration
+  ([`8b37b0f`](https://github.com/SidhNor/sketchup-mcp-server/commit/8b37b0ffe4876bb0691d084f7f66668ebf87ba38))
+
+
 ## v0.7.0 (2026-04-15)
 
 ### Features
