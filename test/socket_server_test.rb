@@ -4,6 +4,7 @@ require_relative 'test_helper'
 require_relative 'support/scene_query_test_support'
 require_relative '../src/su_mcp/request_handler'
 require_relative '../src/su_mcp/request_processor'
+require_relative '../src/su_mcp/editing_commands'
 require_relative '../src/su_mcp/scene_query_commands'
 require_relative '../src/su_mcp/semantic_commands'
 require_relative '../src/su_mcp/tool_dispatcher'
@@ -71,6 +72,12 @@ class SocketServerTest < Minitest::Test
     commands = @server.send(:semantic_commands)
 
     assert_instance_of(SU_MCP::SemanticCommands, commands)
+  end
+
+  def test_builds_editing_commands_for_extracted_bridge_commands
+    commands = @server.send(:editing_commands)
+
+    assert_instance_of(SU_MCP::EditingCommands, commands)
   end
 
   def test_builds_request_processor_for_raw_socket_payloads

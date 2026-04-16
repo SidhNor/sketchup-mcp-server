@@ -1,16 +1,20 @@
 # frozen_string_literal: true
 
+require_relative 'sample_surface_support'
+
 module SU_MCP
   # Ruby-owned explicit target resolution and compact surface sampling.
-  # rubocop:disable Metrics/ClassLength, Metrics/MethodLength, Metrics/ParameterLists
-  # rubocop:disable Metrics/CyclomaticComplexity, Metrics/AbcSize
-  # rubocop:disable Metrics/PerceivedComplexity, Metrics/BlockLength
+  # rubocop:disable Metrics/ClassLength, Metrics/MethodLength, Metrics/ParameterLists, Metrics/AbcSize
   class SampleSurfaceQuery
     TARGET_REFERENCE_KEYS = %w[sourceElementId persistentId entityId].freeze
     SAMPLE_Z_CLUSTER_TOLERANCE_METERS = 0.001
 
-    def initialize(serializer:)
+    def initialize(serializer:, support: nil)
       @serializer = serializer
+      @support = support || SampleSurfaceSupport.new(
+        serializer: serializer,
+        cluster_tolerance_meters: SAMPLE_Z_CLUSTER_TOLERANCE_METERS
+      )
     end
 
     def execute(entities:, params:)
@@ -23,7 +27,10 @@ module SU_MCP
         none_message: 'Target reference resolves to no entity',
         ambiguous_message: 'Target reference resolves ambiguously'
       )
-      target_face_entries = sampleable_faces_for(target_entity, visible_only: visible_only?(params))
+      target_face_entries = support.sampleable_faces_for(
+        target_entity,
+        visible_only: visible_only?(params)
+      )
       raise 'Target resolves to no sampleable face geometry' if target_face_entries.empty?
 
       {
@@ -43,7 +50,7 @@ module SU_MCP
 
     private
 
-    attr_reader :serializer
+    attr_reader :serializer, :support
 
     def normalized_target_reference(raw_target)
       target = normalize_values(raw_target)
@@ -117,73 +124,11 @@ module SU_MCP
       params['visibleOnly'] != false
     end
 
-    def sampleable_faces_for(entity, visible_only:, transform_chain: [])
-      type = serializer.entity_type_key(entity)
-      return [] unless visible_entity?(entity, visible_only)
-
-      case type
-      when 'face'
-        [{ face: entity, transform_chain: transform_chain }]
-      when 'group'
-        collect_faces(
-          entity.entities,
-          visible_only: visible_only,
-          transform_chain: append_transform(transform_chain, entity)
-        )
-      when 'componentinstance'
-        collect_faces(
-          entity.definition.entities,
-          visible_only: visible_only,
-          transform_chain: append_transform(transform_chain, entity)
-        )
-      else
-        raise "Target type #{type} is not supported by sample_surface_z"
-      end
-    end
-
-    def collect_faces(entities, visible_only:, transform_chain:)
-      Array(entities).flat_map do |entity|
-        next [] unless entity
-
-        type = serializer.entity_type_key(entity)
-        case type
-        when 'face'
-          if visible_entity?(entity, visible_only)
-            [{ face: entity, transform_chain: transform_chain }]
-          else
-            []
-          end
-        when 'group'
-          next [] unless visible_entity?(entity, visible_only)
-
-          collect_faces(
-            entity.entities,
-            visible_only: visible_only,
-            transform_chain: append_transform(transform_chain, entity)
-          )
-        when 'componentinstance'
-          next [] unless visible_entity?(entity, visible_only)
-
-          collect_faces(
-            entity.definition.entities,
-            visible_only: visible_only,
-            transform_chain: append_transform(transform_chain, entity)
-          )
-        else
-          []
-        end
-      end
-    end
-
-    def visible_entity?(entity, visible_only)
-      !visible_only || !(entity.respond_to?(:hidden?) && entity.hidden?)
-    end
-
     def sample_point_result(sample_point:, target_face_entries:, scene_entities:, target_entity:,
                             ignore_entities:, visible_only:)
       target_hits = candidate_hits(target_face_entries, sample_point)
       if visible_only
-        blocking_faces = blocking_faces_for(
+        blocking_faces = support.blocking_faces_for(
           scene_entities,
           target_entity: target_entity,
           ignore_entities: ignore_entities
@@ -193,7 +138,7 @@ module SU_MCP
         end
       end
 
-      clusters = cluster_hits(target_hits)
+      clusters = support.cluster_hits(target_hits)
       return miss_result(sample_point) if clusters.empty?
       return ambiguous_result(sample_point) if clusters.length > 1
 
@@ -248,35 +193,12 @@ module SU_MCP
       value.between?(range.first, range.last)
     end
 
-    def blocking_faces_for(scene_entities, target_entity:, ignore_entities:)
-      scene_entities.flat_map do |entity|
-        next [] if entity.equal?(target_entity)
-        next [] if ignore_entities.any? { |ignore_entity| ignore_entity.equal?(entity) }
-
-        sampleable_faces_for(entity, visible_only: true, transform_chain: [])
-      rescue RuntimeError
-        []
-      end
-    end
-
     def blocked_by_visible_geometry?(sample_point, sampled_z, blocking_faces)
       blocking_faces.any? do |face|
         blocking_z = sampled_z_for_face(face, sample_point)
         next false if blocking_z.nil?
 
         blocking_z > (sampled_z + SAMPLE_Z_CLUSTER_TOLERANCE_METERS)
-      end
-    end
-
-    def cluster_hits(hits)
-      hits.sort_by { |hit| hit[:z] }.each_with_object([]) do |hit, clusters|
-        current_cluster = clusters.last
-        if current_cluster.nil? ||
-           (hit[:z] - current_cluster.last[:z]).abs > SAMPLE_Z_CLUSTER_TOLERANCE_METERS
-          clusters << [hit]
-        else
-          current_cluster << hit
-        end
       end
     end
 
@@ -317,13 +239,6 @@ module SU_MCP
       return value.to_m.to_f if value.respond_to?(:to_m)
 
       value.to_f
-    end
-
-    def append_transform(transform_chain, entity)
-      transformation = entity.respond_to?(:transformation) ? entity.transformation : nil
-      return transform_chain if transformation.nil?
-
-      transform_chain + [transformation]
     end
 
     def apply_fake_transform_components(x_value, y_value, z_value, transform_chain)
@@ -440,7 +355,5 @@ module SU_MCP
       value
     end
   end
-  # rubocop:enable Metrics/ClassLength, Metrics/MethodLength, Metrics/ParameterLists
-  # rubocop:enable Metrics/CyclomaticComplexity, Metrics/AbcSize
-  # rubocop:enable Metrics/PerceivedComplexity, Metrics/BlockLength
+  # rubocop:enable Metrics/ClassLength, Metrics/MethodLength, Metrics/ParameterLists, Metrics/AbcSize
 end

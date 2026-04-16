@@ -31,9 +31,9 @@ The Ruby runtime now has an adopted portable coding-guidelines baseline, but the
 
 - [PLAT-08 Task](./task.md)
 - [Platform Architecture and Repo Structure](specifications/hlds/hld-platform-architecture-and-repo-structure.md)
-- [Ruby Coding Guidelines](specifications/ryby-coding-guidelines.md)
-- [Ruby Platform Coding Guidelines](specifications/ruby-platform-coding-guidelines.md)
-- [SketchUp Extension Development Guidance](specifications/sketchup-extension-development-guidance.md)
+- [Ruby Coding Guidelines](specifications/guidelines/ryby-coding-guidelines.md)
+- [Ruby Platform Coding Guidelines](specifications/guidelines/ruby-platform-coding-guidelines.md)
+- [SketchUp Extension Development Guidance](specifications/guidelines/sketchup-extension-development-guidance.md)
 - [PLAT-01 Technical Plan](specifications/tasks/platform/PLAT-01-decompose-ruby-runtime-boundaries/plan.md)
 - [PLAT-02 Technical Plan](specifications/tasks/platform/PLAT-02-extract-ruby-sketchup-adapters-and-serializers/plan.md)
 - Current hotspots:
@@ -378,3 +378,25 @@ Realign the highest-value Ruby structural hotspots with the adopted coding guide
 - [x] Rollout approach documented when needed
 - [x] Small reversible phases defined
 - [x] Premortem completed with falsifiable failure paths and mitigations
+
+## Implementation Notes
+
+- Implemented the first grouped SocketServer extraction as:
+  - [EditingCommands](./../../../src/su_mcp/editing_commands.rb)
+  - [ComponentGeometryBuilder](./../../../src/su_mcp/component_geometry_builder.rb)
+  - [MaterialResolver](./../../../src/su_mcp/material_resolver.rb)
+- Rewired [SocketServer](./../../../src/su_mcp/socket_server.rb) to construct `editing_commands` and route tool execution through it.
+- Implemented the validator support seam as [Semantic::GeometryValidator](./../../../src/su_mcp/semantic/geometry_validator.rb) and rewired [RequestValidator](./../../../src/su_mcp/semantic/request_validator.rb) to delegate lower-level geometry and numeric checks.
+- Implemented the sample-surface support seam as [SampleSurfaceSupport](./../../../src/su_mcp/sample_surface_support.rb) and rewired [SampleSurfaceQuery](./../../../src/su_mcp/sample_surface_query.rb) to delegate traversal and clustering mechanics.
+- Added seam-focused tests:
+  - [test/editing_commands_test.rb](./../../../test/editing_commands_test.rb)
+  - [test/semantic_geometry_validator_test.rb](./../../../test/semantic_geometry_validator_test.rb)
+  - [test/sample_surface_support_test.rb](./../../../test/sample_surface_support_test.rb)
+
+## Final Validation
+
+- Passed `bundle exec rake ruby:test`
+- Passed `bundle exec rake ruby:lint`
+- Passed `bundle exec rake package:verify`
+- No user-facing docs changed because the public MCP surface, bridge contract, setup path, and tool names stayed the same.
+- Manual SketchUp-hosted verification still remains for representative edit/material flows touched by the extracted `EditingCommands` slice.

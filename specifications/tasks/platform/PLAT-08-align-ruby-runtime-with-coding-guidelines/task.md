@@ -1,7 +1,7 @@
 # Task: PLAT-08 Align Ruby Runtime With Coding Guidelines
 **Task ID**: `PLAT-08`
 **Title**: `Align Ruby Runtime With Coding Guidelines`
-**Status**: `planned`
+**Status**: `completed`
 **Priority**: `P1`
 **Date**: `2026-04-16`
 
@@ -72,7 +72,7 @@ Scenario: Cleanup remains bounded to the identified structural hotspots
 
 - `PLAT-01`
 - `PLAT-02`
-- `specifications/ryby-coding-guidelines.md`
+- `specifications/guidelines/ryby-coding-guidelines.md`
 
 ## Relationships
 
@@ -88,3 +88,25 @@ Scenario: Cleanup remains bounded to the identified structural hotspots
 - the highest-priority divergence hotspots have materially narrower ownership after the cleanup
 - the Ruby runtime file and folder structure makes major seams easier to locate during review
 - the cleanup can be explained against the identified structural hotspots instead of as subjective stylistic churn
+
+## Implementation Notes
+
+- Extracted a first grouped editing-command surface out of the Ruby transport hotspot:
+  - [EditingCommands](./../../../src/su_mcp/editing_commands.rb)
+  - [ComponentGeometryBuilder](./../../../src/su_mcp/component_geometry_builder.rb)
+  - [MaterialResolver](./../../../src/su_mcp/material_resolver.rb)
+- Rewired [SocketServer](./../../../src/su_mcp/socket_server.rb) to build that grouped command surface and route tool calls through [ToolDispatcher](./../../../src/su_mcp/tool_dispatcher.rb) without keeping the moved edit/export/material methods on the transport entrypoint.
+- Extracted lower-level semantic geometry and numeric mechanics into [Semantic::GeometryValidator](./../../../src/su_mcp/semantic/geometry_validator.rb) and rewired [RequestValidator](./../../../src/su_mcp/semantic/request_validator.rb) to depend on it.
+- Extracted sample-surface traversal, visibility, and clustering mechanics into [SampleSurfaceSupport](./../../../src/su_mcp/sample_surface_support.rb) and rewired [SampleSurfaceQuery](./../../../src/su_mcp/sample_surface_query.rb) to depend on it.
+- Added seam-level regression coverage for each extracted owner:
+  - [test/editing_commands_test.rb](./../../../test/editing_commands_test.rb)
+  - [test/semantic_geometry_validator_test.rb](./../../../test/semantic_geometry_validator_test.rb)
+  - [test/sample_surface_support_test.rb](./../../../test/sample_surface_support_test.rb)
+
+## Validation Notes
+
+- Passed `bundle exec rake ruby:test`
+- Passed `bundle exec rake ruby:lint`
+- Passed `bundle exec rake package:verify`
+- The public Python/Ruby bridge contract did not change, so shared contract artifacts and contract suites did not require updates.
+- Manual SketchUp-hosted verification was not run for the touched edit/material flows; that remains the main follow-up validation gap.

@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require_relative 'geometry_validator'
+
 module SU_MCP
   module Semantic
     # Validates the SEM-02 semantic request surface before builder execution.
@@ -16,6 +18,10 @@ module SU_MCP
       ].freeze
       NESTED_PAYLOAD_TYPES = %w[path retaining_edge planting_mass tree_proxy].freeze
 
+      def initialize(geometry_validator: GeometryValidator.new)
+        @geometry_validator = geometry_validator
+      end
+
       def refusal_for(params)
         element_type = params['elementType'].to_s
         return unsupported_element_type_refusal(params) unless supported_element_type?(element_type)
@@ -26,6 +32,8 @@ module SU_MCP
       end
 
       private
+
+      attr_reader :geometry_validator
 
       # rubocop:disable Metrics/AbcSize, Metrics/MethodLength
       def validation_rules(params, element_type)
@@ -361,112 +369,6 @@ module SU_MCP
           (element_type == 'structure' && params.key?('thickness'))
       end
 
-      def invalid_polygon?(footprint)
-        normalized = normalize_polygon(footprint)
-        return true if normalized.nil?
-        return true if normalized.length < 3 || normalized.uniq.length < 3
-
-        consecutive_duplicate_points?(normalized) ||
-          self_intersecting_polygon?(normalized) ||
-          polygon_area(normalized).zero?
-      end
-
-      def normalize_polygon(footprint)
-        return nil unless footprint.is_a?(Array)
-
-        points = footprint.map { |point| normalize_xy_point(point) }
-        return nil if points.any?(&:nil?)
-
-        remove_repeated_closing_point(points)
-      end
-
-      def normalize_polyline(points)
-        return nil unless points.is_a?(Array)
-
-        normalized = points.map { |point| normalize_xy_point(point) }
-        return nil if normalized.any?(&:nil?)
-
-        normalized
-      end
-
-      def normalize_xy_point(point)
-        values = Array(point).first(2)
-        return nil unless values.length == 2
-        return nil unless values.all? { |value| finite_numeric?(value) }
-
-        values.map(&:to_f)
-      end
-
-      def remove_repeated_closing_point(points)
-        return points unless points.length > 1 && points.first == points.last
-
-        points[0...-1]
-      end
-
-      def consecutive_duplicate_points?(points)
-        points.each_cons(2).any? { |left, right| left == right }
-      end
-
-      def polygon_area(points)
-        wrapped_points = points + [points.first]
-        area_sum = wrapped_points.each_cons(2).sum do |(x1, y1), (x2, y2)|
-          (x1 * y2) - (x2 * y1)
-        end
-
-        (area_sum / 2.0).abs
-      end
-
-      def self_intersecting_polygon?(points)
-        edges(points).each_with_index.any? do |first_edge, first_index|
-          edges(points).each_with_index.any? do |second_edge, second_index|
-            next false if first_index >= second_index
-            next false if adjacent_edges?(points.length, first_index, second_index)
-
-            segments_intersect?(first_edge, second_edge)
-          end
-        end
-      end
-
-      def edges(points)
-        wrapped_points = points + [points.first]
-        wrapped_points.each_cons(2).to_a
-      end
-
-      def adjacent_edges?(point_count, first_index, second_index)
-        second_index == first_index + 1 || (first_index.zero? && second_index == point_count - 1)
-      end
-
-      def segments_intersect?(first_edge, second_edge)
-        first_start, first_end = first_edge
-        second_start, second_end = second_edge
-
-        o1 = orientation(first_start, first_end, second_start)
-        o2 = orientation(first_start, first_end, second_end)
-        o3 = orientation(second_start, second_end, first_start)
-        o4 = orientation(second_start, second_end, first_end)
-
-        return true if o1 != o2 && o3 != o4
-        return on_segment?(first_start, second_start, first_end) if o1.zero?
-        return on_segment?(first_start, second_end, first_end) if o2.zero?
-        return on_segment?(second_start, first_start, second_end) if o3.zero?
-        return on_segment?(second_start, first_end, second_end) if o4.zero?
-
-        false
-      end
-
-      def orientation(point_a, point_b, point_c)
-        value = ((point_b[1] - point_a[1]) * (point_c[0] - point_b[0])) -
-                ((point_b[0] - point_a[0]) * (point_c[1] - point_b[1]))
-        return 0 if value.zero?
-
-        value.positive? ? 1 : -1
-      end
-
-      def on_segment?(point_a, point_b, point_c)
-        point_b[0].between?([point_a[0], point_c[0]].min, [point_a[0], point_c[0]].max) &&
-          point_b[1].between?([point_a[1], point_c[1]].min, [point_a[1], point_c[1]].max)
-      end
-
       def missing_structure_category?(params)
         params['elementType'] == 'structure' && params['structureCategory'].to_s.empty?
       end
@@ -613,18 +515,19 @@ module SU_MCP
       end
 
       def invalid_polyline?(points)
-        normalized = normalize_polyline(points)
-        return true if normalized.nil?
-
-        normalized.uniq.length < 2
+        geometry_validator.invalid_polyline?(points)
       end
 
       def invalid_positive_number?(value)
-        !finite_numeric?(value) || value.to_f <= 0
+        geometry_validator.invalid_positive_number?(value)
       end
 
       def finite_numeric?(value)
-        value.is_a?(Numeric) && value.finite?
+        geometry_validator.finite_numeric?(value)
+      end
+
+      def invalid_polygon?(footprint)
+        geometry_validator.invalid_polygon?(footprint)
       end
 
       def unsupported_element_type_refusal(params)
