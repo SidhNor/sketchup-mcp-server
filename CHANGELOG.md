@@ -2,6 +2,27 @@
 
 <!-- version list -->
 
+## v0.11.0 (2026-04-16)
+
+### Documentation
+
+- **PLAT-09,PLAT-11**: Planning tech stack
+  ([`342e1b1`](https://github.com/SidhNor/sketchup-mcp-server/commit/342e1b1805653750591acf87707714ddd59c4da2))
+
+- **platfrom**: Tasks for mcp move to ruby
+  ([`327b7c9`](https://github.com/SidhNor/sketchup-mcp-server/commit/327b7c9da0072ea97674d8534f04f1e145619375))
+
+### Features
+
+- **PLAT-09**: Build ruby-native packaging and runtime foundations
+  ([`f27a687`](https://github.com/SidhNor/sketchup-mcp-server/commit/f27a6874728c1f949a526221c9cab579fcd0d761))
+
+### Refactoring
+
+- **PLAT-08**: Align coding guidelines
+  ([`61a5982`](https://github.com/SidhNor/sketchup-mcp-server/commit/61a5982f4c7eeade7360ff617ffe09285c10c4af))
+
+
 ## v0.10.0 (2026-04-16)
 
 ### Documentation
