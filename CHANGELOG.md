@@ -2,6 +2,25 @@
 
 <!-- version list -->
 
+## v0.9.0 (2026-04-16)
+
+### Documentation
+
+- **arch**: Add ADR and new ruby coding guidelines
+  ([`05d8a8e`](https://github.com/SidhNor/sketchup-mcp-server/commit/05d8a8e7e55f22347241eb64466fc34426b7edbd))
+
+- **PLAT-07**: Planning ruby MCP spike
+  ([`932d37b`](https://github.com/SidhNor/sketchup-mcp-server/commit/932d37b586f30b7f7e628f547a8b22cf9fe5b685))
+
+- **SEM-05**: Signal for other contract and spike for it
+  ([`8cfaba4`](https://github.com/SidhNor/sketchup-mcp-server/commit/8cfaba4f034c5c2cea91436a7b6c3b6b5e489974))
+
+### Features
+
+- **SME-05**: New contract spike
+  ([`aa865d5`](https://github.com/SidhNor/sketchup-mcp-server/commit/aa865d5c857bd1712f9329d35c8560f8b544a220))
+
+
 ## v0.8.2 (2026-04-15)
 
 ### Bug Fixes
