@@ -2,6 +2,14 @@
 
 <!-- version list -->
 
+## v0.11.2 (2026-04-16)
+
+### Refactoring
+
+- **ci**: Artifact upload changes
+  ([`227e3b4`](https://github.com/SidhNor/sketchup-mcp-server/commit/227e3b4bcf1dc61cb9d0c40917e9c6f00fee4dfa))
+
+
 ## v0.11.1 (2026-04-16)
 
 ### Refactoring
