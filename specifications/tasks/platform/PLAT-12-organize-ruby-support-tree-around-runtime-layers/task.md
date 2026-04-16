@@ -1,7 +1,7 @@
 # Task: PLAT-12 Organize Ruby Support Tree Around Runtime Layers
 **Task ID**: `PLAT-12`
 **Title**: `Organize Ruby Support Tree Around Runtime Layers`
-**Status**: `draft`
+**Status**: `planned`
 **Priority**: `P1`
 **Date**: `2026-04-16`
 
@@ -83,7 +83,7 @@ Scenario: Structural cleanup remains reviewable and bounded
 
 ## Related Technical Plan
 
-- none yet
+- [Technical Plan](./plan.md)
 
 ## Success Metrics
 
