@@ -299,6 +299,8 @@ flowchart TD
 
 - The shipped implementation keeps Python explicitly described as a compatibility surface, but does not add stronger generated-registration or drift-enforcement machinery because Python is expected to be removed before new tool growth resumes.
 - The shipped work focuses on Ruby-owned canonical catalog definition, shared Ruby command-collaborator construction, shared developer-command ownership for `eval_ruby`, and promotion of the SketchUp-facing native runtime posture.
+- Live SketchUp-hosted deployment exposed one real post-implementation gap: [main.rb](src/su_mcp/main.rb) was constructing [McpRuntimeFacade](src/su_mcp/mcp_runtime_facade.rb) without a shared [RuntimeCommandFactory](src/su_mcp/runtime_command_factory.rb), so the native runtime advertised mutation and developer tools that were not actually wired to command targets. The follow-up fix injects the shared factory into the native facade and adds regression coverage in [test/mcp_runtime_main_integration_test.rb](test/mcp_runtime_main_integration_test.rb).
+- The same live validation also exposed native catalog schema drift for `get_entity_info` and `sample_surface_z`: the runtime loader had been advertising looser schemas than the Ruby commands actually accepted. The follow-up fix tightens the native catalog contract in [mcp_runtime_loader.rb](src/su_mcp/mcp_runtime_loader.rb) and adds regression coverage in [test/mcp_runtime_loader_test.rb](test/mcp_runtime_loader_test.rb) so `tools/list` matches the live command surface.
 
 ## Risks and Controls
 

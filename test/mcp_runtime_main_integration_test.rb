@@ -17,4 +17,12 @@ class McpRuntimeMainIntegrationTest < Minitest::Test
     assert_includes(labels, 'Restart Native MCP Runtime')
     assert_includes(labels, 'Stop Native MCP Runtime')
   end
+
+  def test_native_runtime_server_uses_the_shared_runtime_command_factory
+    server = SU_MCP::Main.send(:build_native_runtime_server)
+    facade = server.instance_variable_get(:@facade)
+    runtime_command_factory = facade.instance_variable_get(:@runtime_command_factory)
+
+    assert_instance_of(SU_MCP::RuntimeCommandFactory, runtime_command_factory)
+  end
 end

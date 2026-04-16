@@ -101,7 +101,7 @@ class McpRuntimeLoaderTest < Minitest::Test
   end
   # rubocop:enable Metrics/MethodLength
 
-  # rubocop:disable Metrics/AbcSize
+  # rubocop:disable Metrics/AbcSize, Metrics/MethodLength
   def test_build_transport_handles_batched_initialized_and_tools_list_requests
     skip_unless_staged_vendor_runtime!
 
@@ -126,8 +126,34 @@ class McpRuntimeLoaderTest < Minitest::Test
     find_entities_tool = tools.find { |tool| tool.fetch('name') == 'find_entities' }
     assert_equal('Find Scene Entities', find_entities_tool.fetch('title'))
     assert_equal(true, find_entities_tool.fetch('annotations').fetch('readOnlyHint'))
+
+    sample_surface_z_tool = tools.find { |tool| tool.fetch('name') == 'sample_surface_z' }
+    assert_equal(
+      %w[target samplePoints],
+      sample_surface_z_tool.fetch('inputSchema').fetch('required')
+    )
+    assert_equal(
+      %w[entityId persistentId sourceElementId],
+      sample_surface_z_tool
+        .fetch('inputSchema')
+        .fetch('properties')
+        .fetch('target')
+        .fetch('properties')
+        .keys
+        .sort
+    )
+
+    get_entity_info_tool = tools.find { |tool| tool.fetch('name') == 'get_entity_info' }
+    assert_equal(
+      ['id'],
+      get_entity_info_tool.fetch('inputSchema').fetch('required')
+    )
+    assert_equal(
+      ['id'],
+      get_entity_info_tool.fetch('inputSchema').fetch('properties').keys
+    )
   end
-  # rubocop:enable Metrics/AbcSize
+  # rubocop:enable Metrics/AbcSize, Metrics/MethodLength
 
   def test_build_transport_returns_accepted_for_notification_only_posts
     skip_unless_staged_vendor_runtime!
@@ -184,10 +210,13 @@ class McpRuntimeLoaderTest < Minitest::Test
     assert_equal(CANONICAL_NATIVE_TOOL_NAMES, catalog.map { |tool| tool.fetch(:name) })
   end
 
+  # rubocop:disable Metrics/AbcSize
   def test_tool_catalog_exposes_representative_metadata_and_schema
     catalog = @loader.tool_catalog
 
     find_entities = catalog.find { |tool| tool.fetch(:name) == 'find_entities' }
+    sample_surface_z = catalog.find { |tool| tool.fetch(:name) == 'sample_surface_z' }
+    get_entity_info = catalog.find { |tool| tool.fetch(:name) == 'get_entity_info' }
     create_component = catalog.find { |tool| tool.fetch(:name) == 'create_component' }
     eval_ruby = catalog.find { |tool| tool.fetch(:name) == 'eval_ruby' }
 
@@ -198,8 +227,15 @@ class McpRuntimeLoaderTest < Minitest::Test
 
     assert_equal(false, create_component.dig(:metadata, :annotations, :read_only_hint))
     assert_equal('object', create_component.dig(:input_schema, :type))
+    assert_equal('Sample Target Surface Elevation', sample_surface_z.dig(:metadata, :title))
+    assert_equal(%w[target samplePoints], sample_surface_z.dig(:input_schema, :required))
+    assert_equal(%i[entityId persistentId sourceElementId],
+                 sample_surface_z.dig(:input_schema, :properties, :target, :properties).keys.sort)
+    assert_equal('Get Entity Information', get_entity_info.dig(:metadata, :title))
+    assert_equal(['id'], get_entity_info.dig(:input_schema, :required))
     assert_equal(:eval_ruby, eval_ruby.fetch(:handler_key))
   end
+  # rubocop:enable Metrics/AbcSize
 
   def test_tool_catalog_tracks_the_runtime_handler_key_for_representative_tools
     catalog = @loader.tool_catalog

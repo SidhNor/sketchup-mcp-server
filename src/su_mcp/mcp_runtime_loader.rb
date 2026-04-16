@@ -278,12 +278,42 @@ module SU_MCP
         tool_entry(
           name: 'sample_surface_z',
           description: 'Sample target surface elevation.',
-          handler_key: :sample_surface_z
+          handler_key: :sample_surface_z,
+          metadata: {
+            title: 'Sample Target Surface Elevation',
+            annotations: { read_only_hint: true, destructive_hint: false }
+          },
+          input_schema: {
+            type: 'object',
+            required: %w[target samplePoints],
+            properties: {
+              target: target_reference_schema,
+              samplePoints: sample_points_schema,
+              ignoreTargets: {
+                type: 'array',
+                items: target_reference_schema
+              },
+              visibleOnly: { type: 'boolean' }
+            },
+            additionalProperties: false
+          }
         ),
         tool_entry(
           name: 'get_entity_info',
           description: 'Get structured information for a specific entity.',
-          handler_key: :get_entity_info
+          handler_key: :get_entity_info,
+          metadata: {
+            title: 'Get Entity Information',
+            annotations: { read_only_hint: true, destructive_hint: false }
+          },
+          input_schema: {
+            type: 'object',
+            required: ['id'],
+            properties: {
+              id: { type: 'string' }
+            },
+            additionalProperties: false
+          }
         ),
         tool_entry(
           name: 'create_site_element',
@@ -418,6 +448,33 @@ module SU_MCP
         type: 'object',
         properties: {},
         additionalProperties: true
+      }
+    end
+
+    def target_reference_schema
+      {
+        type: 'object',
+        properties: {
+          sourceElementId: { type: 'string' },
+          persistentId: { type: 'string' },
+          entityId: { type: 'string' }
+        },
+        additionalProperties: false
+      }
+    end
+
+    def sample_points_schema
+      {
+        type: 'array',
+        items: {
+          type: 'object',
+          required: %w[x y],
+          properties: {
+            x: { type: 'number' },
+            y: { type: 'number' }
+          },
+          additionalProperties: false
+        }
       }
     end
 

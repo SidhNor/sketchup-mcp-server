@@ -93,12 +93,15 @@ module SU_MCP
       runtime_loader = McpRuntimeLoader.new(
         logger: ->(message) { log("MCP runtime: #{message}") }
       )
+      runtime_command_factory = RuntimeCommandFactory.new(
+        logger: ->(message) { log("MCP runtime: #{message}") }
+      )
 
       McpRuntimeServer.new(
         config: McpRuntimeConfig.new,
         runtime_loader: runtime_loader,
         backend: build_native_runtime_backend(runtime_loader),
-        facade: McpRuntimeFacade.new,
+        facade: McpRuntimeFacade.new(runtime_command_factory: runtime_command_factory),
         logger: ->(message) { log("MCP runtime: #{message}") }
       )
     end
