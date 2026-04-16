@@ -401,5 +401,6 @@ Turn the PLAT-07 spike into a deterministic repo-owned Ruby-native MCP packaging
 - Passed `bundle exec rake package:verify:ruby_native`
 - Passed `bundle exec rake package:verify:all`
 - Focused runtime and package seam tests passed for the new manifest, staging, verification, and promoted runtime foundation files.
+- CI and release validation succeeded, including production of the staged Ruby-native RBZ and upload of the generated artifact.
+- SketchUp-hosted validation confirmed staged RBZ installation, runtime startup, and consistent behavior for the exposed native tool slice.
 - Repo-wide `ruby:test` and `ruby:lint` still have noise from unrelated untracked modeling and joinery files already present in the worktree. Those files were restored after temporary isolation for scoped validation.
-- Manual SketchUp-hosted validation of the staged Ruby-native RBZ was not completed in this implementation session, so live host-runtime startup remains the main residual confidence gap.

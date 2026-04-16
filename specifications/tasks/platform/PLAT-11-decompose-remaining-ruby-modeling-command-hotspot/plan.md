@@ -318,6 +318,46 @@ Reduce the remaining advanced modeling hotspot in `SocketServer` enough that Rub
 
 - **Base assumptions that could lead us astray**
   - Business-plan mismatch: the task needs material ownership reduction, but the implementation only optimizes for moving lines out of `SocketServer`
+
+## Implementation Notes
+
+- Added three Ruby-owned seams for the remaining modeling hotspot:
+  - [src/su_mcp/modeling_support.rb](../../../../src/su_mcp/modeling_support.rb)
+  - [src/su_mcp/solid_modeling_commands.rb](../../../../src/su_mcp/solid_modeling_commands.rb)
+  - [src/su_mcp/joinery_commands.rb](../../../../src/su_mcp/joinery_commands.rb)
+- Rewired [src/su_mcp/socket_server.rb](../../../../src/su_mcp/socket_server.rb) so advanced modeling and joinery flows are no longer owned directly by the transport entrypoint.
+- Preserved the existing `ToolDispatcher` tool-name mapping and the Python MCP modeling registrations without changing public tool names or bridge argument shapes.
+- Added a minimal test-owned modeling overlay at [test/support/modeling_test_support.rb](../../../../test/support/modeling_test_support.rb) because the existing fake SketchUp harness did not model copied edges, temporary groups, or mutable collection operations needed for credible seam tests.
+- Added seam-focused regression coverage:
+  - [test/modeling_support_test.rb](../../../../test/modeling_support_test.rb)
+  - [test/solid_modeling_commands_test.rb](../../../../test/solid_modeling_commands_test.rb)
+  - [test/joinery_commands_test.rb](../../../../test/joinery_commands_test.rb)
+- Extended socket-server wiring coverage in [test/socket_server_test.rb](../../../../test/socket_server_test.rb) for the new grouped command builders and shared support seam.
+
+## Final Validation
+
+- Passed `bundle exec rake ruby:test`
+- Passed `bundle exec rake ruby:lint`
+- Passed `bundle exec rake ruby:contract`
+- Passed `bundle exec rake python:test`
+- Passed `bundle exec rake python:contract`
+- Passed `bundle exec rake package:verify`
+- Focused extraction checks also passed during the TDD loop:
+  - `bundle exec ruby -Itest test/modeling_support_test.rb`
+  - `bundle exec ruby -Itest test/solid_modeling_commands_test.rb`
+  - `bundle exec ruby -Itest test/joinery_commands_test.rb`
+  - `bundle exec ruby -Itest test/socket_server_test.rb`
+  - `bundle exec ruby -Itest -e 'load "test/modeling_support_test.rb"; load "test/solid_modeling_commands_test.rb"; load "test/joinery_commands_test.rb"; load "test/socket_server_test.rb"; load "test/tool_dispatcher_test.rb"'`
+
+## Remaining Manual Verification
+
+- Manual SketchUp-hosted validation still remains for the geometry-sensitive extracted flows:
+  - one boolean operation on overlapping groups or component instances
+  - one chamfer or fillet flow with explicit selected edges
+  - one mortise-tenon flow
+  - one dovetail or finger-joint flow
+  - one representative missing-entity or invalid-entity failure path
+- No `README.md` or bridge-contract artifact update was required because the public MCP tool surface and Python/Ruby boundary stayed behaviorally compatible.
   - Root-cause failure path: we extract methods into one or two files without creating a real shared support seam or clearer concern boundaries
   - Why this misses the goal: the new files become replacement hotspots and the repo gains churn without better maintainability
   - Likely cognitive bias: line-count bias and refactor-completion bias

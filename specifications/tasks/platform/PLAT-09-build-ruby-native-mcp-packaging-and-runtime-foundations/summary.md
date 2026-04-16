@@ -30,6 +30,8 @@
 - Passed `bundle exec rake package:verify:all`
 - Verified the release-prep path now preserves both RBZ artifacts in `dist/` instead of allowing the Ruby-native build to remove the standard package artifact.
 - Verified the staged package verifier now executes the manifest-declared isolated staged-runtime load test rather than checking archive shape alone.
+- Verified CI and release completion for the staged Ruby-native path, including production and upload of the generated artifact.
+- Verified live SketchUp installation and startup of the staged Ruby-native RBZ, with the exposed native tool slice working consistently in-host.
 
 ## Docs And Metadata
 
@@ -40,9 +42,11 @@
 
 ## Remaining Gaps
 
-- Manual SketchUp-hosted validation of the staged Ruby-native RBZ was not completed in this implementation session. That remains the main remaining confidence gap for real host-runtime loading.
 - Repo-wide `ruby:test` and `ruby:lint` still see unrelated untracked modeling and joinery files already present in the worktree. Those files were restored after temporary isolation for scoped validation and are not part of the PLAT-09 implementation itself.
 
 ## Manual Verification
 
-- Not run in a live SketchUp host during this implementation session.
+- Completed in a live SketchUp host:
+  - installed the staged Ruby-native RBZ
+  - confirmed extension startup and runtime boot
+  - confirmed the exposed native tools behaved consistently in host

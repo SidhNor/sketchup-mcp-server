@@ -111,7 +111,8 @@ Scenario: Repository validation includes the Ruby-native foundation path
 - Passed `bundle exec rake package:verify`
 - Passed `bundle exec rake package:verify:ruby_native`
 - Passed `bundle exec rake package:verify:all`
+- CI validated the packaged outputs successfully, and the release path produced and uploaded the staged Ruby-native artifact.
 - The staged package verifier now runs an isolated staged-runtime load test so archive-shape validation also proves the pruned runtime can boot outside the repo development load path.
 - Repo-wide `ruby:test` passed once unrelated untracked modeling and joinery files already present in the worktree were temporarily moved out of the tree and then restored.
 - The PLAT-09 loader lint issue was resolved by updating [.rubocop.yml](./../../../.rubocop.yml) for the renamed runtime loader path. Remaining repo-wide lint noise comes from unrelated untracked modeling and joinery files outside PLAT-09 scope.
-- Manual SketchUp-hosted validation of the staged Ruby-native RBZ was not run in this implementation session and remains the main remaining confidence gap.
+- SketchUp-hosted validation confirmed that the staged Ruby-native RBZ installs correctly, the native artifact boots successfully, and the exposed tool slice works consistently in the host runtime.
