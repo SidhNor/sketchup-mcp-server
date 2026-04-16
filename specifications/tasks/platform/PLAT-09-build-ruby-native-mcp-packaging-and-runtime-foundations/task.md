@@ -1,7 +1,7 @@
 # Task: PLAT-09 Build Ruby-Native MCP Packaging And Runtime Foundations
 **Task ID**: `PLAT-09`
 **Title**: `Build Ruby-Native MCP Packaging And Runtime Foundations`
-**Status**: `planned`
+**Status**: `completed`
 **Priority**: `P0`
 **Date**: `2026-04-16`
 
@@ -96,3 +96,22 @@ Scenario: Repository validation includes the Ruby-native foundation path
 - the repo can produce the Ruby-native MCP artifact through a deterministic repo-owned path rather than manual spike assembly
 - the runtime loader and facade contract are explicit enough that follow-on Ruby-native migration work can build on them directly
 - repository validation makes the Ruby-native foundation path visible without treating manual archive inspection as the normal control
+
+## Implementation Notes
+
+- Added a committed staged-runtime manifest at [config/runtime_package_manifest.json](./../../../config/runtime_package_manifest.json) with pinned gem versions, checksums, and runtime-asset retention rules for the Ruby-native package path.
+- Added shared packaging support under [rakelib/release_support/](./../../../rakelib/release_support/) for manifest loading, vendored gem staging, staged package assembly, and staged runtime verification.
+- Extended [package.rake](./../../../rakelib/package.rake), [version.rake](./../../../rakelib/version.rake), [Rakefile](./../../../Rakefile), and [ci.yml](./../../../.github/workflows/ci.yml) so the standard RBZ and the staged Ruby-native RBZ are both built and verified through repo-owned tasks and release preparation.
+- Promoted the runtime seams out of the spike posture by replacing `mcp_spike_*` internals with [mcp_runtime_config.rb](./../../../src/su_mcp/mcp_runtime_config.rb), [mcp_runtime_loader.rb](./../../../src/su_mcp/mcp_runtime_loader.rb), [mcp_runtime_http_backend.rb](./../../../src/su_mcp/mcp_runtime_http_backend.rb), [mcp_runtime_server.rb](./../../../src/su_mcp/mcp_runtime_server.rb), and [mcp_runtime_facade.rb](./../../../src/su_mcp/mcp_runtime_facade.rb), then rewired [main.rb](./../../../src/su_mcp/main.rb) to those neutral seams.
+- Kept the experimental SketchUp menu and status UX explicitly transitional while preserving the current Python MCP adapter as the supported compatibility path.
+
+## Validation Notes
+
+- Passed focused runtime and packaging seam tests for the new manifest, staging, verification, and promoted runtime files.
+- Passed `bundle exec rake package:verify`
+- Passed `bundle exec rake package:verify:ruby_native`
+- Passed `bundle exec rake package:verify:all`
+- The staged package verifier now runs an isolated staged-runtime load test so archive-shape validation also proves the pruned runtime can boot outside the repo development load path.
+- Repo-wide `ruby:test` passed once unrelated untracked modeling and joinery files already present in the worktree were temporarily moved out of the tree and then restored.
+- The PLAT-09 loader lint issue was resolved by updating [.rubocop.yml](./../../../.rubocop.yml) for the renamed runtime loader path. Remaining repo-wide lint noise comes from unrelated untracked modeling and joinery files outside PLAT-09 scope.
+- Manual SketchUp-hosted validation of the staged Ruby-native RBZ was not run in this implementation session and remains the main remaining confidence gap.

@@ -2,17 +2,17 @@
 
 require_relative 'test_helper'
 require 'tmpdir'
-require_relative '../src/su_mcp/mcp_spike_runtime_loader'
+require_relative '../src/su_mcp/mcp_runtime_loader'
 
-class McpSpikeRuntimeLoaderTest < Minitest::Test
+class McpRuntimeLoaderTest < Minitest::Test
   def setup
     @vendor_root = File.expand_path('../vendor/ruby', __dir__)
-    @loader = SU_MCP::McpSpikeRuntimeLoader.new(vendor_root: @vendor_root)
+    @loader = SU_MCP::McpRuntimeLoader.new(vendor_root: @vendor_root)
   end
 
   def test_available_is_false_when_staged_vendor_tree_is_absent
     Dir.mktmpdir do |empty_vendor_root|
-      loader = SU_MCP::McpSpikeRuntimeLoader.new(vendor_root: empty_vendor_root)
+      loader = SU_MCP::McpRuntimeLoader.new(vendor_root: empty_vendor_root)
 
       refute(loader.available?)
       assert_includes(loader.missing_gems, 'mcp')

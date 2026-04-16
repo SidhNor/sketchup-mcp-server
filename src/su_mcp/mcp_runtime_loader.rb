@@ -4,10 +4,9 @@ require 'json'
 require 'stringio'
 
 module SU_MCP
-  # Experimental local-developer loader for a staged Ruby-native MCP spike runtime.
-  # This is intentionally not a supported release packaging path.
+  # Loader for the staged Ruby-native MCP runtime.
   # rubocop:disable Metrics/ClassLength
-  class McpSpikeRuntimeLoader
+  class McpRuntimeLoader
     JSON_SCHEMA_SPEC = 'json-schema'
     POST_ACCEPT_TYPES = ['application/json', 'text/event-stream'].freeze
     REQUIRED_GEMS = %w[public_suffix addressable rack mcp json-schema].freeze
@@ -58,7 +57,7 @@ module SU_MCP
 
     def build_server(ping_handler:, scene_info_handler:)
       MCP::Server.new(
-        name: 'sketchup_mcp_spike',
+        name: 'sketchup_mcp_runtime',
         tools: build_tools(ping_handler: ping_handler, scene_info_handler: scene_info_handler),
         configuration: MCP::Configuration.new(
           validate_tool_call_arguments: false,
@@ -139,8 +138,8 @@ module SU_MCP
       [
         build_tool(
           name: 'ping',
-          description: 'Local SketchUp MCP spike health check',
-          input_schema: spike_input_schema(
+          description: 'Local SketchUp MCP runtime health check',
+          input_schema: runtime_input_schema(
             type: 'object',
             properties: {},
             additionalProperties: false
@@ -152,7 +151,7 @@ module SU_MCP
         build_tool(
           name: 'get_scene_info',
           description: 'Return SketchUp scene information from the active model',
-          input_schema: spike_input_schema(
+          input_schema: runtime_input_schema(
             type: 'object',
             properties: {
               entity_limit: {
@@ -194,12 +193,12 @@ module SU_MCP
       end
     end
 
-    def spike_input_schema(schema)
-      spike_input_schema_class.new(schema)
+    def runtime_input_schema(schema)
+      runtime_input_schema_class.new(schema)
     end
 
-    def spike_input_schema_class
-      @spike_input_schema_class ||= Class.new(MCP::Tool::InputSchema) do
+    def runtime_input_schema_class
+      @runtime_input_schema_class ||= Class.new(MCP::Tool::InputSchema) do
         private
 
         def validate_schema!
@@ -221,7 +220,7 @@ module SU_MCP
       return unless logger
 
       request = server_context[:request]
-      message = "MCP spike request error: #{exception.class}: #{exception.message}"
+      message = "MCP runtime request error: #{exception.class}: #{exception.message}"
       message += " request=#{JSON.generate(request)}" if request
       logger.call(message)
     rescue StandardError

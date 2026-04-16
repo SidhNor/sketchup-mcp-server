@@ -1,9 +1,9 @@
 # frozen_string_literal: true
 
 require_relative 'test_helper'
-require_relative '../src/su_mcp/mcp_spike_http_backend'
+require_relative '../src/su_mcp/mcp_runtime_http_backend'
 
-class McpSpikeHttpBackendTest < Minitest::Test
+class McpRuntimeHttpBackendTest < Minitest::Test
   class FakeTcpServer
     attr_reader :host, :port
     attr_accessor :closed
@@ -172,7 +172,7 @@ class McpSpikeHttpBackendTest < Minitest::Test
   private
 
   def build_backend(app_builder:, server_factory:, timer_starter:, timer_stopper:, logger:)
-    SU_MCP::McpSpikeHttpBackend.new(
+    SU_MCP::McpRuntimeHttpBackend.new(
       app_builder: app_builder,
       server_factory: server_factory,
       timer_starter: timer_starter,

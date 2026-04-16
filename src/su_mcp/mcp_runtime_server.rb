@@ -1,8 +1,8 @@
 # frozen_string_literal: true
 
 module SU_MCP
-  # Coordinates the experimental local-developer MCP spike runtime lifecycle.
-  class McpSpikeServer
+  # Coordinates the Ruby-native MCP runtime lifecycle.
+  class McpRuntimeServer
     def initialize(config:, runtime_loader:, backend:, facade:, logger:)
       @config = config
       @runtime_loader = runtime_loader
@@ -20,7 +20,7 @@ module SU_MCP
       @running = true
     rescue StandardError, LoadError => e
       @running = false
-      logger.call("MCP spike failed to start: #{e.message}")
+      logger.call("MCP runtime failed to start: #{e.message}")
       raise
     end
 

@@ -3,8 +3,8 @@
 require_relative 'scene_query_commands'
 
 module SU_MCP
-  # Experimental Ruby-owned facade that exposes the representative spike tool slice.
-  class McpSpikeFacade
+  # Ruby-owned facade that exposes the current Ruby-native MCP tool slice.
+  class McpRuntimeFacade
     def initialize(scene_query_commands: SceneQueryCommands.new)
       @scene_query_commands = scene_query_commands
     end

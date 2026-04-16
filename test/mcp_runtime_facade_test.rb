@@ -3,9 +3,9 @@
 require_relative 'test_helper'
 require_relative 'support/scene_query_test_support'
 require_relative '../src/su_mcp/scene_query_commands'
-require_relative '../src/su_mcp/mcp_spike_facade'
+require_relative '../src/su_mcp/mcp_runtime_facade'
 
-class McpSpikeFacadeTest < Minitest::Test
+class McpRuntimeFacadeTest < Minitest::Test
   include SceneQueryTestSupport
 
   class RecordingSceneQueryCommands
@@ -30,8 +30,8 @@ class McpSpikeFacadeTest < Minitest::Test
     Sketchup.active_model_override = nil
   end
 
-  def test_ping_returns_the_minimal_spike_payload
-    facade = SU_MCP::McpSpikeFacade.new(
+  def test_ping_returns_the_minimal_runtime_payload
+    facade = SU_MCP::McpRuntimeFacade.new(
       scene_query_commands: RecordingSceneQueryCommands.new(result: {})
     )
 
@@ -41,7 +41,7 @@ class McpSpikeFacadeTest < Minitest::Test
   def test_get_scene_info_reuses_the_existing_scene_query_response_shape
     expected = SU_MCP::SceneQueryCommands.new.get_scene_info('entity_limit' => 1)
     commands = RecordingSceneQueryCommands.new(result: expected)
-    facade = SU_MCP::McpSpikeFacade.new(scene_query_commands: commands)
+    facade = SU_MCP::McpRuntimeFacade.new(scene_query_commands: commands)
 
     result = facade.get_scene_info('entity_limit' => 1)
 

@@ -15,6 +15,7 @@ module ReleaseSupport
   EXTENSION_METADATA_FILE = ROOT.join('src/su_mcp/extension.json').freeze
   PYTHON_VERSION_FILE = ROOT.join('python/src/sketchup_mcp_server/version.py').freeze
   DIST_DIR = ROOT.join('dist').freeze
+  TMP_DIR = ROOT.join('tmp').freeze
   SRC_DIR = ROOT.join('src').freeze
   EXTENSION_LOADER = SRC_DIR.join('su_mcp.rb').freeze
   EXTENSION_SUPPORT_DIR = SRC_DIR.join('su_mcp').freeze
@@ -33,6 +34,10 @@ module ReleaseSupport
 
   def package_path(version = release_version)
     DIST_DIR.join("#{PACKAGE_BASENAME}-#{version}.rbz")
+  end
+
+  def runtime_package_path(version = release_version)
+    DIST_DIR.join("#{PACKAGE_BASENAME}-ruby-native-#{version}.rbz")
   end
 
   def sync_version!(version)
@@ -73,6 +78,16 @@ module ReleaseSupport
          .sort_by { |path| path.relative_path_from(SRC_DIR).to_s }
   end
 
+  def package_entries_for(package_root)
+    package_root = Pathname.new(package_root)
+
+    Dir.glob(File.join(package_root.to_s, '**', '*'), File::FNM_DOTMATCH)
+       .map { |path| Pathname.new(path) }
+       .select(&:file?)
+       .reject { |path| ignored_staged_package_entry?(path, package_root) }
+       .sort_by { |path| path.relative_path_from(package_root).to_s }
+  end
+
   def ignored_package_entry?(path)
     relative = path.relative_path_from(SRC_DIR).to_s
     return true if relative.include?('/.') || relative.start_with?('.')
@@ -82,6 +97,14 @@ module ReleaseSupport
 
   def package_relative_path(path)
     path.relative_path_from(SRC_DIR).to_s
+  end
+
+  def package_relative_path_for(path, package_root)
+    path.relative_path_from(Pathname.new(package_root)).to_s
+  end
+
+  def runtime_package_workspace_root
+    TMP_DIR.join('package', 'ruby_native')
   end
 
   def clean_dist!
@@ -147,4 +170,16 @@ module ReleaseSupport
     path.dirname.mkpath
     path.write(content, mode: 'w', encoding: 'utf-8')
   end
+
+  def ignored_staged_package_entry?(path, package_root)
+    relative = path.relative_path_from(package_root).to_s
+    return true if relative.include?('/.') || relative.start_with?('.')
+
+    ['.DS_Store', '.keep'].include?(path.basename.to_s)
+  end
 end
+
+require_relative 'release_support/runtime_package_manifest'
+require_relative 'release_support/runtime_package_stage_builder'
+require_relative 'release_support/runtime_package_verifier'
+require_relative 'release_support/runtime_package_vendor_stager'

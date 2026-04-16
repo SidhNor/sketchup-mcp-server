@@ -21,7 +21,7 @@ jobs:
           bundler-cache: true
 
       - name: Run Ruby checks
-        run: bundle exec rake version:assert ruby:lint ruby:test package:verify
+        run: bundle exec rake version:assert ruby:lint ruby:test package:verify:all
 
   python:
     runs-on: ubuntu-latest

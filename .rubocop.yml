@@ -95,8 +95,8 @@ SketchupRequirements/GlobalMethods:
 
 SketchupRequirements/LoadPath:
   Exclude:
-    # The local MCP spike intentionally loads unpacked vendored gems during bootstrap.
-    - "src/su_mcp/mcp_spike_runtime_loader.rb"
+    # The staged runtime loader intentionally extends the load path for vendored gems.
+    - "src/su_mcp/mcp_runtime_loader.rb"
 
 SketchupRequirements/RubyCoreNamespace:
   Exclude:

@@ -4,9 +4,9 @@ require 'socket'
 require 'stringio'
 
 module SU_MCP
-  # Experimental local-developer HTTP listener for the staged Ruby-native MCP spike.
+  # Local HTTP listener for the staged Ruby-native MCP runtime.
   # rubocop:disable Metrics/ClassLength
-  class McpSpikeHttpBackend
+  class McpRuntimeHttpBackend
     DEFAULT_POLL_INTERVAL = 0.1
 
     def initialize(app_builder:, server_factory:, timer_starter:, timer_stopper:, logger:)
@@ -32,7 +32,7 @@ module SU_MCP
       @server = server_factory.call(host, port)
       @running = true
       @timer_id = timer_starter.call(DEFAULT_POLL_INTERVAL, true) { poll_for_connections }
-      log "MCP spike listening on #{host}:#{port}"
+      log "MCP runtime listening on #{host}:#{port}"
     end
 
     def stop
@@ -44,7 +44,7 @@ module SU_MCP
       @server = nil
       @app = nil
       @running = false
-      log 'MCP spike stopped'
+      log 'MCP runtime stopped'
     end
 
     def running?
@@ -76,7 +76,7 @@ module SU_MCP
     rescue IO::WaitReadable
       nil
     rescue StandardError => e
-      log "MCP spike poll error: #{e.message}"
+      log "MCP runtime poll error: #{e.message}"
     end
 
     def process_client(client)

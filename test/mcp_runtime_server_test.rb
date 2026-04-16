@@ -1,9 +1,9 @@
 # frozen_string_literal: true
 
 require_relative 'test_helper'
-require_relative '../src/su_mcp/mcp_spike_server'
+require_relative '../src/su_mcp/mcp_runtime_server'
 
-class McpSpikeServerTest < Minitest::Test
+class McpRuntimeServerTest < Minitest::Test
   class RecordingBackend
     attr_reader :start_calls, :stop_calls
 
@@ -60,7 +60,7 @@ class McpSpikeServerTest < Minitest::Test
     logger = RecordingLogger.new
     config = Struct.new(:host, :port).new('0.0.0.0', 9877)
     facade = Object.new
-    server = SU_MCP::McpSpikeServer.new(
+    server = SU_MCP::McpRuntimeServer.new(
       config: config,
       runtime_loader: runtime_loader,
       backend: backend,
@@ -78,7 +78,7 @@ class McpSpikeServerTest < Minitest::Test
 
   def test_stop_is_safe_before_the_server_has_started
     backend = RecordingBackend.new
-    server = SU_MCP::McpSpikeServer.new(
+    server = SU_MCP::McpRuntimeServer.new(
       config: Struct.new(:host, :port).new('127.0.0.1', 9877),
       runtime_loader: RecordingRuntimeLoader.new,
       backend: backend,
@@ -95,7 +95,7 @@ class McpSpikeServerTest < Minitest::Test
   def test_start_logs_and_re_raises_runtime_loading_failures
     backend = RecordingBackend.new
     logger = RecordingLogger.new
-    server = SU_MCP::McpSpikeServer.new(
+    server = SU_MCP::McpRuntimeServer.new(
       config: Struct.new(:host, :port).new('127.0.0.1', 9877),
       runtime_loader: RecordingRuntimeLoader.new(error: LoadError.new('missing vendored runtime')),
       backend: backend,
@@ -112,7 +112,7 @@ class McpSpikeServerTest < Minitest::Test
   end
 
   def test_status_reports_runtime_loader_availability
-    server = SU_MCP::McpSpikeServer.new(
+    server = SU_MCP::McpRuntimeServer.new(
       config: Struct.new(:host, :port).new('127.0.0.1', 9877),
       runtime_loader: RecordingRuntimeLoader.new(
         available: false,
