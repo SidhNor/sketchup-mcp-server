@@ -2,6 +2,14 @@
 
 <!-- version list -->
 
+## v0.12.2 (2026-04-16)
+
+### Bug Fixes
+
+- **PLAT-10**: Align native MCP contracts with Python parity
+  ([`a1df2c3`](https://github.com/SidhNor/sketchup-mcp-server/commit/a1df2c3ac1fb07993bf7898d6ba742e6b27149de))
+
+
 ## v0.12.1 (2026-04-16)
 
 ### Bug Fixes
