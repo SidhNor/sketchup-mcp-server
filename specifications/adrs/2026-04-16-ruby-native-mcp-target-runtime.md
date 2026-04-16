@@ -67,7 +67,7 @@ The key question is whether the platform should continue investing in the dual-r
 
 ## Decision
 
-The platform should treat **Ruby-native MCP inside SketchUp, exposed over loopback Streamable HTTP, as the target runtime architecture**.
+The platform should treat **Ruby-native MCP inside SketchUp, exposed over Streamable HTTP from the SketchUp host process, as the target runtime architecture**.
 
 Python should no longer be treated as the long-term canonical MCP runtime. It may be retained temporarily or optionally as a **compatibility shim** only where `stdio` subprocess-based MCP client support is required.
 
@@ -80,6 +80,10 @@ This means:
 - deprecating Python as a required runtime is conditional on proving that a vendored Ruby MCP stack can be packaged, loaded, and operated safely inside the real SketchUp host process
 - for this repo, the preferred packaging posture is build-time vendoring into a staging tree rather than committing a large third-party runtime tree directly into `src/`
 - for this repo, shipping a bare top-level `::MCP` namespace inside SketchUp is not treated as a safe production posture; the runtime should be isolated behind `SU_MCP`-owned loading and facade boundaries
+- the runtime bind and client connection posture must be environment-aware:
+  - same-host clients on Windows or macOS may connect through localhost
+  - WSL clients reaching a Windows-hosted SketchUp process may need the Windows host IP and a broader SketchUp-side bind host
+  - the final runtime must keep host and port configurable rather than hard-coding a single localhost-only assumption
 
 ## Repo-Specific Implementation Notes
 
@@ -102,7 +106,7 @@ The practical implication is that a Ruby-native MCP move is not just an architec
 | --- | --- | --- | --- | --- |
 | Keep the current Python MCP plus Ruby bridge architecture | Keep Python as the canonical MCP server and continue using the existing raw TCP plus JSON bridge into Ruby. | Uses the most mature MCP runtime surface today; preserves current `stdio` and HTTP client compatibility; avoids near-term migration risk. | Preserves the Python/Ruby contract burden; keeps duplicate tool wiring and duplicate test surfaces; leaves Python owning protocol shape but not product behavior. | Not selected as the target architecture because it keeps the exact complexity under challenge and does not improve ownership alignment. |
 | Replace Python with a Ruby sidecar process | Move MCP protocol handling from Python into a separate Ruby process while still keeping SketchUp communication as an inter-process bridge. | Reduces language diversity; may simplify release and contributor context if the team standardizes more heavily on Ruby. | Still keeps two processes and an IPC contract; does not solve the lifecycle mismatch between subprocess MCP and in-process SketchUp behavior; adds migration cost without enough architectural simplification. | Not selected because it changes the language but not the architecture that creates most of the current cost. |
-| Move to Ruby-native MCP inside SketchUp over loopback Streamable HTTP | Run the MCP server directly from the SketchUp-hosted Ruby runtime and expose it over localhost HTTP, removing the separate Python MCP server from the canonical runtime path. | Removes the separate adapter runtime; aligns MCP ownership with SketchUp behavior ownership; eliminates the Python/Ruby bridge from the steady-state path; simplifies contract ownership. | Requires Ruby-side transport hardening and packaging work; does not provide a natural `stdio` subprocess story; depends on a less mature MCP SDK ecosystem than Python; requires vendoring and host-runtime validation before it is safe to ship; requires a safe answer for how vendored `MCP::*` code is isolated inside SketchUp. | Selected as the target end-state because it removes the unnecessary runtime boundary and best matches the product's real ownership model, but only after packaging and host-runtime validation succeed. |
+| Move to Ruby-native MCP inside SketchUp over Streamable HTTP | Run the MCP server directly from the SketchUp-hosted Ruby runtime and expose it over HTTP from the SketchUp host process, removing the separate Python MCP server from the canonical runtime path. | Removes the separate adapter runtime; aligns MCP ownership with SketchUp behavior ownership; eliminates the Python/Ruby bridge from the steady-state path; simplifies contract ownership. | Requires Ruby-side transport hardening and packaging work; does not provide a natural `stdio` subprocess story; depends on a less mature MCP SDK ecosystem than Python; requires vendoring and host-runtime validation before it is safe to ship; requires a safe answer for how vendored `MCP::*` code is isolated inside SketchUp. | Selected as the target end-state because it removes the unnecessary runtime boundary and best matches the product's real ownership model, but only after packaging and host-runtime validation succeed. |
 | Hybrid target with Ruby-native MCP and optional Python `stdio` shim | Make Ruby-native MCP the canonical server, but keep a minimal Python adapter available for MCP clients that can only or primarily integrate through `stdio`. | Preserves a path for `stdio`-oriented clients during migration; allows Ruby to become canonical without forcing an all-at-once compatibility break; enables staged rollout and validation; better matches the current Codex and Windsurf client ecosystem than an immediate hard cutover. | Still carries some temporary dual-runtime complexity; risks the shim becoming permanent if not actively constrained; requires clear deprecation and ownership boundaries. | Selected as the preferred migration posture if `stdio` compatibility is still required during transition. It preserves client compatibility without keeping Python as the long-term canonical runtime. |
 
 ## Consequences
@@ -115,6 +119,7 @@ The practical implication is that a Ruby-native MCP move is not just an architec
 - The end-state request path becomes simpler: MCP client -> Ruby MCP server -> SketchUp behavior.
 - Direct Ruby ownership gives the platform a clearer path to packaging command behavior, metadata, and semantic tooling together.
 - Streamable HTTP matches the lifecycle of an already-running SketchUp host process better than `stdio`.
+- An environment-aware host or port model can support same-host development on Windows or macOS while still allowing WSL-to-Windows access where localhost semantics do not hold.
 - Client support realities do not invalidate the target architecture; they mainly justify a staged migration where Python remains optional for `stdio` compatibility.
 
 ### Negatives
@@ -132,7 +137,7 @@ The practical implication is that a Ruby-native MCP move is not just an architec
 - Embedded SketchUp Ruby compatibility may differ from standalone Ruby expectations and must be validated in the actual host.
 - Vendoring the Ruby MCP stack into an RBZ-compatible support tree may prove significantly heavier than anticipated because SketchUp guidance discourages normal gem installation and extensions run in a shared interpreter.
 - If vendored code exposes top-level `::MCP` constants in-process, it may create cross-extension collision risk in SketchUp's shared Ruby interpreter.
-- A local HTTP server inside SketchUp must be locked down correctly, especially loopback binding and request-origin protections.
+- A local HTTP server inside SketchUp must be locked down correctly, especially bind-host scope, request-origin protections, and the distinction between developer-only broader binds and production-safe local-only posture.
 - If the migration keeps the current UI-timer polling model, some expected latency gains may not materialize immediately.
 - Maintaining both a Ruby-native server and a Python shim for too long could preserve most of the current complexity instead of retiring it.
 - Codex and Windsurf support both remote and local MCP patterns, but neither provides evidence that transport overhead should dominate this decision; choosing on raw transport intuition rather than host-runtime fit would be a category error.
@@ -147,7 +152,8 @@ The following conditions must be satisfied before Python can stop being a requir
 - namespace isolation is proven so the shipped extension does not expose new shared top-level constants such as bare `::MCP`
 - the vendored Ruby MCP implementation loads and runs correctly inside the supported SketchUp host versions
 - repeated extension reload and multi-extension sessions do not show namespace, load-order, or startup conflicts
-- loopback HTTP binding, origin validation, and any required authentication posture are validated for the in-process server
+- the in-process server supports the required host-access patterns for the supported environments, including same-host local access and any cross-environment developer paths such as WSL-to-Windows host access
+- production-safe bind-host defaults, origin validation, and any required authentication posture are validated for the in-process server
 - startup time, idle memory, and representative request latency are acceptable with the vendored runtime loaded
 - at least the primary target MCP clients are verified against the Ruby-native server, with explicit confirmation of whether a Python `stdio` shim is still required
 

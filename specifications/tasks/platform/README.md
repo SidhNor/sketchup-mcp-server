@@ -65,5 +65,5 @@ The current post-seeding breakdown is intentionally smaller than the recovered 1
 - `PLAT-04` makes MCP client-facing tool metadata a platform-owned concern so phased capability rollouts do not each invent their own decoration posture.
 - `PLAT-05` is no longer framed as broad coverage for the current tool catalog. It prepares durable contract-test foundations for the staged replacement tool surface and is meant to be extended by capability-wave work.
 - SketchUp-hosted smoke coverage remains defined, but intentionally deferred and low priority.
-- `PLAT-07` is intentionally a spike, not a migration commitment. It is meant to produce host-runtime evidence quickly under local developer conditions.
+- `PLAT-07` is intentionally a spike, not a migration commitment. It is meant to produce host-runtime evidence quickly under local developer conditions, including validation of the correct client-to-SketchUp access path for the active environment.
 - Tasks remain requirements-focused. They define what must be true when the task is complete, not how the implementation must be coded.
