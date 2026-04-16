@@ -1,7 +1,7 @@
 # Task: PLAT-10 Migrate Current Tool Surface To Ruby-Native MCP And Retire Spike
 **Task ID**: `PLAT-10`
 **Title**: `Migrate Current Tool Surface To Ruby-Native MCP And Retire Spike`
-**Status**: `draft`
+**Status**: `planned`
 **Priority**: `P0`
 **Date**: `2026-04-16`
 
@@ -89,7 +89,7 @@ Scenario: Migration does not silently preserve transitional packaging behavior a
 
 ## Related Technical Plan
 
-- none yet
+- [Technical Plan](./plan.md)
 
 ## Success Metrics
 
