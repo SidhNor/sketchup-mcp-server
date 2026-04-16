@@ -183,9 +183,16 @@ module SU_MCP
     end
     # rubocop:enable Metrics/MethodLength
 
-    def stringify_keys(hash)
-      hash.each_with_object({}) do |(key, value), result|
-        result[key.to_s] = value
+    def stringify_keys(value)
+      case value
+      when Hash
+        value.each_with_object({}) do |(key, nested_value), result|
+          result[key.to_s] = stringify_keys(nested_value)
+        end
+      when Array
+        value.map { |item| stringify_keys(item) }
+      else
+        value
       end
     end
 

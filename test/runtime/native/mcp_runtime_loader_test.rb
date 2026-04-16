@@ -258,10 +258,86 @@ class McpRuntimeLoaderTest < Minitest::Test
   end
   # rubocop:enable Metrics/MethodLength
 
+  # rubocop:disable Metrics/MethodLength
+  def test_build_transport_deeply_stringifies_nested_semantic_payload_keys
+    skip_unless_staged_vendor_runtime!
+
+    captured_arguments = nil
+    transport = @loader.build_transport(
+      handlers: {
+        create_site_element: lambda do |arguments|
+          captured_arguments = arguments
+          { success: true, outcome: 'created' }
+        end
+      }
+    )
+
+    response = perform_json_request(
+      transport,
+      id: 5,
+      method: 'tools/call',
+      params: {
+        name: 'create_site_element',
+        arguments: {
+          elementType: 'path',
+          sourceElementId: 'main-walk-001',
+          status: 'proposed',
+          path: {
+            centerline: [[0.0, 0.0], [4.0, 1.0], [8.0, 1.0]],
+            width: 1.6,
+            elevation: 0.0,
+            thickness: 0.1
+          }
+        }
+      }
+    )
+
+    assert_equal(200, response[:status])
+    assert_equal(
+      {
+        'elementType' => 'path',
+        'sourceElementId' => 'main-walk-001',
+        'status' => 'proposed',
+        'path' => {
+          'centerline' => [[0.0, 0.0], [4.0, 1.0], [8.0, 1.0]],
+          'width' => 1.6,
+          'elevation' => 0.0,
+          'thickness' => 0.1
+        }
+      },
+      captured_arguments
+    )
+  end
+  # rubocop:enable Metrics/MethodLength
+
   def test_tool_catalog_exposes_the_canonical_native_tool_inventory
     catalog = @loader.tool_catalog
 
     assert_equal(CANONICAL_NATIVE_TOOL_NAMES, catalog.map { |tool| tool.fetch(:name) })
+  end
+
+  def test_stringify_keys_recurses_through_nested_hashes_and_arrays
+    normalized = @loader.send(
+      :stringify_keys,
+      {
+        path: {
+          centerline: [[0.0, 0.0], [4.0, 1.0]],
+          metadata: [{ status: :proposed }]
+        },
+        tags: [:a, { sourceElementId: 'main-walk-001' }]
+      }
+    )
+
+    assert_equal(
+      {
+        'path' => {
+          'centerline' => [[0.0, 0.0], [4.0, 1.0]],
+          'metadata' => [{ 'status' => :proposed }]
+        },
+        'tags' => [:a, { 'sourceElementId' => 'main-walk-001' }]
+      },
+      normalized
+    )
   end
 
   # rubocop:disable Metrics/AbcSize, Metrics/CyclomaticComplexity
