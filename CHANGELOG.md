@@ -2,6 +2,22 @@
 
 <!-- version list -->
 
+## v0.12.0 (2026-04-16)
+
+### Documentation
+
+- **PLAT-10**: Technical specs
+  ([`22dd213`](https://github.com/SidhNor/sketchup-mcp-server/commit/22dd213143dfc491c129c23bfa4c9dd9e2622dc2))
+
+- **PLAT-12,PLAT-13**: New tasks
+  ([`424766e`](https://github.com/SidhNor/sketchup-mcp-server/commit/424766e3f24bab5ab4be61b793d81fe1eca4d289))
+
+### Features
+
+- **PLAT-10**: Make Ruby native runtime the canonical tool surface
+  ([`326b4d6`](https://github.com/SidhNor/sketchup-mcp-server/commit/326b4d6149d9b3a56a1d8c8a7d5d0e24d65da6b4))
+
+
 ## v0.11.2 (2026-04-16)
 
 ### Refactoring
