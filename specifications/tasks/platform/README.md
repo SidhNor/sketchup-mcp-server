@@ -56,7 +56,7 @@ The current post-seeding breakdown is intentionally smaller than the recovered 1
 | `PLAT-03` | `PLAT-01` | `PLAT-04`, `PLAT-05` |
 | `PLAT-04` | `PLAT-03` | phased MCP tool-metadata rollout for capability tasks |
 | `PLAT-05` | `PLAT-01`, `PLAT-03` | replacement-rollout contract preparation and wave-owned boundary checks |
-| `PLAT-08` | `PLAT-01`, `PLAT-02`, Ruby coding-guidelines inventory | future Ruby runtime cleanup and capability planning |
+| `PLAT-08` | `PLAT-01`, `PLAT-02` | future Ruby runtime cleanup and capability planning |
 | `PLAT-06` | `PLAT-01`, `PLAT-02` | deferred runtime-hosted confidence work |
 | `PLAT-07` | `PLAT-01`, `PLAT-02`, `PLAT-03`, ADR 2026-04-16 | future packaging decision and any decision to demote Python from the canonical MCP runtime |
 
@@ -70,7 +70,7 @@ The current post-seeding breakdown is intentionally smaller than the recovered 1
 - Packaging and version preservation are folded into the Ruby and Python decomposition tasks rather than carried as a separate slice.
 - `PLAT-04` makes MCP client-facing tool metadata a platform-owned concern so phased capability rollouts do not each invent their own decoration posture.
 - `PLAT-05` is no longer framed as broad coverage for the current tool catalog. It prepares durable contract-test foundations for the staged replacement tool surface and is meant to be extended by capability-wave work.
-- `PLAT-08` is a cleanup task driven by the Ruby coding-guidelines inventory. It exists to realign current Ruby structure with the project’s adopted coding baseline without tying the task to the unimplemented Ruby-native MCP ADR.
+- `PLAT-08` is the current Ruby runtime cleanup task for aligning the remaining structural hotspots with the project’s adopted coding baseline without tying the task to the unimplemented Ruby-native MCP ADR.
 - SketchUp-hosted smoke coverage remains defined, but intentionally deferred and low priority.
 - `PLAT-07` is intentionally a spike, not a migration commitment. It is meant to produce host-runtime evidence quickly under local developer conditions, including validation of the correct client-to-SketchUp access path for the active environment.
 - Tasks remain requirements-focused. They define what must be true when the task is complete, not how the implementation must be coded.

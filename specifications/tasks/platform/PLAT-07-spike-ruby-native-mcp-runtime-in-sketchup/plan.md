@@ -258,8 +258,52 @@ flowchart TD
 - `PLAT-02`
 - `PLAT-03`
 - `specifications/adrs/2026-04-16-ruby-native-mcp-target-runtime.md`
-- local access to a SketchUp host runtime for manual verification
-- access from the active client environment to the SketchUp host through the correct path for that environment
+
+## Implementation Update
+
+- Implemented the planned Ruby seams under `src/su_mcp/`:
+  - `McpSpikeConfig`
+  - `McpSpikeFacade`
+  - `McpSpikeRuntimeLoader`
+  - `McpSpikeHttpBackend`
+  - `McpSpikeServer`
+- Wired explicit developer-menu controls into `Main` while leaving the existing Python bridge startup path intact.
+- Used a local vendoring posture for the spike by unpacking:
+  - `mcp-0.13.0`
+  - `json-schema-6.2.0`
+  - `rack-3.2.6`
+  into `vendor/ruby/` for local loading.
+- Added focused Ruby tests for:
+  - spike config
+  - spike facade
+  - runtime loader
+  - HTTP backend
+- Added focused transport-compatibility coverage for:
+  - lowercase request headers
+  - chunked request bodies
+  - batched `notifications/initialized` plus `tools/list`
+- Completed SketchUp-hosted validation in the active developer environment:
+  - SketchUp 2026 hosted the spike successfully
+  - WSL reached the Windows-hosted SketchUp process through the host-reachable bind posture
+  - an external Codex-connected MCP client validated the exposed surface:
+    - `ping`
+    - `get_scene_info`
+- Observed behavioral note from the reused Ruby-owned scene query path:
+  - `entity_limit <= 0` is currently coerced to `1` by `SceneQueryCommands#limit_from`
+  - this is inherited behavior, not a spike-specific contract decision
+- Required packaging and CI follow-on surfaced by the spike:
+  - the repo needs a dedicated spike or staged-RBZ packaging task instead of ad hoc manual packaging
+  - CI should verify RBZ archive shape explicitly so regressions like `su_mcp/su_mcp/...` fail before manual install
+  - any future Ruby-native path needs build-time vendoring or staging automation; runtime gem installation inside SketchUp is not acceptable
+  - release or CI automation must distinguish the normal RBZ from any spike-only staged artifact that injects vendored gems
+- Local validation passed for:
+  - `bundle exec rake ruby:test`
+  - `bundle exec rake ruby:lint`
+  - `bundle exec rake package:verify`
+  - a real local TCP smoke against the new HTTP listener
+- Spike close-out judgment:
+  - architecture viability is proven for the tested local-developer path
+  - packaging and CI automation are the remaining blockers to treating the Ruby-native runtime as a supported repo path
 
 ## Premortem
 

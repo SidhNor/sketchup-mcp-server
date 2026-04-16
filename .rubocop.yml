@@ -93,6 +93,11 @@ SketchupRequirements/GlobalMethods:
   Exclude:
     - "test/**/*"
 
+SketchupRequirements/LoadPath:
+  Exclude:
+    # The local MCP spike intentionally loads unpacked vendored gems during bootstrap.
+    - "src/su_mcp/mcp_spike_runtime_loader.rb"
+
 SketchupRequirements/RubyCoreNamespace:
   Exclude:
     - "test/**/*"

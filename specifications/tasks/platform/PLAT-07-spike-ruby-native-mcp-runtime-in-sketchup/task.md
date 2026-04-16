@@ -1,7 +1,7 @@
 # Task: PLAT-07 Spike Ruby-Native MCP Runtime In SketchUp
 **Task ID**: `PLAT-07`
 **Title**: `Spike Ruby-Native MCP Runtime In SketchUp`
-**Status**: `planned`
+**Status**: `completed`
 **Priority**: `P0`
 **Date**: `2026-04-16`
 
@@ -97,3 +97,18 @@ Scenario: The spike produces a go or no-go outcome for further platform work
 - `get_scene_info` is exposed through the Ruby-native MCP spike without inventing new SketchUp-side behavior for the proof
 - the spike yields an explicit statement on dependency posture, including whether local vendoring is enough for a spike and what production packaging work would still remain
 - the spike produces a concrete go, conditional-go, or no-go recommendation for continuing Ruby-native MCP work in this repo
+
+## Implementation Notes
+
+- Delivered a Ruby-only local-developer spike seam under `src/su_mcp/` with:
+  - explicit SketchUp menu controls for start, stop, restart, and status
+  - a vendored Ruby MCP runtime loader for locally unpacked gems
+  - a minimal stateless HTTP listener that hosts the vendored MCP SDK server without the Python adapter in the serving path
+  - `ping` and `get_scene_info` exposed through the new spike facade
+- SketchUp-hosted validation completed in the real developer environment:
+  - the spike started successfully inside SketchUp 2026
+  - WSL-to-Windows connectivity worked after matching the existing Ruby bridge bind posture
+  - an external Codex-connected MCP client successfully exercised `ping` and `get_scene_info`
+- The current spike posture is `conditional-go`.
+  - Architecture viability is proven for the tested local-developer path.
+  - Python is still required as the supported path until packaging and CI automation are formalized for the Ruby-native runtime.

@@ -1,13 +1,15 @@
 ---
 doc_type: adr
 title: Prefer Ruby-Native MCP as the Target Runtime Architecture
-status: proposed
+status: accepted
 category: platform_architecture
 date: 2026-04-16
 links:
   - ../hlds/hld-platform-architecture-and-repo-structure.md
   - ../sketchup-extension-development-guidance.md
   - ../ruby-platform-coding-guidelines.md
+  - ../tasks/platform/PLAT-07-spike-ruby-native-mcp-runtime-in-sketchup/task.md
+  - ../tasks/platform/PLAT-07-spike-ruby-native-mcp-runtime-in-sketchup/summary.md
   - ../../rakelib/package.rake
   - ../../rakelib/release_support.rb
   - ../../README.md
@@ -65,11 +67,25 @@ That means a Ruby-native MCP runtime cannot be adopted here as a normal runtime 
 
 The key question is whether the platform should continue investing in the dual-runtime Python MCP plus Ruby bridge architecture, or move toward Ruby owning both MCP and SketchUp behavior directly.
 
+PLAT-07 has now provided repo-specific evidence for that decision:
+
+- SketchUp 2026 successfully hosted a Ruby-native MCP spike over direct HTTP from the SketchUp process
+- the spike exposed and validated the representative Ruby-owned surface:
+  - `ping`
+  - `get_scene_info`
+- WSL-to-Windows developer access worked once the spike matched the existing Ruby bridge bind posture
+- an external Codex-connected MCP client successfully exercised the live SketchUp-hosted spike
+- the main unresolved problems were packaging and automation rather than basic runtime viability:
+  - unpacked vendored gems required explicit load-path handling
+  - the SDK assumed gem-spec metadata for `json-schema`
+  - editor-client compatibility required a thin HTTP wrapper around the SDK server rather than a direct stateless SDK transport edge
+  - manual RBZ staging was error-prone and regressed archive layout during the spike
+
 ## Decision
 
 The platform should treat **Ruby-native MCP inside SketchUp, exposed over Streamable HTTP from the SketchUp host process, as the target runtime architecture**.
 
-Python should no longer be treated as the long-term canonical MCP runtime. It may be retained temporarily or optionally as a **compatibility shim** only where `stdio` subprocess-based MCP client support is required.
+Python should no longer be treated as the long-term canonical MCP runtime. It should be retained temporarily as the **supported compatibility path** until Ruby-native packaging and validation automation are formalized, and may later remain optionally as a **compatibility shim** only where `stdio` subprocess-based MCP client support is required.
 
 This means:
 
@@ -78,6 +94,7 @@ This means:
 - if Python is retained, it should be minimized to a thin adapter that proxies to the Ruby MCP server only for clients that require `stdio`
 - new platform work should avoid deepening the Python/Ruby contract unless that work is explicitly part of a transition plan
 - deprecating Python as a required runtime is conditional on proving that a vendored Ruby MCP stack can be packaged, loaded, and operated safely inside the real SketchUp host process
+- PLAT-07 satisfied the host-process viability proof for a narrow local-developer slice, but did not yet satisfy reproducible packaging or CI automation requirements
 - for this repo, the preferred packaging posture is build-time vendoring into a staging tree rather than committing a large third-party runtime tree directly into `src/`
 - for this repo, shipping a bare top-level `::MCP` namespace inside SketchUp is not treated as a safe production posture; the runtime should be isolated behind `SU_MCP`-owned loading and facade boundaries
 - the runtime bind and client connection posture must be environment-aware:
@@ -96,7 +113,9 @@ The repo-specific packaging implications are concrete:
 The practical implication is that a Ruby-native MCP move is not just an architecture change. It is also a packaging-system change. At minimum it would require:
 
 - a vendoring step before RBZ creation
+- deterministic staged packaging for the Ruby-native artifact rather than ad hoc shell assembly
 - pruning of tests, docs, executables, and unused files from the vendored payload
+- archive-shape verification so required extension files and staged vendored runtime payloads are asserted in CI
 - a namespace-isolation strategy so generic `MCP::*` constants are not exposed as a shared top-level dependency inside SketchUp
 - a local `SU_MCP` facade so application code does not couple directly to third-party constants
 
@@ -121,6 +140,7 @@ The practical implication is that a Ruby-native MCP move is not just an architec
 - Streamable HTTP matches the lifecycle of an already-running SketchUp host process better than `stdio`.
 - An environment-aware host or port model can support same-host development on Windows or macOS while still allowing WSL-to-Windows access where localhost semantics do not hold.
 - Client support realities do not invalidate the target architecture; they mainly justify a staged migration where Python remains optional for `stdio` compatibility.
+- The PLAT-07 spike provided real host-process proof for the architecture rather than leaving the decision purely theoretical.
 
 ### Negatives
 
