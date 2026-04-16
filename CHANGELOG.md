@@ -2,6 +2,14 @@
 
 <!-- version list -->
 
+## v0.12.1 (2026-04-16)
+
+### Bug Fixes
+
+- **PLAT-10**: Wire native runtime commands and align tool schemas
+  ([`b088f4b`](https://github.com/SidhNor/sketchup-mcp-server/commit/b088f4b9da31d786e8733b448b79aba1ba9acd4e))
+
+
 ## v0.12.0 (2026-04-16)
 
 ### Documentation
