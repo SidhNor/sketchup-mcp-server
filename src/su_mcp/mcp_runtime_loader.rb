@@ -44,21 +44,36 @@ module SU_MCP
       require 'mcp/server/transports/streamable_http_transport'
     end
 
-    def build_transport(ping_handler:, scene_info_handler:)
+    def build_transport(handlers: nil, ping_handler: nil, scene_info_handler: nil)
       load!
 
-      server = build_server(ping_handler: ping_handler, scene_info_handler: scene_info_handler)
+      server = build_server(
+        handlers: handlers || {
+          ping: ping_handler,
+          get_scene_info: scene_info_handler
+        }.compact
+      )
       build_stateless_http_app(server)
+    end
+
+    def tool_catalog
+      @tool_catalog ||= (
+        primary_tool_catalog +
+        scene_tool_catalog +
+        mutation_tool_catalog +
+        joinery_tool_catalog +
+        developer_tool_catalog
+      ).freeze
     end
 
     private
 
     attr_reader :logger
 
-    def build_server(ping_handler:, scene_info_handler:)
+    def build_server(handlers:)
       MCP::Server.new(
         name: 'sketchup_mcp_runtime',
-        tools: build_tools(ping_handler: ping_handler, scene_info_handler: scene_info_handler),
+        tools: build_tools(handlers),
         configuration: MCP::Configuration.new(
           validate_tool_call_arguments: false,
           exception_reporter: method(:report_exception)
@@ -133,47 +148,28 @@ module SU_MCP
       ].find { |path| Dir.exist?(path) } || File.expand_path('vendor/ruby', BASE_DIR)
     end
 
-    # rubocop:disable Metrics/MethodLength
-    def build_tools(ping_handler:, scene_info_handler:)
-      [
+    def build_tools(handler_map)
+      tool_catalog.map do |entry|
         build_tool(
-          name: 'ping',
-          description: 'Local SketchUp MCP runtime health check',
-          input_schema: runtime_input_schema(
-            type: 'object',
-            properties: {},
-            additionalProperties: false
-          ),
-          &lambda do |_arguments|
-            ping_handler.call
-          end
-        ),
-        build_tool(
-          name: 'get_scene_info',
-          description: 'Return SketchUp scene information from the active model',
-          input_schema: runtime_input_schema(
-            type: 'object',
-            properties: {
-              entity_limit: {
-                type: 'integer'
-              }
-            },
-            additionalProperties: true
-          ),
-          &lambda do |arguments|
-            scene_info_handler.call(arguments)
-          end
+          name: entry.fetch(:name),
+          title: entry.dig(:metadata, :title),
+          description: entry.fetch(:description),
+          annotations: entry.dig(:metadata, :annotations),
+          input_schema: runtime_input_schema(entry.fetch(:input_schema)),
+          &build_tool_handler(entry.fetch(:handler_key), handler_map)
         )
-      ]
+      end
     end
-    # rubocop:enable Metrics/MethodLength
 
-    def build_tool(name:, description:, input_schema:, &handler)
+    # rubocop:disable Metrics/MethodLength
+    def build_tool(name:, title:, description:, annotations:, input_schema:, &handler)
       normalizer = method(:stringify_keys)
 
       MCP::Tool.define(
         name: name,
+        title: title,
         description: description,
+        annotations: annotations,
         input_schema: input_schema
       ) do |**kwargs|
         arguments = kwargs.dup
@@ -186,11 +182,243 @@ module SU_MCP
         )
       end
     end
+    # rubocop:enable Metrics/MethodLength
 
     def stringify_keys(hash)
       hash.each_with_object({}) do |(key, value), result|
         result[key.to_s] = value
       end
+    end
+
+    def build_tool_handler(handler_key, handler_map)
+      lambda do |arguments|
+        handler = handler_map.fetch(handler_key) do
+          raise NotImplementedError, "No native runtime handler registered for #{handler_key}"
+        end
+
+        if arguments.empty?
+          handler.call
+        else
+          handler.call(arguments)
+        end
+      end
+    end
+
+    # rubocop:disable Metrics/MethodLength
+    def primary_tool_catalog
+      [
+        tool_entry(
+          name: 'ping',
+          description: 'Local SketchUp MCP runtime health check',
+          handler_key: :ping,
+          input_schema: {
+            type: 'object',
+            properties: {},
+            additionalProperties: false
+          }
+        ),
+        tool_entry(
+          name: 'get_scene_info',
+          description: 'Return SketchUp scene information from the active model',
+          handler_key: :get_scene_info,
+          input_schema: {
+            type: 'object',
+            properties: {
+              entity_limit: { type: 'integer' }
+            },
+            additionalProperties: true
+          }
+        ),
+        tool_entry(
+          name: 'list_entities',
+          description: 'List top-level SketchUp model entities.',
+          handler_key: :list_entities,
+          input_schema: {
+            type: 'object',
+            properties: {
+              limit: { type: 'integer' },
+              include_hidden: { type: 'boolean' }
+            },
+            additionalProperties: false
+          }
+        ),
+        tool_entry(
+          name: 'find_entities',
+          description: 'Find scene entities using supported targeting fields.',
+          handler_key: :find_entities,
+          metadata: {
+            title: 'Find Scene Entities',
+            annotations: { read_only_hint: true, destructive_hint: false }
+          },
+          input_schema: {
+            type: 'object',
+            required: ['query'],
+            properties: {
+              query: {
+                type: 'object',
+                properties: {
+                  sourceElementId: { type: 'string' },
+                  persistentId: { type: 'string' },
+                  entityId: { type: 'string' },
+                  name: { type: 'string' },
+                  tag: { type: 'string' },
+                  material: { type: 'string' }
+                },
+                additionalProperties: false
+              }
+            },
+            additionalProperties: false
+          }
+        )
+      ]
+    end
+
+    def scene_tool_catalog
+      [
+        tool_entry(
+          name: 'sample_surface_z',
+          description: 'Sample target surface elevation.',
+          handler_key: :sample_surface_z
+        ),
+        tool_entry(
+          name: 'get_entity_info',
+          description: 'Get structured information for a specific entity.',
+          handler_key: :get_entity_info
+        ),
+        tool_entry(
+          name: 'create_site_element',
+          description: 'Create a managed semantic site element.',
+          handler_key: :create_site_element
+        ),
+        tool_entry(
+          name: 'set_entity_metadata',
+          description: 'Update semantic metadata on a managed object.',
+          handler_key: :set_entity_metadata
+        )
+      ]
+    end
+
+    def mutation_tool_catalog
+      [
+        tool_entry(
+          name: 'create_component',
+          description: 'Create a new component in SketchUp.',
+          handler_key: :create_component,
+          metadata: {
+            annotations: { read_only_hint: false, destructive_hint: false }
+          },
+          input_schema: {
+            type: 'object',
+            properties: {
+              type: { type: 'string' },
+              position: { type: 'array' },
+              dimensions: { type: 'array' }
+            },
+            additionalProperties: false
+          }
+        ),
+        tool_entry(
+          name: 'delete_component',
+          description: 'Delete a component by ID.',
+          handler_key: :delete_component
+        ),
+        tool_entry(
+          name: 'transform_component',
+          description: 'Transform a component.',
+          handler_key: :transform_component
+        ),
+        tool_entry(
+          name: 'get_selection',
+          description: 'Get detailed information about the current selection.',
+          handler_key: :get_selection
+        ),
+        tool_entry(
+          name: 'set_material',
+          description: 'Set the material for an entity.',
+          handler_key: :set_material
+        ),
+        tool_entry(
+          name: 'export_scene',
+          description: 'Export the current SketchUp scene.',
+          handler_key: :export_scene
+        ),
+        tool_entry(
+          name: 'boolean_operation',
+          description: 'Run a boolean operation between entities.',
+          handler_key: :boolean_operation
+        ),
+        tool_entry(
+          name: 'chamfer_edges',
+          description: 'Create a chamfer on selected edges.',
+          handler_key: :chamfer_edges
+        ),
+        tool_entry(
+          name: 'fillet_edges',
+          description: 'Create a fillet on selected edges.',
+          handler_key: :fillet_edges
+        )
+      ]
+    end
+
+    def joinery_tool_catalog
+      [
+        tool_entry(
+          name: 'create_mortise_tenon',
+          description: 'Create a mortise and tenon joint.',
+          handler_key: :create_mortise_tenon
+        ),
+        tool_entry(
+          name: 'create_dovetail',
+          description: 'Create a dovetail joint.',
+          handler_key: :create_dovetail
+        ),
+        tool_entry(
+          name: 'create_finger_joint',
+          description: 'Create a finger joint.',
+          handler_key: :create_finger_joint
+        )
+      ]
+    end
+
+    def developer_tool_catalog
+      [
+        tool_entry(
+          name: 'eval_ruby',
+          description: 'Evaluate arbitrary Ruby code inside SketchUp.',
+          handler_key: :eval_ruby
+        )
+      ]
+    end
+    # rubocop:enable Metrics/MethodLength
+
+    def tool_entry(
+      name:,
+      description:,
+      handler_key:,
+      input_schema: default_object_schema,
+      metadata: {}
+    )
+      {
+        name: name,
+        description: description,
+        handler_key: handler_key,
+        input_schema: input_schema,
+        metadata: {
+          title: metadata[:title],
+          annotations: {
+            read_only_hint: metadata.dig(:annotations, :read_only_hint) || false,
+            destructive_hint: metadata.dig(:annotations, :destructive_hint) || false
+          }
+        }
+      }
+    end
+
+    def default_object_schema
+      {
+        type: 'object',
+        properties: {},
+        additionalProperties: true
+      }
     end
 
     def runtime_input_schema(schema)

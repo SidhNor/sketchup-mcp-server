@@ -22,6 +22,8 @@ The current post-seeding breakdown is intentionally smaller than the recovered 1
 - 1 deferred low-priority task for SketchUp-hosted verification
 - 1 architecture spike task for validating Ruby-native MCP directly inside SketchUp
 - 2 follow-on Ruby-native MCP adoption tasks derived from the completed spike
+- 1 post-validation runtime-retirement task for removing the Python compatibility layer after native validation
+- 1 post-migration Ruby support-tree cleanup task for expressing the settled runtime layers in the filesystem
 
 ## Task Order
 
@@ -46,13 +48,21 @@ The current post-seeding breakdown is intentionally smaller than the recovered 1
 8. [PLAT-09 Build Ruby-Native MCP Packaging And Runtime Foundations](PLAT-09-build-ruby-native-mcp-packaging-and-runtime-foundations/task.md)
 9. [PLAT-10 Migrate Current Tool Surface To Ruby-Native MCP And Retire Spike](PLAT-10-migrate-current-tool-surface-to-ruby-native-mcp-and-retire-spike/task.md)
 
+### Post-Validation Runtime Retirement
+
+10. [PLAT-13 Retire Python Bridge And Remove Compatibility Runtime](PLAT-13-retire-python-bridge-and-remove-compatibility-runtime/task.md)
+
+### Post-Migration Structure Cleanup
+
+11. [PLAT-12 Organize Ruby Support Tree Around Runtime Layers](PLAT-12-organize-ruby-support-tree-around-runtime-layers/task.md)
+
 ### Deferred Low-Priority Tasks
 
-10. [PLAT-06 Add SketchUp-Hosted Smoke and Fixture Coverage](PLAT-06-add-sketchup-hosted-smoke-and-fixture-coverage/task.md)
+12. [PLAT-06 Add SketchUp-Hosted Smoke and Fixture Coverage](PLAT-06-add-sketchup-hosted-smoke-and-fixture-coverage/task.md)
 
 ### Architecture Spikes
 
-11. [PLAT-07 Spike Ruby-Native MCP Runtime In SketchUp](PLAT-07-spike-ruby-native-mcp-runtime-in-sketchup/task.md)
+13. [PLAT-07 Spike Ruby-Native MCP Runtime In SketchUp](PLAT-07-spike-ruby-native-mcp-runtime-in-sketchup/task.md)
 
 ## Dependency Summary
 
@@ -67,6 +77,8 @@ The current post-seeding breakdown is intentionally smaller than the recovered 1
 | `PLAT-11` | `PLAT-01`, `PLAT-02`, `PLAT-08` | follow-on Ruby transport and modeling decomposition work |
 | `PLAT-09` | `PLAT-07`, ADR 2026-04-16 | `PLAT-10`, future Ruby-native packaging and runtime adoption |
 | `PLAT-10` | `PLAT-09`, `PLAT-07`, ADR 2026-04-16 | eventual Python demotion or removal decision |
+| `PLAT-13` | `PLAT-10`, ADR 2026-04-16 | single-runtime repo posture after native validation removes the bridge-era compatibility path |
+| `PLAT-12` | `PLAT-10`, `PLAT-08`, `PLAT-11` | clearer Ruby support-tree layering after runtime migration ownership settles |
 | `PLAT-06` | `PLAT-01`, `PLAT-02` | deferred runtime-hosted confidence work |
 | `PLAT-07` | `PLAT-01`, `PLAT-02`, `PLAT-03`, ADR 2026-04-16 | future packaging decision and any decision to demote Python from the canonical MCP runtime |
 
@@ -85,4 +97,6 @@ The current post-seeding breakdown is intentionally smaller than the recovered 1
 - SketchUp-hosted smoke coverage remains defined, but intentionally deferred and low priority.
 - `PLAT-07` is intentionally a spike, not a migration commitment. It is meant to produce host-runtime evidence quickly under local developer conditions, including validation of the correct client-to-SketchUp access path for the active environment.
 - `PLAT-09` and `PLAT-10` are the post-spike adoption tasks. `PLAT-09` owns reproducible Ruby-native packaging and runtime foundations; `PLAT-10` owns migration of the current tool surface plus retirement of the experimental spike posture.
+- `PLAT-13` exists because `PLAT-10` intentionally stops at making Python removable. It owns the actual retirement of the Python compatibility runtime plus the resulting cleanup across docs, guidance, CI, dependencies, and package metadata, with any surviving Python limited to CI-owned release tooling rather than a repo Python project.
+- `PLAT-12` is a separate follow-on structure task. It exists to express the settled Ruby runtime layers in the support tree after the ownership migration work is far enough along, not to reopen `PLAT-10` scope.
 - Tasks remain requirements-focused. They define what must be true when the task is complete, not how the implementation must be coded.

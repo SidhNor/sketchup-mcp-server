@@ -132,3 +132,15 @@ def test_server_module_remains_a_compatibility_surface() -> None:
     assert server_module.create_server is app.create_server
     assert server_module.main is app.main
     assert server_module.mcp is not None
+
+
+def test_create_server_marks_python_as_a_compatibility_surface() -> None:
+    app = require_module("sketchup_mcp_server.app")
+    config = require_module("sketchup_mcp_server.config")
+
+    server = app.create_server(
+        settings=config.load_settings({}),
+        bridge_client=RecordingBridgeClient(),
+    )
+
+    assert "compatibility" in getattr(server, "instructions", "").lower()

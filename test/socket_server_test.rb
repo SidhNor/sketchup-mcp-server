@@ -107,6 +107,18 @@ class SocketServerTest < Minitest::Test
     assert_instance_of(SU_MCP::RequestProcessor, processor)
   end
 
+  def test_builds_runtime_command_factory_for_shared_native_and_legacy_command_construction
+    factory = @server.send(:runtime_command_factory)
+
+    refute_nil(factory)
+  end
+
+  def test_builds_developer_commands_for_shared_developer_tool_execution
+    commands = @server.send(:developer_commands)
+
+    assert(commands.respond_to?(:eval_ruby))
+  end
+
   def test_handles_tool_calls_via_request_handler_and_dispatcher
     response = @server.send(:handle_jsonrpc_request, tools_call_request)
 

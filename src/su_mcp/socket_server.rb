@@ -6,12 +6,14 @@ require 'socket'
 require 'fileutils'
 require 'tmpdir'
 require_relative 'adapters/model_adapter'
+require_relative 'developer_commands'
 require_relative 'editing_commands'
 require_relative 'joinery_commands'
 require_relative 'modeling_support'
 require_relative 'request_handler'
 require_relative 'request_processor'
 require_relative 'response_helpers'
+require_relative 'runtime_command_factory'
 require_relative 'runtime_logger'
 require_relative 'scene_query_commands'
 require_relative 'semantic_commands'
@@ -126,55 +128,47 @@ module SU_MCP
 
     def tool_dispatcher
       @tool_dispatcher ||= ToolDispatcher.new(
-        command_targets: [
-          scene_query_commands,
-          semantic_commands,
-          editing_commands,
-          solid_modeling_commands,
-          joinery_commands,
-          self
-        ]
+        command_targets: runtime_command_factory.build_command_targets
       )
     end
 
     def scene_query_commands
-      @scene_query_commands ||= SceneQueryCommands.new(logger: method(:log), adapter: model_adapter)
+      runtime_command_factory.scene_query_commands
     end
 
     def semantic_commands
-      @semantic_commands ||= SemanticCommands.new(model: Sketchup.active_model)
+      runtime_command_factory.semantic_commands
     end
 
     def editing_commands
-      @editing_commands ||= EditingCommands.new(
-        model_adapter: model_adapter,
-        logger: method(:log),
-        active_model_provider: -> { Sketchup.active_model }
-      )
+      runtime_command_factory.editing_commands
     end
 
     def modeling_support
-      @modeling_support ||= ModelingSupport.new
+      @modeling_support ||= runtime_command_factory.send(:modeling_support)
     end
 
     def solid_modeling_commands
-      @solid_modeling_commands ||= SolidModelingCommands.new(
-        model_provider: -> { Sketchup.active_model },
-        logger: method(:log),
-        support: modeling_support
-      )
+      runtime_command_factory.solid_modeling_commands
     end
 
     def joinery_commands
-      @joinery_commands ||= JoineryCommands.new(
-        model_provider: -> { Sketchup.active_model },
-        logger: method(:log),
-        support: modeling_support
-      )
+      runtime_command_factory.joinery_commands
+    end
+
+    def developer_commands
+      runtime_command_factory.developer_commands
     end
 
     def model_adapter
       @model_adapter ||= Adapters::ModelAdapter.new
+    end
+
+    def runtime_command_factory
+      @runtime_command_factory ||= RuntimeCommandFactory.new(
+        logger: method(:log),
+        model_adapter: model_adapter
+      )
     end
 
     def dispatch_tool_call(tool_name, args)
@@ -200,32 +194,6 @@ module SU_MCP
       client.write(response_json)
       client.flush
       log 'Response sent'
-    end
-
-    def eval_ruby(params)
-      log "Evaluating Ruby code with length: #{params['code'].length}"
-
-      begin
-        # Create a safe binding for evaluation
-        binding = TOPLEVEL_BINDING.dup
-
-        # Evaluate the Ruby code
-        log 'Starting code evaluation...'
-        # rubocop:disable Security/Eval
-        result = eval(params['code'], binding)
-        # rubocop:enable Security/Eval
-        log "Code evaluation completed with result: #{result.inspect}"
-
-        # Return success with the result as a string
-        {
-          success: true,
-          result: result.to_s
-        }
-      rescue StandardError => e
-        log "Error in eval_ruby: #{e.message}"
-        log e.backtrace.join("\n")
-        raise "Ruby evaluation error: #{e.message}"
-      end
     end
   end
 end

@@ -4,7 +4,32 @@ require_relative 'test_helper'
 require 'tmpdir'
 require_relative '../src/su_mcp/mcp_runtime_loader'
 
+# rubocop:disable Metrics/ClassLength
 class McpRuntimeLoaderTest < Minitest::Test
+  CANONICAL_NATIVE_TOOL_NAMES = %w[
+    ping
+    get_scene_info
+    list_entities
+    find_entities
+    sample_surface_z
+    get_entity_info
+    create_site_element
+    set_entity_metadata
+    create_component
+    delete_component
+    transform_component
+    get_selection
+    set_material
+    export_scene
+    boolean_operation
+    chamfer_edges
+    fillet_edges
+    create_mortise_tenon
+    create_dovetail
+    create_finger_joint
+    eval_ruby
+  ].freeze
+
   def setup
     @vendor_root = File.expand_path('../vendor/ruby', __dir__)
     @loader = SU_MCP::McpRuntimeLoader.new(vendor_root: @vendor_root)
@@ -76,6 +101,7 @@ class McpRuntimeLoaderTest < Minitest::Test
   end
   # rubocop:enable Metrics/MethodLength
 
+  # rubocop:disable Metrics/AbcSize
   def test_build_transport_handles_batched_initialized_and_tools_list_requests
     skip_unless_staged_vendor_runtime!
 
@@ -89,15 +115,19 @@ class McpRuntimeLoaderTest < Minitest::Test
 
     assert_equal(200, response[:status])
     assert_equal(
-      %w[get_scene_info ping],
-      tools.map { |tool| tool.fetch('name') }.sort
+      CANONICAL_NATIVE_TOOL_NAMES,
+      tools.map { |tool| tool.fetch('name') }
     )
     scene_tool = tools.find { |tool| tool.fetch('name') == 'get_scene_info' }
     assert_equal(
       'integer',
       scene_tool.fetch('inputSchema').fetch('properties').fetch('entity_limit').fetch('type')
     )
+    find_entities_tool = tools.find { |tool| tool.fetch('name') == 'find_entities' }
+    assert_equal('Find Scene Entities', find_entities_tool.fetch('title'))
+    assert_equal(true, find_entities_tool.fetch('annotations').fetch('readOnlyHint'))
   end
+  # rubocop:enable Metrics/AbcSize
 
   def test_build_transport_returns_accepted_for_notification_only_posts
     skip_unless_staged_vendor_runtime!
@@ -117,6 +147,69 @@ class McpRuntimeLoaderTest < Minitest::Test
 
     assert_equal(202, response[:status])
     assert_equal('', response[:raw_body])
+  end
+
+  # rubocop:disable Metrics/MethodLength
+  def test_build_transport_calls_a_representative_migrated_handler_from_the_handler_map
+    skip_unless_staged_vendor_runtime!
+
+    transport = @loader.build_transport(
+      handlers: {
+        ping: -> { { success: true, message: 'pong' } },
+        get_scene_info: ->(_params) { { success: true, entities: [{ id: 101 }] } },
+        create_component: lambda do |arguments|
+          { success: true, created: true, type: arguments.fetch('type') }
+        end
+      }
+    )
+
+    response = perform_json_request(
+      transport,
+      id: 4,
+      method: 'tools/call',
+      params: { name: 'create_component', arguments: { 'type' => 'cube' } }
+    )
+
+    assert_equal(200, response[:status])
+    assert_equal(
+      { 'success' => true, 'created' => true, 'type' => 'cube' },
+      response[:body].dig('result', 'structuredContent')
+    )
+  end
+  # rubocop:enable Metrics/MethodLength
+
+  def test_tool_catalog_exposes_the_canonical_native_tool_inventory
+    catalog = @loader.tool_catalog
+
+    assert_equal(CANONICAL_NATIVE_TOOL_NAMES, catalog.map { |tool| tool.fetch(:name) })
+  end
+
+  def test_tool_catalog_exposes_representative_metadata_and_schema
+    catalog = @loader.tool_catalog
+
+    find_entities = catalog.find { |tool| tool.fetch(:name) == 'find_entities' }
+    create_component = catalog.find { |tool| tool.fetch(:name) == 'create_component' }
+    eval_ruby = catalog.find { |tool| tool.fetch(:name) == 'eval_ruby' }
+
+    assert_equal('Find Scene Entities', find_entities.dig(:metadata, :title))
+    assert_equal(true, find_entities.dig(:metadata, :annotations, :read_only_hint))
+    assert_equal('object', find_entities.dig(:input_schema, :type))
+    assert_equal('query', find_entities.dig(:input_schema, :required)&.first)
+
+    assert_equal(false, create_component.dig(:metadata, :annotations, :read_only_hint))
+    assert_equal('object', create_component.dig(:input_schema, :type))
+    assert_equal(:eval_ruby, eval_ruby.fetch(:handler_key))
+  end
+
+  def test_tool_catalog_tracks_the_runtime_handler_key_for_representative_tools
+    catalog = @loader.tool_catalog
+    representative_tools = %w[get_scene_info create_site_element export_scene eval_ruby]
+    matching_tools = catalog.select { |tool| representative_tools.include?(tool.fetch(:name)) }
+
+    assert_equal(
+      representative_tools,
+      matching_tools.map { |tool| tool.fetch(:handler_key).to_s }
+    )
   end
 
   private
@@ -196,3 +289,4 @@ class McpRuntimeLoaderTest < Minitest::Test
     skip('staged experimental vendor runtime not present in repo checkout')
   end
 end
+# rubocop:enable Metrics/ClassLength

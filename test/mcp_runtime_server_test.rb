@@ -52,6 +52,17 @@ class McpRuntimeServerTest < Minitest::Test
     def available?
       @available
     end
+
+    def tool_catalog
+      [
+        { handler_key: :ping },
+        { handler_key: :get_scene_info },
+        { handler_key: :list_entities },
+        { handler_key: :create_site_element },
+        { handler_key: :create_component },
+        { handler_key: :eval_ruby }
+      ]
+    end
   end
 
   def test_start_loads_the_runtime_and_binds_the_http_backend
@@ -130,4 +141,34 @@ class McpRuntimeServerTest < Minitest::Test
     assert_equal(%w[mcp rack], status[:missing_gems])
     assert_equal('/repo/vendor/ruby', status[:vendor_root])
   end
+
+  # rubocop:disable Metrics/MethodLength
+  def test_start_registers_representative_migrated_native_handlers
+    runtime_loader = RecordingRuntimeLoader.new
+    backend = RecordingBackend.new
+    config = Struct.new(:host, :port).new('127.0.0.1', 9877)
+    facade = Class.new do
+      def ping; end
+      def get_scene_info(_params = {}); end
+      def list_entities(_params = {}); end
+      def create_site_element(_params = {}); end
+      def create_component(_params = {}); end
+      def eval_ruby(_params = {}); end
+    end.new
+    server = SU_MCP::McpRuntimeServer.new(
+      config: config,
+      runtime_loader: runtime_loader,
+      backend: backend,
+      facade: facade,
+      logger: ->(_message) {}
+    )
+
+    server.start
+
+    assert_equal(
+      %i[ping get_scene_info list_entities create_site_element create_component eval_ruby],
+      backend.start_calls.first.fetch(:handlers).keys
+    )
+  end
+  # rubocop:enable Metrics/MethodLength
 end

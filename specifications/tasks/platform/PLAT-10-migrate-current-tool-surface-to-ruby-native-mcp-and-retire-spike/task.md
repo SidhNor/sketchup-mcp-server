@@ -1,7 +1,7 @@
 # Task: PLAT-10 Migrate Current Tool Surface To Ruby-Native MCP And Retire Spike
 **Task ID**: `PLAT-10`
 **Title**: `Migrate Current Tool Surface To Ruby-Native MCP And Retire Spike`
-**Status**: `planned`
+**Status**: `completed`
 **Priority**: `P0`
 **Date**: `2026-04-16`
 
@@ -96,3 +96,32 @@ Scenario: Migration does not silently preserve transitional packaging behavior a
 - the current public MCP tool surface is canonically exposed from the Ruby-native runtime rather than Python-defined ownership
 - Python’s remaining role is clearly transitional and narrower than the pre-migration baseline
 - spike-only files, labels, and menus are no longer left as a parallel permanent runtime posture
+
+## Implementation Notes
+
+- Added a Ruby-owned native tool catalog in [mcp_runtime_loader.rb](./../../../src/su_mcp/mcp_runtime_loader.rb) so the canonical native runtime exposes the migrated tool inventory from one Ruby definition source instead of a hardcoded two-tool loader path.
+- Expanded [mcp_runtime_facade.rb](./../../../src/su_mcp/mcp_runtime_facade.rb) so the native runtime dispatches through [tool_dispatcher.rb](./../../../src/su_mcp/tool_dispatcher.rb) and the same Ruby command ownership model already used by the shrinking legacy socket path.
+- Added [runtime_command_factory.rb](./../../../src/su_mcp/runtime_command_factory.rb) to share collaborator construction between the native runtime facade and the legacy socket server, preserving Ruby-side behavior ownership while reducing duplicate assembly logic.
+- Extracted shared developer behavior into [developer_commands.rb](./../../../src/su_mcp/developer_commands.rb) so `eval_ruby` is no longer unique to [socket_server.rb](./../../../src/su_mcp/socket_server.rb) during the transition.
+- Promoted the SketchUp-facing menu and status wording in [main.rb](./../../../src/su_mcp/main.rb) from `Experimental MCP Runtime` to `Native MCP Runtime`.
+- Repositioned the Python FastMCP app wording in [python/src/sketchup_mcp_server/app.py](./../../../python/src/sketchup_mcp_server/app.py) as an explicit compatibility surface.
+
+## Validation Notes
+
+- Passed focused Ruby runtime tests for the migrated native catalog and shared command seams:
+  - `bundle exec ruby -Itest test/mcp_runtime_loader_test.rb`
+  - `bundle exec ruby -Itest test/mcp_runtime_facade_test.rb`
+  - `bundle exec ruby -Itest test/mcp_runtime_server_test.rb`
+  - `bundle exec ruby -Itest test/socket_server_test.rb`
+  - `bundle exec ruby -Itest test/socket_server_adapter_test.rb`
+  - `bundle exec ruby -Itest test/mcp_runtime_main_integration_test.rb`
+- Passed focused Python compatibility validation:
+  - `uv run pytest python/tests/test_app.py`
+- Passed broader local validation:
+  - `bundle exec rake ruby:lint`
+  - `bundle exec rake ruby:test`
+  - `bundle exec rake python:lint`
+  - `bundle exec rake python:test`
+  - `bundle exec rake package:verify:all`
+- Bridge contract suites were not rerun because this task did not change the public Python-to-Ruby socket bridge contract shape.
+- Manual SketchUp-hosted validation and real MCP-client validation still remain required to confirm the migrated native runtime in the live host process.

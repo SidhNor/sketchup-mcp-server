@@ -49,12 +49,19 @@ module SU_MCP
     attr_reader :config, :runtime_loader, :backend, :facade, :logger
 
     def handler_map
-      {}.tap do |handlers|
-        handlers[:ping] = facade.method(:ping) if facade.respond_to?(:ping)
-        if facade.respond_to?(:get_scene_info)
-          handlers[:get_scene_info] = facade.method(:get_scene_info)
-        end
+      handler_keys.each_with_object({}) do |handler_key, handlers|
+        next unless facade.respond_to?(handler_key)
+
+        handlers[handler_key] = facade.method(handler_key)
       end
+    end
+
+    def handler_keys
+      if runtime_loader.respond_to?(:tool_catalog)
+        return runtime_loader.tool_catalog.map { |entry| entry.fetch(:handler_key) }.uniq
+      end
+
+      facade.public_methods(false)
     end
   end
 end

@@ -29,7 +29,10 @@ def create_server(
     mcp = FastMCP(
         "SketchUp MCP Server",
         version=VERSION,
-        instructions="SketchUp integration through a local Ruby socket bridge.",
+        instructions=(
+            "Compatibility surface for SketchUp integration through a local "
+            "Ruby socket bridge."
+        ),
         lifespan=server_lifespan(resolved_bridge),
     )
     register_all_tools(mcp, settings=resolved_settings, bridge_client=resolved_bridge)

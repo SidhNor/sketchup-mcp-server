@@ -30,7 +30,7 @@ Install Ruby tooling:
 bundle install
 ```
 
-The extension entrypoint is `src/su_mcp.rb`, which registers `src/su_mcp/main.rb` with SketchUp. On load, the extension starts the local SketchUp socket bridge and exposes menu actions to inspect, restart, or stop it.
+The extension entrypoint is `src/su_mcp.rb`, which registers `src/su_mcp/main.rb` with SketchUp. On load, the extension starts the local SketchUp socket bridge and exposes menu actions for both the bridge and the native Ruby MCP runtime inside SketchUp.
 
 For local development, load the extension from this repository by symlinking or copying the `src/` contents into SketchUp's `Plugins` directory.
 
@@ -49,6 +49,8 @@ Install the Python environment with `uv`:
 ```bash
 uv sync --dev
 ```
+
+The Python server is currently a compatibility surface while the Ruby-native runtime inside SketchUp is the canonical MCP host for the migrated tool surface.
 
 Run the server over stdio:
 

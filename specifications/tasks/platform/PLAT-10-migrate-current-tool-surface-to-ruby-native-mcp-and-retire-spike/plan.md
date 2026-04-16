@@ -295,6 +295,11 @@ flowchart TD
 - If a migrated tool proves blocked in the native runtime, keep the block explicit in the plan or task follow-up rather than hiding it behind continued Python ownership.
 - Leave Python deletion to a follow-on task once native-consumption validation is established for the intended client set.
 
+## Implementation Outcome Notes
+
+- The shipped implementation keeps Python explicitly described as a compatibility surface, but does not add stronger generated-registration or drift-enforcement machinery because Python is expected to be removed before new tool growth resumes.
+- The shipped work focuses on Ruby-owned canonical catalog definition, shared Ruby command-collaborator construction, shared developer-command ownership for `eval_ruby`, and promotion of the SketchUp-facing native runtime posture.
+
 ## Risks and Controls
 
 - Native catalog ownership remains partially in Python because schema or metadata work is left there:

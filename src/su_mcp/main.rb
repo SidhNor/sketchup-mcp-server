@@ -18,7 +18,7 @@ module SU_MCP
   module Main
     # Main extension bootstrap and menu wiring.
     MENU_NAME = 'SketchUp MCP'
-    EXPERIMENTAL_RUNTIME_MENU_PREFIX = 'Experimental MCP Runtime'
+    NATIVE_RUNTIME_MENU_PREFIX = 'Native MCP Runtime'
 
     module_function
 
@@ -42,8 +42,8 @@ module SU_MCP
       )
     end
 
-    def experimental_runtime_server
-      @experimental_runtime_server ||= build_experimental_runtime_server
+    def native_runtime_server
+      @native_runtime_server ||= build_native_runtime_server
     end
 
     def log(message)
@@ -57,7 +57,7 @@ module SU_MCP
     end
 
     def menu_actions
-      bridge_menu_actions + experimental_runtime_menu_actions + console_menu_actions
+      bridge_menu_actions + native_runtime_menu_actions + console_menu_actions
     end
 
     def bridge_menu_actions
@@ -69,19 +69,19 @@ module SU_MCP
       ]
     end
 
-    def experimental_runtime_menu_actions
+    def native_runtime_menu_actions
       [
         [
-          "#{EXPERIMENTAL_RUNTIME_MENU_PREFIX} Status",
+          "#{NATIVE_RUNTIME_MENU_PREFIX} Status",
           lambda do
             UI.messagebox(
-              experimental_runtime_status_message(experimental_runtime_server.status)
+              native_runtime_status_message(native_runtime_server.status)
             )
           end
         ],
-        ["Start #{EXPERIMENTAL_RUNTIME_MENU_PREFIX}", -> { experimental_runtime_server.start }],
-        ["Restart #{EXPERIMENTAL_RUNTIME_MENU_PREFIX}", -> { restart_experimental_runtime }],
-        ["Stop #{EXPERIMENTAL_RUNTIME_MENU_PREFIX}", -> { experimental_runtime_server.stop }]
+        ["Start #{NATIVE_RUNTIME_MENU_PREFIX}", -> { native_runtime_server.start }],
+        ["Restart #{NATIVE_RUNTIME_MENU_PREFIX}", -> { restart_native_runtime }],
+        ["Stop #{NATIVE_RUNTIME_MENU_PREFIX}", -> { native_runtime_server.stop }]
       ]
     end
 
@@ -89,7 +89,7 @@ module SU_MCP
       [['Open Ruby Console', -> { SKETCHUP_CONSOLE.show if defined?(SKETCHUP_CONSOLE) }]]
     end
 
-    def build_experimental_runtime_server
+    def build_native_runtime_server
       runtime_loader = McpRuntimeLoader.new(
         logger: ->(message) { log("MCP runtime: #{message}") }
       )
@@ -97,16 +97,16 @@ module SU_MCP
       McpRuntimeServer.new(
         config: McpRuntimeConfig.new,
         runtime_loader: runtime_loader,
-        backend: build_experimental_runtime_backend(runtime_loader),
+        backend: build_native_runtime_backend(runtime_loader),
         facade: McpRuntimeFacade.new,
         logger: ->(message) { log("MCP runtime: #{message}") }
       )
     end
 
-    def build_experimental_runtime_backend(runtime_loader)
+    def build_native_runtime_backend(runtime_loader)
       McpRuntimeHttpBackend.new(
         app_builder: lambda do |handlers|
-          build_experimental_runtime_transport(runtime_loader, handlers)
+          build_native_runtime_transport(runtime_loader, handlers)
         end,
         server_factory: ->(host, port) { TCPServer.new(host, port) },
         timer_starter: lambda do |interval, repeat, &block|
@@ -117,11 +117,8 @@ module SU_MCP
       )
     end
 
-    def build_experimental_runtime_transport(runtime_loader, handlers)
-      runtime_loader.build_transport(
-        ping_handler: handlers.fetch(:ping),
-        scene_info_handler: handlers.fetch(:get_scene_info)
-      )
+    def build_native_runtime_transport(runtime_loader, handlers)
+      runtime_loader.build_transport(handlers: handlers)
     end
 
     def restart_bridge
@@ -129,22 +126,20 @@ module SU_MCP
       socket_server.start
     end
 
-    def restart_experimental_runtime
-      experimental_runtime_server.stop
-      experimental_runtime_server.start
+    def restart_native_runtime
+      native_runtime_server.stop
+      native_runtime_server.start
     end
 
-    def experimental_runtime_status_message(server_status)
-      if server_status[:available]
-        return available_experimental_runtime_status_message(server_status)
-      end
+    def native_runtime_status_message(server_status)
+      return available_native_runtime_status_message(server_status) if server_status[:available]
 
-      unavailable_experimental_runtime_status_message(server_status)
+      unavailable_native_runtime_status_message(server_status)
     end
 
-    def available_experimental_runtime_status_message(server_status)
+    def available_native_runtime_status_message(server_status)
       [
-        'Experimental SketchUp MCP runtime is available.',
+        'Native SketchUp MCP runtime is available.',
         "Endpoint: #{server_status[:host]}:#{server_status[:port]}",
         "Running: #{server_status[:running] ? 'yes' : 'no'}",
         'Transport: Ruby-native MCP Streamable HTTP runtime',
@@ -152,9 +147,9 @@ module SU_MCP
       ].join("\n")
     end
 
-    def unavailable_experimental_runtime_status_message(server_status)
+    def unavailable_native_runtime_status_message(server_status)
       [
-        'Experimental SketchUp MCP runtime is not staged in this repo checkout.',
+        'Native SketchUp MCP runtime is not staged in this repo checkout.',
         "Expected vendored runtime root: #{server_status[:vendor_root]}",
         "Missing staged gems: #{server_status[:missing_gems].join(', ')}",
         'Packaging: stage vendored runtime into the extension support tree before local use'
@@ -165,16 +160,16 @@ module SU_MCP
       :build_menu,
       :menu_actions,
       :restart_bridge,
-      :restart_experimental_runtime,
-      :experimental_runtime_status_message,
-      :build_experimental_runtime_server,
-      :build_experimental_runtime_backend,
-      :build_experimental_runtime_transport,
+      :restart_native_runtime,
+      :native_runtime_status_message,
+      :build_native_runtime_server,
+      :build_native_runtime_backend,
+      :build_native_runtime_transport,
       :bridge_menu_actions,
-      :experimental_runtime_menu_actions,
+      :native_runtime_menu_actions,
       :console_menu_actions,
-      :available_experimental_runtime_status_message,
-      :unavailable_experimental_runtime_status_message
+      :available_native_runtime_status_message,
+      :unavailable_native_runtime_status_message
     )
   end
 
