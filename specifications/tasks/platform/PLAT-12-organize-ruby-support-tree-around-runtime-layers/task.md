@@ -11,7 +11,7 @@
 
 ## Problem Statement
 
-Recent platform cleanup tasks narrowed Ruby ownership hotspots and `PLAT-10` is making Ruby-native MCP the canonical public tool host, but the Ruby support tree still remains flatter than the intended runtime layering. Transport, command, shared runtime, native MCP runtime, and support-oriented files are still mixed together at the top level of `src/su_mcp/` more often than the current HLD implies. That makes the repository harder to scan, weakens the visibility of the intended layering, and increases the chance that new files continue landing in the top-level namespace by default even after the runtime ownership model has become clearer.
+Recent platform cleanup tasks narrowed Ruby ownership hotspots and `PLAT-10` made Ruby-native MCP the canonical public tool host, but the Ruby support tree still remains flatter than the intended runtime layering. Transport, command, shared runtime, native MCP runtime, and support-oriented files are still mixed together at the top level of `src/su_mcp/` more often than the current HLD implies. That makes the repository harder to scan, weakens the visibility of the intended layering, and increases the chance that new files continue landing in the top-level namespace by default even after the runtime ownership model has become clearer.
 
 ## Goals
 

@@ -219,32 +219,44 @@ module SU_MCP
         ),
         tool_entry(
           name: 'get_scene_info',
-          description: 'Return SketchUp scene information from the active model',
+          description: 'Get a structured summary of the current SketchUp scene for broad ' \
+                       'grounding before more targeted inspection tools are used.',
           handler_key: :get_scene_info,
+          metadata: {
+            title: 'Get Scene Summary',
+            annotations: { read_only_hint: true, destructive_hint: false }
+          },
           input_schema: {
             type: 'object',
             properties: {
-              entity_limit: { type: 'integer' }
+              entity_limit: integer_schema
             },
-            additionalProperties: true
+            additionalProperties: false
           }
         ),
         tool_entry(
           name: 'list_entities',
-          description: 'List top-level SketchUp model entities.',
+          description: 'List top-level SketchUp model entities with an optional limit and ' \
+                       'optional hidden-entity inclusion.',
           handler_key: :list_entities,
+          metadata: {
+            title: 'List Top-Level Entities',
+            annotations: { read_only_hint: true, destructive_hint: false }
+          },
           input_schema: {
             type: 'object',
             properties: {
-              limit: { type: 'integer' },
-              include_hidden: { type: 'boolean' }
+              limit: integer_schema,
+              include_hidden: boolean_schema
             },
             additionalProperties: false
           }
         ),
         tool_entry(
           name: 'find_entities',
-          description: 'Find scene entities using supported targeting fields.',
+          description: 'Find scene entities using the supported MVP targeting fields and ' \
+                       'return explicit match summaries. Supports identity references, ' \
+                       'name, tag, and material only.',
           handler_key: :find_entities,
           metadata: {
             title: 'Find Scene Entities',
@@ -257,12 +269,12 @@ module SU_MCP
               query: {
                 type: 'object',
                 properties: {
-                  sourceElementId: { type: 'string' },
-                  persistentId: { type: 'string' },
-                  entityId: { type: 'string' },
-                  name: { type: 'string' },
-                  tag: { type: 'string' },
-                  material: { type: 'string' }
+                  sourceElementId: string_schema,
+                  persistentId: string_schema,
+                  entityId: string_schema,
+                  name: string_schema,
+                  tag: string_schema,
+                  material: string_schema
                 },
                 additionalProperties: false
               }
@@ -277,7 +289,9 @@ module SU_MCP
       [
         tool_entry(
           name: 'sample_surface_z',
-          description: 'Sample target surface elevation.',
+          description: 'Sample world-space surface elevation from an explicit target at ' \
+                       'one or more XY points in meters. Callers must provide the target ' \
+                       'and sample points; this is not broad scene discovery.',
           handler_key: :sample_surface_z,
           metadata: {
             title: 'Sample Target Surface Elevation',
@@ -293,14 +307,14 @@ module SU_MCP
                 type: 'array',
                 items: target_reference_schema
               },
-              visibleOnly: { type: 'boolean' }
+              visibleOnly: boolean_schema
             },
             additionalProperties: false
           }
         ),
         tool_entry(
           name: 'get_entity_info',
-          description: 'Get structured information for a specific entity.',
+          description: 'Get structured information for a specific SketchUp entity by id.',
           handler_key: :get_entity_info,
           metadata: {
             title: 'Get Entity Information',
@@ -310,24 +324,40 @@ module SU_MCP
             type: 'object',
             required: ['id'],
             properties: {
-              id: { type: 'string' }
+              id: string_schema
             },
             additionalProperties: false
           }
         ),
         tool_entry(
           name: 'create_site_element',
-          description: 'Create a managed semantic site element.',
-          handler_key: :create_site_element
+          description: 'Create a managed semantic site element in SketchUp. Current support ' \
+                       'is limited to structure, pad, path, retaining_edge, ' \
+                       'planting_mass, and tree_proxy creation.',
+          handler_key: :create_site_element,
+          metadata: {
+            title: 'Create Semantic Site Element',
+            annotations: { read_only_hint: false, destructive_hint: false }
+          },
+          input_schema: create_site_element_schema
         ),
         tool_entry(
           name: 'set_entity_metadata',
-          description: 'Update semantic metadata on a managed object.',
-          handler_key: :set_entity_metadata
+          description: 'Update semantic metadata on an existing managed object in ' \
+                       'SketchUp. Current support is limited to status updates for ' \
+                       'managed objects and structureCategory updates for managed ' \
+                       'structure objects.',
+          handler_key: :set_entity_metadata,
+          metadata: {
+            title: 'Set Entity Metadata',
+            annotations: { read_only_hint: false, destructive_hint: false }
+          },
+          input_schema: set_entity_metadata_schema
         )
       ]
     end
 
+    # rubocop:disable Metrics/AbcSize
     def mutation_tool_catalog
       [
         tool_entry(
@@ -340,9 +370,9 @@ module SU_MCP
           input_schema: {
             type: 'object',
             properties: {
-              type: { type: 'string' },
-              position: { type: 'array' },
-              dimensions: { type: 'array' }
+              type: string_schema,
+              position: numeric_array_schema,
+              dimensions: numeric_array_schema
             },
             additionalProperties: false
           }
@@ -350,42 +380,114 @@ module SU_MCP
         tool_entry(
           name: 'delete_component',
           description: 'Delete a component by ID.',
-          handler_key: :delete_component
+          handler_key: :delete_component,
+          input_schema: identifier_object_schema('id')
         ),
         tool_entry(
           name: 'transform_component',
-          description: 'Transform a component.',
-          handler_key: :transform_component
+          description: "Transform a component's position, rotation, or scale.",
+          handler_key: :transform_component,
+          input_schema: {
+            type: 'object',
+            required: ['id'],
+            properties: {
+              id: string_schema,
+              position: numeric_array_schema,
+              rotation: numeric_array_schema,
+              scale: numeric_array_schema
+            },
+            additionalProperties: false
+          }
         ),
         tool_entry(
           name: 'get_selection',
           description: 'Get detailed information about the current selection.',
-          handler_key: :get_selection
+          handler_key: :get_selection,
+          metadata: {
+            annotations: { read_only_hint: true, destructive_hint: false }
+          },
+          input_schema: {
+            type: 'object',
+            properties: {},
+            additionalProperties: false
+          }
         ),
         tool_entry(
           name: 'set_material',
-          description: 'Set the material for an entity.',
-          handler_key: :set_material
+          description: 'Set the material for a SketchUp entity.',
+          handler_key: :set_material,
+          input_schema: {
+            type: 'object',
+            required: %w[id material],
+            properties: {
+              id: string_schema,
+              material: string_schema
+            },
+            additionalProperties: false
+          }
         ),
         tool_entry(
           name: 'export_scene',
           description: 'Export the current SketchUp scene.',
-          handler_key: :export_scene
+          handler_key: :export_scene,
+          input_schema: {
+            type: 'object',
+            properties: {
+              format: string_schema,
+              width: integer_schema,
+              height: integer_schema
+            },
+            additionalProperties: false
+          }
         ),
         tool_entry(
           name: 'boolean_operation',
-          description: 'Run a boolean operation between entities.',
-          handler_key: :boolean_operation
+          description: 'Run a boolean operation between two SketchUp groups/components.',
+          handler_key: :boolean_operation,
+          input_schema: {
+            type: 'object',
+            required: %w[target_id tool_id operation],
+            properties: {
+              target_id: string_schema,
+              tool_id: string_schema,
+              operation: string_schema,
+              delete_originals: boolean_schema
+            },
+            additionalProperties: false
+          }
         ),
         tool_entry(
           name: 'chamfer_edges',
-          description: 'Create a chamfer on selected edges.',
-          handler_key: :chamfer_edges
+          description: 'Create a chamfer on selected edges of a group or component.',
+          handler_key: :chamfer_edges,
+          input_schema: {
+            type: 'object',
+            required: ['entity_id'],
+            properties: {
+              entity_id: string_schema,
+              distance: number_schema,
+              edge_indices: integer_array_schema,
+              delete_original: boolean_schema
+            },
+            additionalProperties: false
+          }
         ),
         tool_entry(
           name: 'fillet_edges',
-          description: 'Create a fillet on selected edges.',
-          handler_key: :fillet_edges
+          description: 'Create a fillet on selected edges of a group or component.',
+          handler_key: :fillet_edges,
+          input_schema: {
+            type: 'object',
+            required: ['entity_id'],
+            properties: {
+              entity_id: string_schema,
+              radius: number_schema,
+              segments: integer_schema,
+              edge_indices: integer_array_schema,
+              delete_original: boolean_schema
+            },
+            additionalProperties: false
+          }
         )
       ]
     end
@@ -394,18 +496,48 @@ module SU_MCP
       [
         tool_entry(
           name: 'create_mortise_tenon',
-          description: 'Create a mortise and tenon joint.',
-          handler_key: :create_mortise_tenon
+          description: 'Create a mortise and tenon joint between two components.',
+          handler_key: :create_mortise_tenon,
+          input_schema: {
+            type: 'object',
+            required: %w[mortise_id tenon_id],
+            properties: joinery_common_numeric_properties.merge(
+              mortise_id: string_schema,
+              tenon_id: string_schema
+            ),
+            additionalProperties: false
+          }
         ),
         tool_entry(
           name: 'create_dovetail',
-          description: 'Create a dovetail joint.',
-          handler_key: :create_dovetail
+          description: 'Create a dovetail joint between two components.',
+          handler_key: :create_dovetail,
+          input_schema: {
+            type: 'object',
+            required: %w[tail_id pin_id],
+            properties: joinery_common_numeric_properties.merge(
+              tail_id: string_schema,
+              pin_id: string_schema,
+              angle: number_schema,
+              num_tails: integer_schema
+            ),
+            additionalProperties: false
+          }
         ),
         tool_entry(
           name: 'create_finger_joint',
-          description: 'Create a finger joint.',
-          handler_key: :create_finger_joint
+          description: 'Create a finger joint between two components.',
+          handler_key: :create_finger_joint,
+          input_schema: {
+            type: 'object',
+            required: %w[board1_id board2_id],
+            properties: joinery_common_numeric_properties.merge(
+              board1_id: string_schema,
+              board2_id: string_schema,
+              num_fingers: integer_schema
+            ),
+            additionalProperties: false
+          }
         )
       ]
     end
@@ -415,10 +547,19 @@ module SU_MCP
         tool_entry(
           name: 'eval_ruby',
           description: 'Evaluate arbitrary Ruby code inside SketchUp.',
-          handler_key: :eval_ruby
+          handler_key: :eval_ruby,
+          input_schema: {
+            type: 'object',
+            required: ['code'],
+            properties: {
+              code: string_schema
+            },
+            additionalProperties: false
+          }
         )
       ]
     end
+    # rubocop:enable Metrics/AbcSize
     # rubocop:enable Metrics/MethodLength
 
     def tool_entry(
@@ -451,13 +592,61 @@ module SU_MCP
       }
     end
 
+    def string_schema
+      { type: 'string' }
+    end
+
+    def boolean_schema
+      { type: 'boolean' }
+    end
+
+    def integer_schema
+      { type: 'integer' }
+    end
+
+    def number_schema
+      { type: 'number' }
+    end
+
+    def numeric_array_schema
+      {
+        type: 'array',
+        items: number_schema
+      }
+    end
+
+    def integer_array_schema
+      {
+        type: 'array',
+        items: integer_schema
+      }
+    end
+
+    def string_array_schema
+      {
+        type: 'array',
+        items: string_schema
+      }
+    end
+
+    def identifier_object_schema(identifier_name)
+      {
+        type: 'object',
+        required: [identifier_name],
+        properties: {
+          identifier_name.to_sym => string_schema
+        },
+        additionalProperties: false
+      }
+    end
+
     def target_reference_schema
       {
         type: 'object',
         properties: {
-          sourceElementId: { type: 'string' },
-          persistentId: { type: 'string' },
-          entityId: { type: 'string' }
+          sourceElementId: string_schema,
+          persistentId: string_schema,
+          entityId: string_schema
         },
         additionalProperties: false
       }
@@ -470,13 +659,145 @@ module SU_MCP
           type: 'object',
           required: %w[x y],
           properties: {
-            x: { type: 'number' },
-            y: { type: 'number' }
+            x: number_schema,
+            y: number_schema
           },
           additionalProperties: false
         }
       }
     end
+
+    def xy_point_array_schema
+      {
+        type: 'array',
+        items: numeric_array_schema
+      }
+    end
+
+    def path_payload_schema
+      {
+        type: 'object',
+        required: %w[centerline width],
+        properties: {
+          centerline: xy_point_array_schema,
+          width: number_schema,
+          elevation: number_schema,
+          thickness: number_schema
+        },
+        additionalProperties: false
+      }
+    end
+
+    def retaining_edge_payload_schema
+      {
+        type: 'object',
+        required: %w[polyline height thickness],
+        properties: {
+          polyline: xy_point_array_schema,
+          height: number_schema,
+          thickness: number_schema,
+          elevation: number_schema
+        },
+        additionalProperties: false
+      }
+    end
+
+    def planting_mass_payload_schema
+      {
+        type: 'object',
+        required: %w[boundary averageHeight],
+        properties: {
+          boundary: xy_point_array_schema,
+          averageHeight: number_schema,
+          plantingCategory: string_schema,
+          elevation: number_schema
+        },
+        additionalProperties: false
+      }
+    end
+
+    # rubocop:disable Metrics/MethodLength
+    def tree_proxy_payload_schema
+      {
+        type: 'object',
+        required: %w[position canopyDiameterX height trunkDiameter],
+        properties: {
+          position: {
+            type: 'object',
+            required: %w[x y],
+            properties: {
+              x: number_schema,
+              y: number_schema,
+              z: number_schema
+            },
+            additionalProperties: false
+          },
+          canopyDiameterX: number_schema,
+          canopyDiameterY: number_schema,
+          height: number_schema,
+          trunkDiameter: number_schema,
+          speciesHint: string_schema
+        },
+        additionalProperties: false
+      }
+    end
+
+    def create_site_element_schema
+      {
+        type: 'object',
+        required: %w[elementType sourceElementId status],
+        properties: {
+          elementType: string_schema,
+          sourceElementId: string_schema,
+          status: string_schema,
+          footprint: xy_point_array_schema,
+          elevation: number_schema,
+          height: number_schema,
+          structureCategory: string_schema,
+          thickness: number_schema,
+          name: string_schema,
+          tag: string_schema,
+          material: string_schema,
+          path: path_payload_schema,
+          retaining_edge: retaining_edge_payload_schema,
+          planting_mass: planting_mass_payload_schema,
+          tree_proxy: tree_proxy_payload_schema
+        },
+        additionalProperties: false
+      }
+    end
+
+    def set_entity_metadata_schema
+      {
+        type: 'object',
+        required: ['target'],
+        properties: {
+          target: target_reference_schema,
+          set: {
+            type: 'object',
+            properties: {
+              status: string_schema,
+              structureCategory: string_schema
+            },
+            additionalProperties: false
+          },
+          clear: string_array_schema
+        },
+        additionalProperties: false
+      }
+    end
+
+    def joinery_common_numeric_properties
+      {
+        width: number_schema,
+        height: number_schema,
+        depth: number_schema,
+        offset_x: number_schema,
+        offset_y: number_schema,
+        offset_z: number_schema
+      }
+    end
+    # rubocop:enable Metrics/MethodLength
 
     def runtime_input_schema(schema)
       runtime_input_schema_class.new(schema)

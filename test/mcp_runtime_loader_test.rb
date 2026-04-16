@@ -102,6 +102,7 @@ class McpRuntimeLoaderTest < Minitest::Test
   # rubocop:enable Metrics/MethodLength
 
   # rubocop:disable Metrics/AbcSize, Metrics/MethodLength
+  # rubocop:disable Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity
   def test_build_transport_handles_batched_initialized_and_tools_list_requests
     skip_unless_staged_vendor_runtime!
 
@@ -119,10 +120,17 @@ class McpRuntimeLoaderTest < Minitest::Test
       tools.map { |tool| tool.fetch('name') }
     )
     scene_tool = tools.find { |tool| tool.fetch('name') == 'get_scene_info' }
+    assert_equal('Get Scene Summary', scene_tool.fetch('title'))
+    assert_equal(true, scene_tool.fetch('annotations').fetch('readOnlyHint'))
     assert_equal(
       'integer',
       scene_tool.fetch('inputSchema').fetch('properties').fetch('entity_limit').fetch('type')
     )
+
+    list_entities_tool = tools.find { |tool| tool.fetch('name') == 'list_entities' }
+    assert_equal('List Top-Level Entities', list_entities_tool.fetch('title'))
+    assert_equal(true, list_entities_tool.fetch('annotations').fetch('readOnlyHint'))
+
     find_entities_tool = tools.find { |tool| tool.fetch('name') == 'find_entities' }
     assert_equal('Find Scene Entities', find_entities_tool.fetch('title'))
     assert_equal(true, find_entities_tool.fetch('annotations').fetch('readOnlyHint'))
@@ -152,8 +160,57 @@ class McpRuntimeLoaderTest < Minitest::Test
       ['id'],
       get_entity_info_tool.fetch('inputSchema').fetch('properties').keys
     )
+
+    create_site_element_tool = tools.find { |tool| tool.fetch('name') == 'create_site_element' }
+    assert_equal('Create Semantic Site Element', create_site_element_tool.fetch('title'))
+    assert_equal(
+      %w[elementType sourceElementId status],
+      create_site_element_tool.fetch('inputSchema').fetch('required')
+    )
+    assert_equal(
+      %w[
+        elementType elevation footprint height material name path planting_mass
+        retaining_edge sourceElementId status structureCategory tag thickness
+        tree_proxy
+      ],
+      create_site_element_tool.fetch('inputSchema').fetch('properties').keys.sort
+    )
+
+    set_entity_metadata_tool = tools.find { |tool| tool.fetch('name') == 'set_entity_metadata' }
+    assert_equal('Set Entity Metadata', set_entity_metadata_tool.fetch('title'))
+    assert_equal(
+      ['target'],
+      set_entity_metadata_tool.fetch('inputSchema').fetch('required')
+    )
+    assert_equal(
+      %w[clear set target],
+      set_entity_metadata_tool.fetch('inputSchema').fetch('properties').keys.sort
+    )
+
+    transform_component_tool = tools.find { |tool| tool.fetch('name') == 'transform_component' }
+    assert_equal(
+      ['id'],
+      transform_component_tool.fetch('inputSchema').fetch('required')
+    )
+    assert_equal(
+      %w[id position rotation scale],
+      transform_component_tool.fetch('inputSchema').fetch('properties').keys.sort
+    )
+
+    boolean_operation_tool = tools.find { |tool| tool.fetch('name') == 'boolean_operation' }
+    assert_equal(
+      %w[target_id tool_id operation],
+      boolean_operation_tool.fetch('inputSchema').fetch('required')
+    )
+
+    eval_ruby_tool = tools.find { |tool| tool.fetch('name') == 'eval_ruby' }
+    assert_equal(
+      ['code'],
+      eval_ruby_tool.fetch('inputSchema').fetch('required')
+    )
   end
   # rubocop:enable Metrics/AbcSize, Metrics/MethodLength
+  # rubocop:enable Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity
 
   def test_build_transport_returns_accepted_for_notification_only_posts
     skip_unless_staged_vendor_runtime!
@@ -210,16 +267,27 @@ class McpRuntimeLoaderTest < Minitest::Test
     assert_equal(CANONICAL_NATIVE_TOOL_NAMES, catalog.map { |tool| tool.fetch(:name) })
   end
 
-  # rubocop:disable Metrics/AbcSize
+  # rubocop:disable Metrics/AbcSize, Metrics/CyclomaticComplexity
+  # rubocop:disable Metrics/MethodLength, Metrics/PerceivedComplexity
   def test_tool_catalog_exposes_representative_metadata_and_schema
     catalog = @loader.tool_catalog
 
     find_entities = catalog.find { |tool| tool.fetch(:name) == 'find_entities' }
     sample_surface_z = catalog.find { |tool| tool.fetch(:name) == 'sample_surface_z' }
     get_entity_info = catalog.find { |tool| tool.fetch(:name) == 'get_entity_info' }
+    create_site_element = catalog.find { |tool| tool.fetch(:name) == 'create_site_element' }
+    set_entity_metadata = catalog.find { |tool| tool.fetch(:name) == 'set_entity_metadata' }
+    transform_component = catalog.find { |tool| tool.fetch(:name) == 'transform_component' }
+    boolean_operation = catalog.find { |tool| tool.fetch(:name) == 'boolean_operation' }
     create_component = catalog.find { |tool| tool.fetch(:name) == 'create_component' }
+    get_selection = catalog.find { |tool| tool.fetch(:name) == 'get_selection' }
     eval_ruby = catalog.find { |tool| tool.fetch(:name) == 'eval_ruby' }
 
+    scene_info = catalog.find { |tool| tool.fetch(:name) == 'get_scene_info' }
+    list_entities = catalog.find { |tool| tool.fetch(:name) == 'list_entities' }
+
+    assert_equal('Get Scene Summary', scene_info.dig(:metadata, :title))
+    assert_equal('List Top-Level Entities', list_entities.dig(:metadata, :title))
     assert_equal('Find Scene Entities', find_entities.dig(:metadata, :title))
     assert_equal(true, find_entities.dig(:metadata, :annotations, :read_only_hint))
     assert_equal('object', find_entities.dig(:input_schema, :type))
@@ -233,9 +301,19 @@ class McpRuntimeLoaderTest < Minitest::Test
                  sample_surface_z.dig(:input_schema, :properties, :target, :properties).keys.sort)
     assert_equal('Get Entity Information', get_entity_info.dig(:metadata, :title))
     assert_equal(['id'], get_entity_info.dig(:input_schema, :required))
+    assert_equal('Create Semantic Site Element', create_site_element.dig(:metadata, :title))
+    assert_equal(%w[elementType sourceElementId status],
+                 create_site_element.dig(:input_schema, :required))
+    assert_equal('Set Entity Metadata', set_entity_metadata.dig(:metadata, :title))
+    assert_equal(['target'], set_entity_metadata.dig(:input_schema, :required))
+    assert_equal(['id'], transform_component.dig(:input_schema, :required))
+    assert_equal(%w[target_id tool_id operation], boolean_operation.dig(:input_schema, :required))
+    assert_equal(true, get_selection.dig(:metadata, :annotations, :read_only_hint))
+    assert_equal(['code'], eval_ruby.dig(:input_schema, :required))
     assert_equal(:eval_ruby, eval_ruby.fetch(:handler_key))
   end
-  # rubocop:enable Metrics/AbcSize
+  # rubocop:enable Metrics/AbcSize, Metrics/CyclomaticComplexity
+  # rubocop:enable Metrics/MethodLength, Metrics/PerceivedComplexity
 
   def test_tool_catalog_tracks_the_runtime_handler_key_for_representative_tools
     catalog = @loader.tool_catalog

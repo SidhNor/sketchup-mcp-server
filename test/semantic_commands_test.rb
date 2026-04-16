@@ -3,11 +3,13 @@
 # rubocop:disable Metrics/MethodLength, Metrics/ClassLength
 
 require_relative 'test_helper'
+require_relative 'contracts/contract_test_helper'
 require_relative 'support/semantic_test_support'
 require_relative 'support/scene_query_test_support'
 require_relative '../src/su_mcp/semantic_commands'
 
 class SemanticCommandsTest < Minitest::Test
+  include ContractTestHelper
   include SemanticTestSupport
   include SceneQueryTestSupport
 
@@ -735,9 +737,81 @@ class SemanticCommandsTest < Minitest::Test
     assert_equal([], @model.operations)
     assert_equal([], serializer.calls)
   end
+
+  def test_create_site_element_unsupported_type_refusal_matches_shared_contract
+    contract_case = contract_cases_by_id.fetch('create_site_element_unsupported_type_refused')
+    commands = SU_MCP::SemanticCommands.new(model: @model)
+
+    result = commands.create_site_element(contract_case.dig('request', 'params', 'arguments'))
+
+    assert_equal(contract_case.dig('response', 'result'), normalized_result(result))
+  end
+
+  def test_set_entity_metadata_missing_change_refusal_matches_shared_contract
+    contract_case = contract_cases_by_id.fetch('set_entity_metadata_missing_change_refused')
+    commands = SU_MCP::SemanticCommands.new(model: @model)
+
+    result = commands.set_entity_metadata(contract_case.dig('request', 'params', 'arguments'))
+
+    assert_equal(contract_case.dig('response', 'result'), normalized_result(result))
+  end
+
+  def test_set_entity_metadata_required_clear_refusal_matches_shared_contract
+    contract_case = contract_cases_by_id.fetch('set_entity_metadata_required_clear_refused')
+    metadata_writer = SU_MCP::Semantic::ManagedObjectMetadata.new
+    entity = @model.active_entities.add_group
+    metadata_writer.write!(
+      entity,
+      'sourceElementId' => 'house-extension-001',
+      'semanticType' => 'structure',
+      'status' => 'proposed',
+      'state' => 'Created',
+      'schemaVersion' => 1,
+      'structureCategory' => 'extension'
+    )
+    target_resolver = FakeTargetResolver.new(resolution: 'unique', entity: entity)
+    commands = SU_MCP::SemanticCommands.new(
+      model: @model,
+      metadata_writer: metadata_writer,
+      target_resolver: target_resolver
+    )
+
+    result = commands.set_entity_metadata(contract_case.dig('request', 'params', 'arguments'))
+
+    assert_equal(contract_case.dig('response', 'result'), normalized_result(result))
+  end
+
+  def test_set_entity_metadata_invalid_structure_category_refusal_matches_shared_contract
+    contract_case = contract_cases_by_id.fetch('set_entity_metadata_invalid_structure_category_refused')
+    metadata_writer = SU_MCP::Semantic::ManagedObjectMetadata.new
+    entity = @model.active_entities.add_group
+    metadata_writer.write!(
+      entity,
+      'sourceElementId' => 'house-extension-001',
+      'semanticType' => 'structure',
+      'status' => 'proposed',
+      'state' => 'Created',
+      'schemaVersion' => 1,
+      'structureCategory' => 'extension'
+    )
+    target_resolver = FakeTargetResolver.new(resolution: 'unique', entity: entity)
+    commands = SU_MCP::SemanticCommands.new(
+      model: @model,
+      metadata_writer: metadata_writer,
+      target_resolver: target_resolver
+    )
+
+    result = commands.set_entity_metadata(contract_case.dig('request', 'params', 'arguments'))
+
+    assert_equal(contract_case.dig('response', 'result'), normalized_result(result))
+  end
   # rubocop:enable Layout/LineLength
 
   private
+
+  def normalized_result(result)
+    JSON.parse(JSON.generate(result))
+  end
 
   def v2_structure_adopt_request
     {
