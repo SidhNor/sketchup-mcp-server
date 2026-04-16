@@ -2,6 +2,19 @@
 
 <!-- version list -->
 
+## v0.10.0 (2026-04-16)
+
+### Documentation
+
+- **PLAT-08**: Coding guidelines and alignment
+  ([`66b0696`](https://github.com/SidhNor/sketchup-mcp-server/commit/66b06969d232819f9352b8fec8165e1feffc9eaf))
+
+### Features
+
+- **PLAT-07**: Ruby mcp
+  ([`606e4d7`](https://github.com/SidhNor/sketchup-mcp-server/commit/606e4d77435c63d05f5dc1c2ab27eee7ad8f63c2))
+
+
 ## v0.9.0 (2026-04-16)
 
 ### Documentation
