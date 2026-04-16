@@ -1,7 +1,7 @@
 # Task: PLAT-13 Retire Python Bridge And Remove Compatibility Runtime
 **Task ID**: `PLAT-13`
 **Title**: `Retire Python Bridge And Remove Compatibility Runtime`
-**Status**: `draft`
+**Status**: `planned`
 **Priority**: `P0`
 **Date**: `2026-04-16`
 
@@ -104,7 +104,7 @@ Scenario: Removal remains bounded to post-transition cleanup rather than new cap
 
 ## Related Technical Plan
 
-- none yet
+- [Technical Plan](./plan.md)
 
 ## Success Metrics
 
