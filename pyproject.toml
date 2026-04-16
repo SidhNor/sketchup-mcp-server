@@ -52,6 +52,9 @@ version_variables = [
   "python/src/sketchup_mcp_server/version.py:__version__",
 ]
 
+[tool.semantic_release.commit_parser_options]
+patch_tags = ["fix", "perf", "refactor"]
+
 [tool.semantic_release.changelog]
 exclude_commit_patterns = [
   '''chore(?:\([^)]*?\))?: .+''',
