@@ -1,8 +1,8 @@
 # frozen_string_literal: true
 
 require_relative '../adapters/model_adapter'
-require_relative '../scene_query_serializer'
-require_relative '../targeting_query'
+require_relative '../scene_query/scene_query_serializer'
+require_relative '../scene_query/targeting_query'
 
 module SU_MCP
   module Semantic

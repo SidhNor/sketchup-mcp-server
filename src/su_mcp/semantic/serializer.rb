@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-require_relative '../scene_query_serializer'
+require_relative '../scene_query/scene_query_serializer'
 require_relative 'length_converter'
 require_relative 'managed_object_metadata'
 

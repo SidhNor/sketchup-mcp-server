@@ -1,8 +1,8 @@
 # frozen_string_literal: true
 
 require_relative '../test_helper'
-require_relative '../../src/su_mcp/request_handler'
-require_relative '../../src/su_mcp/request_processor'
+require_relative '../../src/su_mcp/transport/request_handler'
+require_relative '../../src/su_mcp/transport/request_processor'
 require_relative 'contract_test_helper'
 
 module BridgeContractCaseAssertions

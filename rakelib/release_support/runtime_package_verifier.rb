@@ -39,7 +39,7 @@ module ReleaseSupport
 
     def run_load_test!(stage_root:, manifest:)
       load_test = manifest.load_test
-      loader_path = File.join(stage_root, 'su_mcp', 'mcp_runtime_loader.rb')
+      loader_path = File.join(stage_root, 'su_mcp', 'runtime', 'native', 'mcp_runtime_loader.rb')
       vendor_root = File.join(stage_root, 'su_mcp', 'vendor', 'ruby')
       script = <<~RUBY
         load #{loader_path.dump}

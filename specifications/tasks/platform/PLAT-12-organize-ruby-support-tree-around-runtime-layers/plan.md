@@ -1,7 +1,7 @@
 # Technical Plan: PLAT-12 Organize Ruby Support Tree Around Runtime Layers
 **Task ID**: `PLAT-12`
 **Title**: `Organize Ruby Support Tree Around Runtime Layers`
-**Status**: `finalized`
+**Status**: `implemented`
 **Date**: `2026-04-16`
 
 ## Source Task
@@ -35,8 +35,8 @@ The Ruby runtime now has clearer ownership seams after [PLAT-08](specifications/
 - [PLAT-10 Migrate Current Tool Surface To Ruby-Native MCP And Retire Spike](specifications/tasks/platform/PLAT-10-migrate-current-tool-surface-to-ruby-native-mcp-and-retire-spike/task.md)
 - [PLAT-11 Decompose Remaining Ruby Modeling Command Hotspot](specifications/tasks/platform/PLAT-11-decompose-remaining-ruby-modeling-command-hotspot/task.md)
 - [src/su_mcp/main.rb](src/su_mcp/main.rb)
-- [src/su_mcp/socket_server.rb](src/su_mcp/socket_server.rb)
-- [src/su_mcp/runtime_command_factory.rb](src/su_mcp/runtime_command_factory.rb)
+- [src/su_mcp/transport/socket_server.rb](src/su_mcp/transport/socket_server.rb)
+- [src/su_mcp/runtime/runtime_command_factory.rb](src/su_mcp/runtime/runtime_command_factory.rb)
 
 ## Research Summary
 
@@ -44,11 +44,13 @@ The Ruby runtime now has clearer ownership seams after [PLAT-08](specifications/
 - `PLAT-12` is explicitly a post-migration structure task, not a migration task. The implementation should express the current ownership model in the filesystem rather than reopen runtime-boundary decisions.
 - Packaging and loader constraints are real. [src/su_mcp.rb](src/su_mcp.rb) must remain the root registration file, [src/su_mcp/main.rb](src/su_mcp/main.rb) remains the SketchUp bootstrap entrypoint, and [rakelib/package.rake](rakelib/package.rake) still verifies the RBZ archive shape as `su_mcp.rb` plus `su_mcp/`.
 - The current repo already contains cohesive file clusters that justify dedicated subtrees:
-  - scene-query files around [scene_query_commands.rb](src/su_mcp/scene_query_commands.rb)
-  - editing files around [editing_commands.rb](src/su_mcp/editing_commands.rb)
-  - modeling files around [solid_modeling_commands.rb](src/su_mcp/solid_modeling_commands.rb) and [joinery_commands.rb](src/su_mcp/joinery_commands.rb)
-  - native runtime files around [mcp_runtime_loader.rb](src/su_mcp/mcp_runtime_loader.rb)
+  - scene-query files around [scene_query/scene_query_commands.rb](src/su_mcp/scene_query/scene_query_commands.rb)
+  - editing files around [editing/editing_commands.rb](src/su_mcp/editing/editing_commands.rb)
+  - modeling files around [modeling/solid_modeling_commands.rb](src/su_mcp/modeling/solid_modeling_commands.rb)
+  - shared runtime files around [runtime/runtime_command_factory.rb](src/su_mcp/runtime/runtime_command_factory.rb)
+  - native runtime files around [runtime/native/mcp_runtime_loader.rb](src/su_mcp/runtime/native/mcp_runtime_loader.rb)
 - A generic `support/` folder would likely recreate the same default-home pressure this task is meant to reduce.
+- The plan references to `joinery_commands.rb` were stale at implementation time; no joinery file existed in the repo, so the modeling slice was limited to the existing `modeling_support.rb` and `solid_modeling_commands.rb` files.
 
 ## Technical Decisions
 
@@ -147,7 +149,6 @@ The Ruby runtime now has clearer ownership seams after [PLAT-08](specifications/
   - `material_resolver.rb`
 - `modeling/`
   - `solid_modeling_commands.rb`
-  - `joinery_commands.rb`
   - `modeling_support.rb`
 - `developer/`
   - `developer_commands.rb`
@@ -249,35 +250,34 @@ flowchart TD
 ### Required Test Coverage
 
 - Scene-query slice:
-  - `test/scene_query_commands_test.rb`
-  - `test/scene_query_commands_adapter_test.rb`
-  - `test/find_entities_scene_query_commands_test.rb`
-  - `test/sample_surface_z_scene_query_commands_test.rb`
-  - `test/sample_surface_support_test.rb`
+  - `test/scene_query/scene_query_commands_test.rb`
+  - `test/scene_query/scene_query_commands_adapter_test.rb`
+  - `test/scene_query/find_entities_scene_query_commands_test.rb`
+  - `test/scene_query/sample_surface_z_scene_query_commands_test.rb`
+  - `test/scene_query/sample_surface_support_test.rb`
   - semantic tests affected by moved scene-query helpers
 - Editing slice:
-  - `test/editing_commands_test.rb`
+  - `test/editing/editing_commands_test.rb`
 - Modeling slice:
-  - `test/modeling_support_test.rb`
-  - `test/solid_modeling_commands_test.rb`
-  - `test/joinery_commands_test.rb`
+  - `test/modeling/modeling_support_test.rb`
+  - `test/modeling/solid_modeling_commands_test.rb`
 - Transport slice:
-  - `test/request_handler_test.rb`
-  - `test/request_processor_test.rb`
-  - `test/response_helpers_test.rb`
-  - `test/socket_server_test.rb`
-  - `test/socket_server_adapter_test.rb`
+  - `test/transport/request_handler_test.rb`
+  - `test/transport/request_processor_test.rb`
+  - `test/transport/response_helpers_test.rb`
+  - `test/transport/socket_server_test.rb`
+  - `test/transport/socket_server_adapter_test.rb`
   - `test/contracts/bridge_contract_invariants_test.rb`
 - Runtime and native-runtime slice:
-  - `test/tool_dispatcher_test.rb`
-  - `test/runtime_logger_test.rb`
-  - `test/mcp_runtime_config_test.rb`
-  - `test/mcp_runtime_loader_test.rb`
-  - `test/mcp_runtime_http_backend_test.rb`
-  - `test/mcp_runtime_facade_test.rb`
-  - `test/mcp_runtime_server_test.rb`
-  - `test/mcp_runtime_main_integration_test.rb`
-  - `test/mcp_runtime_native_contract_test.rb`
+  - `test/runtime/tool_dispatcher_test.rb`
+  - `test/runtime/runtime_logger_test.rb`
+  - `test/runtime/native/mcp_runtime_config_test.rb`
+  - `test/runtime/native/mcp_runtime_loader_test.rb`
+  - `test/runtime/native/mcp_runtime_http_backend_test.rb`
+  - `test/runtime/native/mcp_runtime_facade_test.rb`
+  - `test/runtime/native/mcp_runtime_server_test.rb`
+  - `test/runtime/native/mcp_runtime_main_integration_test.rb`
+  - `test/runtime/native/mcp_runtime_native_contract_test.rb`
 - Final validation:
   - `bundle exec rake ruby:test`
   - `bundle exec rake ruby:lint`
@@ -337,8 +337,38 @@ flowchart TD
 - Runtime entrypoints and current seams:
   - [src/su_mcp.rb](src/su_mcp.rb)
   - [src/su_mcp/main.rb](src/su_mcp/main.rb)
-  - [src/su_mcp/socket_server.rb](src/su_mcp/socket_server.rb)
-  - [src/su_mcp/runtime_command_factory.rb](src/su_mcp/runtime_command_factory.rb)
+  - [src/su_mcp/transport/socket_server.rb](src/su_mcp/transport/socket_server.rb)
+  - [src/su_mcp/runtime/runtime_command_factory.rb](src/su_mcp/runtime/runtime_command_factory.rb)
+
+## Implementation Notes
+
+- Implemented the support-tree reorganization in dependency order:
+  - `scene_query/`
+  - `editing/`
+  - `modeling/`
+  - `semantic/semantic_commands.rb`
+  - `transport/`
+  - `runtime/`
+  - `runtime/native/`
+  - `developer/`
+- Reorganized the matching app-owned tests into mirrored `test/scene_query/`, `test/editing/`, `test/modeling/`, `test/semantic/`, `test/transport/`, `test/runtime/`, and `test/runtime/native/` subtrees where practical.
+- Updated packaging-side load-test wiring so staged native package verification resolves `runtime/native/mcp_runtime_loader.rb` from the packaged support tree.
+- Preserved root entrypoints and metadata files at `src/su_mcp/`:
+  - `main.rb`
+  - `extension.rb`
+  - `extension.json`
+  - `version.rb`
+
+## Validation Results
+
+- Focused slice validation ran after each move and stayed green before moving to the next slice.
+- Final local validation completed with:
+  - `bundle exec rake ruby:test`
+  - `bundle exec rake ruby:lint`
+  - `bundle exec rake ruby:contract`
+  - `uv run pytest python/tests/contracts`
+  - `bundle exec rake package:verify:all`
+- Manual SketchUp-hosted smoke verification remains outstanding from this environment.
 
 ## Premortem
 

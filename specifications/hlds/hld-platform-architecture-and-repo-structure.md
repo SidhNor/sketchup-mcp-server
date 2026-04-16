@@ -53,7 +53,7 @@ Current entrypoints:
 - Ruby extension registration: `src/su_mcp.rb`
 - Ruby extension metadata and registration support: `src/su_mcp/extension.rb`, `src/su_mcp/extension.json`
 - Ruby runtime bootstrap: `src/su_mcp/main.rb`
-- Ruby bridge configuration and socket server: `src/su_mcp/bridge.rb`, `src/su_mcp/socket_server.rb`
+- Ruby bridge configuration and socket server: `src/su_mcp/transport/bridge.rb`, `src/su_mcp/transport/socket_server.rb`
 - Python MCP server boot and tool registration: `python/src/sketchup_mcp_server/server.py`
 - packaging and release wiring: `Rakefile`, `rakelib/`, `pyproject.toml`
 
@@ -73,7 +73,7 @@ The accepted target direction is Ruby-native MCP inside SketchUp. Until that pat
 
 The main architectural issues in the current repository are concentration of responsibility and the need to separate current compatibility architecture from the target Ruby-native MCP ownership model:
 
-- `src/su_mcp/socket_server.rb` currently mixes transport ingress, request routing, result shaping, serialization helpers, and tool behavior
+- `src/su_mcp/transport/socket_server.rb` currently mixes transport ingress, request routing, result shaping, serialization helpers, and tool behavior
 - `python/src/sketchup_mcp_server/server.py` currently mixes app boot, connection management, endpoint resolution, shared invocation behavior, and all MCP tool definitions
 
 The remaining platform work is to harden a supported Ruby-native runtime and packaging foundation, then migrate the public MCP tool surface so Ruby becomes the canonical MCP host.
@@ -158,7 +158,7 @@ These are architectural boundaries, not a required immediate directory rewrite. 
 
 **Current Baseline**
 
-- implemented primarily as the socket-facing boundary inside `src/su_mcp/socket_server.rb`
+- implemented primarily as the socket-facing boundary inside `src/su_mcp/transport/socket_server.rb`
 - the Ruby-native direction is an in-process MCP boundary inside SketchUp rather than a Python-mediated socket ingress
 
 **Must Not Own**
@@ -215,7 +215,7 @@ These are architectural boundaries, not a required immediate directory rewrite. 
 
 **Current Baseline**
 
-- adapter-like behavior exists today, but much of it is embedded in `src/su_mcp/socket_server.rb`
+- adapter-like behavior exists today, but much of it is embedded in `src/su_mcp/transport/socket_server.rb`
 
 **Must Not Own**
 

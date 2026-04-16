@@ -1,14 +1,14 @@
 # frozen_string_literal: true
 
 require 'sketchup'
-require_relative 'bridge'
-require_relative 'mcp_runtime_config'
-require_relative 'mcp_runtime_facade'
-require_relative 'mcp_runtime_http_backend'
-require_relative 'mcp_runtime_loader'
-require_relative 'mcp_runtime_server'
-require_relative 'runtime_logger'
-require_relative 'socket_server'
+require_relative 'transport/bridge'
+require_relative 'runtime/native/mcp_runtime_config'
+require_relative 'runtime/native/mcp_runtime_facade'
+require_relative 'runtime/native/mcp_runtime_http_backend'
+require_relative 'runtime/native/mcp_runtime_loader'
+require_relative 'runtime/native/mcp_runtime_server'
+require_relative 'runtime/runtime_logger'
+require_relative 'transport/socket_server'
 require_relative 'version'
 
 # Namespace for the SketchUp MCP extension runtime.

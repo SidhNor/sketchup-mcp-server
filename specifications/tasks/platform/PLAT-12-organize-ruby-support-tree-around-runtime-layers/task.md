@@ -1,7 +1,7 @@
 # Task: PLAT-12 Organize Ruby Support Tree Around Runtime Layers
 **Task ID**: `PLAT-12`
 **Title**: `Organize Ruby Support Tree Around Runtime Layers`
-**Status**: `planned`
+**Status**: `completed`
 **Priority**: `P1`
 **Date**: `2026-04-16`
 
@@ -84,6 +84,13 @@ Scenario: Structural cleanup remains reviewable and bounded
 ## Related Technical Plan
 
 - [Technical Plan](./plan.md)
+
+## Completion Notes
+
+- Reorganized the Ruby support tree into explicit `transport/`, `runtime/`, `runtime/native/`, `scene_query/`, `editing/`, `modeling/`, `developer/`, and `semantic/` subtrees while keeping `src/su_mcp.rb` and `src/su_mcp/main.rb` as the stable entrypoints.
+- Kept Ruby constants, tool names, bridge payload shapes, and Python contract behavior unchanged; the implementation was limited to file moves, `require_relative` rewiring, mirrored app-owned test moves, and packaging-path updates.
+- Verified the reorganized tree with focused slice tests, full Ruby tests, Ruby and Python contract suites, full Ruby lint, and `package:verify:all`.
+- Manual SketchUp-hosted smoke verification is still outstanding from this environment and remains the only explicit post-implementation gap.
 
 ## Success Metrics
 
