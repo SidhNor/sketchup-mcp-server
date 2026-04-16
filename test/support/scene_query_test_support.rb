@@ -1,6 +1,20 @@
 # frozen_string_literal: true
 
 module SceneQueryTestSupport
+  class FakeVector
+    attr_reader :x, :y, :z
+
+    def initialize(x_value, y_value, z_value)
+      @x = x_value
+      @y = y_value
+      @z = z_value
+    end
+
+    def magnitude
+      Math.sqrt((x**2) + (y**2) + (z**2))
+    end
+  end
+
   class FakeOptionsProvider
     def initialize(values)
       @values = values
@@ -33,6 +47,22 @@ module SceneQueryTestSupport
     alias x axis_x
     alias y axis_y
     alias z axis_z
+
+    def -(other)
+      FakeVector.new(x - other.x, y - other.y, z - other.z)
+    end
+
+    def offset(vector, distance)
+      length = vector.magnitude
+      return self.class.new(x, y, z) if length.zero?
+
+      scale = distance.to_f / length
+      self.class.new(
+        x + (vector.x * scale),
+        y + (vector.y * scale),
+        z + (vector.z * scale)
+      )
+    end
   end
 
   class FakeBounds

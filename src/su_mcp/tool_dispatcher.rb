@@ -21,9 +21,6 @@ module SU_MCP
       'boolean_operation' => :boolean_operation,
       'chamfer_edges' => :chamfer_edges,
       'fillet_edges' => :fillet_edges,
-      'create_mortise_tenon' => :create_mortise_tenon,
-      'create_dovetail' => :create_dovetail,
-      'create_finger_joint' => :create_finger_joint,
       'eval_ruby' => :eval_ruby
     }.freeze
 

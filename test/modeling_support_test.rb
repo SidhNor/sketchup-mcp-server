@@ -51,4 +51,15 @@ class ModelingSupportTest < Minitest::Test
     assert_equal([target_entities], source_entities[0].copy_targets)
     assert_equal([target_entities], source_entities[1].copy_targets)
   end
+
+  def test_copy_entities_to_rebuilds_uncopyable_edges_as_lines
+    edge = build_uncopyable_edge(3)
+    target_entities = FakeEntitiesCollection.new
+
+    @support.send(:copy_entities_to, [edge], target_entities)
+
+    assert_equal(1, target_entities.added_lines.length)
+    assert_equal(edge.start.position, target_entities.added_lines.first[0])
+    assert_equal(edge.end.position, target_entities.added_lines.first[1])
+  end
 end

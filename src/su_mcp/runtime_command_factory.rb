@@ -3,7 +3,6 @@
 require_relative 'adapters/model_adapter'
 require_relative 'developer_commands'
 require_relative 'editing_commands'
-require_relative 'joinery_commands'
 require_relative 'modeling_support'
 require_relative 'scene_query_commands'
 require_relative 'semantic_commands'
@@ -23,7 +22,6 @@ module SU_MCP
         semantic_commands,
         editing_commands,
         solid_modeling_commands,
-        joinery_commands,
         developer_commands
       ]
     end
@@ -46,14 +44,6 @@ module SU_MCP
 
     def solid_modeling_commands
       @solid_modeling_commands ||= SolidModelingCommands.new(
-        model_provider: -> { Sketchup.active_model },
-        logger: logger,
-        support: modeling_support
-      )
-    end
-
-    def joinery_commands
-      @joinery_commands ||= JoineryCommands.new(
         model_provider: -> { Sketchup.active_model },
         logger: logger,
         support: modeling_support

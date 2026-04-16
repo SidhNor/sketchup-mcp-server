@@ -45,9 +45,6 @@ def test_create_server_registers_expected_tool_names() -> None:
         "boolean_operation",
         "chamfer_edges",
         "fillet_edges",
-        "create_mortise_tenon",
-        "create_dovetail",
-        "create_finger_joint",
         "eval_ruby",
     ]
 

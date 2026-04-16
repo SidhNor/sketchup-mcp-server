@@ -24,9 +24,6 @@ class McpRuntimeLoaderTest < Minitest::Test
     boolean_operation
     chamfer_edges
     fillet_edges
-    create_mortise_tenon
-    create_dovetail
-    create_finger_joint
     eval_ruby
   ].freeze
 

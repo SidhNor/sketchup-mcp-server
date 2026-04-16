@@ -63,9 +63,6 @@ def test_register_all_tools_exposes_the_expected_names() -> None:
         "boolean_operation",
         "chamfer_edges",
         "fillet_edges",
-        "create_mortise_tenon",
-        "create_dovetail",
-        "create_finger_joint",
         "eval_ruby",
     ]
 

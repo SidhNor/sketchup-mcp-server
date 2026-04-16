@@ -42,23 +42,29 @@ module SU_MCP
         raise 'Boolean operations require groups or component instances'
       end
 
-      result_group = model.active_entities.add_group
-
-      case operation_type
-      when 'union'
-        perform_union(target_entity, tool_entity, result_group)
-      when 'difference'
-        perform_difference(target_entity, tool_entity, result_group)
-      when 'intersection'
-        perform_intersection(target_entity, tool_entity, result_group)
-      end
+      result_entity = case operation_type
+                      when 'union'
+                        perform_union(target_entity, tool_entity)
+                      when 'difference'
+                        perform_difference(
+                          target_entity,
+                          tool_entity,
+                          model.active_entities.add_group
+                        )
+                      when 'intersection'
+                        perform_intersection(
+                          target_entity,
+                          tool_entity,
+                          model.active_entities.add_group
+                        )
+                      end
 
       if params['delete_originals']
         target_entity.erase! if target_entity.valid?
         tool_entity.erase! if tool_entity.valid?
       end
 
-      { success: true, id: result_group.entityID }
+      { success: true, id: result_entity.entityID }
     end
 
     def chamfer_edges(params)
@@ -75,23 +81,14 @@ module SU_MCP
       result_edges = filter_edges_by_index(result_edges, edge_indices) if edge_indices
 
       begin
-        result_edges.each do |edge|
+        chamfer_faces = result_edges.filter_map do |edge|
           faces = edge.faces
           next if faces.length < 2
 
-          new_points = []
+          chamfer_points_for(edge, faces.first(2), distance)
+        end
 
-          [edge.start, edge.end].each do |vertex|
-            connected_edges = vertex.edges - [edge]
-            raise 'Missing connected edge for chamfer' if connected_edges.empty?
-
-            connected_edges.each do |connected_edge|
-              other_vertex = (connected_edge.vertices - [vertex])[0]
-              direction = other_vertex.position - vertex.position
-              new_points << vertex.position.offset(direction, distance)
-            end
-          end
-
+        chamfer_faces.each do |new_points|
           result_group.entities.add_face(new_points) if new_points.length >= 3
         end
 
@@ -175,20 +172,22 @@ module SU_MCP
       entity
     end
 
-    def perform_union(target, tool, result_group)
+    def perform_union(target, tool)
       target_copy = target.copy
       tool_copy = tool.copy
 
       target_copy.transform!(target.transformation)
       tool_copy.transform!(tool.transformation)
 
-      copy_entities_to(instance_entities(target_copy), result_group.entities)
-      copy_entities_to(instance_entities(tool_copy), result_group.entities)
+      result = target_copy.outer_shell(tool_copy)
+      return result if result
 
-      target_copy.erase!
-      tool_copy.erase!
-
-      result_group.entities.outer_shell
+      raise 'Boolean union did not produce a solid result'
+    ensure
+      if defined?(target_copy) && target_copy.respond_to?(:valid?) && target_copy.valid?
+        target_copy.erase!
+      end
+      tool_copy.erase! if defined?(tool_copy) && tool_copy.respond_to?(:valid?) && tool_copy.valid?
     end
 
     def perform_difference(target, tool, result_group)
@@ -209,6 +208,7 @@ module SU_MCP
       target_copy.erase!
       tool_copy.erase!
       temp_tool_group.erase!
+      result_group
     end
 
     def perform_intersection(target, tool, result_group)
@@ -231,6 +231,7 @@ module SU_MCP
       tool_copy.erase!
       temp_target_group.erase!
       temp_tool_group.erase!
+      result_group
     end
 
     def selected_edge_indices(params)
@@ -251,6 +252,31 @@ module SU_MCP
 
     def copy_entities_to(source_entities, target_entities)
       support.__send__(:copy_entities_to, source_entities, target_entities)
+    end
+
+    def chamfer_points_for(edge, faces, distance)
+      raise 'Missing connected edge for chamfer' if faces.length < 2
+
+      first_face, second_face = faces
+      [
+        offset_vertex_on_face(edge.start, edge, first_face, distance),
+        offset_vertex_on_face(edge.end, edge, first_face, distance),
+        offset_vertex_on_face(edge.end, edge, second_face, distance),
+        offset_vertex_on_face(edge.start, edge, second_face, distance)
+      ]
+    end
+
+    def offset_vertex_on_face(vertex, edge, face, distance)
+      connected_edge = face_connected_edge(vertex, edge, face)
+      raise 'Missing connected edge for chamfer' unless connected_edge
+
+      other_vertex = (connected_edge.vertices - [vertex])[0]
+      direction = other_vertex.position - vertex.position
+      vertex.position.offset(direction, distance)
+    end
+
+    def face_connected_edge(vertex, edge, face)
+      ((face.edges & vertex.edges) - [edge]).first
     end
 
     def log(message)

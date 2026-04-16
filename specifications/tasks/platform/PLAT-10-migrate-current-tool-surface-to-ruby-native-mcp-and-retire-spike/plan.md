@@ -88,9 +88,6 @@
   - `boolean_operation`
   - `chamfer_edges`
   - `fillet_edges`
-  - `create_mortise_tenon`
-  - `create_dovetail`
-  - `create_finger_joint`
   - `eval_ruby`
 - Treat `bridge_configuration` as compatibility-only and exclude it from the canonical Ruby-native catalog.
 - Keep any legacy aliasing needed for transitional bridge compatibility internal to Ruby dispatch, not as a second canonical public catalog. In particular, `export` may remain a bridge alias while `export_scene` is the canonical public MCP tool name.
@@ -301,6 +298,12 @@ flowchart TD
 - The shipped work focuses on Ruby-owned canonical catalog definition, shared Ruby command-collaborator construction, shared developer-command ownership for `eval_ruby`, and promotion of the SketchUp-facing native runtime posture.
 - Live SketchUp-hosted deployment exposed one real post-implementation gap: [main.rb](src/su_mcp/main.rb) was constructing [McpRuntimeFacade](src/su_mcp/mcp_runtime_facade.rb) without a shared [RuntimeCommandFactory](src/su_mcp/runtime_command_factory.rb), so the native runtime advertised mutation and developer tools that were not actually wired to command targets. The follow-up fix injects the shared factory into the native facade and adds regression coverage in [test/mcp_runtime_main_integration_test.rb](test/mcp_runtime_main_integration_test.rb).
 - The same live validation also exposed native catalog schema drift for `get_entity_info` and `sample_surface_z`: the runtime loader had been advertising looser schemas than the Ruby commands actually accepted. The follow-up fix tightens the native catalog contract in [mcp_runtime_loader.rb](src/su_mcp/mcp_runtime_loader.rb) and adds regression coverage in [test/mcp_runtime_loader_test.rb](test/mcp_runtime_loader_test.rb) so `tools/list` matches the live command surface.
+- Later live SketchUp-hosted validation confirmed 15 tools working end to end on the native runtime and narrowed the remaining native failures to three shared geometry operations: `boolean_operation`, `chamfer_edges`, and `fillet_edges`. Those tools were already past registration, schema, and dispatch, but failed during Ruby geometry execution with `NoMethodError: undefined method 'copy' for #<Sketchup::Edge ...>`.
+- A follow-up Ruby geometry fix was then implemented in [modeling_support.rb](src/su_mcp/modeling_support.rb) and [solid_modeling_commands.rb](src/su_mcp/solid_modeling_commands.rb). The shared copy path now rebuilds uncopiable edges and faces, boolean union now operates on copied groups/components instead of `Sketchup::Entities`, and chamfer point generation now derives a planar quad from the two adjacent faces. Regression coverage was added in [test/modeling_support_test.rb](test/modeling_support_test.rb) and [test/solid_modeling_commands_test.rb](test/solid_modeling_commands_test.rb), and the follow-up Ruby validation passed via `bundle exec rake ruby:test` and `bundle exec rake ruby:lint`.
+- Subsequent live revalidation confirmed `boolean_operation` working end to end on a real union call with the expected solid replacement and bounds/topology changes. It also confirmed that `fillet_edges` and `chamfer_edges` now execute without runtime errors and generate additional geometry in-host.
+- One further local chamfer follow-up was then implemented in [solid_modeling_commands.rb](src/su_mcp/solid_modeling_commands.rb): chamfer point sets are now fully snapshotted before any new chamfer faces are added, so later edge processing cannot pick up freshly-created faces and produce invalid geometry. Regression coverage for that mutation-order bug was added in [test/solid_modeling_commands_test.rb](test/solid_modeling_commands_test.rb), and the focused solid-modeling test suite remains green.
+- The latest live validation boundary is that the remaining edge-treatment gap is functional correctness rather than invocation failure: both `fillet_edges` and `chamfer_edges` now return success and create geometry, but the resulting solids are still non-manifold in SketchUp and need a separate geometry-quality follow-up.
+- The inherited joinery tools `create_mortise_tenon`, `create_dovetail`, and `create_finger_joint` were also removed from the native Ruby catalog and Python compatibility layer after validation confirmed they were never used and should not remain on the supported surface.
 
 ## Risks and Controls
 

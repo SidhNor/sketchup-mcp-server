@@ -8,7 +8,6 @@ require 'tmpdir'
 require_relative 'adapters/model_adapter'
 require_relative 'developer_commands'
 require_relative 'editing_commands'
-require_relative 'joinery_commands'
 require_relative 'modeling_support'
 require_relative 'request_handler'
 require_relative 'request_processor'
@@ -150,10 +149,6 @@ module SU_MCP
 
     def solid_modeling_commands
       runtime_command_factory.solid_modeling_commands
-    end
-
-    def joinery_commands
-      runtime_command_factory.joinery_commands
     end
 
     def developer_commands

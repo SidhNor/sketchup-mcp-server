@@ -61,7 +61,6 @@ module SU_MCP
         primary_tool_catalog +
         scene_tool_catalog +
         mutation_tool_catalog +
-        joinery_tool_catalog +
         developer_tool_catalog
       ).freeze
     end
@@ -492,56 +491,6 @@ module SU_MCP
       ]
     end
 
-    def joinery_tool_catalog
-      [
-        tool_entry(
-          name: 'create_mortise_tenon',
-          description: 'Create a mortise and tenon joint between two components.',
-          handler_key: :create_mortise_tenon,
-          input_schema: {
-            type: 'object',
-            required: %w[mortise_id tenon_id],
-            properties: joinery_common_numeric_properties.merge(
-              mortise_id: string_schema,
-              tenon_id: string_schema
-            ),
-            additionalProperties: false
-          }
-        ),
-        tool_entry(
-          name: 'create_dovetail',
-          description: 'Create a dovetail joint between two components.',
-          handler_key: :create_dovetail,
-          input_schema: {
-            type: 'object',
-            required: %w[tail_id pin_id],
-            properties: joinery_common_numeric_properties.merge(
-              tail_id: string_schema,
-              pin_id: string_schema,
-              angle: number_schema,
-              num_tails: integer_schema
-            ),
-            additionalProperties: false
-          }
-        ),
-        tool_entry(
-          name: 'create_finger_joint',
-          description: 'Create a finger joint between two components.',
-          handler_key: :create_finger_joint,
-          input_schema: {
-            type: 'object',
-            required: %w[board1_id board2_id],
-            properties: joinery_common_numeric_properties.merge(
-              board1_id: string_schema,
-              board2_id: string_schema,
-              num_fingers: integer_schema
-            ),
-            additionalProperties: false
-          }
-        )
-      ]
-    end
-
     def developer_tool_catalog
       [
         tool_entry(
@@ -787,16 +736,6 @@ module SU_MCP
       }
     end
 
-    def joinery_common_numeric_properties
-      {
-        width: number_schema,
-        height: number_schema,
-        depth: number_schema,
-        offset_x: number_schema,
-        offset_y: number_schema,
-        offset_z: number_schema
-      }
-    end
     # rubocop:enable Metrics/MethodLength
 
     def runtime_input_schema(schema)

@@ -5,7 +5,6 @@ require_relative 'support/scene_query_test_support'
 require_relative '../src/su_mcp/request_handler'
 require_relative '../src/su_mcp/request_processor'
 require_relative '../src/su_mcp/editing_commands'
-require_relative '../src/su_mcp/joinery_commands'
 require_relative '../src/su_mcp/modeling_support'
 require_relative '../src/su_mcp/scene_query_commands'
 require_relative '../src/su_mcp/semantic_commands'
@@ -87,12 +86,6 @@ class SocketServerTest < Minitest::Test
     commands = @server.send(:solid_modeling_commands)
 
     assert_instance_of(SU_MCP::SolidModelingCommands, commands)
-  end
-
-  def test_builds_joinery_commands_for_extracted_bridge_commands
-    commands = @server.send(:joinery_commands)
-
-    assert_instance_of(SU_MCP::JoineryCommands, commands)
   end
 
   def test_builds_modeling_support_for_shared_modeling_helpers
