@@ -50,7 +50,7 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           set +e
-          uv run semantic-release --strict -v version
+          uv run semantic-release --strict -v version --no-vcs-release
           status=$?
           if [ "$status" -eq 0 ]; then
             echo "released=true" >> "$GITHUB_OUTPUT"
@@ -62,8 +62,22 @@ jobs:
           fi
           exit "$status"
 
+      - name: Create GitHub release
+        if: steps.release.outputs.released == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RELEASE_TAG: ${{ steps.release.outputs.tag }}
+          RELEASE_NOTES: ${{ steps.release.outputs.release_notes }}
+        run: |
+          notes_file="$(mktemp)"
+          printf '%s' "$RELEASE_NOTES" > "$notes_file"
+          gh release create "$RELEASE_TAG" \
+            --title "$RELEASE_TAG" \
+            --notes-file "$notes_file"
+
       - name: Upload RBZ assets to the GitHub release
         if: steps.release.outputs.released == 'true'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: uv run semantic-release -v publish
+          RELEASE_TAG: ${{ steps.release.outputs.tag }}
+        run: uv run semantic-release -v publish --tag "$RELEASE_TAG"
