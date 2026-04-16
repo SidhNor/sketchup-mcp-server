@@ -2,6 +2,14 @@
 
 <!-- version list -->
 
+## v0.11.1 (2026-04-16)
+
+### Refactoring
+
+- **PLAT-11**: Extract remaining Ruby modeling command seams
+  ([`c92af9f`](https://github.com/SidhNor/sketchup-mcp-server/commit/c92af9f6bed1b6a50bd7e28645b63221d0610263))
+
+
 ## v0.11.0 (2026-04-16)
 
 ### Documentation
