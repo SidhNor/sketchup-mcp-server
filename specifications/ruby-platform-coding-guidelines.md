@@ -2,198 +2,103 @@
 
 ## Purpose
 
-This document captures project-specific Ruby guidance for the SketchUp runtime in this repository.
+This document captures project-specific Ruby guidance for this repository.
 
-It complements:
+It is not the general Ruby style guide. For portable Ruby coding guidance, use:
 
-- `AGENTS.md` for repo-wide architecture and review expectations
-- `specifications/sketchup-extension-development-guidance.md` for SketchUp extension and packaging practices
+- `specifications/ryby-coding-guidelines.md`
 
-Use this guide when changing Ruby code under `src/` or Ruby tests under `test/`.
+It is also not the main architecture document. Use the HLDs and ADRs for broader architectural direction.
 
-## Core Rules
+Use this document for stable repo-specific concerns only:
+
+- runtime ownership
+- current platform boundaries
+- SketchUp host constraints
+- packaging and vendoring
+- repo-specific validation
+
+## Runtime Ownership
 
 - Keep SketchUp-facing behavior in Ruby.
+- Keep scene queries, scene mutations, metadata behavior, and command behavior in Ruby.
 - Keep Python thin at the MCP boundary.
-- Return only JSON-serializable data across the Ruby/Python boundary.
-- Prefer one Ruby operation per coherent tool call over chatty cross-runtime flows.
-- Improve weak touched code when the improvement is local, testable, and preserves ownership boundaries.
+- Do not duplicate business rules across Ruby and Python.
+- Do not move SketchUp-facing behavior into Python for convenience.
 
-## Layer Ownership
+## Platform Boundaries
 
-The Ruby side should keep moving toward these layers:
+The current platform has a Ruby SketchUp runtime and a Python MCP adapter.
 
-- boot and extension registration
-- runtime bootstrap
-- transport ingress and request routing
-- command or use-case execution
-- shared runtime support
-- SketchUp adapters
-- serializers for JSON-safe payload shaping
+Within that shape:
 
-When choosing where code belongs:
-
-- Put direct `Sketchup.active_model` access, entity lookup, collection access, export/view access, and other raw SketchUp API mechanics in adapters.
-- Put command orchestration and tool-specific result composition in command surfaces.
-- Put response envelopes, request-id propagation, logging, and shared error wrapping in shared runtime support.
-- Put entity/bounds normalization and JSON-safe payload shaping in serializers.
+- keep direct SketchUp API access in Ruby
+- keep Python focused on MCP-facing adapter responsibilities
+- prefer one coherent Ruby operation per tool call over chatty cross-runtime flows
+- keep transport, command behavior, host interaction, and response shaping distinct enough to evolve safely
 
 Do not:
 
-- put MCP semantics into Ruby adapters
-- move command behavior into Python
-- let transport files accumulate reusable SketchUp API helpers
-- return live SketchUp objects across the boundary
+- let Python accumulate product logic
+- let transport code become the home for reusable SketchUp helpers
+- return raw SketchUp objects across public boundaries
 
-## Adapters
+## Host Constraints
 
-Adapters should stay small and mechanical.
+Ruby runs inside SketchUp's embedded runtime.
 
-Good adapter responsibilities:
+Code should be shaped with that in mind:
 
-- `active_model!`
-- entity lookup by id
-- top-level or selection collection access
-- export or view access
-- narrow access helpers needed by multiple commands
+- prefer embedded-runtime compatibility over generic Ruby purity
+- treat startup and packaging cost as real constraints
+- prefer vendoring over runtime gem installation
+- assume host validation may still be required even when plain Ruby tests pass
 
-Bad adapter responsibilities:
+## Packaging And Dependencies
 
-- response envelope building
-- command policy and branching that is specific to one tool
-- serializer output shaping
-- Python transport concerns
+When adding Ruby support code or dependencies:
 
-Adapter design rules:
+- keep support code under the extension support tree
+- preserve the loader and extension registration entrypoints
+- prefer vendored dependencies
+- verify packaging after structural changes
 
-- Prefer stateless classes.
-- Resolve live SketchUp state at call time.
-- Preserve stable error messages when callers already depend on them.
-- Extract only reusable low-level mechanics; do not force geometry-heavy refactors into an adapter just to maximize purity.
+Do not design as if this were a normal standalone Ruby service with unrestricted gem installation.
 
-## Serializers
+## Contract And Response Rules
 
-Serializers own JSON-safe normalization.
+- Return only JSON-serializable data across runtime or protocol boundaries.
+- Preserve stable public contract shapes unless an intentional interface change is being made.
+- Keep boundary error translation explicit.
+- Do not leak raw SketchUp objects across public boundaries.
 
-Serializer rules:
+When a shared boundary contract changes:
 
-- emit hashes, arrays, strings, numbers, booleans, and `nil` only
-- keep live SketchUp objects inside Ruby
-- keep serializer code pure where practical
-- avoid transport-specific behavior in serializers
+- update the shared contract artifacts
+- update both native contract suites
 
-If a command already has an established serializer seam, extend it instead of creating a parallel serializer path.
+## Validation
 
-## Commands And Transport
-
-Command surfaces should orchestrate adapters and serializers, not reimplement their mechanics.
-
-Command rules:
-
-- preserve established tool names unless an intentional contract change is documented
-- keep success payload composition near the command behavior
-- reuse shared adapters and serializers instead of duplicating lookup or normalization logic
-
-Transport rules:
-
-- keep request parsing and response envelope logic out of SketchUp-specific code
-- avoid growing `socket_server.rb` with reusable low-level helpers if a focused seam is justified
-
-## Error Handling
-
-Preserve behavior that other layers or tests already rely on.
-
-In practice:
-
-- keep established messages stable for common failures such as missing model or missing entity
-- let low-level seams raise clear Ruby exceptions
-- keep JSON-RPC error-envelope ownership above adapters and serializers
-
-Do not add speculative error taxonomies unless the current change needs them.
-
-## Refactoring Touched Code
-
-When touching Ruby code:
-
-- improve obviously weak code if the fix is local and verifiable
-- prefer removing fake guards over preserving them once the official API contract is understood
-- do not widen the task into unrelated cleanup
-
-Use this decision test:
-
-- If the improvement clarifies ownership, removes duplicated mechanics, or fixes incorrect behavior at the touched seam, do it now.
-- If it changes unrelated behavior, forces a broader redesign, or needs runtime knowledge you cannot verify, stop and narrow the change.
-
-## Tests
-
-Prefer the smallest practical test layer that owns the behavior.
-
-Common Ruby test layers in this repo:
-
-- unit tests for extracted runtime support and adapters
-- seam-level integration tests for command surfaces
-- focused runtime tests for representative mutation/export paths
-- manual SketchUp verification for runtime-dependent behavior not yet covered automatically
-
-Testing rules:
-
-- add failing tests before implementation for new behavior or refactors
-- extend shared test support before inventing one-off fake infrastructure
-- keep custom overlays test-owned and narrow
-- when a behavior moves to a new owner, move or add tests in the same change
-
-Good patterns from this repo:
-
-- fake model/entity support in `test/support/`
-- integration guards for extracted seams such as `scene_query_commands`
-- representative command rewiring tests in `socket_server` rather than broad end-to-end fakes
-
-## Validation Commands
-
-For Ruby changes, prefer the real project commands:
+For Ruby changes, prefer:
 
 - `bundle exec rake ruby:test`
 - `bundle exec rake ruby:lint`
 - `bundle exec rake package:verify`
 
-During focused loops, narrower commands are fine, but the final state should still pass the full project checks for the affected surface.
+When shared boundary behavior changes, also run:
 
-RuboCop note:
+- `bundle exec rake ruby:contract`
+- `bundle exec rake python:contract`
 
-- use `bundle exec rake ruby:lint` when possible
-- if invoking RuboCop directly, set `RUBOCOP_CACHE_ROOT=tmp/.rubocop_cache` to match the repo task behavior
+Call out manual SketchUp verification explicitly when host-runtime behavior cannot be fully verified locally.
 
-## Packaging And File Layout
+## Review Checklist
 
-This repo packages a SketchUp extension support tree, not just a few fixed files.
+Before finishing a Ruby-platform change, verify:
 
-When adding Ruby files:
-
-- keep the root loader pattern intact
-- keep new support files under `src/su_mcp/`
-- verify the package still passes `package:verify`
-
-Do not assume the current small file set is fixed. Adding focused modules is expected when it improves boundaries.
-
-## SketchUp API Notes
-
-Use official API contracts over ad hoc guesses.
-
-Examples:
-
-- prefer documented `Model#export` behavior and exporter options over fake preflight checks that do not actually validate exporter availability
-- prefer explicit top-level versus active-edit-context access based on the bridge contract the command is preserving
-
-If behavior could differ in a live SketchUp host and cannot be confirmed locally, call out manual verification explicitly rather than hiding the uncertainty.
-
-## Review Checklist For Ruby Changes
-
-Before finishing a Ruby change, verify:
-
-- ownership still sits in the correct Ruby layer
-- reusable SketchUp API mechanics are not duplicated across commands
-- serializers still emit only JSON-safe values
-- error behavior is still explicit and stable where required
-- Ruby tests cover the owning seam
-- `ruby:test`, `ruby:lint`, and `package:verify` pass, or the gap is called out
-- any runtime-only uncertainty is called out for manual SketchUp verification
+- ownership still sits in Ruby where it should
+- Python is still thin at the MCP boundary
+- transport, command behavior, host interaction, and response shaping remain distinct enough
+- outputs remain JSON-safe and contract-aware
+- packaging and host-runtime fit were considered
+- the relevant validation commands were run, or the gap was called out
