@@ -143,6 +143,21 @@ New platform abstractions should be designed so they can be verified by at least
 - Prefer Ruff for Python linting and formatting checks.
 - Treat missing lint coverage as a gap to call out, not as a reason to skip mentioning it.
 
+## Commit guidance
+
+- Use Conventional Commits for commit messages.
+- Format commit titles as `<type>(<scope>): <short summary>`.
+- Use the correct semantic type for the actual change:
+  - `feat` for user-facing or capability-expanding behavior
+  - `fix` for bug fixes or behavior corrections
+  - `refactor` for internal structural changes without intended behavior change
+  - `docs` for documentation-only changes
+  - `chore` for maintenance or repo upkeep that does not fit the categories above
+- When work is tied to one primary ticket, put that ticket ID in the scope, for example `feat(PLAT-03): ...` or `fix(SEM-05): ...`.
+- When work spans several tickets or is not anchored to one ticket, use a scope that reflects the changed capability or subsystem rather than forcing multiple ticket IDs into the scope.
+- If the change is purely to specifications or other documentation artifacts, use `docs(...)` as the commit type even if the documents reference implementation work.
+- Keep the commit title relatively short. Put extra detail, rationale, or follow-up notes in the commit body rather than overloading the title.
+
 ## Docs and contract updates
 
 When interface or setup behavior changes, review the relevant docs:

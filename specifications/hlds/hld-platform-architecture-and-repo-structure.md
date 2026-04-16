@@ -13,6 +13,8 @@ It should be read as an update over an already implemented platform, not as a gr
 
 This HLD describes that current baseline and the intended refinement path introduced by the seeded HLD, PRD, and platform-task set. The seeded artifacts are an iteration on the existing design: they clarify boundaries, quality expectations, and growth direction for a system that already has substantial runtime behavior in place.
 
+Recent host-process validation proved a narrow Ruby-native MCP slice can run inside SketchUp. The platform direction is therefore a transition from the current supported dual-runtime baseline toward Ruby-native MCP as the canonical architecture.
+
 This is the platform HLD for the repository. It covers shared architecture concerns such as:
 
 - runtime ownership boundaries
@@ -40,7 +42,7 @@ The main source constraints for this HLD are:
 
 ### Current Platform Shape
 
-The repository already follows the correct macro-architecture:
+The repository already follows the intended macro-architecture for the current supported path:
 
 - one Ruby runtime inside SketchUp
 - one Python MCP adapter process
@@ -59,27 +61,30 @@ This current shape already enforces the most important architectural rule: Sketc
 
 ### Recommended Direction
 
-The recommended platform style remains a modular layered monolith across the existing two runtimes.
+The recommended platform style remains a modular layered monolith, but the current dual-runtime shape is now the baseline rather than the architectural endpoint.
 
-The goal is not to replace the current architecture. The goal is to progressively decompose the current concentrated modules into clearer internal layers while preserving:
+The accepted target direction is Ruby-native MCP inside SketchUp. Until that path is hardened, the repository should continue to preserve:
 
 - the small SketchUp loader pattern
-- the Ruby/Python runtime split
-- the socket bridge contract
-- packaged distribution for both runtimes
+- Ruby as the source of truth for SketchUp behavior
+- the current supported Python compatibility path
+- explicit runtime boundaries during the transition
+- packaged distribution for the currently supported path
 
-The main architectural issue in the current repository is concentration of responsibility rather than incorrect runtime ownership:
+The main architectural issues in the current repository are concentration of responsibility and the need to separate current compatibility architecture from the target Ruby-native MCP ownership model:
 
 - `src/su_mcp/socket_server.rb` currently mixes transport ingress, request routing, result shaping, serialization helpers, and tool behavior
 - `python/src/sketchup_mcp_server/server.py` currently mixes app boot, connection management, endpoint resolution, shared invocation behavior, and all MCP tool definitions
 
+The remaining platform work is to harden a supported Ruby-native runtime and packaging foundation, then migrate the public MCP tool surface so Ruby becomes the canonical MCP host.
+
 ### Boundary Rules
 
-- Ruby owns SketchUp API usage, entity traversal, mutation, geometry behavior, serialization of SketchUp-side results, and capability-defining logic.
-- Python owns MCP tool registration, boundary validation, request construction, transport failure handling, and MCP-facing response or error mapping.
-- The socket bridge owns message transport only. It must not become the home for capability policy.
+- Ruby owns SketchUp API usage, entity traversal, mutation, geometry behavior, serialization of SketchUp-side results, and capability-defining logic. Ruby is also the target long-term owner of MCP tool exposure, capability negotiation, request dispatch, protocol handling, structured error mapping, and response shaping inside SketchUp.
+- Python currently owns the supported MCP compatibility path: boundary validation, request construction, transport failure handling, and MCP-facing response or error mapping while Ruby-native MCP is being hardened.
+- The socket bridge owns message transport for the current supported dual-runtime baseline only. It must not become the home for capability policy.
 - Cross-runtime payloads must remain JSON-serializable.
-- One Ruby command should complete a coherent operation whenever possible; avoid chatty Python-to-Ruby round trips.
+- One Ruby-owned operation should complete a coherent client request whenever possible; avoid chatty cross-boundary round trips on the supported compatibility path.
 
 ### Target Layering
 
@@ -87,19 +92,18 @@ Target Ruby layering:
 
 - boot and extension registration
 - runtime bootstrap
-- transport ingress and request routing
+- MCP transport, protocol handling, tool registration, and request routing
 - command or use-case execution
 - shared runtime infrastructure
 - SketchUp adapters
 
-Target Python layering:
+Target Python layering during the transition:
 
-- MCP app boot
-- tool modules by capability area
-- shared invocation and connection modules
+- compatibility adapter boot
+- compatibility invocation and connection modules
 - boundary error mapping
 
-These are architectural boundaries, not a required immediate directory rewrite. The seeded platform tasks should be understood as the implementation path for gradually extracting these layers from the current runtime hotspots.
+These are architectural boundaries, not a required immediate directory rewrite. The implementation path should gradually extract these layers from the current runtime hotspots while the supported dual-runtime baseline transitions toward Ruby-native MCP.
 
 ## Component Breakdown
 
@@ -136,23 +140,32 @@ These are architectural boundaries, not a required immediate directory rewrite. 
 - command-level capability behavior
 - reusable SketchUp adapter logic
 
-### 3. Ruby Transport Boundary
+### 3. Ruby MCP and Transport Boundary
 
 **Responsibilities**
 
-- accept socket requests from Python
-- parse structured request envelopes
+- own Ruby-side transport ingress for the active runtime path
+- parse MCP or bridge request envelopes as appropriate to the runtime path
+- own Ruby-side tool registration, protocol handling, request routing, and response shaping for the Ruby-native path
 - route requests to the Ruby execution boundary
 - return structured success or error responses
 
+**Target Contract**
+
+- use an in-process Ruby MCP boundary inside SketchUp for canonical tool registration and protocol ownership
+- keep MCP protocol semantics in Ruby even if the externally exposed client transport varies between supported launch modes
+- keep command execution and SketchUp adapter layers transport-agnostic
+
 **Current Baseline**
 
-- implemented inside `src/su_mcp/socket_server.rb`
+- implemented primarily as the socket-facing boundary inside `src/su_mcp/socket_server.rb`
+- the Ruby-native direction is an in-process MCP boundary inside SketchUp rather than a Python-mediated socket ingress
 
 **Must Not Own**
 
 - long-term feature dispatch growth
 - low-level SketchUp business logic
+- socket lifecycle concerns that belong only to the current compatibility path
 - duplicated cross-cutting result or error policy scattered per tool
 
 ### 4. Ruby Command or Use-Case Layer
@@ -163,7 +176,7 @@ These are architectural boundaries, not a required immediate directory rewrite. 
 - map tool calls to coherent Ruby-owned operations
 - orchestrate shared services and SketchUp adapters
 
-**Improvement Direction**
+**Architectural Direction**
 
 - extract command ownership from the current large transport file so execution is distinct from ingress
 
@@ -183,7 +196,7 @@ These are architectural boundaries, not a required immediate directory rewrite. 
 - configuration handling
 - operation wrappers and serialization helpers used across commands
 
-**Improvement Direction**
+**Architectural Direction**
 
 - move shared cross-cutting behavior out of individual transport or command implementations and into explicit platform-owned support modules
 
@@ -198,7 +211,7 @@ These are architectural boundaries, not a required immediate directory rewrite. 
 
 - isolate direct SketchUp API interaction
 - provide reusable access to entities, bounds, materials, tags, components, export helpers, and model operations
-- normalize SketchUp state into simple Ruby hashes, arrays, strings, numbers, and booleans before returning across the bridge
+- normalize SketchUp state into simple Ruby hashes, arrays, strings, numbers, and booleans before returning across the active client boundary
 
 **Current Baseline**
 
@@ -210,24 +223,25 @@ These are architectural boundaries, not a required immediate directory rewrite. 
 - Python transport semantics
 - feature-policy decisions better expressed in higher-level commands
 
-### 7. Python MCP App Boot
+### 7. Python Compatibility Adapter Boot
 
 **Responsibilities**
 
-- create the FastMCP server
+- create the FastMCP compatibility server
 - expose transport mode selection for stdio or HTTP
 - manage process lifecycle behavior such as startup ping and shutdown cleanup
 
 **Current Baseline**
 
 - implemented in `python/src/sketchup_mcp_server/server.py`
+- remains the supported MCP entrypoint while the Ruby-native path is not yet the supported default
 
 **Must Not Own**
 
 - SketchUp business logic
 - detailed per-tool transport duplication
 
-### 8. Python Invocation and Connection Layer
+### 8. Python Compatibility Invocation and Connection Layer
 
 **Responsibilities**
 
@@ -240,27 +254,29 @@ These are architectural boundaries, not a required immediate directory rewrite. 
 **Current Baseline**
 
 - already present in `SketchupConnection`, endpoint helpers, and `_call_bridge_tool`
+- remains the compatibility transport layer for the current supported dual-runtime path only
 
 **Must Not Own**
 
 - Ruby business rules
 - capability-specific validation duplicated from Ruby
 
-### 9. Python Tool Modules
+### 9. Python Compatibility Tool Surface
 
 **Responsibilities**
 
 - expose MCP tools with clear names and argument surfaces
 - stay close to a 1:1 mapping with Ruby command names unless there is a strong adapter reason not to
-- group tools by capability area as the surface expands
+- expose only the compatibility surface needed while Ruby-native MCP is not yet the supported default
 
 **Current Baseline**
 
 - all tool definitions currently live in `python/src/sketchup_mcp_server/server.py`
+- current Python-owned tool registration is transitional rather than the intended long-term canonical ownership model
 
-**Improvement Direction**
+**Architectural Direction**
 
-- split tool definitions by capability area while preserving thin handlers and shared invocation
+- keep handlers thin and shrink Python-owned MCP surface as Ruby-native ownership expands
 
 **Must Not Own**
 
@@ -307,6 +323,8 @@ These are architectural boundaries, not a required immediate directory rewrite. 
 
 ## Integration & Data Flows
 
+The flows below show both the current supported dual-runtime baseline and the target Ruby-native MCP architecture.
+
 ### Extension Startup Flow
 
 ```text
@@ -318,7 +336,18 @@ SketchUp
 -> extension menu/status controls
 ```
 
-### MCP Tool Invocation Flow
+### Target Ruby-native Extension Startup Flow
+
+```text
+SketchUp
+-> src/su_mcp.rb
+-> src/su_mcp/extension.rb
+-> src/su_mcp/main.rb
+-> Ruby-native MCP bootstrap inside SketchUp
+-> extension menu/status controls
+```
+
+### Current Supported MCP Tool Invocation Flow
 
 ```text
 MCP client
@@ -330,6 +359,18 @@ MCP client
 -> SketchUp adapter calls and model interaction
 -> JSON-serializable Ruby result
 -> Python response/error mapping
+-> MCP response
+```
+
+### Target Ruby-native MCP Tool Invocation Flow
+
+```text
+MCP client
+-> Ruby-native MCP transport inside SketchUp
+-> Ruby MCP protocol handling and tool registration
+-> Ruby command or use-case execution
+-> SketchUp adapter calls and model interaction
+-> Ruby-owned response shaping
 -> MCP response
 ```
 
@@ -351,10 +392,11 @@ Local change
 -> Python lint/test if adapter concerns changed
 -> contract tests for bridge-envelope changes
 -> SketchUp-hosted tests for real runtime behavior
+-> Ruby-native MCP startup and tool-call verification when native-boundary concerns changed
 -> package verification
 ```
 
-### Architecture Diagram
+### Current Baseline Architecture Diagram
 
 ```text
                            +----------------------+
@@ -408,6 +450,43 @@ Test boundaries:
 - Python unit tests: app boot, invocation, tool wiring
 - contract tests: Python <-> Ruby request/response envelopes
 - SketchUp-hosted tests: command -> adapter -> model behavior
+- Ruby-native MCP validation: SketchUp-hosted MCP startup and tool-call verification as the Ruby-native path expands beyond the currently validated slice
+```
+
+### Target Ruby-native Architecture Diagram
+
+```text
+                           +----------------------+
+                           |  External MCP Client |
+                           +----------+-----------+
+                                      |
+                                      v
+                         +------------+-------------+
+                         | Ruby-native MCP Boundary |
+                         | in SketchUp              |
+                         +------------+-------------+
+                                      |
+                                      v
+                         +------------+-------------+
+                         | Ruby Command / Use-Case  |
+                         | Execution                |
+                         +------------+-------------+
+                                      |
+                    +-----------------+------------------+
+                    |                                    |
+                    v                                    v
+          +---------+----------+              +----------+---------+
+          | Shared Ruby Runtime|              | Ruby SketchUp      |
+          | Infrastructure     |              | Adapters           |
+          +---------+----------+              +----------+---------+
+                    |                                    |
+                    +-----------------+------------------+
+                                      |
+                                      v
+                           +----------+----------+
+                           | SketchUp Runtime    |
+                           | Model + API         |
+                           +---------------------+
 ```
 
 ## Key Architectural Decisions
@@ -416,21 +495,21 @@ Test boundaries:
 
 **Decision**
 
-SketchUp-facing behavior, geometry or model logic, entity traversal, mutation, and behavior-defining command execution remain Ruby-owned.
+SketchUp-facing behavior, geometry or model logic, entity traversal, mutation, behavior-defining command execution, and the target Ruby-native MCP protocol surface remain Ruby-owned.
 
 **Reason**
 
-The SketchUp API lives in Ruby. Keeping execution semantics close to that runtime prevents drift, avoids duplicated business rules, and preserves a clean Python adapter boundary.
+The SketchUp API lives in Ruby. Keeping execution semantics and the canonical MCP surface close to that runtime prevents drift, avoids duplicated business rules, and preserves a clean compatibility boundary for any remaining Python adapter.
 
-### 2. Keep Python Thin and Mechanical
+### 2. Keep Python Thin, Mechanical, and Transitional
 
 **Decision**
 
-Python remains responsible for MCP tool exposure, invocation, connection management, and boundary error mapping, not domain behavior.
+Python remains responsible for the current supported MCP compatibility path, invocation, connection management, and boundary error mapping, not domain behavior. Canonical MCP ownership should move toward Ruby as the Ruby-native path becomes supported.
 
 **Reason**
 
-This preserves a clear runtime split and keeps the MCP adapter maintainable as the tool surface grows.
+This preserves a clear runtime split for the supported path while keeping the adapter small enough to shrink cleanly as Ruby-native MCP becomes the target architecture.
 
 ### 3. Treat the Current Platform as the Baseline, Not a Temporary Placeholder
 
@@ -442,15 +521,15 @@ The HLD documents the existing dual-runtime implementation as the current platfo
 
 The repository already has working runtime, packaging, and quality structure. Describing the architecture as if it does not yet exist would be inaccurate and would weaken the HLD's usefulness.
 
-### 4. Evolve by Extraction, Not Rewrite
+### 4. Evolve by Extraction and Controlled Transition, Not Rewrite
 
 **Decision**
 
-Internal modularization should be achieved by extracting clearer layers from the current large files rather than by replacing the runtime shape wholesale.
+Internal modularization should be achieved by extracting clearer layers from the current large files and by promoting validated Ruby-native seams deliberately, rather than by speculative wholesale rewrites.
 
 **Reason**
 
-The macro-architecture is already correct. The main risk is concentrated responsibility, so the design response should be evolutionary and low-churn.
+The current baseline is real and useful, and recent host-process validation already proved a narrow Ruby-native host path. The design response should therefore be evolutionary and low-churn while still allowing the accepted target architecture to replace the current canonical MCP ownership model over time.
 
 ### 5. Preserve the Small SketchUp Loader Pattern
 
@@ -462,15 +541,15 @@ The macro-architecture is already correct. The main risk is concentrated respons
 
 This matches SketchUp extension conventions, keeps packaging predictable, and avoids turning boot files into implementation hotspots.
 
-### 6. Keep the Socket Bridge as an Explicit Runtime Boundary
+### 6. Keep the Socket Bridge as the Current Supported Runtime Boundary
 
 **Decision**
 
-Python and Ruby continue to communicate through structured JSON messages over the local socket bridge.
+Python and Ruby continue to communicate through structured JSON messages over the local socket bridge for the current supported dual-runtime baseline.
 
 **Reason**
 
-The bridge already exists, fits the current runtime split, and provides a clean contract boundary for future contract testing and error mapping.
+The bridge already exists, fits the current supported path, and provides a clean contract boundary for contract testing and compatibility while Ruby-native MCP packaging and runtime foundations are being formalized.
 
 ### 7. Centralize Shared Runtime Contracts
 
@@ -498,10 +577,11 @@ This repository spans two runtimes and a growing specification set. Without expl
 | --- | --- | --- |
 | SketchUp extension runtime | Ruby inside SketchUp | Own SketchUp API access and behavior-defining execution |
 | Extension registration | `sketchup.rb`, `extensions.rb`, root loader + support tree | Follow standard SketchUp extension packaging and load patterns |
-| Ruby transport | `TCPServer` over local socket bridge | Accept Python bridge requests inside SketchUp |
+| Current supported Ruby transport | `TCPServer` over local socket bridge | Accept Python bridge requests inside SketchUp for the supported dual-runtime baseline |
 | Ruby packaging | RBZ packaging via Rake and Zip | Produce distributable SketchUp extension artifacts |
-| MCP adapter runtime | Python 3.10+ with FastMCP | Expose MCP tools and process lifecycle |
-| Python bridge client | short-lived socket client per call | Forward MCP tool calls to the SketchUp runtime |
+| Target Ruby-native MCP boundary | In-process Ruby MCP boundary inside SketchUp with Ruby-owned tool registration, protocol handling, and response shaping | Canonical MCP architecture inside the SketchUp runtime |
+| MCP adapter runtime | Python 3.10+ with FastMCP | Current supported compatibility path for MCP tool exposure and process lifecycle |
+| Python bridge client | short-lived socket client per call | Forward MCP tool calls to the SketchUp runtime for the current dual-runtime baseline |
 | MCP process transport | stdio by default, optional HTTP | Support MCP-client subprocess launch and optional HTTP serving |
 | Release/version alignment | `VERSION`, `pyproject.toml`, Ruby/Python version files, extension metadata | Keep cross-runtime version metadata synchronized |
 | Ruby quality | RuboCop, Minitest-based task entrypoint | Maintain Ruby code quality and unit-test execution |
@@ -511,9 +591,9 @@ This repository spans two runtimes and a growing specification set. Without expl
 
 ## Opened Questions
 
-1. What is the exact first extraction boundary inside `src/su_mcp/socket_server.rb`: transport router, command registry, or shared serialization and operation support?
-2. What shared Ruby result and error envelope should be standardized first so Python contract tests can depend on it without locking in accidental current behavior?
-3. How should Python tool modules be grouped as capability areas expand while still keeping cross-cutting app boot and invocation code centralized?
-4. Which bridge behaviors should be mandatory contract-test coverage first: tool naming, request envelope shape, error payload shape, or success-envelope shape?
-5. What is the practical first SketchUp-hosted test harness for this repository, and how should fixture `.skp` assets be versioned and governed?
-6. Which documentation checks should become mandatory in the default quality workflow as the `specifications/` tree continues to grow?
+1. Which externally exposed transport modes should the first supported Ruby-native MCP path provide: stdio only, HTTP only, or both?
+2. What loading and namespace-isolation posture should govern Ruby-native MCP dependencies in the SketchUp support tree?
+3. What temporary coexistence rules should govern the current supported dual-runtime package and the emerging Ruby-native package during the transition?
+4. How should the public MCP tool surface migrate so Ruby-native ownership becomes canonical without breaking client-facing tool names or argument shapes?
+5. Should any Python compatibility adapter remain once Ruby-native MCP becomes the canonical tool host, or should the platform converge fully to the SketchUp-hosted runtime?
+6. What SketchUp-hosted validation path should become mandatory once Ruby-native MCP owns more than the currently validated slice?

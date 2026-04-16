@@ -1,7 +1,7 @@
 # Task: PLAT-09 Build Ruby-Native MCP Packaging And Runtime Foundations
 **Task ID**: `PLAT-09`
 **Title**: `Build Ruby-Native MCP Packaging And Runtime Foundations`
-**Status**: `draft`
+**Status**: `planned`
 **Priority**: `P0`
 **Date**: `2026-04-16`
 
@@ -89,7 +89,7 @@ Scenario: Repository validation includes the Ruby-native foundation path
 
 ## Related Technical Plan
 
-- none yet
+- [Technical Plan](./plan.md)
 
 ## Success Metrics
 
