@@ -20,6 +20,8 @@ module SU_MCP
         element_type = params['elementType'].to_s
         return unsupported_element_type_refusal(params) unless supported_element_type?(element_type)
 
+        return first_matching_refusal(v2_validation_rules(params)) if params['contractVersion'] == 2
+
         first_matching_refusal(validation_rules(params, element_type))
       end
 
@@ -129,8 +131,208 @@ module SU_MCP
         matched_rule&.last&.call
       end
 
+      # rubocop:disable Metrics/AbcSize, Metrics/MethodLength
+      def v2_validation_rules(params)
+        lifecycle_mode = params.dig('lifecycle', 'mode').to_s
+
+        [
+          [
+            missing_v2_required_section?(params, 'metadata'),
+            -> { missing_required_field_refusal(field: 'metadata') }
+          ],
+          [
+            missing_v2_required_section?(params, 'definition'),
+            -> { missing_required_field_refusal(field: 'definition') }
+          ],
+          [
+            missing_v2_required_section?(params, 'placement'),
+            -> { missing_required_field_refusal(field: 'placement') }
+          ],
+          [
+            missing_v2_required_section?(params, 'hosting'),
+            -> { missing_required_field_refusal(field: 'hosting') }
+          ],
+          [
+            missing_v2_required_section?(params, 'representation'),
+            -> { missing_required_field_refusal(field: 'representation') }
+          ],
+          [
+            missing_v2_required_section?(params, 'lifecycle'),
+            -> { missing_required_field_refusal(field: 'lifecycle') }
+          ],
+          [
+            missing_v2_metadata_source_element_id?(params),
+            -> { missing_required_field_refusal(field: 'metadata.sourceElementId') }
+          ],
+          [
+            missing_v2_metadata_status?(params),
+            -> { missing_required_field_refusal(field: 'metadata.status') }
+          ],
+          [
+            missing_v2_definition_mode?(params),
+            -> { missing_required_field_refusal(field: 'definition.mode') }
+          ],
+          [
+            missing_v2_lifecycle_mode?(params),
+            -> { missing_required_field_refusal(field: 'lifecycle.mode') }
+          ],
+          [
+            missing_v2_lifecycle_target?(params),
+            -> { missing_required_field_refusal(field: 'lifecycle.target') }
+          ],
+          [
+            missing_v2_hosting_target?(params),
+            -> { missing_required_field_refusal(field: 'hosting.target') }
+          ],
+          [
+            missing_v2_parent_target?(params),
+            -> { missing_required_field_refusal(field: 'placement.parent') }
+          ],
+          [
+            v2_replace_targets_overlap?(params),
+            -> { invalid_section_combination_refusal(sections: %w[lifecycle placement]) }
+          ],
+          [
+            invalid_v2_structure_category?(params),
+            lambda do
+              unsupported_option_refusal(
+                field: 'definition.structureCategory',
+                value: params.dig('definition', 'structureCategory')
+              )
+            end
+          ],
+          [
+            invalid_v2_structure_geometry?(params),
+            -> { invalid_geometry_refusal(field: 'definition.footprint') }
+          ],
+          [
+            invalid_v2_structure_height?(params),
+            -> { invalid_numeric_value_refusal(field: 'definition.height') }
+          ],
+          [
+            invalid_v2_path_geometry?(params),
+            -> { invalid_geometry_refusal(field: 'definition.centerline') }
+          ],
+          [
+            invalid_v2_path_width?(params),
+            -> { invalid_numeric_value_refusal(field: 'definition.width') }
+          ],
+          [
+            invalid_v2_path_thickness?(params),
+            -> { invalid_numeric_value_refusal(field: 'definition.thickness') }
+          ],
+          [
+            invalid_v2_path_elevation?(params),
+            -> { invalid_numeric_value_refusal(field: 'definition.elevation') }
+          ],
+          [
+            unsupported_v2_lifecycle_mode?(lifecycle_mode),
+            -> { unsupported_option_refusal(field: 'lifecycle.mode', value: lifecycle_mode) }
+          ]
+        ]
+      end
+      # rubocop:enable Metrics/AbcSize, Metrics/MethodLength
+
       def supported_element_type?(element_type)
         SUPPORTED_ELEMENT_TYPES.include?(element_type.to_s)
+      end
+
+      def missing_v2_required_section?(params, section_name)
+        !params[section_name].is_a?(Hash)
+      end
+
+      def missing_v2_metadata_source_element_id?(params)
+        lifecycle_mode = params.dig('lifecycle', 'mode').to_s
+        return false if lifecycle_mode == 'replace_preserve_identity'
+
+        params.dig('metadata', 'sourceElementId').to_s.empty?
+      end
+
+      def missing_v2_metadata_status?(params)
+        params.dig('metadata', 'status').to_s.empty?
+      end
+
+      def missing_v2_definition_mode?(params)
+        params.dig('definition', 'mode').to_s.empty?
+      end
+
+      def missing_v2_lifecycle_mode?(params)
+        params.dig('lifecycle', 'mode').to_s.empty?
+      end
+
+      def missing_v2_lifecycle_target?(params)
+        %w[adopt_existing replace_preserve_identity].include?(params.dig('lifecycle', 'mode')) &&
+          !params.dig('lifecycle', 'target').is_a?(Hash)
+      end
+
+      def missing_v2_hosting_target?(params)
+        hosting_modes = %w[surface_drape surface_snap terrain_anchored edge_clamp]
+
+        hosting_modes.include?(params.dig('hosting', 'mode')) &&
+          !params.dig('hosting', 'target').is_a?(Hash)
+      end
+
+      def missing_v2_parent_target?(params)
+        params.dig('placement', 'mode') == 'parented' &&
+          !params.dig('placement', 'parent').is_a?(Hash)
+      end
+
+      def v2_replace_targets_overlap?(params)
+        return false unless params.dig('lifecycle', 'mode') == 'replace_preserve_identity'
+        return false unless params.dig('placement', 'mode') == 'parented'
+
+        params.dig('lifecycle', 'target') == params.dig('placement', 'parent')
+      end
+
+      def invalid_v2_structure_category?(params)
+        return false unless params['elementType'] == 'structure'
+
+        category = params.dig('definition', 'structureCategory')
+        !category.to_s.empty? && !APPROVED_STRUCTURE_CATEGORIES.include?(category)
+      end
+
+      def invalid_v2_structure_geometry?(params)
+        return false unless params['elementType'] == 'structure'
+        return false if params.dig('definition', 'mode') == 'adopt_reference'
+
+        invalid_polygon?(params.dig('definition', 'footprint'))
+      end
+
+      def invalid_v2_structure_height?(params)
+        return false unless params['elementType'] == 'structure'
+        return false if params.dig('definition', 'mode') == 'adopt_reference'
+
+        invalid_positive_number?(params.dig('definition', 'height'))
+      end
+
+      def invalid_v2_path_geometry?(params)
+        return false unless params['elementType'] == 'path'
+
+        invalid_polyline?(params.dig('definition', 'centerline'))
+      end
+
+      def invalid_v2_path_width?(params)
+        return false unless params['elementType'] == 'path'
+
+        invalid_positive_number?(params.dig('definition', 'width'))
+      end
+
+      def invalid_v2_path_thickness?(params)
+        return false unless params['elementType'] == 'path'
+
+        thickness = params.dig('definition', 'thickness')
+        !thickness.nil? && invalid_positive_number?(thickness)
+      end
+
+      def invalid_v2_path_elevation?(params)
+        return false unless params['elementType'] == 'path'
+
+        elevation = params.dig('definition', 'elevation')
+        !elevation.nil? && !finite_numeric?(elevation)
+      end
+
+      def unsupported_v2_lifecycle_mode?(lifecycle_mode)
+        !%w[create_new adopt_existing replace_preserve_identity].include?(lifecycle_mode.to_s)
       end
 
       def footprint_type?(element_type)
@@ -481,6 +683,14 @@ module SU_MCP
           code: 'invalid_numeric_value',
           message: 'Numeric input must be finite and within the supported range.',
           details: { field: field }
+        )
+      end
+
+      def invalid_section_combination_refusal(sections:)
+        semantic_refusal(
+          code: 'invalid_section_combination',
+          message: 'The requested section combination is not valid for semantic site creation.',
+          details: { sections: sections }
         )
       end
 

@@ -1794,6 +1794,41 @@ The candidate shape is being preserved because it could offer one stable outer e
 
 The candidate shape is **not** being preserved because it is already proven simpler.
 
+## Ruby Spike Findings (2026-04-16)
+
+`SEM-05` has now validated the candidate `v2` shape through the live Ruby semantic seam rather than through chat-only reasoning.
+
+Implemented proof posture:
+
+- `contractVersion: 2` branching was added inside the existing Ruby semantic path:
+  - `SemanticCommands#create_site_element`
+  - `RequestValidator#refusal_for`
+  - `RequestNormalizer#normalize_create_site_element_params`
+- Python and the shared bridge contract were intentionally left unchanged.
+- The spike proved:
+  - retained structure adoption
+  - terrain-following path with hosting-target resolution
+  - `replace_preserve_identity` under hierarchy
+- One hybrid high-risk proof test used the real command, validator, normalizer, and target-resolution path, with only terminal builder mechanics doubled.
+
+Observed outcome:
+
+- The candidate `v2` section split is strengthened by implementation evidence.
+- `metadata`, `definition`, `hosting`, `placement`, and `lifecycle` remained distinct enough to survive the Ruby seam for the spike scenarios.
+- No new top-level escape fields were needed.
+- `sceneProperties` were not required for the proof.
+
+Important remaining caveat:
+
+- The strongest remaining overlap is still the command-level translation from the sectioned `v2` envelope into the current builder-facing `v1` payload shape.
+- That means the signal is stronger than before, but not yet equivalent to saying the builders natively accept the `v2` shape.
+
+Current interpretation:
+
+- The candidate `v2` direction is no longer just a conceptual hypothesis.
+- It is now implementation-backed for the spike scenarios.
+- The direction should still be treated as stronger but not final, because terrain behavior and replacement semantics were proven only to the spike’s bounded depth, not to full production depth.
+
 The likely benefits under exploration are:
 
 - a more durable outer contract for future capability growth

@@ -1,7 +1,7 @@
 # Task: SEM-05 Validate V2 Semantic Contract Via Ruby Normalizer Spike
 **Task ID**: `SEM-05`
 **Title**: `Validate V2 Semantic Contract Via Ruby Normalizer Spike`
-**Status**: `planned`
+**Status**: `completed`
 **Priority**: `P0`
 **Date**: `2026-04-16`
 

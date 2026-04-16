@@ -50,6 +50,8 @@ module SU_MCP
       end
 
       def normalize_create_site_element_params(params)
+        return normalize_v2_create_site_element_params(params) if params['contractVersion'] == 2
+
         public_params = deep_copy(params)
         normalized = deep_copy(params)
         geometry_fields(params.fetch('elementType', nil)).each do |path, type|
@@ -64,8 +66,34 @@ module SU_MCP
 
       attr_reader :length_converter
 
+      def normalize_v2_create_site_element_params(params)
+        public_params = deep_copy(params)
+        normalized = deep_copy(params)
+        normalize_v2_geometry!(normalized)
+        normalized['__public_params__'] = public_params
+        normalized
+      end
+
       def geometry_fields(element_type)
         GEOMETRY_FIELDS_BY_TYPE.fetch(element_type.to_s, {})
+      end
+
+      def normalize_v2_geometry!(params)
+        element_type = params.fetch('elementType', nil).to_s
+        definition = params['definition']
+        return unless definition.is_a?(Hash)
+
+        case element_type
+        when 'path'
+          normalize_geometry_field!(params, 'definition.centerline', :points)
+          normalize_geometry_field!(params, 'definition.width', :scalar)
+          normalize_geometry_field!(params, 'definition.thickness', :scalar)
+          normalize_geometry_field!(params, 'definition.elevation', :scalar)
+        when 'structure'
+          normalize_geometry_field!(params, 'definition.footprint', :points)
+          normalize_geometry_field!(params, 'definition.height', :scalar)
+          normalize_geometry_field!(params, 'definition.elevation', :scalar)
+        end
       end
 
       def normalize_geometry_field!(params, path, type)

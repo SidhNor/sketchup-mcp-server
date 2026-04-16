@@ -134,7 +134,8 @@ module SceneQueryTestSupport
   end
 
   module FakeEntityBehavior
-    attr_reader :entity_id, :bounds, :layer, :material, :name, :persistent_id, :details
+    attr_reader :entity_id, :bounds, :layer, :material, :name, :persistent_id, :details,
+                :attributes
 
     def initialize(entity_id:, bounds:, layer:, material:, details: {})
       super()
@@ -169,6 +170,17 @@ module SceneQueryTestSupport
       return default unless dictionary.is_a?(Hash)
 
       dictionary.fetch(key, default)
+    end
+
+    def set_attribute(dictionary_name, key, value)
+      @attributes[dictionary_name] ||= {}
+      @attributes[dictionary_name][key] = value
+    end
+
+    def delete_attribute(dictionary_name, key = nil)
+      return @attributes.delete(dictionary_name) if key.nil?
+
+      @attributes.fetch(dictionary_name, {}).delete(key)
     end
   end
 
