@@ -11,15 +11,16 @@ module SU_MCP
       end
 
       def build(model:, params:)
-        structure_category = params['structureCategory']
+        definition = params['definition'] || params
+        structure_category = definition['structureCategory']
         raise ArgumentError, 'structureCategory is required' if structure_category.to_s.empty?
 
         group = model.active_entities.add_group
         scene_properties.apply!(model: model, group: group, params: params)
-        points = footprint_points(params.fetch('footprint'), params.fetch('elevation', 0.0))
+        points = footprint_points(definition.fetch('footprint'), definition.fetch('elevation', 0.0))
         face = group.entities.add_face(*points)
         normalize_horizontal_face!(face)
-        face.pushpull(params.fetch('height').to_f)
+        face.pushpull(definition.fetch('height').to_f)
 
         group
       end

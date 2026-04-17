@@ -161,14 +161,13 @@ class McpRuntimeLoaderTest < Minitest::Test
     create_site_element_tool = tools.find { |tool| tool.fetch('name') == 'create_site_element' }
     assert_equal('Create Semantic Site Element', create_site_element_tool.fetch('title'))
     assert_equal(
-      %w[elementType sourceElementId status],
+      %w[elementType metadata definition hosting placement representation lifecycle],
       create_site_element_tool.fetch('inputSchema').fetch('required')
     )
     assert_equal(
       %w[
-        elementType elevation footprint height material name path planting_mass
-        retaining_edge sourceElementId status structureCategory tag thickness
-        tree_proxy
+        definition elementType hosting lifecycle metadata placement representation
+        sceneProperties
       ],
       create_site_element_tool.fetch('inputSchema').fetch('properties').keys.sort
     )
@@ -205,6 +204,28 @@ class McpRuntimeLoaderTest < Minitest::Test
       ['code'],
       eval_ruby_tool.fetch('inputSchema').fetch('required')
     )
+  end
+
+  def test_create_site_element_tool_schema_is_sectioned_only
+    create_site_element_tool = @loader.tool_catalog.find do |tool|
+      tool.fetch(:name) == 'create_site_element'
+    end
+    input_schema = create_site_element_tool.fetch(:input_schema)
+
+    assert_equal(
+      %w[elementType metadata definition hosting placement representation lifecycle],
+      input_schema.fetch(:required)
+    )
+    assert_equal(
+      %w[
+        definition elementType hosting lifecycle metadata placement representation
+        sceneProperties
+      ],
+      input_schema.fetch(:properties).keys.map(&:to_s).sort
+    )
+    refute(input_schema.fetch(:properties).key?(:sourceElementId))
+    refute(input_schema.fetch(:properties).key?(:path))
+    refute(input_schema.fetch(:properties).key?(:material))
   end
   # rubocop:enable Metrics/AbcSize, Metrics/MethodLength
   # rubocop:enable Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity
@@ -280,13 +301,33 @@ class McpRuntimeLoaderTest < Minitest::Test
         name: 'create_site_element',
         arguments: {
           elementType: 'path',
-          sourceElementId: 'main-walk-001',
-          status: 'proposed',
-          path: {
+          metadata: {
+            sourceElementId: 'main-walk-001',
+            status: 'proposed'
+          },
+          definition: {
+            mode: 'centerline',
             centerline: [[0.0, 0.0], [4.0, 1.0], [8.0, 1.0]],
             width: 1.6,
             elevation: 0.0,
             thickness: 0.1
+          },
+          hosting: {
+            mode: 'none'
+          },
+          placement: {
+            mode: 'host_resolved'
+          },
+          representation: {
+            mode: 'path_surface_proxy',
+            material: 'Gravel'
+          },
+          lifecycle: {
+            mode: 'create_new'
+          },
+          sceneProperties: {
+            name: 'Main Walk',
+            tag: 'Paths'
           }
         }
       }
@@ -296,13 +337,33 @@ class McpRuntimeLoaderTest < Minitest::Test
     assert_equal(
       {
         'elementType' => 'path',
-        'sourceElementId' => 'main-walk-001',
-        'status' => 'proposed',
-        'path' => {
+        'metadata' => {
+          'sourceElementId' => 'main-walk-001',
+          'status' => 'proposed'
+        },
+        'definition' => {
+          'mode' => 'centerline',
           'centerline' => [[0.0, 0.0], [4.0, 1.0], [8.0, 1.0]],
           'width' => 1.6,
           'elevation' => 0.0,
           'thickness' => 0.1
+        },
+        'hosting' => {
+          'mode' => 'none'
+        },
+        'placement' => {
+          'mode' => 'host_resolved'
+        },
+        'representation' => {
+          'mode' => 'path_surface_proxy',
+          'material' => 'Gravel'
+        },
+        'lifecycle' => {
+          'mode' => 'create_new'
+        },
+        'sceneProperties' => {
+          'name' => 'Main Walk',
+          'tag' => 'Paths'
         }
       },
       captured_arguments
@@ -375,7 +436,7 @@ class McpRuntimeLoaderTest < Minitest::Test
     assert_equal('Get Entity Information', get_entity_info.dig(:metadata, :title))
     assert_equal(['id'], get_entity_info.dig(:input_schema, :required))
     assert_equal('Create Semantic Site Element', create_site_element.dig(:metadata, :title))
-    assert_equal(%w[elementType sourceElementId status],
+    assert_equal(%w[elementType metadata definition hosting placement representation lifecycle],
                  create_site_element.dig(:input_schema, :required))
     assert_equal('Set Entity Metadata', set_entity_metadata.dig(:metadata, :title))
     assert_equal(['target'], set_entity_metadata.dig(:input_schema, :required))

@@ -5,14 +5,26 @@ module SU_MCP
     # Applies scene-facing wrapper properties that remain outside semantic invariants.
     class SceneProperties
       def apply!(model:, group:, params:)
-        group.name = params['name'] if params['name']
-        group.layer = layer_for(model, group, params['tag']) if params['tag']
-        group.material = material_for(model, group, params['material']) if params['material']
+        name = scene_property(params, 'name')
+        tag = scene_property(params, 'tag')
+        material = representation_material(params)
+
+        group.name = name if name
+        group.layer = layer_for(model, group, tag) if tag
+        group.material = material_for(model, group, material) if material
 
         group
       end
 
       private
+
+      def scene_property(params, key)
+        params.dig('sceneProperties', key) || params[key]
+      end
+
+      def representation_material(params)
+        params.dig('representation', 'material') || params['material']
+      end
 
       def material_for(model, group, material_name)
         materials = model.respond_to?(:materials) ? model.materials : nil

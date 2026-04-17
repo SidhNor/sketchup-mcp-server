@@ -62,4 +62,34 @@ class StructureBuilderTest < Minitest::Test
 
     assert_equal([2.4], group.entities.faces.first.pushpull_calls)
   end
+
+  # rubocop:disable Metrics/MethodLength
+  def test_build_consumes_sectioned_structure_definition_and_scene_properties
+    group = @builder.build(
+      model: @model,
+      params: {
+        'elementType' => 'structure',
+        'definition' => {
+          'footprint' => [[0.0, 0.0], [2.0, 0.0], [2.0, 3.0], [0.0, 3.0]],
+          'elevation' => 0.25,
+          'height' => 2.4,
+          'structureCategory' => 'outbuilding'
+        },
+        'sceneProperties' => {
+          'name' => 'Sectioned Shed',
+          'tag' => 'Structures'
+        },
+        'representation' => {
+          'material' => 'Wood'
+        }
+      }
+    )
+
+    assert_instance_of(SemanticTestSupport::FakeGroup, group)
+    assert_equal([2.4], group.entities.faces.first.pushpull_calls)
+    assert_equal('Sectioned Shed', group.name)
+    assert_equal('Structures', group.layer.name)
+    assert_equal('Wood', group.material.name)
+  end
+  # rubocop:enable Metrics/MethodLength
 end

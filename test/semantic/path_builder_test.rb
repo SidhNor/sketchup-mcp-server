@@ -39,5 +39,34 @@ class PathBuilderTest < Minitest::Test
     assert_includes(group.entities.faces.first.points, [8.0, 1.8, 0.0])
     assert_equal('Main Walk', group.name)
   end
+
+  def test_build_consumes_sectioned_path_definition_and_scene_properties
+    group = @builder.build(
+      model: @model,
+      params: {
+        'elementType' => 'path',
+        'definition' => {
+          'centerline' => [[0.0, 0.0], [4.0, 1.0], [8.0, 1.0]],
+          'width' => 1.6,
+          'elevation' => 0.0,
+          'thickness' => 0.1
+        },
+        'sceneProperties' => {
+          'name' => 'Sectioned Walk',
+          'tag' => 'Paths'
+        },
+        'representation' => {
+          'material' => 'Gravel'
+        }
+      }
+    )
+
+    assert_instance_of(SemanticTestSupport::FakeGroup, group)
+    assert_equal(1, group.entities.faces.length)
+    assert_equal([-0.1], group.entities.faces.first.pushpull_calls)
+    assert_equal('Sectioned Walk', group.name)
+    assert_equal('Paths', group.layer.name)
+    assert_equal('Gravel', group.material.name)
+  end
 end
 # rubocop:enable Metrics/MethodLength

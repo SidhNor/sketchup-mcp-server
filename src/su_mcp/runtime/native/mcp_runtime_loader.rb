@@ -698,30 +698,98 @@ module SU_MCP
       }
     end
 
+    # rubocop:disable Metrics/AbcSize
     def create_site_element_schema
       {
         type: 'object',
-        required: %w[elementType sourceElementId status],
+        required: %w[elementType metadata definition hosting placement representation lifecycle],
         properties: {
           elementType: string_schema,
-          sourceElementId: string_schema,
-          status: string_schema,
-          footprint: xy_point_array_schema,
-          elevation: number_schema,
-          height: number_schema,
-          structureCategory: string_schema,
-          thickness: number_schema,
-          name: string_schema,
-          tag: string_schema,
-          material: string_schema,
-          path: path_payload_schema,
-          retaining_edge: retaining_edge_payload_schema,
-          planting_mass: planting_mass_payload_schema,
-          tree_proxy: tree_proxy_payload_schema
+          metadata: {
+            type: 'object',
+            properties: {
+              sourceElementId: string_schema,
+              status: string_schema
+            },
+            additionalProperties: false
+          },
+          sceneProperties: {
+            type: 'object',
+            properties: {
+              name: string_schema,
+              tag: string_schema
+            },
+            additionalProperties: false
+          },
+          definition: {
+            type: 'object',
+            properties: {
+              mode: string_schema,
+              footprint: xy_point_array_schema,
+              elevation: number_schema,
+              height: number_schema,
+              thickness: number_schema,
+              structureCategory: string_schema,
+              centerline: xy_point_array_schema,
+              width: number_schema,
+              polyline: xy_point_array_schema,
+              boundary: xy_point_array_schema,
+              averageHeight: number_schema,
+              plantingCategory: string_schema,
+              position: {
+                type: 'object',
+                required: %w[x y],
+                properties: {
+                  x: number_schema,
+                  y: number_schema,
+                  z: number_schema
+                },
+                additionalProperties: false
+              },
+              canopyDiameterX: number_schema,
+              canopyDiameterY: number_schema,
+              trunkDiameter: number_schema,
+              speciesHint: string_schema
+            },
+            additionalProperties: false
+          },
+          hosting: {
+            type: 'object',
+            properties: {
+              mode: string_schema,
+              target: target_reference_schema
+            },
+            additionalProperties: false
+          },
+          placement: {
+            type: 'object',
+            properties: {
+              mode: string_schema,
+              parent: target_reference_schema
+            },
+            additionalProperties: false
+          },
+          representation: {
+            type: 'object',
+            properties: {
+              mode: string_schema,
+              material: string_schema
+            },
+            additionalProperties: false
+          },
+          lifecycle: {
+            type: 'object',
+            properties: {
+              mode: string_schema,
+              target: target_reference_schema
+            },
+            additionalProperties: false
+          }
         },
         additionalProperties: false
       }
     end
+    # rubocop:enable Metrics/AbcSize
 
     def set_entity_metadata_schema
       {

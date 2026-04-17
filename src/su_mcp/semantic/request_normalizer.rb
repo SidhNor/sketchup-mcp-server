@@ -8,40 +8,40 @@ module SU_MCP
     class RequestNormalizer
       GEOMETRY_FIELDS_BY_TYPE = {
         'structure' => {
-          'footprint' => :points,
-          'elevation' => :scalar,
-          'height' => :scalar
+          'definition.footprint' => :points,
+          'definition.elevation' => :scalar,
+          'definition.height' => :scalar
         },
         'pad' => {
-          'footprint' => :points,
-          'elevation' => :scalar,
-          'thickness' => :scalar
+          'definition.footprint' => :points,
+          'definition.elevation' => :scalar,
+          'definition.thickness' => :scalar
         },
         'path' => {
-          'path.centerline' => :points,
-          'path.width' => :scalar,
-          'path.elevation' => :scalar,
-          'path.thickness' => :scalar
+          'definition.centerline' => :points,
+          'definition.width' => :scalar,
+          'definition.elevation' => :scalar,
+          'definition.thickness' => :scalar
         },
         'retaining_edge' => {
-          'retaining_edge.polyline' => :points,
-          'retaining_edge.height' => :scalar,
-          'retaining_edge.thickness' => :scalar,
-          'retaining_edge.elevation' => :scalar
+          'definition.polyline' => :points,
+          'definition.height' => :scalar,
+          'definition.thickness' => :scalar,
+          'definition.elevation' => :scalar
         },
         'planting_mass' => {
-          'planting_mass.boundary' => :points,
-          'planting_mass.averageHeight' => :scalar,
-          'planting_mass.elevation' => :scalar
+          'definition.boundary' => :points,
+          'definition.averageHeight' => :scalar,
+          'definition.elevation' => :scalar
         },
         'tree_proxy' => {
-          'tree_proxy.position.x' => :scalar,
-          'tree_proxy.position.y' => :scalar,
-          'tree_proxy.position.z' => :scalar,
-          'tree_proxy.canopyDiameterX' => :scalar,
-          'tree_proxy.canopyDiameterY' => :scalar,
-          'tree_proxy.height' => :scalar,
-          'tree_proxy.trunkDiameter' => :scalar
+          'definition.position.x' => :scalar,
+          'definition.position.y' => :scalar,
+          'definition.position.z' => :scalar,
+          'definition.canopyDiameterX' => :scalar,
+          'definition.canopyDiameterY' => :scalar,
+          'definition.height' => :scalar,
+          'definition.trunkDiameter' => :scalar
         }
       }.freeze
 
@@ -50,15 +50,10 @@ module SU_MCP
       end
 
       def normalize_create_site_element_params(params)
-        return normalize_v2_create_site_element_params(params) if params['contractVersion'] == 2
-
-        public_params = deep_copy(params)
         normalized = deep_copy(params)
         geometry_fields(params.fetch('elementType', nil)).each do |path, type|
           normalize_geometry_field!(normalized, path, type)
         end
-        # Carry original meter-valued params so metadata persistence stays public-facing.
-        normalized['__public_params__'] = public_params
         normalized
       end
 
@@ -66,34 +61,8 @@ module SU_MCP
 
       attr_reader :length_converter
 
-      def normalize_v2_create_site_element_params(params)
-        public_params = deep_copy(params)
-        normalized = deep_copy(params)
-        normalize_v2_geometry!(normalized)
-        normalized['__public_params__'] = public_params
-        normalized
-      end
-
       def geometry_fields(element_type)
         GEOMETRY_FIELDS_BY_TYPE.fetch(element_type.to_s, {})
-      end
-
-      def normalize_v2_geometry!(params)
-        element_type = params.fetch('elementType', nil).to_s
-        definition = params['definition']
-        return unless definition.is_a?(Hash)
-
-        case element_type
-        when 'path'
-          normalize_geometry_field!(params, 'definition.centerline', :points)
-          normalize_geometry_field!(params, 'definition.width', :scalar)
-          normalize_geometry_field!(params, 'definition.thickness', :scalar)
-          normalize_geometry_field!(params, 'definition.elevation', :scalar)
-        when 'structure'
-          normalize_geometry_field!(params, 'definition.footprint', :points)
-          normalize_geometry_field!(params, 'definition.height', :scalar)
-          normalize_geometry_field!(params, 'definition.elevation', :scalar)
-        end
       end
 
       def normalize_geometry_field!(params, path, type)

@@ -1,7 +1,7 @@
 # Technical Plan: SEM-06 Cut Over Create Site Element To The Sectioned Contract And Adopt Builder-Native V2 Input For Path And Structure
 **Task ID**: `SEM-06`
 **Title**: `Cut Over Create Site Element To The Sectioned Contract And Adopt Builder-Native V2 Input For Path And Structure`
-**Status**: `finalized`
+**Status**: `implemented`
 **Date**: `2026-04-17`
 
 ## Source Task
@@ -257,6 +257,21 @@ flowchart LR
 - `SceneProperties` remains the shared wrapper-property helper but changes its input section ownership.
 - `ManagedObjectMetadata` remains separate from wrapper naming, tagging, and material application.
 - Parent target resolution stays seam-owned for `SEM-06`; builders consume resolved context but do not perform lookup.
+
+## Implementation Notes
+
+- `McpRuntimeLoader#create_site_element_schema` now advertises only the sectioned public request shape with required `metadata`, `definition`, `hosting`, `placement`, `representation`, and `lifecycle`, plus optional `sceneProperties`.
+- `RequestValidator` and `RequestNormalizer` now operate on one sectioned contract path for all currently supported families and no longer branch on `contractVersion`.
+- `PathBuilder` and `StructureBuilder` consume sectioned `definition` input natively, while `SceneProperties` reads `sceneProperties.name`, `sceneProperties.tag`, and `representation.material`, with legacy flat fallback retained only for non-migrated builders.
+- `SemanticCommands#create_site_element` now routes all create flows through one sectioned path, derives persisted metadata from the original public request, and retains only the narrow internal sectioned-to-legacy bridge for `pad`, `retaining_edge`, `planting_mass`, and `tree_proxy`.
+
+## Validation Results
+
+- Focused tests passed for builders, validator, normalizer, semantic commands, and runtime loader.
+- `bundle exec rake ruby:test` passed.
+- `bundle exec rake ruby:lint` passed.
+- `bundle exec rake package:verify` passed.
+- Manual SketchUp-hosted verification was not run in this task and remains the primary follow-up gap for host-runtime confirmation.
 
 ## Acceptance Criteria
 

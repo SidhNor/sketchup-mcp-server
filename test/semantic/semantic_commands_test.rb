@@ -150,17 +150,7 @@ class SemanticCommandsTest < Minitest::Test
 
   def test_create_site_element_wraps_successful_creation_in_one_operation
     created_group = @model.active_entities.add_group
-    request = {
-      'elementType' => 'path',
-      'sourceElementId' => 'main-walk-001',
-      'status' => 'proposed',
-      'path' => {
-        'centerline' => [[0.0, 0.0], [4.0, 1.0], [8.0, 1.0]],
-        'width' => 1.6,
-        'elevation' => 0.0,
-        'thickness' => 0.1
-      }
-    }
+    request = sectioned_terrain_path_request('hosting' => { 'mode' => 'none' })
     builder = Object.new
     builder.define_singleton_method(:build) { |**_kwargs| created_group }
     registry = FakeRegistry.new(builder)
@@ -186,7 +176,7 @@ class SemanticCommandsTest < Minitest::Test
       [[
         created_group,
         {
-          'sourceElementId' => 'main-walk-001',
+          'sourceElementId' => 'main-garden-walk-001',
           'semanticType' => 'path',
           'status' => 'proposed',
           'state' => 'Created',
@@ -204,17 +194,7 @@ class SemanticCommandsTest < Minitest::Test
   def test_create_site_element_normalizes_builder_input_and_keeps_public_metadata
     created_group = @model.active_entities.add_group
     captured_params = nil
-    request = {
-      'elementType' => 'path',
-      'sourceElementId' => 'main-walk-001',
-      'status' => 'proposed',
-      'path' => {
-        'centerline' => [[0.0, 0.0], [4.0, 1.0], [8.0, 1.0]],
-        'width' => 1.6,
-        'elevation' => 0.0,
-        'thickness' => 0.1
-      }
-    }
+    request = sectioned_terrain_path_request('hosting' => { 'mode' => 'none' })
     builder = Object.new
     builder.define_singleton_method(:build) do |**kwargs|
       captured_params = kwargs.fetch(:params)
@@ -235,10 +215,10 @@ class SemanticCommandsTest < Minitest::Test
     assert_equal(
       [[0.0, 0.0], [4.0 * METERS_TO_INTERNAL, 1.0 * METERS_TO_INTERNAL],
        [8.0 * METERS_TO_INTERNAL, 1.0 * METERS_TO_INTERNAL]],
-      captured_params.dig('path', 'centerline')
+      captured_params.dig('definition', 'centerline')
     )
-    assert_in_delta(1.6 * METERS_TO_INTERNAL, captured_params.dig('path', 'width'), 1e-9)
-    assert_in_delta(0.1 * METERS_TO_INTERNAL, captured_params.dig('path', 'thickness'), 1e-9)
+    assert_in_delta(1.6 * METERS_TO_INTERNAL, captured_params.dig('definition', 'width'), 1e-9)
+    assert_in_delta(0.1 * METERS_TO_INTERNAL, captured_params.dig('definition', 'thickness'), 1e-9)
     assert_equal(
       1.6,
       metadata_writer.calls.first.last['width']
@@ -253,19 +233,14 @@ class SemanticCommandsTest < Minitest::Test
   def test_create_site_element_returns_structured_refusal_for_missing_matching_payloads
     commands = SU_MCP::SemanticCommands.new(model: @model)
 
-    result = commands.create_site_element(
-      'elementType' => 'tree_proxy',
-      'sourceElementId' => 'tree-001',
-      'status' => 'proposed',
-      'name' => 'Missing Proxy Payload'
-    )
+    result = commands.create_site_element(sectioned_tree_proxy_request('definition' => nil))
 
     assert_equal(true, result[:success])
     assert_equal('refused', result[:outcome])
-    assert_equal('missing_element_payload', result.dig(:refusal, :code))
+    assert_equal('missing_required_field', result.dig(:refusal, :code))
   end
 
-  def test_create_site_element_returns_structured_refusal_for_contradictory_payloads
+  def test_create_site_element_refuses_flat_legacy_create_shape_before_builder_execution
     registry = FakeRegistry.new(Object.new)
     commands = SU_MCP::SemanticCommands.new(model: @model, registry: registry)
 
@@ -285,22 +260,20 @@ class SemanticCommandsTest < Minitest::Test
 
     assert_equal(true, result[:success])
     assert_equal('refused', result[:outcome])
-    assert_equal('contradictory_payload', result.dig(:refusal, :code))
+    assert_equal('missing_required_field', result.dig(:refusal, :code))
     assert_equal([], registry.calls)
   end
 
   def test_create_site_element_refuses_invalid_path_geometry_before_builder_execution
     commands = SU_MCP::SemanticCommands.new(model: @model)
 
-    result = commands.create_site_element(
-      'elementType' => 'path',
-      'sourceElementId' => 'main-walk-001',
-      'status' => 'proposed',
-      'path' => {
-        'centerline' => [[0.0, 0.0], [0.0, 0.0]],
-        'width' => 1.6
-      }
-    )
+    result = commands.create_site_element(sectioned_terrain_path_request(
+                                            'definition' => {
+                                              'mode' => 'centerline',
+                                              'centerline' => [[0.0, 0.0], [0.0, 0.0]],
+                                              'width' => 1.6
+                                            }
+                                          ))
 
     assert_equal(true, result[:success])
     assert_equal('refused', result[:outcome])
@@ -325,13 +298,16 @@ class SemanticCommandsTest < Minitest::Test
   def test_create_site_element_refuses_structure_requests_without_structure_category
     commands = SU_MCP::SemanticCommands.new(model: @model)
 
-    result = commands.create_site_element(
-      'elementType' => 'structure',
-      'sourceElementId' => 'shed-001',
-      'status' => 'proposed',
-      'footprint' => [[0.0, 0.0], [2.0, 0.0], [2.0, 3.0], [0.0, 3.0]],
-      'height' => 2.4
-    )
+    result = commands.create_site_element(sectioned_structure_request(
+                                            'definition' => {
+                                              'mode' => 'footprint_mass',
+                                              'footprint' => [
+                                                [0.0, 0.0], [2.0, 0.0], [2.0, 3.0], [0.0, 3.0]
+                                              ],
+                                              'height' => 2.4,
+                                              'structureCategory' => nil
+                                            }
+                                          ))
 
     assert_equal(true, result[:success])
     assert_equal('refused', result[:outcome])
@@ -341,14 +317,16 @@ class SemanticCommandsTest < Minitest::Test
   def test_create_site_element_refuses_unapproved_structure_categories
     commands = SU_MCP::SemanticCommands.new(model: @model)
 
-    result = commands.create_site_element(
-      'elementType' => 'structure',
-      'sourceElementId' => 'shed-001',
-      'status' => 'proposed',
-      'footprint' => [[0.0, 0.0], [2.0, 0.0], [2.0, 3.0], [0.0, 3.0]],
-      'height' => 2.4,
-      'structureCategory' => 'garage'
-    )
+    result = commands.create_site_element(sectioned_structure_request(
+                                            'definition' => {
+                                              'mode' => 'footprint_mass',
+                                              'footprint' => [
+                                                [0.0, 0.0], [2.0, 0.0], [2.0, 3.0], [0.0, 3.0]
+                                              ],
+                                              'height' => 2.4,
+                                              'structureCategory' => 'garage'
+                                            }
+                                          ))
 
     assert_equal(true, result[:success])
     assert_equal('refused', result[:outcome])
@@ -362,14 +340,16 @@ class SemanticCommandsTest < Minitest::Test
   def test_create_site_element_refuses_non_positive_structure_height
     commands = SU_MCP::SemanticCommands.new(model: @model)
 
-    result = commands.create_site_element(
-      'elementType' => 'structure',
-      'sourceElementId' => 'shed-001',
-      'status' => 'proposed',
-      'footprint' => [[0.0, 0.0], [2.0, 0.0], [2.0, 3.0], [0.0, 3.0]],
-      'height' => 0.0,
-      'structureCategory' => 'outbuilding'
-    )
+    result = commands.create_site_element(sectioned_structure_request(
+                                            'definition' => {
+                                              'mode' => 'footprint_mass',
+                                              'footprint' => [
+                                                [0.0, 0.0], [2.0, 0.0], [2.0, 3.0], [0.0, 3.0]
+                                              ],
+                                              'height' => 0.0,
+                                              'structureCategory' => 'outbuilding'
+                                            }
+                                          ))
 
     assert_equal(true, result[:success])
     assert_equal('refused', result[:outcome])
@@ -379,13 +359,15 @@ class SemanticCommandsTest < Minitest::Test
   def test_create_site_element_refuses_non_positive_pad_thickness
     commands = SU_MCP::SemanticCommands.new(model: @model)
 
-    result = commands.create_site_element(
-      'elementType' => 'pad',
-      'sourceElementId' => 'terrace-001',
-      'status' => 'proposed',
-      'footprint' => [[0.0, 0.0], [3.0, 0.0], [3.0, 2.0], [0.0, 2.0]],
-      'thickness' => 0.0
-    )
+    result = commands.create_site_element(sectioned_pad_request(
+                                            'definition' => {
+                                              'mode' => 'footprint_surface',
+                                              'footprint' => [
+                                                [0.0, 0.0], [3.0, 0.0], [3.0, 2.0], [0.0, 2.0]
+                                              ],
+                                              'thickness' => 0.0
+                                            }
+                                          ))
 
     assert_equal(true, result[:success])
     assert_equal('refused', result[:outcome])
@@ -394,7 +376,7 @@ class SemanticCommandsTest < Minitest::Test
 
   # rubocop:disable Metrics/AbcSize, Layout/LineLength
 
-  def test_create_site_element_v2_adopts_existing_structure_without_builder_execution
+  def test_create_site_element_adopts_existing_structure_without_builder_execution
     target_entity = FakeManagedEntity.new(parent: Object.new)
     metadata_writer = FakeMetadataWriter.new
     serializer = FakeSerializer.new(sourceElementId: 'retained-house-001', semanticType: 'structure')
@@ -422,7 +404,7 @@ class SemanticCommandsTest < Minitest::Test
     assert_equal([target_entity], serializer.calls)
   end
 
-  def test_create_site_element_v2_refuses_adopt_when_target_is_missing
+  def test_create_site_element_refuses_adopt_when_target_is_missing
     commands = SU_MCP::SemanticCommands.new(
       model: @model,
       target_resolver: FakeTargetResolver.new(resolution: 'none')
@@ -436,7 +418,7 @@ class SemanticCommandsTest < Minitest::Test
     assert_equal('lifecycle', result.dig(:refusal, :details, :section))
   end
 
-  def test_create_site_element_v2_builds_terrain_following_path_with_resolved_hosting_context
+  def test_create_site_element_builds_terrain_following_path_with_resolved_hosting_context
     created_group = @model.active_entities.add_group
     captured_params = nil
     host_target = FakeManagedEntity.new(parent: Object.new)
@@ -465,15 +447,15 @@ class SemanticCommandsTest < Minitest::Test
       [{ 'sourceElementId' => 'terrain-main' }],
       commands.send(:target_resolver).calls
     )
-    assert_in_delta(1.6 * METERS_TO_INTERNAL, captured_params.dig('path', 'width'), 1e-9)
-    assert_in_delta(0.1 * METERS_TO_INTERNAL, captured_params.dig('path', 'thickness'), 1e-9)
+    assert_in_delta(1.6 * METERS_TO_INTERNAL, captured_params.dig('definition', 'width'), 1e-9)
+    assert_in_delta(0.1 * METERS_TO_INTERNAL, captured_params.dig('definition', 'thickness'), 1e-9)
     assert_same(host_target, captured_params.dig('hosting', 'resolved_target'))
     assert_equal('surface_drape', captured_params.dig('hosting', 'mode'))
     assert_equal('main-garden-walk-001', metadata_writer.calls.first.last['sourceElementId'])
     assert_equal([created_group], serializer.calls)
   end
 
-  def test_create_site_element_v2_refuses_terrain_path_when_host_target_is_missing
+  def test_create_site_element_refuses_terrain_path_when_host_target_is_missing
     commands = SU_MCP::SemanticCommands.new(
       model: @model,
       target_resolver: FakeTargetResolver.new(resolution: 'none')
@@ -487,7 +469,7 @@ class SemanticCommandsTest < Minitest::Test
     assert_equal('hosting', result.dig(:refusal, :details, :section))
   end
 
-  def test_create_site_element_v2_replaces_managed_object_while_preserving_identity_and_parent_context
+  def test_create_site_element_replaces_managed_object_while_preserving_identity_and_parent_context
     old_parent = Object.new
     target_entity = FakeManagedEntity.new(
       parent: old_parent,
@@ -538,7 +520,7 @@ class SemanticCommandsTest < Minitest::Test
     assert_equal([replacement_entity], serializer.calls)
   end
 
-  def test_create_site_element_v2_replace_hybrid_uses_real_target_resolution_and_metadata_handoff
+  def test_create_site_element_replace_hybrid_uses_real_target_resolution_and_metadata_handoff
     Sketchup.active_model_override = build_v2_replace_target_model
     created_group = @model.active_entities.add_group
     captured_params = nil
@@ -575,7 +557,7 @@ class SemanticCommandsTest < Minitest::Test
       .get_attribute('su_mcp', 'sourceElementId'))
   end
 
-  def test_create_site_element_v2_refuses_replace_when_parent_target_is_ambiguous
+  def test_create_site_element_refuses_replace_when_parent_target_is_ambiguous
     target_entity = FakeManagedEntity.new(parent: Object.new)
     target_resolver = FakeSequentialTargetResolver.new(
       { resolution: 'unique', entity: target_entity },
@@ -589,6 +571,71 @@ class SemanticCommandsTest < Minitest::Test
     assert_equal('refused', result[:outcome])
     assert_equal('ambiguous_target', result.dig(:refusal, :code))
     assert_equal('placement', result.dig(:refusal, :details, :section))
+  end
+
+  def test_create_site_element_routes_sectioned_path_requests_without_contract_version
+    created_group = @model.active_entities.add_group
+    captured_params = nil
+    host_target = FakeManagedEntity.new(parent: Object.new)
+    builder = Object.new
+    builder.define_singleton_method(:build) do |**kwargs|
+      captured_params = kwargs.fetch(:params)
+      created_group
+    end
+    registry = FakeRegistry.new(builder)
+    metadata_writer = FakeMetadataWriter.new
+    serializer = FakeSerializer.new(sourceElementId: 'main-garden-walk-001', semanticType: 'path')
+    commands = SU_MCP::SemanticCommands.new(
+      model: @model,
+      registry: registry,
+      metadata_writer: metadata_writer,
+      serializer: serializer,
+      target_resolver: FakeTargetResolver.new(resolution: 'unique', entity: host_target)
+    )
+
+    result = commands.create_site_element(sectioned_terrain_path_request)
+
+    assert_equal(true, result[:success])
+    assert_equal('created', result[:outcome])
+    assert_equal(['path'], registry.calls)
+    assert_in_delta(1.6 * METERS_TO_INTERNAL, captured_params.dig('definition', 'width'), 1e-9)
+    assert_equal('Sectioned Walk', captured_params.dig('sceneProperties', 'name'))
+    assert_equal('Gravel', captured_params.dig('representation', 'material'))
+    assert_equal(1.6, metadata_writer.calls.first.last['width'])
+    assert_equal(0.1, metadata_writer.calls.first.last['thickness'])
+  end
+
+  def test_create_site_element_keeps_non_migrated_pad_on_a_narrow_internal_bridge
+    created_group = @model.active_entities.add_group
+    captured_params = nil
+    builder = Object.new
+    builder.define_singleton_method(:build) do |**kwargs|
+      captured_params = kwargs.fetch(:params)
+      created_group
+    end
+    registry = FakeRegistry.new(builder)
+    serializer = FakeSerializer.new(sourceElementId: 'terrace-001', semanticType: 'pad')
+    commands = SU_MCP::SemanticCommands.new(
+      model: @model,
+      registry: registry,
+      metadata_writer: FakeMetadataWriter.new,
+      serializer: serializer
+    )
+
+    result = commands.create_site_element(sectioned_pad_request)
+
+    assert_equal(true, result[:success])
+    assert_equal('created', result[:outcome])
+    assert_equal(['pad'], registry.calls)
+    assert_equal('Sectioned Terrace', captured_params['name'])
+    assert_equal('Hardscape', captured_params['tag'])
+    assert_equal('Concrete', captured_params['material'])
+    assert_equal(
+      [[0.0, 0.0], [3.0 * METERS_TO_INTERNAL, 0.0],
+       [3.0 * METERS_TO_INTERNAL, 2.0 * METERS_TO_INTERNAL],
+       [0.0, 2.0 * METERS_TO_INTERNAL]],
+      captured_params['footprint']
+    )
   end
 
   # rubocop:enable Metrics/AbcSize, Layout/LineLength
@@ -937,6 +984,111 @@ class SemanticCommandsTest < Minitest::Test
         'target' => { 'sourceElementId' => 'house-extension-001' }
       }
     }
+  end
+
+  def sectioned_terrain_path_request(overrides = {})
+    request = deep_merge(
+      v2_terrain_path_request.reject { |key, _value| key == 'contractVersion' },
+      overrides
+    )
+    request['hosting'].delete('target') if request.dig('hosting', 'mode') == 'none'
+    request['sceneProperties'] ||= {}
+    request['sceneProperties']['name'] ||= 'Sectioned Walk'
+    request['sceneProperties']['tag'] ||= 'Paths'
+    request['representation'] ||= {}
+    request['representation']['material'] ||= 'Gravel'
+    request
+  end
+
+  def sectioned_structure_request(overrides = {})
+    deep_merge(
+      {
+        'elementType' => 'structure',
+        'metadata' => {
+          'sourceElementId' => 'shed-001',
+          'status' => 'proposed'
+        },
+        'definition' => {
+          'mode' => 'footprint_mass',
+          'footprint' => [[0.0, 0.0], [2.0, 0.0], [2.0, 3.0], [0.0, 3.0]],
+          'height' => 2.4,
+          'structureCategory' => 'outbuilding'
+        },
+        'hosting' => { 'mode' => 'none' },
+        'placement' => { 'mode' => 'host_resolved' },
+        'representation' => { 'mode' => 'procedural' },
+        'lifecycle' => { 'mode' => 'create_new' }
+      },
+      overrides
+    )
+  end
+
+  def sectioned_tree_proxy_request(overrides = {})
+    deep_merge(
+      {
+        'elementType' => 'tree_proxy',
+        'metadata' => {
+          'sourceElementId' => 'tree-001',
+          'status' => 'proposed'
+        },
+        'definition' => {
+          'mode' => 'proxy_tree',
+          'position' => { 'x' => 14.0, 'y' => 37.7, 'z' => 0.0 },
+          'canopyDiameterX' => 6.0,
+          'canopyDiameterY' => 5.6,
+          'height' => 5.5,
+          'trunkDiameter' => 0.45
+        },
+        'hosting' => { 'mode' => 'none' },
+        'placement' => { 'mode' => 'host_resolved' },
+        'representation' => { 'mode' => 'proxy_mass' },
+        'lifecycle' => { 'mode' => 'create_new' }
+      },
+      overrides
+    )
+  end
+
+  def sectioned_pad_request(overrides = {})
+    deep_merge(
+      {
+        'elementType' => 'pad',
+        'metadata' => {
+          'sourceElementId' => 'terrace-001',
+          'status' => 'proposed'
+        },
+        'sceneProperties' => {
+          'name' => 'Sectioned Terrace',
+          'tag' => 'Hardscape'
+        },
+        'definition' => {
+          'mode' => 'footprint_surface',
+          'footprint' => [[0.0, 0.0], [3.0, 0.0], [3.0, 2.0], [0.0, 2.0]],
+          'thickness' => 0.2
+        },
+        'hosting' => {
+          'mode' => 'none'
+        },
+        'placement' => {
+          'mode' => 'host_resolved'
+        },
+        'representation' => {
+          'mode' => 'procedural',
+          'material' => 'Concrete'
+        },
+        'lifecycle' => {
+          'mode' => 'create_new'
+        }
+      },
+      overrides
+    )
+  end
+
+  def deep_merge(base, overrides)
+    return base unless overrides.is_a?(Hash)
+
+    base.merge(overrides) do |_key, left, right|
+      left.is_a?(Hash) && right.is_a?(Hash) ? deep_merge(left, right) : right
+    end
   end
 
   def build_v2_replace_target_model

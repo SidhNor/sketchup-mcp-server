@@ -102,6 +102,7 @@ The current MCP surface includes scene inspection, semantic scene modeling, and 
 - `eval_ruby`
 
 Public geometric dimensions for `create_site_element` are interpreted and returned in meters, independent of the active SketchUp model unit display settings.
+The public `create_site_element` request is sectioned: `elementType`, `metadata`, `definition`, `hosting`, `placement`, `representation`, and `lifecycle`, with optional `sceneProperties` for wrapper `name` and `tag`.
 
 ## Local Validation
 

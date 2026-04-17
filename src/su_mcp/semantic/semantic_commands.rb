@@ -37,31 +37,17 @@ module SU_MCP
     end
     # rubocop:enable Metrics/ParameterLists
 
-    # rubocop:disable Metrics/AbcSize, Metrics/MethodLength
     def create_site_element(params)
       refusal = validator.refusal_for(params)
       return refusal if refusal
 
       # Normalize only validated requests so meter semantics stay at the Ruby boundary.
       normalized_params = request_normalizer.normalize_create_site_element_params(params)
-      return create_site_element_v2(normalized_params) if params['contractVersion'] == 2
-
-      builder = registry.builder_for(params.fetch('elementType'))
-      model.start_operation(OPERATION_NAME, true)
-      entity = builder.build(model: model, params: normalized_params)
-      metadata_writer.write!(entity, metadata_attributes(normalized_params))
-      result = {
-        success: true,
-        outcome: 'created',
-        managedObject: serializer.serialize(entity)
-      }
-      model.commit_operation
-      result
+      create_site_element_v2(normalized_params, public_params: params)
     rescue StandardError
       model.abort_operation if model.respond_to?(:abort_operation)
       raise
     end
-    # rubocop:enable Metrics/AbcSize, Metrics/MethodLength
 
     # rubocop:disable Naming/AccessorMethodName
     def set_entity_metadata(params)
@@ -81,14 +67,14 @@ module SU_MCP
     attr_reader :model, :registry, :validator, :request_normalizer, :metadata_writer, :serializer,
                 :target_resolver
 
-    def create_site_element_v2(params)
+    def create_site_element_v2(params, public_params:)
       case params.dig('lifecycle', 'mode')
       when 'adopt_existing'
-        create_site_element_v2_adopt(params)
+        create_site_element_v2_adopt(params, public_params: public_params)
       when 'replace_preserve_identity'
-        create_site_element_v2_replace(params)
+        create_site_element_v2_replace(params, public_params: public_params)
       else
-        create_site_element_v2_new(params)
+        create_site_element_v2_new(params, public_params: public_params)
       end
     end
 
@@ -176,32 +162,17 @@ module SU_MCP
       result.is_a?(Hash) && result[:outcome] == 'refused'
     end
 
-    def metadata_attributes(params)
-      public_params = public_params_for_metadata(params)
-
-      {
-        'sourceElementId' => public_params.fetch('sourceElementId'),
-        'semanticType' => public_params.fetch('elementType'),
-        'status' => public_params.fetch('status'),
-        'state' => 'Created',
-        'schemaVersion' => SCHEMA_VERSION
-      }.tap do |attributes|
-        attributes.merge!(type_specific_metadata_attributes(public_params))
-      end
-    end
-
-    def v2_metadata_attributes(params, state:, source_element_id: nil)
-      public_params = params.fetch('__public_params__', params)
+    def metadata_attributes(public_params, state:, source_element_id: nil)
       metadata = public_params.fetch('metadata', {})
 
       {
         'sourceElementId' => source_element_id || metadata.fetch('sourceElementId'),
-        'semanticType' => params.fetch('elementType'),
+        'semanticType' => public_params.fetch('elementType'),
         'status' => metadata.fetch('status'),
         'state' => state,
         'schemaVersion' => SCHEMA_VERSION
       }.tap do |attributes|
-        attributes.merge!(v2_type_specific_metadata_attributes(public_params))
+        attributes.merge!(type_specific_metadata_attributes(public_params))
       end
     end
 
@@ -209,41 +180,11 @@ module SU_MCP
       previous_attributes = metadata_writer.attributes_for(previous_entity)
       source_element_id = previous_attributes.fetch('sourceElementId')
 
-      v2_metadata_attributes(
+      metadata_attributes(
         params,
         state: 'Replaced',
         source_element_id: source_element_id
       )
-    end
-
-    def public_params_for_metadata(params)
-      # Metadata stays in public meter units even though builders consume internal lengths.
-      params.fetch('__public_params__', params)
-    end
-
-    def v2_type_specific_metadata_attributes(params)
-      case params['elementType']
-      when 'structure'
-        v2_structure_metadata_attributes(params)
-      when 'path'
-        v2_path_metadata_attributes(params)
-      else
-        {}
-      end
-    end
-
-    def v2_structure_metadata_attributes(params)
-      category = params.dig('definition', 'structureCategory')
-      return {} unless category
-
-      { 'structureCategory' => category }
-    end
-
-    def v2_path_metadata_attributes(params)
-      definition = params.fetch('definition', {})
-      attributes = { 'width' => definition['width'] }
-      attributes['thickness'] = definition['thickness'] if definition.key?('thickness')
-      attributes
     end
 
     def builder_params_for_v2(
@@ -252,21 +193,13 @@ module SU_MCP
       parent_entity: nil,
       lifecycle_target: nil
     )
-      public_params = params.fetch('__public_params__', params)
-
       {
         'elementType' => params.fetch('elementType'),
-        '__public_params__' => public_params,
         'hosting' => resolved_section(params['hosting'], 'resolved_target', hosting_entity),
         'placement' => resolved_section(params['placement'], 'resolved_parent', parent_entity),
         'lifecycle' => resolved_section(params['lifecycle'], 'resolved_target', lifecycle_target)
       }.tap do |builder_params|
         builder_params.merge!(v2_builder_payload(params))
-        metadata = params.fetch('metadata', {})
-        if metadata.key?('sourceElementId')
-          builder_params['sourceElementId'] = metadata['sourceElementId']
-        end
-        builder_params['status'] = metadata['status'] if metadata.key?('status')
       end
     end
 
@@ -278,49 +211,104 @@ module SU_MCP
 
     def v2_builder_payload(params)
       case params['elementType']
-      when 'path'
-        path_builder_payload(params)
-      when 'structure'
-        structure_builder_payload(params)
+      when 'path', 'structure'
+        migrated_builder_payload(params)
+      when 'pad'
+        legacy_pad_builder_payload(params)
+      when 'retaining_edge'
+        legacy_retaining_edge_builder_payload(params)
+      when 'planting_mass'
+        legacy_planting_mass_builder_payload(params)
+      when 'tree_proxy'
+        legacy_tree_proxy_builder_payload(params)
       else
         {}
       end
     end
 
-    def path_builder_payload(params)
-      definition = params.fetch('definition')
-      path_payload = {
-        'centerline' => definition['centerline'],
-        'width' => definition['width']
-      }
-      path_payload['thickness'] = definition['thickness'] if definition.key?('thickness')
-      path_payload['elevation'] = definition['elevation'] if definition.key?('elevation')
-
-      { 'path' => path_payload }
-    end
-
-    def structure_builder_payload(params)
-      definition = params.fetch('definition')
-      payload = {
-        'structureCategory' => definition['structureCategory']
-      }
-      payload['footprint'] = definition['footprint'] if definition.key?('footprint')
-      payload['elevation'] = definition['elevation'] if definition.key?('elevation')
-      payload['height'] = definition['height'] if definition.key?('height')
+    def migrated_builder_payload(params)
+      payload = { 'definition' => params.fetch('definition') }
+      payload['sceneProperties'] = params['sceneProperties'] if params.key?('sceneProperties')
+      payload['representation'] = params['representation'] if params.key?('representation')
       payload
     end
 
-    def create_site_element_v2_adopt(params)
+    def legacy_scene_properties_payload(params)
+      {}.tap do |payload|
+        scene_properties = params.fetch('sceneProperties', {})
+        representation = params.fetch('representation', {})
+
+        payload['name'] = scene_properties['name'] if scene_properties.key?('name')
+        payload['tag'] = scene_properties['tag'] if scene_properties.key?('tag')
+        payload['material'] = representation['material'] if representation.key?('material')
+      end
+    end
+
+    def legacy_pad_builder_payload(params)
+      definition = params.fetch('definition', {})
+      legacy_scene_properties_payload(params).merge(
+        'footprint' => definition['footprint'],
+        'elevation' => definition.fetch('elevation', 0.0),
+        'thickness' => definition['thickness']
+      )
+    end
+
+    def legacy_retaining_edge_builder_payload(params)
+      definition = params.fetch('definition', {})
+      legacy_scene_properties_payload(params).merge(
+        'retaining_edge' => {
+          'polyline' => definition['polyline'],
+          'height' => definition['height'],
+          'thickness' => definition['thickness']
+        }.tap do |payload|
+          payload['elevation'] = definition['elevation'] if definition.key?('elevation')
+        end
+      )
+    end
+
+    def legacy_planting_mass_builder_payload(params)
+      definition = params.fetch('definition', {})
+      legacy_scene_properties_payload(params).merge(
+        'planting_mass' => {
+          'boundary' => definition['boundary'],
+          'averageHeight' => definition['averageHeight']
+        }.tap do |payload|
+          payload['elevation'] = definition['elevation'] if definition.key?('elevation')
+          if definition.key?('plantingCategory')
+            payload['plantingCategory'] = definition['plantingCategory']
+          end
+        end
+      )
+    end
+
+    def legacy_tree_proxy_builder_payload(params)
+      definition = params.fetch('definition', {})
+      legacy_scene_properties_payload(params).merge(
+        'tree_proxy' => {
+          'position' => definition['position'],
+          'canopyDiameterX' => definition['canopyDiameterX'],
+          'height' => definition['height'],
+          'trunkDiameter' => definition['trunkDiameter']
+        }.tap do |payload|
+          if definition.key?('canopyDiameterY')
+            payload['canopyDiameterY'] = definition['canopyDiameterY']
+          end
+          payload['speciesHint'] = definition['speciesHint'] if definition.key?('speciesHint')
+        end
+      )
+    end
+
+    def create_site_element_v2_adopt(params, public_params:)
       entity = resolve_v2_target_entity(params.dig('lifecycle', 'target'), section: 'lifecycle')
       return entity if refusal_response?(entity)
 
       run_v2_operation do
-        metadata_writer.write!(entity, v2_metadata_attributes(params, state: 'Adopted'))
+        metadata_writer.write!(entity, metadata_attributes(public_params, state: 'Adopted'))
         success_result('adopted', entity)
       end
     end
 
-    def create_site_element_v2_replace(params)
+    def create_site_element_v2_replace(params, public_params:)
       previous_entity = resolve_v2_target_entity(
         params.dig('lifecycle', 'target'),
         section: 'lifecycle'
@@ -336,11 +324,11 @@ module SU_MCP
           lifecycle_target: previous_entity,
           parent_entity: parent_entity
         )
-        replacement_result(entity, previous_entity, params)
+        replacement_result(entity, previous_entity, public_params)
       end
     end
 
-    def create_site_element_v2_new(params)
+    def create_site_element_v2_new(params, public_params:)
       hosting_entity = resolve_v2_hosting_entity(params)
       return hosting_entity if refusal_response?(hosting_entity)
 
@@ -353,7 +341,7 @@ module SU_MCP
           hosting_entity: hosting_entity,
           parent_entity: parent_entity
         )
-        metadata_writer.write!(entity, v2_metadata_attributes(params, state: 'Created'))
+        metadata_writer.write!(entity, metadata_attributes(public_params, state: 'Created'))
         success_result('created', entity)
       end
     end
@@ -433,20 +421,21 @@ module SU_MCP
     end
 
     def structure_metadata_attributes(params)
-      return {} unless params['structureCategory']
+      category = params.dig('definition', 'structureCategory')
+      return {} unless category
 
-      { 'structureCategory' => params['structureCategory'] }
+      { 'structureCategory' => category }
     end
 
     def path_metadata_attributes(params)
-      payload = params.fetch('path', {})
+      payload = params.fetch('definition', {})
       attributes = { 'width' => payload['width'] }
       attributes['thickness'] = payload['thickness'] if payload.key?('thickness')
       attributes
     end
 
     def retaining_edge_metadata_attributes(params)
-      payload = params.fetch('retaining_edge', {})
+      payload = params.fetch('definition', {})
       {
         'height' => payload['height'],
         'thickness' => payload['thickness']
@@ -454,7 +443,7 @@ module SU_MCP
     end
 
     def planting_mass_metadata_attributes(params)
-      payload = params.fetch('planting_mass', {})
+      payload = params.fetch('definition', {})
       attributes = { 'averageHeight' => payload['averageHeight'] }
       if payload.key?('plantingCategory')
         attributes['plantingCategory'] = payload['plantingCategory']
@@ -463,7 +452,7 @@ module SU_MCP
     end
 
     def tree_proxy_metadata_attributes(params)
-      payload = params.fetch('tree_proxy', {})
+      payload = params.fetch('definition', {})
       attributes = {
         'height' => payload['height'],
         'canopyDiameterX' => payload['canopyDiameterX'],
