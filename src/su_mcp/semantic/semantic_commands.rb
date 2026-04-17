@@ -5,6 +5,7 @@ require_relative 'managed_object_metadata'
 require_relative 'pad_builder'
 require_relative 'request_normalizer'
 require_relative 'request_validator'
+require_relative '../runtime/tool_response'
 require_relative 'serializer'
 require_relative 'structure_builder'
 require_relative 'target_resolver'
@@ -95,11 +96,10 @@ module SU_MCP
       model.start_operation(METADATA_OPERATION_NAME, true)
       operation_started = true
       metadata_writer.apply_prepared_update(entity, prepared_update)
-      result = {
-        success: true,
+      result = ToolResponse.success(
         outcome: 'updated',
         managedObject: serializer.serialize(entity)
-      }
+      )
       model.commit_operation
       result
     rescue StandardError
@@ -126,7 +126,7 @@ module SU_MCP
     def metadata_update_refusal(prepared_update)
       return nil unless prepared_update[:outcome] == 'refused'
 
-      { success: true, outcome: 'refused', refusal: prepared_update[:refusal] }
+      ToolResponse.refusal_result(prepared_update[:refusal])
     end
 
     def target_not_found_refusal
@@ -138,16 +138,7 @@ module SU_MCP
     end
 
     def refusal(code, message, details = nil)
-      response = {
-        success: true,
-        outcome: 'refused',
-        refusal: {
-          code: code,
-          message: message
-        }
-      }
-      response[:refusal][:details] = details if details
-      response
+      ToolResponse.refusal(code: code, message: message, details: details)
     end
 
     def resolve_v2_target_entity(target, section:)
@@ -323,11 +314,10 @@ module SU_MCP
     end
 
     def success_result(outcome, entity)
-      {
-        success: true,
+      ToolResponse.success(
         outcome: outcome,
         managedObject: serializer.serialize(entity)
-      }
+      )
     end
 
     def type_specific_metadata_attributes(params)

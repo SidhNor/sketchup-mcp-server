@@ -2,6 +2,7 @@
 
 require_relative 'entity_relocator'
 require_relative 'hierarchy_entity_serializer'
+require_relative '../runtime/tool_response'
 require_relative 'target_resolver'
 
 module SU_MCP
@@ -34,12 +35,11 @@ module SU_MCP
         group = target_collection_for(parent).add_group
         relocated_children = relocator.relocate(entities: children, parent: group)
 
-        {
-          success: true,
+        ToolResponse.success(
           outcome: 'created',
           group: serializer.serialize(group),
           children: relocated_children.map { |entity| serializer.serialize(entity) }
-        }
+        )
       end
     end
 
@@ -196,12 +196,11 @@ module SU_MCP
     end
 
     def reparent_success(parent, relocated_entities)
-      {
-        success: true,
+      ToolResponse.success(
         outcome: 'reparented',
         parent: parent ? serializer.serialize(parent) : nil,
         entities: relocated_entities.map { |entity| serializer.serialize(entity) }
-      }.compact
+      ).compact
     end
 
     def target_collection_for(parent)
@@ -229,16 +228,7 @@ module SU_MCP
     end
 
     def refusal(code, message, details = nil)
-      response = {
-        success: true,
-        outcome: 'refused',
-        refusal: {
-          code: code,
-          message: message
-        }
-      }
-      response[:refusal][:details] = details if details
-      response
+      ToolResponse.refusal(code: code, message: message, details: details)
     end
   end
   # rubocop:enable Metrics/ClassLength

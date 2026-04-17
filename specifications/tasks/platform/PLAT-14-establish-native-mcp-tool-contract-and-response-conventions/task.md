@@ -1,7 +1,7 @@
 # Task: PLAT-14 Establish Native MCP Tool Contract And Response Conventions
 **Task ID**: `PLAT-14`
 **Title**: `Establish Native MCP Tool Contract And Response Conventions`
-**Status**: `planned`
+**Status**: `completed`
 **Priority**: `P1`
 **Date**: `2026-04-17`
 
@@ -100,3 +100,32 @@ Scenario: The task stays bounded to the highest-value platform seams
 - representative native read, mutation, and refusal flows expose consistent MCP-visible result or refusal shapes
 - invalid known-option refusals expose supported values in `refusal.details.allowedValues` when the runtime can determine them
 - future native tool work can extend one shared contract seam without redefining metadata and response conventions locally
+
+## Implementation Notes
+
+- Added [NativeToolDefinition](../../../../src/su_mcp/runtime/native/tool_definition.rb) so the native catalog now validates explicit `name`, `title`, `description`, `annotations`, `handler_key`, `input_schema`, and `classification` for every public tool.
+- Classified all current public tools as either `first_class` or `escape_hatch`, with `eval_ruby` as the only `escape_hatch` entry.
+- Added [ToolResponse](../../../../src/su_mcp/runtime/tool_response.rb) as the shared Ruby-owned builder for structured success and refusal envelopes.
+- Migrated representative semantic and hierarchy runtime paths onto the shared response helpers without changing public tool names or family payload ownership.
+- Added a centralized runtime failure-translation seam in [mcp_runtime_loader.rb](../../../../src/su_mcp/runtime/native/mcp_runtime_loader.rb) so raised handler failures are translated at the native MCP boundary instead of being shaped ad hoc inside command families.
+
+## Validation Notes
+
+- Passed focused TDD checks for:
+  - `bundle exec ruby -Itest test/runtime/tool_response_test.rb`
+  - `bundle exec ruby -Itest test/runtime/native/mcp_runtime_loader_test.rb`
+  - `bundle exec ruby -Itest test/semantic/semantic_commands_test.rb`
+  - `bundle exec ruby -Itest test/semantic/hierarchy_maintenance_commands_test.rb`
+- Passed broad validation for the changed Ruby surface:
+  - `bundle exec rake ruby:test`
+  - `bundle exec rake ruby:lint`
+  - `bundle exec rake package:verify`
+- Completed external codereview with `grok-code`; no confirmed correctness or architecture issues remained after preserving original backtraces on translated runtime failures.
+- Existing vendored native transport contract tests in [test/runtime/native/mcp_runtime_native_contract_test.rb](../../../../test/runtime/native/mcp_runtime_native_contract_test.rb) remain present but were skipped in this checkout because the staged native vendor runtime is unavailable locally.
+
+## Remaining Manual Verification
+
+- Run representative native MCP requests inside a live SketchUp host against the packaged extension and confirm:
+  - first-class tools still return the expected structured result envelopes
+  - invalid known-option refusals still expose `refusal.details.allowedValues`
+  - raised runtime failures surface on the MCP error path rather than as successful structured results

@@ -337,6 +337,20 @@ class SemanticCommandsTest < Minitest::Test
     )
   end
 
+  def test_set_entity_metadata_uses_the_shared_refusal_envelope_for_missing_mutations
+    commands = SU_MCP::SemanticCommands.new(model: @model)
+
+    result = commands.set_entity_metadata('target' => { 'sourceElementId' => 'structure-001' })
+
+    assert_equal(
+      SU_MCP::ToolResponse.refusal(
+        code: 'missing_metadata_change',
+        message: 'At least one metadata change is required.'
+      ),
+      result
+    )
+  end
+
   def test_create_site_element_refuses_non_positive_structure_height
     commands = SU_MCP::SemanticCommands.new(model: @model)
 

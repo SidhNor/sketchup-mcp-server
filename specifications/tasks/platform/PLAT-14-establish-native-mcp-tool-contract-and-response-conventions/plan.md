@@ -1,7 +1,7 @@
 # Technical Plan: PLAT-14 Establish Native MCP Tool Contract And Response Conventions
 **Task ID**: `PLAT-14`
 **Title**: `Establish Native MCP Tool Contract And Response Conventions`
-**Status**: `finalized`
+**Status**: `completed`
 **Date**: `2026-04-17`
 
 ## Source Task
@@ -266,6 +266,18 @@ flowchart TD
 - Representative-family migration could stop too early and leave the helpers unproven: require semantic and hierarchy adoption as mandatory completion criteria.
 - Mixed posture outside the representative adopters could be mistaken for an unplanned regression: document that modeling-family domain-exception cleanup is intentionally deferred rather than silently left ambiguous.
 - Scope could drift into full-catalog payload redesign: keep non-semantic adoption optional and mechanical only, and defer deeper editing/modeling redesign to follow-on work.
+
+## Implementation Notes
+
+- The strict catalog seam shipped as [NativeToolDefinition](../../../../src/su_mcp/runtime/native/tool_definition.rb) consumed by [McpRuntimeLoader](../../../../src/su_mcp/runtime/native/mcp_runtime_loader.rb), preserving the existing loader as the single native catalog owner.
+- Shared response helpers shipped as [ToolResponse](../../../../src/su_mcp/runtime/tool_response.rb).
+- Representative adoption was completed in:
+  - [SemanticCommands](../../../../src/su_mcp/semantic/semantic_commands.rb)
+  - [HierarchyMaintenanceCommands](../../../../src/su_mcp/semantic/hierarchy_maintenance_commands.rb)
+  - [Semantic::RequestValidator](../../../../src/su_mcp/semantic/request_validator.rb)
+  - [Semantic::ManagedObjectMetadata](../../../../src/su_mcp/semantic/managed_object_metadata.rb)
+- Runtime failure translation was validated locally through loader-level wrapper tests with a stubbed `MCP::Tool` seam because the vendored native runtime is not available in this checkout.
+- The existing vendored transport contract tests remain the intended integration proof once the staged native vendor runtime is available locally or in CI.
 
 ## Premortem
 

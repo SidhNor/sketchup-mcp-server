@@ -2,6 +2,7 @@
 
 require_relative '../../test_helper'
 require 'tmpdir'
+require_relative '../../../src/su_mcp/runtime/tool_response'
 require_relative '../../../src/su_mcp/runtime/native/mcp_runtime_loader'
 
 # rubocop:disable Metrics/ClassLength
@@ -535,6 +536,128 @@ class McpRuntimeLoaderTest < Minitest::Test
     )
   end
 
+  def test_tool_catalog_assigns_explicit_classification_to_every_public_native_tool
+    catalog = @loader.tool_catalog
+
+    assert_equal(
+      CANONICAL_NATIVE_TOOL_NAMES,
+      catalog.map { |tool| tool.fetch(:name) }
+    )
+    assert_equal(
+      ['escape_hatch'],
+      catalog
+        .map { |tool| tool.fetch(:classification) }
+        .uniq
+        .select { |classification| classification == 'escape_hatch' }
+    )
+    assert_equal(
+      CANONICAL_NATIVE_TOOL_NAMES.length,
+      catalog.count { |tool| %w[first_class escape_hatch].include?(tool.fetch(:classification)) }
+    )
+  end
+
+  def test_eval_ruby_is_the_only_escape_hatch_tool_definition
+    catalog = @loader.tool_catalog
+
+    assert_equal(
+      ['eval_ruby'],
+      catalog
+        .select { |tool| tool.fetch(:classification) == 'escape_hatch' }
+        .map { |tool| tool.fetch(:name) }
+    )
+  end
+
+  def test_loader_exposes_a_private_tool_failure_translation_seam
+    assert_includes(@loader.private_methods, :translate_tool_failure)
+  end
+
+  def test_build_tool_preserves_first_class_structured_results
+    with_stubbed_mcp_tool do
+      tool = @loader.send(
+        :build_tool,
+        name: 'create_group',
+        title: 'Create Group Container',
+        description: 'Create a group container.',
+        annotations: { read_only_hint: false, destructive_hint: false },
+        input_schema: {},
+        classification: 'first_class',
+        &->(_arguments) { SU_MCP::ToolResponse.success(outcome: 'created', group: { entityId: '42' }) }
+      )
+
+      response = tool.call(server_context: :ignored, children: [])
+
+      assert_equal(
+        { success: true, outcome: 'created', group: { entityId: '42' } },
+        response.structured_content
+      )
+    end
+  end
+
+  def test_build_tool_preserves_escape_hatch_raw_return_values
+    with_stubbed_mcp_tool do
+      tool = @loader.send(
+        :build_tool,
+        name: 'eval_ruby',
+        title: 'Evaluate Ruby',
+        description: 'Evaluate arbitrary Ruby code inside SketchUp.',
+        annotations: { read_only_hint: false, destructive_hint: false },
+        input_schema: {},
+        classification: 'escape_hatch',
+        &->(_arguments) { '2' }
+      )
+
+      response = tool.call(server_context: :ignored, code: '1 + 1')
+
+      assert_equal('2', response.structured_content)
+    end
+  end
+
+  def test_build_tool_translates_raised_handler_failures_through_the_runtime_boundary
+    with_stubbed_mcp_tool do
+      tool = @loader.send(
+        :build_tool,
+        name: 'eval_ruby',
+        title: 'Evaluate Ruby',
+        description: 'Evaluate arbitrary Ruby code inside SketchUp.',
+        annotations: { read_only_hint: false, destructive_hint: false },
+        input_schema: {},
+        classification: 'escape_hatch',
+        &->(_arguments) { raise 'boom' }
+      )
+
+      error = assert_raises(RuntimeError) do
+        tool.call(server_context: :ignored, code: 'raise "boom"')
+      end
+
+      assert_equal('Native MCP tool eval_ruby failed: boom', error.message)
+    end
+  end
+
+  def test_build_tool_translates_missing_handler_failures_through_the_runtime_boundary
+    with_stubbed_mcp_tool do
+      tool = @loader.send(
+        :build_tool,
+        name: 'create_group',
+        title: 'Create Group Container',
+        description: 'Create a group container.',
+        annotations: { read_only_hint: false, destructive_hint: false },
+        input_schema: {},
+        classification: 'first_class',
+        &@loader.send(:build_tool_handler, :create_group, {})
+      )
+
+      error = assert_raises(RuntimeError) do
+        tool.call(server_context: :ignored, children: [])
+      end
+
+      assert_equal(
+        'Native MCP tool create_group failed: ' \
+        'No native runtime handler registered for create_group',
+        error.message
+      )
+    end
+  end
+
   private
 
   # rubocop:disable Metrics/MethodLength
@@ -611,5 +734,36 @@ class McpRuntimeLoaderTest < Minitest::Test
 
     skip('staged experimental vendor runtime not present in repo checkout')
   end
+
+  # rubocop:disable Metrics/MethodLength
+  def with_stubbed_mcp_tool
+    previous_mcp = Object.const_get(:MCP) if Object.const_defined?(:MCP)
+    Object.send(:remove_const, :MCP) if Object.const_defined?(:MCP)
+
+    response_class = Class.new do
+      attr_reader :content, :structured_content
+
+      def initialize(content, structured_content:)
+        @content = content
+        @structured_content = structured_content
+      end
+    end
+    tool_module = Module.new do
+      define_singleton_method(:define) do |**_kwargs, &block|
+        block
+      end
+    end
+    tool_module.const_set(:Response, response_class)
+
+    mcp_module = Module.new
+    mcp_module.const_set(:Tool, tool_module)
+    Object.const_set(:MCP, mcp_module)
+
+    yield
+  ensure
+    Object.send(:remove_const, :MCP) if Object.const_defined?(:MCP)
+    Object.const_set(:MCP, previous_mcp) if previous_mcp
+  end
+  # rubocop:enable Metrics/MethodLength
 end
 # rubocop:enable Metrics/ClassLength

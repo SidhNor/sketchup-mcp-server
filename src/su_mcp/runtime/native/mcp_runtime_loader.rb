@@ -3,6 +3,8 @@
 require 'json'
 require 'stringio'
 
+require_relative 'tool_definition'
+
 module SU_MCP
   # Loader for the staged Ruby-native MCP runtime.
   # rubocop:disable Metrics/ClassLength
@@ -155,13 +157,22 @@ module SU_MCP
           description: entry.fetch(:description),
           annotations: entry.dig(:metadata, :annotations),
           input_schema: runtime_input_schema(entry.fetch(:input_schema)),
+          classification: entry.fetch(:classification),
           &build_tool_handler(entry.fetch(:handler_key), handler_map)
         )
       end
     end
 
-    # rubocop:disable Metrics/MethodLength
-    def build_tool(name:, title:, description:, annotations:, input_schema:, &handler)
+    # rubocop:disable Metrics/MethodLength, Metrics/ParameterLists
+    def build_tool(
+      name:,
+      title:,
+      description:,
+      annotations:,
+      input_schema:,
+      classification:,
+      &handler
+    )
       normalizer = method(:stringify_keys)
 
       MCP::Tool.define(
@@ -174,14 +185,19 @@ module SU_MCP
         arguments = kwargs.dup
         arguments.delete(:server_context)
 
-        result = handler.call(normalizer.call(arguments))
+        result = invoke_tool_handler(
+          handler,
+          normalizer.call(arguments),
+          tool_name: name,
+          classification: classification
+        )
         MCP::Tool::Response.new(
           [{ type: 'text', text: JSON.generate(result) }],
           structured_content: result
         )
       end
     end
-    # rubocop:enable Metrics/MethodLength
+    # rubocop:enable Metrics/MethodLength, Metrics/ParameterLists
 
     def stringify_keys(value)
       case value
@@ -199,7 +215,7 @@ module SU_MCP
     def build_tool_handler(handler_key, handler_map)
       lambda do |arguments|
         handler = handler_map.fetch(handler_key) do
-          raise NotImplementedError, "No native runtime handler registered for #{handler_key}"
+          raise "No native runtime handler registered for #{handler_key}"
         end
 
         if arguments.empty?
@@ -210,13 +226,31 @@ module SU_MCP
       end
     end
 
+    def invoke_tool_handler(handler, arguments, tool_name:, classification:)
+      result = handler.call(arguments)
+      normalize_tool_result(result, classification: classification)
+    rescue StandardError => e
+      translated_error = translate_tool_failure(e, tool_name: tool_name)
+      translated_error.set_backtrace(e.backtrace)
+      raise translated_error
+    end
+
+    def normalize_tool_result(result, classification:)
+      return result if classification == 'escape_hatch'
+
+      result
+    end
+
     # rubocop:disable Metrics/MethodLength
     def primary_tool_catalog
       [
         tool_entry(
           name: 'ping',
+          title: 'Runtime Health Check',
           description: 'Local SketchUp MCP runtime health check',
           handler_key: :ping,
+          annotations: { read_only_hint: true, destructive_hint: false },
+          classification: 'first_class',
           input_schema: {
             type: 'object',
             properties: {},
@@ -225,13 +259,12 @@ module SU_MCP
         ),
         tool_entry(
           name: 'get_scene_info',
+          title: 'Get Scene Summary',
           description: 'Get a structured summary of the current SketchUp scene for broad ' \
                        'grounding before more targeted inspection tools are used.',
           handler_key: :get_scene_info,
-          metadata: {
-            title: 'Get Scene Summary',
-            annotations: { read_only_hint: true, destructive_hint: false }
-          },
+          annotations: { read_only_hint: true, destructive_hint: false },
+          classification: 'first_class',
           input_schema: {
             type: 'object',
             properties: {
@@ -242,13 +275,12 @@ module SU_MCP
         ),
         tool_entry(
           name: 'list_entities',
+          title: 'List Top-Level Entities',
           description: 'List top-level SketchUp model entities with an optional limit and ' \
                        'optional hidden-entity inclusion.',
           handler_key: :list_entities,
-          metadata: {
-            title: 'List Top-Level Entities',
-            annotations: { read_only_hint: true, destructive_hint: false }
-          },
+          annotations: { read_only_hint: true, destructive_hint: false },
+          classification: 'first_class',
           input_schema: {
             type: 'object',
             properties: {
@@ -260,14 +292,13 @@ module SU_MCP
         ),
         tool_entry(
           name: 'find_entities',
+          title: 'Find Scene Entities',
           description: 'Find scene entities using the supported MVP targeting fields and ' \
                        'return explicit match summaries. Supports identity references, ' \
                        'name, tag, and material only.',
           handler_key: :find_entities,
-          metadata: {
-            title: 'Find Scene Entities',
-            annotations: { read_only_hint: true, destructive_hint: false }
-          },
+          annotations: { read_only_hint: true, destructive_hint: false },
+          classification: 'first_class',
           input_schema: {
             type: 'object',
             required: ['query'],
@@ -295,14 +326,13 @@ module SU_MCP
       [
         tool_entry(
           name: 'sample_surface_z',
+          title: 'Sample Target Surface Elevation',
           description: 'Sample world-space surface elevation from an explicit target at ' \
                        'one or more XY points in meters. Callers must provide the target ' \
                        'and sample points; this is not broad scene discovery.',
           handler_key: :sample_surface_z,
-          metadata: {
-            title: 'Sample Target Surface Elevation',
-            annotations: { read_only_hint: true, destructive_hint: false }
-          },
+          annotations: { read_only_hint: true, destructive_hint: false },
+          classification: 'first_class',
           input_schema: {
             type: 'object',
             required: %w[target samplePoints],
@@ -320,12 +350,11 @@ module SU_MCP
         ),
         tool_entry(
           name: 'get_entity_info',
+          title: 'Get Entity Information',
           description: 'Get structured information for a specific SketchUp entity by id.',
           handler_key: :get_entity_info,
-          metadata: {
-            title: 'Get Entity Information',
-            annotations: { read_only_hint: true, destructive_hint: false }
-          },
+          annotations: { read_only_hint: true, destructive_hint: false },
+          classification: 'first_class',
           input_schema: {
             type: 'object',
             required: ['id'],
@@ -337,51 +366,47 @@ module SU_MCP
         ),
         tool_entry(
           name: 'create_site_element',
+          title: 'Create Semantic Site Element',
           description: 'Create a managed semantic site element in SketchUp. Current support ' \
                        'is limited to structure, pad, path, retaining_edge, ' \
                        'planting_mass, and tree_proxy creation.',
           handler_key: :create_site_element,
-          metadata: {
-            title: 'Create Semantic Site Element',
-            annotations: { read_only_hint: false, destructive_hint: false }
-          },
+          annotations: { read_only_hint: false, destructive_hint: false },
+          classification: 'first_class',
           input_schema: create_site_element_schema
         ),
         tool_entry(
           name: 'set_entity_metadata',
+          title: 'Set Entity Metadata',
           description: 'Update semantic metadata on an existing managed object in ' \
                        'SketchUp. Current support is limited to status updates for ' \
                        'managed objects and structureCategory updates for managed ' \
                        'structure objects.',
           handler_key: :set_entity_metadata,
-          metadata: {
-            title: 'Set Entity Metadata',
-            annotations: { read_only_hint: false, destructive_hint: false }
-          },
+          annotations: { read_only_hint: false, destructive_hint: false },
+          classification: 'first_class',
           input_schema: set_entity_metadata_schema
         ),
         tool_entry(
           name: 'create_group',
+          title: 'Create Group Container',
           description: 'Create a group container for semantic hierarchy-maintenance ' \
                        'work. Optionally relocate supported child groups or components ' \
                        'into the new container.',
           handler_key: :create_group,
-          metadata: {
-            title: 'Create Group Container',
-            annotations: { read_only_hint: false, destructive_hint: false }
-          },
+          annotations: { read_only_hint: false, destructive_hint: false },
+          classification: 'first_class',
           input_schema: create_group_schema
         ),
         tool_entry(
           name: 'reparent_entities',
+          title: 'Reparent Supported Entities',
           description: 'Reparent supported group or component entities under an explicit ' \
                        'parent group or to model root as a narrow hierarchy-maintenance ' \
                        'operation.',
           handler_key: :reparent_entities,
-          metadata: {
-            title: 'Reparent Supported Entities',
-            annotations: { read_only_hint: false, destructive_hint: false }
-          },
+          annotations: { read_only_hint: false, destructive_hint: false },
+          classification: 'first_class',
           input_schema: reparent_entities_schema
         )
       ]
@@ -392,11 +417,11 @@ module SU_MCP
       [
         tool_entry(
           name: 'create_component',
+          title: 'Create Component',
           description: 'Create a new component in SketchUp.',
           handler_key: :create_component,
-          metadata: {
-            annotations: { read_only_hint: false, destructive_hint: false }
-          },
+          annotations: { read_only_hint: false, destructive_hint: false },
+          classification: 'first_class',
           input_schema: {
             type: 'object',
             properties: {
@@ -409,14 +434,20 @@ module SU_MCP
         ),
         tool_entry(
           name: 'delete_component',
+          title: 'Delete Component',
           description: 'Delete a component by ID.',
           handler_key: :delete_component,
+          annotations: { read_only_hint: false, destructive_hint: false },
+          classification: 'first_class',
           input_schema: identifier_object_schema('id')
         ),
         tool_entry(
           name: 'transform_component',
+          title: 'Transform Component',
           description: "Transform a component's position, rotation, or scale.",
           handler_key: :transform_component,
+          annotations: { read_only_hint: false, destructive_hint: false },
+          classification: 'first_class',
           input_schema: {
             type: 'object',
             required: ['id'],
@@ -431,11 +462,11 @@ module SU_MCP
         ),
         tool_entry(
           name: 'get_selection',
+          title: 'Get Selection Details',
           description: 'Get detailed information about the current selection.',
           handler_key: :get_selection,
-          metadata: {
-            annotations: { read_only_hint: true, destructive_hint: false }
-          },
+          annotations: { read_only_hint: true, destructive_hint: false },
+          classification: 'first_class',
           input_schema: {
             type: 'object',
             properties: {},
@@ -444,8 +475,11 @@ module SU_MCP
         ),
         tool_entry(
           name: 'set_material',
+          title: 'Set Entity Material',
           description: 'Set the material for a SketchUp entity.',
           handler_key: :set_material,
+          annotations: { read_only_hint: false, destructive_hint: false },
+          classification: 'first_class',
           input_schema: {
             type: 'object',
             required: %w[id material],
@@ -458,8 +492,11 @@ module SU_MCP
         ),
         tool_entry(
           name: 'export_scene',
+          title: 'Export Scene',
           description: 'Export the current SketchUp scene.',
           handler_key: :export_scene,
+          annotations: { read_only_hint: false, destructive_hint: false },
+          classification: 'first_class',
           input_schema: {
             type: 'object',
             properties: {
@@ -472,8 +509,11 @@ module SU_MCP
         ),
         tool_entry(
           name: 'boolean_operation',
+          title: 'Run Boolean Operation',
           description: 'Run a boolean operation between two SketchUp groups/components.',
           handler_key: :boolean_operation,
+          annotations: { read_only_hint: false, destructive_hint: false },
+          classification: 'first_class',
           input_schema: {
             type: 'object',
             required: %w[target_id tool_id operation],
@@ -488,8 +528,11 @@ module SU_MCP
         ),
         tool_entry(
           name: 'chamfer_edges',
+          title: 'Chamfer Edges',
           description: 'Create a chamfer on selected edges of a group or component.',
           handler_key: :chamfer_edges,
+          annotations: { read_only_hint: false, destructive_hint: false },
+          classification: 'first_class',
           input_schema: {
             type: 'object',
             required: ['entity_id'],
@@ -504,8 +547,11 @@ module SU_MCP
         ),
         tool_entry(
           name: 'fillet_edges',
+          title: 'Fillet Edges',
           description: 'Create a fillet on selected edges of a group or component.',
           handler_key: :fillet_edges,
+          annotations: { read_only_hint: false, destructive_hint: false },
+          classification: 'first_class',
           input_schema: {
             type: 'object',
             required: ['entity_id'],
@@ -526,8 +572,11 @@ module SU_MCP
       [
         tool_entry(
           name: 'eval_ruby',
+          title: 'Evaluate Ruby',
           description: 'Evaluate arbitrary Ruby code inside SketchUp.',
           handler_key: :eval_ruby,
+          annotations: { read_only_hint: false, destructive_hint: false },
+          classification: 'escape_hatch',
           input_schema: {
             type: 'object',
             required: ['code'],
@@ -542,26 +591,30 @@ module SU_MCP
     # rubocop:enable Metrics/AbcSize
     # rubocop:enable Metrics/MethodLength
 
+    # rubocop:disable Metrics/ParameterLists
     def tool_entry(
       name:,
+      title:,
       description:,
+      annotations:,
       handler_key:,
-      input_schema: default_object_schema,
-      metadata: {}
+      classification:,
+      input_schema: default_object_schema
     )
-      {
+      NativeToolDefinition.build(
         name: name,
+        title: title,
         description: description,
+        annotations: annotations,
         handler_key: handler_key,
         input_schema: input_schema,
-        metadata: {
-          title: metadata[:title],
-          annotations: {
-            read_only_hint: metadata.dig(:annotations, :read_only_hint) || false,
-            destructive_hint: metadata.dig(:annotations, :destructive_hint) || false
-          }
-        }
-      }
+        classification: classification
+      )
+    end
+    # rubocop:enable Metrics/ParameterLists
+
+    def translate_tool_failure(exception, tool_name:)
+      RuntimeError.new("Native MCP tool #{tool_name} failed: #{exception.message}")
     end
 
     def default_object_schema

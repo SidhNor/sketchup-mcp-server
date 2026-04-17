@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require_relative 'geometry_validator'
+require_relative '../runtime/tool_response'
 
 module SU_MCP
   module Semantic
@@ -528,15 +529,7 @@ module SU_MCP
       end
 
       def semantic_refusal(code:, message:, details:)
-        {
-          success: true,
-          outcome: 'refused',
-          refusal: {
-            code: code,
-            message: message,
-            details: details
-          }
-        }
+        ToolResponse.refusal(code: code, message: message, details: details)
       end
     end
     # rubocop:enable Metrics/ClassLength

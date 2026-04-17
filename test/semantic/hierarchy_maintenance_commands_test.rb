@@ -5,6 +5,7 @@ require_relative '../support/semantic_test_support'
 require_relative '../support/scene_query_test_support'
 require_relative '../../src/su_mcp/semantic/hierarchy_maintenance_commands'
 
+# rubocop:disable Metrics/ClassLength
 class HierarchyMaintenanceCommandsTest < Minitest::Test
   include SemanticTestSupport
   include SceneQueryTestSupport
@@ -248,6 +249,21 @@ class HierarchyMaintenanceCommandsTest < Minitest::Test
     assert_equal('cyclic_reparent', result.dig(:refusal, :code))
   end
 
+  def test_create_group_matches_the_shared_success_envelope_shape
+    commands = build_commands
+
+    result = commands.create_group({})
+
+    assert_equal(
+      SU_MCP::ToolResponse.success(
+        outcome: 'created',
+        group: result.fetch(:group),
+        children: result.fetch(:children)
+      ),
+      result
+    )
+  end
+
   def test_create_group_aborts_operation_when_relocation_raises
     child_group = managed_group('raise-001')
     relocator = Class.new do
@@ -292,3 +308,4 @@ class HierarchyMaintenanceCommandsTest < Minitest::Test
     )
   end
 end
+# rubocop:enable Metrics/ClassLength

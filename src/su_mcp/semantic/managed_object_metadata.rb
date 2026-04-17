@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require_relative '../runtime/tool_response'
+
 module SU_MCP
   module Semantic
     # Owns the Managed Scene Object metadata contract and mutation policy.
@@ -131,35 +133,26 @@ module SU_MCP
       end
 
       def unmanaged_object_refusal
-        {
-          outcome: 'refused',
-          refusal: {
-            code: 'unmanaged_object',
-            message: 'Entity is not a Managed Scene Object.'
-          }
-        }
+        refusal_without_success(
+          code: 'unmanaged_object',
+          message: 'Entity is not a Managed Scene Object.'
+        )
       end
 
       def protected_field_refusal(field)
-        {
-          outcome: 'refused',
-          refusal: {
-            code: 'protected_metadata_field',
-            message: 'Field cannot be modified for a Managed Scene Object.',
-            details: { field: field }
-          }
-        }
+        refusal_without_success(
+          code: 'protected_metadata_field',
+          message: 'Field cannot be modified for a Managed Scene Object.',
+          details: { field: field }
+        )
       end
 
       def required_field_refusal(field)
-        {
-          outcome: 'refused',
-          refusal: {
-            code: 'required_metadata_field',
-            message: 'Field cannot be cleared for a Managed Scene Object.',
-            details: { field: field }
-          }
-        }
+        refusal_without_success(
+          code: 'required_metadata_field',
+          message: 'Field cannot be cleared for a Managed Scene Object.',
+          details: { field: field }
+        )
       end
 
       def unsupported_option_refusal(field, value)
@@ -169,14 +162,17 @@ module SU_MCP
         }
         details[:allowedValues] = APPROVED_STRUCTURE_CATEGORIES if field == 'structureCategory'
 
-        {
-          outcome: 'refused',
-          refusal: {
-            code: 'unsupported_option',
-            message: 'Option is not supported for this Managed Scene Object.',
-            details: details
-          }
-        }
+        refusal_without_success(
+          code: 'unsupported_option',
+          message: 'Option is not supported for this Managed Scene Object.',
+          details: details
+        )
+      end
+
+      def refusal_without_success(code:, message:, details: nil)
+        ToolResponse
+          .refusal(code: code, message: message, details: details)
+          .reject { |key, _value| key == :success }
       end
     end
   end
