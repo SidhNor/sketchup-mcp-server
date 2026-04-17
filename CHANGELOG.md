@@ -2,6 +2,47 @@
 
 <!-- version list -->
 
+## v0.13.0 (2026-04-17)
+
+### Bug Fixes
+
+- **packaging**: Create rbz destination directory before archive write
+  ([`2a62bef`](https://github.com/SidhNor/sketchup-mcp-server/commit/2a62bef546fd6b153e39508ecd86edfc78128593))
+
+- **PLAT-10**: Deep-stringify native MCP tool arguments
+  ([`edc5ef0`](https://github.com/SidhNor/sketchup-mcp-server/commit/edc5ef03b63a53eff7a96bd4bddbba30aa76fbe0))
+
+### Documentation
+
+- **PLAT-12**: Finalize runtime-layer support-tree plan
+  ([`3720b9f`](https://github.com/SidhNor/sketchup-mcp-server/commit/3720b9fcb58bebd5fb5fcaccaabd99c7db9dab5b))
+
+- **PLAT-13**: Finalize python bridge retirement plan
+  ([`f68d916`](https://github.com/SidhNor/sketchup-mcp-server/commit/f68d9167864913ab435bb0d6bee82a5024089023))
+
+- **SEM-06**: Finalize sectioned contract cutover plan
+  ([`dd8045b`](https://github.com/SidhNor/sketchup-mcp-server/commit/dd8045b59385a2095ba8fde0afd4434d1e1d5106))
+
+- **SEM-07**: Finalize hierarchy maintenance plan
+  ([`d9c8b59`](https://github.com/SidhNor/sketchup-mcp-server/commit/d9c8b59e0b8ac111250168220c64471cb8bd8dbb))
+
+- **SEM-08**: Adjust scope to extend create_site_element
+  ([`f238553`](https://github.com/SidhNor/sketchup-mcp-server/commit/f2385539d816b2b4649d38e129851d1c8acd0d16))
+
+### Features
+
+- **PLAT-10**: Migrate the current tool surface to Ruby native MCP
+  ([`4675c56`](https://github.com/SidhNor/sketchup-mcp-server/commit/4675c56c6db5334af9fb3ae32f60f6c826259f3c))
+
+### Refactoring
+
+- **PLAT-12**: Reorganize Ruby support tree by runtime layer
+  ([`7b91759`](https://github.com/SidhNor/sketchup-mcp-server/commit/7b917591953f1777a16dc732f1c5aa679c7c48d9))
+
+- **PLAT-13**: Remove python bridge and runtime
+  ([`2d5a640`](https://github.com/SidhNor/sketchup-mcp-server/commit/2d5a640a0c068a5156492da1c10522abab6b3672))
+
+
 ## v0.12.2 (2026-04-16)
 
 ### Bug Fixes
