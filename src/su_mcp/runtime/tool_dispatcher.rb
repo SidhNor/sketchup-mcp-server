@@ -11,6 +11,8 @@ module SU_MCP
       'get_entity_info' => :get_entity_info,
       'create_site_element' => :create_site_element,
       'set_entity_metadata' => :set_entity_metadata,
+      'create_group' => :create_group,
+      'reparent_entities' => :reparent_entities,
       'create_component' => :create_component,
       'delete_component' => :delete_component,
       'transform_component' => :transform_component,

@@ -31,6 +31,24 @@ class ToolDispatcherTest < Minitest::Test
       { success: true, resolution: 'unique', matches: [args.fetch('query')] }
     end
 
+    def create_group(args)
+      @calls << [:create_group, args]
+      {
+        success: true,
+        outcome: 'created',
+        group: { entityId: '42', type: 'group' }
+      }
+    end
+
+    def reparent_entities(args)
+      @calls << [:reparent_entities, args]
+      {
+        success: true,
+        outcome: 'reparented',
+        entities: args.fetch('entities')
+      }
+    end
+
     def sample_surface_z(args)
       @calls << [:sample_surface_z, args]
       { success: true, results: [{ samplePoint: args.fetch('samplePoints').first, status: 'hit' }] }
@@ -57,7 +75,7 @@ class ToolDispatcherTest < Minitest::Test
     # rubocop:enable Naming/AccessorMethodName
 
     private :get_scene_info, :export_scene, :selection_info, :find_entities, :sample_surface_z,
-            :create_site_element, :set_entity_metadata
+            :create_group, :reparent_entities, :create_site_element, :set_entity_metadata
   end
 
   class ExportOnlyTarget
@@ -123,6 +141,64 @@ class ToolDispatcherTest < Minitest::Test
       @target.calls
     )
   end
+
+  # rubocop:disable Metrics/MethodLength
+  def test_dispatches_create_group_to_the_hierarchy_command
+    result = @dispatcher.call(
+      'create_group',
+      {
+        'parent' => { 'persistentId' => '1001' },
+        'children' => [{ 'sourceElementId' => 'tree-001' }]
+      }
+    )
+
+    assert_equal(
+      { success: true, outcome: 'created', group: { entityId: '42', type: 'group' } },
+      result
+    )
+    assert_equal(
+      [[
+        :create_group,
+        {
+          'parent' => { 'persistentId' => '1001' },
+          'children' => [{ 'sourceElementId' => 'tree-001' }]
+        }
+      ]],
+      @target.calls.last(1)
+    )
+  end
+  # rubocop:enable Metrics/MethodLength
+
+  # rubocop:disable Metrics/MethodLength
+  def test_dispatches_reparent_entities_to_the_hierarchy_command
+    result = @dispatcher.call(
+      'reparent_entities',
+      {
+        'parent' => { 'persistentId' => '1002' },
+        'entities' => [{ 'sourceElementId' => 'house-extension-001' }]
+      }
+    )
+
+    assert_equal(
+      {
+        success: true,
+        outcome: 'reparented',
+        entities: [{ 'sourceElementId' => 'house-extension-001' }]
+      },
+      result
+    )
+    assert_equal(
+      [[
+        :reparent_entities,
+        {
+          'parent' => { 'persistentId' => '1002' },
+          'entities' => [{ 'sourceElementId' => 'house-extension-001' }]
+        }
+      ]],
+      @target.calls.last(1)
+    )
+  end
+  # rubocop:enable Metrics/MethodLength
 
   # rubocop:disable Metrics/MethodLength
   def test_dispatches_sample_surface_z_to_the_scene_query_command

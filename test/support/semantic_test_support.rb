@@ -29,7 +29,9 @@ module SemanticTestSupport
   end
 
   class FakeEntitiesCollection
-    attr_reader :groups, :faces
+    include Enumerable
+
+    attr_reader :groups, :faces, :component_instances
 
     def initialize(id_sequence:, layer:, material:)
       @id_sequence = id_sequence
@@ -37,6 +39,7 @@ module SemanticTestSupport
       @material = material
       @groups = []
       @faces = []
+      @component_instances = []
     end
 
     def add_group
@@ -51,6 +54,28 @@ module SemanticTestSupport
       group
     end
 
+    def add_instance(definition, transformation = nil)
+      component_instance = SceneQueryTestSupport::FakeComponentInstance.new(
+        entity_id: @id_sequence.next_entity_id,
+        bounds: SceneQueryTestSupport::FakeBounds.new(
+          min: SceneQueryTestSupport::FakePoint.new(0.0, 0.0, 0.0),
+          max: SceneQueryTestSupport::FakePoint.new(1.0, 1.0, 1.0),
+          center: SceneQueryTestSupport::FakePoint.new(0.5, 0.5, 0.5),
+          size: [1.0, 1.0, 1.0]
+        ),
+        layer: @layer,
+        material: @material,
+        details: {
+          definition: definition,
+          transformation: transformation || SceneQueryTestSupport::FakeTransformation.new(
+            SceneQueryTestSupport::FakePoint.new(0.5, 0.5, 0.5)
+          )
+        }
+      )
+      @component_instances << component_instance
+      component_instance
+    end
+
     def add_face(*points)
       face = FakeFace.new(
         entity_id: @id_sequence.next_entity_id,
@@ -62,11 +87,23 @@ module SemanticTestSupport
       @faces << face
       face
     end
+
+    def length
+      @groups.length + @component_instances.length + @faces.length
+    end
+
+    def each(&block)
+      return enum_for(:each) unless block_given?
+
+      @groups.each(&block)
+      @component_instances.each(&block)
+      @faces.each(&block)
+    end
   end
 
   class FakeGroup < Sketchup::Group
     attr_accessor :name, :layer, :material, :bounds
-    attr_reader :entities, :attributes, :persistent_id
+    attr_reader :entities, :attributes, :persistent_id, :transformation
 
     def initialize(entity_id:, persistent_id:, layer:, material:, id_sequence:)
       super()
@@ -76,6 +113,7 @@ module SemanticTestSupport
       @material = material
       @name = ''
       @bounds = build_bounds
+      @transformation = SceneQueryTestSupport::FakeTransformation.new(build_bounds.center)
       @attributes = Hash.new { |hash, key| hash[key] = {} }
       @entities = FakeEntitiesCollection.new(
         id_sequence: id_sequence,
@@ -108,6 +146,10 @@ module SemanticTestSupport
       return nil unless create
 
       @attributes[name] = {}
+    end
+
+    def move!(transformation)
+      @transformation = transformation
     end
 
     private

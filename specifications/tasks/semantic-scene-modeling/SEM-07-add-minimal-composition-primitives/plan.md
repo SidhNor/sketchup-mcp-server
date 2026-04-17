@@ -347,6 +347,8 @@ flowchart LR
   - no edit-context fields are present
 - Dispatcher tests:
   - both tools dispatch to the new semantic-owned command target
+- Runtime facade/factory integration:
+  - the shared runtime command factory includes the hierarchy command target and can dispatch `create_group`
 - Command tests:
   - empty `create_group` at model root
   - parented `create_group`

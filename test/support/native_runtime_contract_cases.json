@@ -78,6 +78,85 @@
           }
         }
       }
+    },
+    {
+      "case_id": "create_group_created",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "params": {
+          "name": "create_group",
+          "arguments": {
+            "parent": {
+              "persistentId": "1001"
+            },
+            "children": [
+              {
+                "sourceElementId": "tree-001"
+              }
+            ]
+          }
+        },
+        "id": "create-group-created"
+      },
+      "response": {
+        "jsonrpc": "2.0",
+        "id": "create-group-created",
+        "result": {
+          "success": true,
+          "outcome": "created",
+          "group": {
+            "persistentId": "1002",
+            "entityId": "43",
+            "type": "group",
+            "childrenCount": 1
+          },
+          "children": [
+            {
+              "sourceElementId": "tree-001",
+              "persistentId": "2001",
+              "entityId": "77",
+              "type": "group"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "case_id": "reparent_entities_cyclic_refused",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "params": {
+          "name": "reparent_entities",
+          "arguments": {
+            "parent": {
+              "sourceElementId": "group-parent-001"
+            },
+            "entities": [
+              {
+                "sourceElementId": "group-parent-001"
+              }
+            ]
+          }
+        },
+        "id": "reparent-entities-cyclic-refused"
+      },
+      "response": {
+        "jsonrpc": "2.0",
+        "id": "reparent-entities-cyclic-refused",
+        "result": {
+          "success": true,
+          "outcome": "refused",
+          "refusal": {
+            "code": "cyclic_reparent",
+            "message": "Requested reparent would create a hierarchy cycle.",
+            "details": {
+              "field": "parent"
+            }
+          }
+        }
+      }
     }
   ]
 }

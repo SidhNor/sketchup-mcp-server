@@ -93,6 +93,8 @@ The current MCP surface includes scene inspection, semantic scene modeling, and 
 - `sample_surface_z`
 - `create_site_element`
 - `set_entity_metadata`
+- `create_group`
+- `reparent_entities`
 - `create_component`
 - `transform_component`
 - `set_material`
@@ -103,6 +105,7 @@ The current MCP surface includes scene inspection, semantic scene modeling, and 
 
 Public geometric dimensions for `create_site_element` are interpreted and returned in meters, independent of the active SketchUp model unit display settings.
 The public `create_site_element` request is sectioned: `elementType`, `metadata`, `definition`, `hosting`, `placement`, `representation`, and `lifecycle`, with optional `sceneProperties` for wrapper `name` and `tag`.
+The hierarchy-maintenance surface is intentionally narrow: `create_group` creates a plain group container, optionally grouping supplied child groups or component instances, and `reparent_entities` explicitly reparents supported groups or component instances using the same compact target-reference contract (`sourceElementId`, `persistentId`, `entityId`).
 
 ## Local Validation
 

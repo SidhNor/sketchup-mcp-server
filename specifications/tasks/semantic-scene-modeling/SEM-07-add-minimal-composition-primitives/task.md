@@ -1,7 +1,7 @@
 # Task: SEM-07 Add Limited Hierarchy Maintenance Primitives
 **Task ID**: `SEM-07`
 **Title**: `Add Limited Hierarchy Maintenance Primitives`
-**Status**: `planned`
+**Status**: `completed`
 **Priority**: `P1`
 **Date**: `2026-04-17`
 

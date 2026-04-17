@@ -359,6 +359,30 @@ module SU_MCP
             annotations: { read_only_hint: false, destructive_hint: false }
           },
           input_schema: set_entity_metadata_schema
+        ),
+        tool_entry(
+          name: 'create_group',
+          description: 'Create a group container for semantic hierarchy-maintenance ' \
+                       'work. Optionally relocate supported child groups or components ' \
+                       'into the new container.',
+          handler_key: :create_group,
+          metadata: {
+            title: 'Create Group Container',
+            annotations: { read_only_hint: false, destructive_hint: false }
+          },
+          input_schema: create_group_schema
+        ),
+        tool_entry(
+          name: 'reparent_entities',
+          description: 'Reparent supported group or component entities under an explicit ' \
+                       'parent group or to model root as a narrow hierarchy-maintenance ' \
+                       'operation.',
+          handler_key: :reparent_entities,
+          metadata: {
+            title: 'Reparent Supported Entities',
+            annotations: { read_only_hint: false, destructive_hint: false }
+          },
+          input_schema: reparent_entities_schema
         )
       ]
     end
@@ -806,6 +830,35 @@ module SU_MCP
             additionalProperties: false
           },
           clear: string_array_schema
+        },
+        additionalProperties: false
+      }
+    end
+
+    def create_group_schema
+      {
+        type: 'object',
+        properties: {
+          parent: target_reference_schema,
+          children: {
+            type: 'array',
+            items: target_reference_schema
+          }
+        },
+        additionalProperties: false
+      }
+    end
+
+    def reparent_entities_schema
+      {
+        type: 'object',
+        required: ['entities'],
+        properties: {
+          parent: target_reference_schema,
+          entities: {
+            type: 'array',
+            items: target_reference_schema
+          }
         },
         additionalProperties: false
       }

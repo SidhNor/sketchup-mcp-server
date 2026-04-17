@@ -2,11 +2,14 @@
 
 require_relative '../../test_helper'
 require_relative '../../support/scene_query_test_support'
+require_relative '../../support/semantic_test_support'
 require_relative '../../../src/su_mcp/scene_query/scene_query_commands'
 require_relative '../../../src/su_mcp/runtime/native/mcp_runtime_facade'
+require_relative '../../../src/su_mcp/runtime/runtime_command_factory'
 
 class McpRuntimeFacadeTest < Minitest::Test
   include SceneQueryTestSupport
+  include SemanticTestSupport
 
   class RecordingSceneQueryCommands
     attr_reader :calls
@@ -126,5 +129,18 @@ class McpRuntimeFacadeTest < Minitest::Test
     assert_equal(1, factory.calls)
     assert_equal([{ 'type' => 'cube' }], component_commands.calls)
     assert_equal(expected, result)
+  end
+
+  def test_create_group_dispatches_through_the_real_runtime_command_factory
+    Sketchup.active_model_override = build_semantic_model
+    facade = SU_MCP::McpRuntimeFacade.new(
+      runtime_command_factory: SU_MCP::RuntimeCommandFactory.new
+    )
+
+    result = facade.create_group({})
+
+    assert_equal(true, result[:success])
+    assert_equal('created', result[:outcome])
+    assert_equal('group', result.dig(:group, :type))
   end
 end

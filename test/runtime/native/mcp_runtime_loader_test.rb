@@ -15,6 +15,8 @@ class McpRuntimeLoaderTest < Minitest::Test
     get_entity_info
     create_site_element
     set_entity_metadata
+    create_group
+    reparent_entities
     create_component
     delete_component
     transform_component
@@ -183,6 +185,24 @@ class McpRuntimeLoaderTest < Minitest::Test
       set_entity_metadata_tool.fetch('inputSchema').fetch('properties').keys.sort
     )
 
+    create_group_tool = tools.find { |tool| tool.fetch('name') == 'create_group' }
+    assert_equal('Create Group Container', create_group_tool.fetch('title'))
+    assert_equal(
+      %w[children parent],
+      create_group_tool.fetch('inputSchema').fetch('properties').keys.sort
+    )
+
+    reparent_entities_tool = tools.find { |tool| tool.fetch('name') == 'reparent_entities' }
+    assert_equal('Reparent Supported Entities', reparent_entities_tool.fetch('title'))
+    assert_equal(
+      ['entities'],
+      reparent_entities_tool.fetch('inputSchema').fetch('required')
+    )
+    assert_equal(
+      %w[entities parent],
+      reparent_entities_tool.fetch('inputSchema').fetch('properties').keys.sort
+    )
+
     transform_component_tool = tools.find { |tool| tool.fetch('name') == 'transform_component' }
     assert_equal(
       ['id'],
@@ -226,6 +246,61 @@ class McpRuntimeLoaderTest < Minitest::Test
     refute(input_schema.fetch(:properties).key?(:sourceElementId))
     refute(input_schema.fetch(:properties).key?(:path))
     refute(input_schema.fetch(:properties).key?(:material))
+  end
+
+  def test_create_group_tool_schema_uses_compact_target_references_only
+    create_group_tool = @loader.tool_catalog.find do |tool|
+      tool.fetch(:name) == 'create_group'
+    end
+    refute_nil(create_group_tool)
+    input_schema = create_group_tool.fetch(:input_schema)
+
+    assert_equal(%w[children parent], input_schema.fetch(:properties).keys.map(&:to_s).sort)
+    assert_equal(
+      %w[entityId persistentId sourceElementId],
+      input_schema.fetch(:properties).fetch(:parent).fetch(:properties).keys.map(&:to_s).sort
+    )
+    assert_equal(
+      %w[entityId persistentId sourceElementId],
+      input_schema
+        .fetch(:properties)
+        .fetch(:children)
+        .fetch(:items)
+        .fetch(:properties)
+        .keys
+        .map(&:to_s)
+        .sort
+    )
+    refute(input_schema.fetch(:properties).key?(:editContext))
+    refute(input_schema.fetch(:properties).key?(:id))
+  end
+
+  def test_reparent_entities_tool_schema_uses_compact_target_references_only
+    reparent_entities_tool = @loader.tool_catalog.find do |tool|
+      tool.fetch(:name) == 'reparent_entities'
+    end
+    refute_nil(reparent_entities_tool)
+    input_schema = reparent_entities_tool.fetch(:input_schema)
+
+    assert_equal(['entities'], input_schema.fetch(:required))
+    assert_equal(%w[entities parent], input_schema.fetch(:properties).keys.map(&:to_s).sort)
+    assert_equal(
+      %w[entityId persistentId sourceElementId],
+      input_schema
+        .fetch(:properties)
+        .fetch(:entities)
+        .fetch(:items)
+        .fetch(:properties)
+        .keys
+        .map(&:to_s)
+        .sort
+    )
+    assert_equal(
+      %w[entityId persistentId sourceElementId],
+      input_schema.fetch(:properties).fetch(:parent).fetch(:properties).keys.map(&:to_s).sort
+    )
+    refute(input_schema.fetch(:properties).key?(:activePath))
+    refute(input_schema.fetch(:properties).key?(:query))
   end
   # rubocop:enable Metrics/AbcSize, Metrics/MethodLength
   # rubocop:enable Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity
