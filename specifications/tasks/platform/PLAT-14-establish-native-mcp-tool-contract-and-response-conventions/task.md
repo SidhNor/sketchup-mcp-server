@@ -1,7 +1,7 @@
 # Task: PLAT-14 Establish Native MCP Tool Contract And Response Conventions
 **Task ID**: `PLAT-14`
 **Title**: `Establish Native MCP Tool Contract And Response Conventions`
-**Status**: `draft`
+**Status**: `planned`
 **Priority**: `P1`
 **Date**: `2026-04-17`
 
@@ -17,6 +17,7 @@ The Ruby-native MCP runtime is now the canonical public tool host, but the curre
 
 - define one Ruby-owned native tool declaration contract for the public MCP catalog so live tool metadata and runtime registration no longer rely on permissive ad hoc hashes
 - establish shared success, refusal, and error-shaping conventions for the native runtime so command families do not keep returning incompatible envelopes by default
+- ensure structured refusals expose supported option sets in-band when the runtime knows them, so clients can recover from invalid enumerated values without external documentation
 - improve future-tool authoring consistency without reopening broader selector redesign or catalog-wide schema reform in this task
 
 ## Acceptance Criteria
@@ -34,6 +35,7 @@ Scenario: Shared response conventions exist for representative native command fa
   When representative read, mutation, and refusal paths are exercised after this task is complete
   Then the runtime exposes one shared convention for successful structured results
   And the runtime exposes one shared convention for structured refusals where command behavior declines execution
+  And unsupported-option refusals include `refusal.details.allowedValues` whenever the runtime knows the supported set
   And command-level failures that cross the MCP boundary are translated through a shared runtime-owned error-shaping seam
 
 Scenario: Shared conventions remain compatible with the current native public surface
@@ -70,6 +72,9 @@ Scenario: The task stays bounded to the highest-value platform seams
 - Ruby remains the canonical owner of MCP tool registration, response shaping, and SketchUp-facing behavior
 - shared runtime infrastructure should own result envelopes, error translation, and similar cross-cutting conventions in line with the platform HLD
 - public outputs that cross the MCP boundary must remain JSON-serializable
+- unexpected runtime failures must use the MCP error path rather than being wrapped into successful `structuredContent` envelopes
+- escape-hatch tools classified as `escape_hatch` may retain raw return values, but must still use the strict declaration contract and centralized runtime error translation
+- shared refusals must carry supported option values in-band for invalid known-option cases where the runtime already has the authoritative allowed set
 - existing public tool names and current capability contracts should remain stable unless a separate intentional interface change is defined later
 - the task must align the native runtime more closely with `specifications/guidelines/mcp-tool-authoring-sketchup.md` without taking ownership of every guide recommendation at once
 
@@ -87,10 +92,11 @@ Scenario: The task stays bounded to the highest-value platform seams
 
 ## Related Technical Plan
 
-- none yet
+- [Technical Plan](./plan.md)
 
 ## Success Metrics
 
 - the native runtime has one shared public tool declaration contract rather than permissive per-entry catalog authoring
 - representative native read, mutation, and refusal flows expose consistent MCP-visible result or refusal shapes
+- invalid known-option refusals expose supported values in `refusal.details.allowedValues` when the runtime can determine them
 - future native tool work can extend one shared contract seam without redefining metadata and response conventions locally
