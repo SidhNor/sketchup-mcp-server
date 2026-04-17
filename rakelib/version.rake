@@ -23,6 +23,7 @@ end
 namespace :release do
   desc 'Prepare versioned artifacts for semantic-release'
   task prepare: ['version:sync'] do
+    ReleaseSupport.clean_dist!
     Rake::Task['package:verify'].invoke
   end
 end

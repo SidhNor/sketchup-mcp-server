@@ -41,6 +41,7 @@ class RuntimePackageTasksTest < Minitest::Test
                              encoding: 'utf-8')
 
     refute_includes(version_rake, 'uv lock --upgrade-package "$PACKAGE_NAME"')
+    assert_includes(version_rake, 'ReleaseSupport.clean_dist!')
     assert_includes(version_rake, "Rake::Task['package:verify'].invoke")
   end
 
