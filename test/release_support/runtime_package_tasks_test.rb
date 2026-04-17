@@ -1,6 +1,9 @@
 # frozen_string_literal: true
 
+require 'fileutils'
 require 'rake'
+require 'tmpdir'
+require 'zip'
 require_relative '../test_helper'
 
 class RuntimePackageTasksTest < Minitest::Test
@@ -39,5 +42,30 @@ class RuntimePackageTasksTest < Minitest::Test
 
     refute_includes(version_rake, 'uv lock --upgrade-package "$PACKAGE_NAME"')
     assert_includes(version_rake, "Rake::Task['package:verify'].invoke")
+  end
+
+  def test_build_archive_creates_destination_directory_when_missing
+    Dir.mktmpdir do |root|
+      source_dir = File.join(root, 'source')
+      FileUtils.mkdir_p(source_dir)
+
+      source_path = File.join(source_dir, 'su_mcp.rb')
+      File.write(source_path, "# frozen_string_literal: true\n")
+
+      archive_path = Pathname.new(File.join(root, 'nested', 'dist', 'su_mcp-test.rbz'))
+
+      send(
+        :build_archive,
+        destination: archive_path,
+        entries: [Pathname.new(source_path)],
+        relative_path_builder: ->(path) { path.basename.to_s }
+      )
+
+      assert_path_exists(archive_path)
+
+      Zip::File.open(archive_path.to_s) do |archive|
+        assert_equal(['su_mcp.rb'], archive.entries.map(&:name))
+      end
+    end
   end
 end

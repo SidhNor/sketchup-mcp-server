@@ -8,6 +8,7 @@ namespace :package do
   # Shared archive assertions for both package targets.
   # rubocop:disable Metrics/MethodLength
   def build_archive(destination:, entries:, relative_path_builder:)
+    FileUtils.mkdir_p(destination.dirname)
     FileUtils.rm_f(destination)
     Zip::File.open(destination.to_s, create: true) do |archive|
       entries.each do |path|
