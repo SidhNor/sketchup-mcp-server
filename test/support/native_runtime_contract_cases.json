@@ -1,0 +1,83 @@
+{
+  "cases": [
+    {
+      "case_id": "sample_surface_z_hit",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "params": {
+          "name": "sample_surface_z",
+          "arguments": {
+            "target": {
+              "persistentId": "4001"
+            },
+            "samplePoints": [
+              {
+                "x": 5.0,
+                "y": 5.0
+              }
+            ]
+          }
+        },
+        "id": "sample-hit"
+      },
+      "response": {
+        "jsonrpc": "2.0",
+        "id": "sample-hit",
+        "result": {
+          "success": true,
+          "results": [
+            {
+              "samplePoint": {
+                "x": 5.0,
+                "y": 5.0
+              },
+              "status": "hit",
+              "hitPoint": {
+                "x": 5.0,
+                "y": 5.0,
+                "z": 2.5
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "case_id": "set_entity_metadata_invalid_structure_category_refused",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "params": {
+          "name": "set_entity_metadata",
+          "arguments": {
+            "target": {
+              "sourceElementId": "house-extension-001"
+            },
+            "set": {
+              "structureCategory": "garage"
+            }
+          }
+        },
+        "id": "semantic-metadata-invalid-structure-category-refused"
+      },
+      "response": {
+        "jsonrpc": "2.0",
+        "id": "semantic-metadata-invalid-structure-category-refused",
+        "result": {
+          "success": true,
+          "outcome": "refused",
+          "refusal": {
+            "code": "unsupported_option",
+            "message": "Option is not supported for this Managed Scene Object.",
+            "details": {
+              "field": "structureCategory",
+              "value": "garage",
+              "allowedValues": ["main_building", "outbuilding", "extension"]
+            }
+          }
+        }
+      }
+    }
+  ]
+}

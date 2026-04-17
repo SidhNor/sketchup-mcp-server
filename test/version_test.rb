@@ -17,6 +17,14 @@ class VersionTest < Minitest::Test
     assert_equal(root_version, metadata.fetch('version'))
   end
 
+  def test_extension_metadata_describes_the_mcp_runtime
+    metadata = JSON.parse(File.read(File.join(ROOT, 'src/su_mcp/extension.json'),
+                                    encoding: 'utf-8'))
+
+    refute_match(/socket bridge/i, metadata.fetch('description'))
+    assert_match(/MCP runtime/i, metadata.fetch('description'))
+  end
+
   private
 
   def root_version

@@ -3,13 +3,11 @@
 # rubocop:disable Metrics/MethodLength, Metrics/ClassLength
 
 require_relative '../test_helper'
-require_relative '../contracts/contract_test_helper'
 require_relative '../support/semantic_test_support'
 require_relative '../support/scene_query_test_support'
 require_relative '../../src/su_mcp/semantic/semantic_commands'
 
 class SemanticCommandsTest < Minitest::Test
-  include ContractTestHelper
   include SemanticTestSupport
   include SceneQueryTestSupport
 
@@ -811,6 +809,16 @@ class SemanticCommandsTest < Minitest::Test
 
   def normalized_result(result)
     JSON.parse(JSON.generate(result))
+  end
+
+  def contract_cases_by_id
+    @contract_cases_by_id ||= begin
+      contract_path = File.expand_path('../support/semantic_contract_cases.json', __dir__)
+      JSON
+        .parse(File.read(contract_path, encoding: 'utf-8'))
+        .fetch('cases')
+        .to_h { |entry| [entry.fetch('case_id'), entry] }
+    end
   end
 
   def v2_structure_adopt_request

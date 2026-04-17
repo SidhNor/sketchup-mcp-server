@@ -21,9 +21,8 @@ namespace :version do
 end
 
 namespace :release do
-  desc 'Prepare versioned artifacts for python-semantic-release'
+  desc 'Prepare versioned artifacts for semantic-release'
   task prepare: ['version:sync'] do
-    sh 'uv lock --upgrade-package "$PACKAGE_NAME"'
-    Rake::Task['package:verify:all'].invoke
+    Rake::Task['package:verify'].invoke
   end
 end

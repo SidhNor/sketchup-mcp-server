@@ -1,7 +1,7 @@
 # Task: PLAT-13 Retire Python Bridge And Remove Compatibility Runtime
 **Task ID**: `PLAT-13`
 **Title**: `Retire Python Bridge And Remove Compatibility Runtime`
-**Status**: `planned`
+**Status**: `completed`
 **Priority**: `P0`
 **Date**: `2026-04-16`
 
@@ -13,12 +13,12 @@
 
 ## Problem Statement
 
-`PLAT-10` is intentionally scoped to make Ruby-native MCP the canonical public tool host while shrinking Python to a clearly transitional compatibility role. If that migration completes and the native runtime is validated against the real target client set, keeping the Python MCP adapter and local socket bridge in the repository no longer buys enough value to justify their architectural, packaging, documentation, CI, and maintenance overhead. Without a dedicated cleanup task, the repo could remain stuck in a “transition completed but compatibility runtime still present” posture where Ruby is canonical in practice but Python still lingers across docs, agents, build tooling, dependency manifests, release surfaces, tests, and architecture documents.
+`PLAT-10` is intentionally scoped to make the SketchUp-hosted MCP server the canonical public tool host while shrinking Python to a clearly transitional compatibility role. If that migration completes and the server is validated against the real target client set, keeping the Python MCP adapter and local socket bridge in the repository no longer buys enough value to justify their architectural, packaging, documentation, CI, and maintenance overhead. Without a dedicated cleanup task, the repo could remain stuck in a “transition completed but compatibility runtime still present” posture where the supported server is clear in practice but Python still lingers across docs, agents, build tooling, dependency manifests, release surfaces, tests, and architecture documents.
 
 ## Goals
 
-- remove the Python MCP adapter and Python-to-Ruby bridge from the supported platform once Ruby-native MCP has been validated as sufficient for the target client set
-- normalize repository documentation, agent guidance, specifications, CI, dependencies, packaging, and release posture around the single-runtime Ruby-native architecture
+- remove the Python MCP adapter and Python-to-Ruby bridge from the supported platform once the SketchUp-hosted MCP server has been validated as sufficient for the target client set
+- normalize repository documentation, agent guidance, specifications, CI, dependencies, packaging, and release posture around the supported architecture
 - remove the repo-owned Python project shape rather than preserving a dormant Python runtime package after the bridge is retired
 - leave the repository in a coherent post-transition state where Python is no longer implied as a required platform runtime
 
@@ -26,7 +26,7 @@
 
 ```gherkin
 Scenario: Python compatibility runtime is removed after native validation
-  Given `PLAT-10` has made Ruby-native MCP the canonical public tool host
+  Given `PLAT-10` has made the SketchUp-hosted MCP server the canonical public tool host
   And representative native-runtime validation has confirmed that the supported client set does not require the Python compatibility runtime
   When the runtime implementation is reviewed after this task is complete
   Then the Python MCP adapter and the Python-to-Ruby socket bridge are no longer part of the supported runtime path
@@ -47,7 +47,7 @@ Scenario: Release automation does not preserve a dormant Python project
 Scenario: Documentation and guidance no longer describe the bridge as current architecture
   Given repository-facing guidance currently documents a dual-runtime baseline and migration transition
   When the README, agent guidance, HLDs, ADR-linked follow-up docs, setup instructions, and related platform documents are reviewed after this task is complete
-  Then they describe Ruby-native MCP inside SketchUp as the supported runtime architecture
+  Then they describe the MCP server inside SketchUp as the supported runtime architecture
   And obsolete Python-bridge setup, compatibility caveats, and maintenance guidance are removed or explicitly archived
 
 Scenario: Live project-description documents reflect the supported post-transition system
@@ -60,12 +60,12 @@ Scenario: Removal remains bounded to post-transition cleanup rather than new cap
   Given this task exists to finish the runtime transition after `PLAT-10` validation succeeds
   When the completed change set is reviewed
   Then the work is traceable to retiring Python compatibility assets and normalizing the repo around the native runtime
-  And unrelated product-capability expansion or Ruby-side redesign is left outside the task boundary unless explicitly required for the cleanup
+  And unrelated product-capability expansion or redesign is left outside the task boundary unless explicitly required for the cleanup
 ```
 
 ## Non-Goals
 
-- migrating the tool surface to Ruby-native MCP in the first place
+- migrating the tool surface to the SketchUp-hosted MCP server in the first place
 - preserving Python as an optional long-term shim once the validated client set no longer needs it
 - redesigning Ruby command behavior beyond what is required to remove bridge-era compatibility seams
 - introducing new product capabilities unrelated to runtime retirement
@@ -78,7 +78,7 @@ Scenario: Removal remains bounded to post-transition cleanup rather than new cap
 - architecture, setup, and release guidance must converge on one supported runtime posture rather than imply that both remain first-class
 - if any compatibility clients are intentionally dropped as part of the cleanup, that change must be made explicit in the resulting docs and release posture
 - if Python is retained for release automation only, contributors should not need a repo-local Python runtime setup for normal development, testing, or package verification
-- live project-description documents must be updated enough that new contributors do not learn an obsolete dual-runtime architecture from current-facing repo materials
+- live project-description documents must be updated enough that new contributors do not learn an obsolete bridge-era architecture from current-facing repo materials
 
 ## Technical Constraints
 
@@ -109,7 +109,26 @@ Scenario: Removal remains bounded to post-transition cleanup rather than new cap
 ## Success Metrics
 
 - the repository no longer contains a supported Python MCP runtime or Python-to-Ruby bridge path
-- setup docs, AGENTS guidance, HLDs, and release-facing docs consistently describe a single supported Ruby-native runtime
+- setup docs, AGENTS guidance, HLDs, and release-facing docs consistently describe the supported runtime
 - live project-description documents no longer teach the retired dual-runtime bridge architecture as the current supported system
 - CI, package metadata, dependency manifests, and test ownership no longer carry Python compatibility-runtime obligations that are obsolete after native validation
 - if Python remains anywhere in the repo, it is clearly limited to CI release automation and does not require preserving a repo-owned Python project
+
+## Implementation Notes
+
+- Removed the repo-owned Python runtime, socket bridge, bridge contract artifact, and the related Python and Ruby bridge test suites.
+- Recentered version ownership on `VERSION`, `src/su_mcp/version.rb`, and `src/su_mcp/extension.json`.
+- Simplified packaging to one canonical staged RBZ path exposed through `package:rbz` and `package:verify`.
+- Added standalone [`releaserc.toml`](../../../../releaserc.toml) so `python-semantic-release` remains a CI-owned release implementation detail instead of a contributor-facing project runtime.
+- Updated runtime bootstrap in [`src/su_mcp/main.rb`](../../../../src/su_mcp/main.rb) to remove bridge startup and bridge menu controls while preserving the server controls.
+- Replaced bridge-fixture-backed native and semantic response-shape checks with fixture files under `test/support/`.
+- Updated current-facing repo guidance including [`README.md`](../../../../README.md), [`AGENTS.md`](../../../../AGENTS.md), the platform HLD, and affected capability HLDs.
+
+## Validation Notes
+
+- Passed `bundle exec rake version:assert`
+- Passed `bundle exec rake ruby:lint`
+- Passed `bundle exec rake ruby:test`
+- Passed `bundle exec rake package:verify`
+- Passed `bundle exec rake ci`
+- Manual SketchUp-hosted RBZ smoke validation is still required because it cannot be executed from this environment.

@@ -1,149 +1,119 @@
 # AGENTS.md
 
-## Project summary
+## Project Summary
 
-This repository has two runtime layers:
+This repository consists of one runtime layer:
 
-- a **Ruby SketchUp extension** under `src/` that runs inside SketchUp, owns SketchUp API usage, and executes tool behavior
-- a **Python FastMCP server** under `python/src/` that exposes those capabilities to MCP clients and forwards requests over a local TCP socket bridge
+- a **Ruby SketchUp extension** under `src/` that owns MCP tool registration, SketchUp API usage, scene behavior, serialization, and the MCP server lifecycle
 
-The Ruby layer is the source of truth for behavior. The Python layer should remain a thin adapter.
+Release automation may still use `python-semantic-release` in CI, but that does not make Python a project runtime.
 
-## Intended architecture
+## Intended Architecture
 
-The current repo is still relatively small, but it is expected to grow substantially as the MCP surface expands.
+Keep these boundaries stable as the codebase grows:
 
-Keep these architectural boundaries stable even if the internal file layout evolves:
+- SketchUp-facing behavior, MCP tool ownership, scene modeling, metadata handling, validation, and serialization belong in the extension runtime and should not be split into a second app layer
+- transport, command orchestration, shared runtime support, and SketchUp adapters should stay distinct enough to evolve safely
+- release tooling should stay isolated from product runtime code
+- packaging should support a growing Ruby support tree rather than assuming a tiny fixed layout
+- tests and linting are part of the platform, not optional cleanup
 
-- SketchUp-facing behavior, scene modeling, semantic construction, metadata handling, measurement, validation, and asset workflows belong in **Ruby**
-- MCP tool definitions, transport, boundary validation, and response/error mapping belong in **Python**
-- transport concerns should stay isolated from both product logic and SketchUp-specific adapter code
-- the Ruby layer may and should be split into multiple maintainable files, modules, commands, or services as the tool surface grows
-- packaging should support a growing Ruby support tree rather than assuming a small fixed set of files
-- tests should grow with the codebase and should not be treated as optional scaffolding
-- linting and static quality checks are part of the platform, not optional cleanup
-
-Current entrypoints and packaging files still matter, but they are implementation details rather than the desired long-term structure:
+Current runtime entrypoints:
 
 - `src/su_mcp.rb`: SketchUp extension loader
-- `src/su_mcp/main.rb`: current primary Ruby runtime entrypoint
+- `src/su_mcp/main.rb`: SketchUp runtime bootstrap
 - `src/su_mcp/extension.rb` and `src/su_mcp/extension.json`: extension registration support and metadata
-- `python/src/sketchup_mcp_server/server.py`: current FastMCP server entrypoint
-- `pyproject.toml`: Python packaging and console-script metadata
+- `rakelib/package.rake`: canonical staged RBZ packaging tasks
+- `releaserc.toml`: CI-owned semantic-release configuration
 
-It is acceptable to introduce a more maintainable internal structure when the feature work justifies it. Do that deliberately, not as incidental churn.
+## Target Layering
 
-## Target layering
-
-The platform direction is a modular layered monolith with one Ruby runtime inside SketchUp, one Python MCP adapter, and one explicit transport boundary between them.
+The platform direction is a modular layered monolith running inside SketchUp.
 
 Target Ruby layering:
 
 - boot / extension registration
 - runtime bootstrap
-- transport and request routing
+- MCP runtime and transport boundary
 - command or use-case layer
 - shared domain and support services
 - SketchUp adapters
 
-Target Python layering:
+These are architectural boundaries, not a frozen directory layout. Move code toward those layers deliberately.
 
-- MCP app boot
-- tool modules by capability area
-- shared invocation and connection modules
-- boundary error mapping
+## Source of Truth
 
-These are architectural boundaries, not a frozen directory layout. Keep code moving toward these layers without inventing unnecessary churn before the structure is justified.
+- Keep MCP tool registration, SketchUp API usage, geometry work, entity traversal, and command behavior in the extension runtime rather than scattering them across helper scripts or release tooling.
+- Do **not** expose raw SketchUp objects across public boundaries.
+- Return only JSON-serializable data from runtime-facing commands and serializers.
 
-## Source of truth
+## Runtime Boundary
 
-- Put domain logic, SketchUp API usage, geometry work, entity traversal, and command behavior in **Ruby**.
-- Use **Python** for MCP tool definitions, boundary validation, request forwarding, and error/response mapping.
-- Do **not** duplicate business logic in Python.
-- Do **not** expose raw SketchUp objects across the Ruby/Python boundary.
-- Return only JSON-serializable data from Ruby.
+- The supported MCP boundary runs inside SketchUp.
+- Prefer one coherent command per tool call over chatty internal hops.
+- Keep transport concerns separate from command behavior and SketchUp adapter code.
+- When a public MCP tool contract changes, update the tool registration, dispatcher, tests, and user-facing docs in the same change.
 
-## Runtime boundary
-
-- The Python server talks to SketchUp over a TCP socket using JSON-RPC-like messages.
-- The Ruby extension accepts a request, responds, and closes the client socket; Python reconnects per call.
-- Keep the MCP transport choice separate from the Python-to-Ruby socket bridge design.
-- Prefer one Ruby command that completes a full operation over multiple cross-runtime round trips.
-- Treat `contracts/bridge/bridge_contract.json` as the shared test artifact for durable Python/Ruby bridge invariants. It is test data for the runtime boundary, not runtime configuration.
-- When adding or changing a tool, keep the contract explicit on both sides:
-  - Python MCP tool name and arguments
-  - Ruby `handle_tool_call` dispatch name
-  - Ruby response shape returned across the socket
-- When a public bridge or tool contract changes, update the shared contract artifact and the owning Python and Ruby contract suites in the same change.
-
-## Change guidance
+## Change Guidance
 
 When making changes:
 
-1. Decide whether the behavior belongs in Ruby, Python, or both.
-2. Default to **Ruby** for anything SketchUp-specific or behavior-defining.
-3. Keep Python changes limited to the MCP adapter, transport, validation, and error mapping.
-4. For platform work, prefer refactoring toward transport, commands, shared support, and SketchUp adapter boundaries rather than adding more responsibility to one entrypoint.
-5. Centralize cross-cutting runtime concerns such as result envelopes, errors, logging, configuration, operation wrappers, and serialization helpers rather than scattering them.
-6. Update docs and examples when tool names, arguments, setup, or behavior change.
-7. Avoid unrelated refactors, but do not preserve a weak structure just because it is current.
+1. Keep SketchUp-specific and behavior-defining logic in the main runtime path rather than pushing it into build, packaging, or release helpers.
+2. Prefer extracting commands, serializers, support objects, and adapters over growing one large runtime hotspot.
+3. Centralize cross-cutting concerns such as result envelopes, errors, logging, configuration, and serialization helpers.
+4. Update docs and examples when tool names, arguments, setup, or behavior change.
+5. Avoid unrelated refactors, but do not preserve weak structure just because it is current.
 
-## Ruby guidance
+## High-Risk Surfaces
 
-- For Ruby extension implementation, RBZ packaging changes, or extension-level technical decisions, consult `specifications/sketchup-extension-development-guidance.md`. It is a targeted reference for SketchUp extension practices and should not be treated as always-on context for Python-only work.
-- Keep SketchUp-facing behavior in Ruby, even if Python could technically do part of it.
-- Preserve the current small loader pattern: `src/su_mcp.rb` should remain a registration entrypoint, not become the home for runtime or capability logic.
-- As functionality expands, split Ruby code into focused command objects, modules, serializers, and helpers instead of growing one large dispatcher file indefinitely.
-- Make mutating operations explicit and be careful with destructive scene changes.
-- Normalize output into simple hashes, arrays, strings, numbers, and booleans before returning it.
-- Keep command names stable once exposed through MCP unless the interface change is intentional and documented.
-- When updating packaged extension behavior, check whether `src/su_mcp.rb`, `src/su_mcp/extension.rb`, or `src/su_mcp/extension.json` also need changes.
-- Use the planned MCP direction in `sketchup_mcp_guide.md` as product guidance for expanding the Ruby surface, especially around semantic tools, staged assets, metadata, and validation.
+Be conservative when changing these surfaces:
 
-## Python guidance
+- `src/su_mcp/main.rb`: runtime bootstrap, menu wiring, and server lifecycle entrypoint
+- public MCP tool contracts: tool names, arguments, response shapes, and refusal/error payloads
+- `src/su_mcp/runtime/` and `src/su_mcp/runtime/native/`: dispatcher, runtime boot, transport wiring, and handler integration
+- `rakelib/`, `Rakefile`, `releaserc.toml`, and `.github/workflows/`: packaging, release, and validation behavior
+- `src/su_mcp.rb`, `src/su_mcp/extension.rb`, and `src/su_mcp/extension.json`: extension registration and packaged metadata
+- docs that describe the current system shape: `README.md`, `AGENTS.md`, platform HLD, and current task indexes
 
-- Keep FastMCP handlers small and mechanical.
-- Centralize socket communication and SketchUp invocation in the shared connection layer.
-- Validate inputs at the MCP boundary, but avoid reimplementing Ruby-side rules.
-- Return clear, structured errors where possible.
-- Preserve a close 1:1 mapping between Python tools and Ruby commands unless there is a strong adapter reason not to.
-- If Python code starts accumulating domain knowledge from the guide, that is a design smell; move that behavior back to Ruby.
+For these surfaces:
 
-## Testing guidance
+- prefer minimal, explicit changes
+- keep tests and docs in sync in the same change
+- call out validation gaps clearly if full verification is not practical
 
-Testing should become stricter as the server grows. Prefer tests at the layer that owns the behavior:
+## Ruby Guidance
 
-- **Ruby-side behavior**: cover command behavior, metadata handling, serialization, geometry helpers, measurement, validation, and staged-asset workflows
-- **Python-side behavior**: test MCP schemas, handler wiring, socket request shaping, timeout/retry behavior, and error mapping
-- **Contract behavior**: verify Python and Ruby continue to agree on tool names, request envelopes, response shapes, and structured error payloads
-- **Integration behavior**: verify MCP request -> Python adapter -> Ruby command -> structured SketchUp response for important tools
-- **SketchUp-hosted behavior**: add in-SketchUp integration or acceptance coverage for runtime-dependent behavior where practical
-- **Manual verification**: use SketchUp for end-to-end confirmation where automated coverage is not yet practical, but do not let manual-only testing become the permanent default
+- For Ruby extension implementation, RBZ packaging changes, or extension-level technical decisions, consult `specifications/guidelines/sketchup-extension-development-guidance.md`.
+- Preserve the small loader pattern: `src/su_mcp.rb` should remain a registration entrypoint.
+- Keep mutating operations explicit and be careful with destructive scene changes.
+- Normalize outputs into simple hashes, arrays, strings, numbers, and booleans before returning them.
+- Keep public tool names stable unless an intentional interface change is documented.
+- When changing packaged extension behavior, check whether `src/su_mcp.rb`, `src/su_mcp/extension.rb`, or `src/su_mcp/extension.json` also need updates.
+- Use `sketchup_mcp_guide.md` as product guidance for the MCP surface.
 
-If a change expands behavior without adding appropriate tests, call that out as a gap rather than silently accepting it.
+## Testing Guidance
 
-When a change touches the Python/Ruby boundary:
+Prefer tests at the layer that owns the behavior:
 
-- keep unit tests and contract tests separate so boundary failures stay visible
-- run the dedicated contract suites for the affected surface:
-  - `bundle exec rake ruby:contract`
-  - `bundle exec rake python:contract`
-- prefer updating the shared contract artifact and native contract suites over duplicating bridge rules in one runtime only
+- **Core behavior**: command behavior, metadata handling, serialization, geometry helpers, measurement, validation, and staged-asset workflows
+- **Native runtime behavior**: MCP runtime boot, handler wiring, transport-shape behavior, status reporting, and package validation
+- **Packaging and release support**: version sync, canonical package tasks, staged runtime assembly, and release-helper wiring
+- **SketchUp-hosted behavior**: add in-SketchUp smoke or acceptance coverage where practical
+- **Manual verification**: use SketchUp for end-to-end confirmation where automated coverage is not yet practical, but call that gap out explicitly
 
 New platform abstractions should be designed so they can be verified by at least one of:
 
 - isolated unit tests without SketchUp
-- contract tests at the Python/Ruby boundary
-- deterministic SketchUp-hosted integration testing
+- deterministic runtime integration tests
+- SketchUp-hosted smoke or acceptance testing
 
-## Linting guidance
+## Linting Guidance
 
 - Run language-appropriate linting for the code you change.
 - Prefer RuboCop for Ruby quality checks.
-- Prefer Ruff for Python linting and formatting checks.
 - Treat missing lint coverage as a gap to call out, not as a reason to skip mentioning it.
 
-## Commit guidance
+## Commit Guidance
 
 - Use Conventional Commits for commit messages.
 - Format commit titles as `<type>(<scope>): <short summary>`.
@@ -153,46 +123,34 @@ New platform abstractions should be designed so they can be verified by at least
   - `refactor` for internal structural changes without intended behavior change
   - `docs` for documentation-only changes
   - `chore` for maintenance or repo upkeep that does not fit the categories above
-- When work is tied to one primary ticket, put that ticket ID in the scope, for example `feat(PLAT-03): ...` or `fix(SEM-05): ...`.
-- When work spans several tickets or is not anchored to one ticket, use a scope that reflects the changed capability or subsystem rather than forcing multiple ticket IDs into the scope.
-- If the change is purely to specifications or other documentation artifacts, use `docs(...)` as the commit type even if the documents reference implementation work.
-- Keep the commit title relatively short. Put extra detail, rationale, or follow-up notes in the commit body rather than overloading the title.
 
-## Docs and contract updates
+## Docs and Contract Updates
 
 When interface or setup behavior changes, review the relevant docs:
 
 - `README.md` for installation, usage, and exposed tools
-- `contracts/bridge/bridge_contract.json` and the contract suites under `python/tests/contracts/` and `test/contracts/` when the public Python/Ruby boundary changes
-- packaging metadata files when extension or Python package behavior changes
+- `releaserc.toml`, `Rakefile`, and `rakelib/` when release or packaging behavior changes
 - `specifications/hlds/hld-platform-architecture-and-repo-structure.md` for platform direction when architecture or repo structure changes materially
-- `sketchup_mcp_guide.md` for higher-level MCP surface guidance when the tool surface changes materially
+- `sketchup_mcp_guide.md` and capability HLDs when the tool surface changes materially
 
 When architecture changes materially, update this file so it continues to describe the intended system rather than a stale snapshot.
 
-## What to avoid
+## What To Avoid
 
-- moving core logic from Ruby to Python
-- duplicating validation or business rules across both runtimes
-- returning non-serializable objects across the boundary
-- adding chatty Python-to-Ruby call patterns when one Ruby command would do
-- treating the current flat structure as something that must be preserved
+- reintroducing a second runtime just to keep old structure alive
+- duplicating business rules across multiple layers
+- returning non-serializable objects from runtime-facing seams
 - mixing transport, command orchestration, SketchUp API access, and shared runtime concerns in one growing module when a clearer split is justified
 - letting `main.rb` become the permanent home for every new behavior
 - mixing unrelated refactors into feature work
 
-## Review checklist
+## Review Checklist
 
 Before finishing, verify:
 
-- core behavior still lives in Ruby
-- the FastMCP layer is still thin
-- Python and Ruby tool names/arguments still line up
+- core behavior still lives in the extension runtime
+- MCP tool ownership still sits with the runtime command and registration layers
 - outputs are explicit and serializable
-- errors are mapped clearly across the socket boundary
-- shared contract artifacts and contract suites were updated if the public boundary changed
-- transport, command, support, and SketchUp adapter responsibilities are still separated appropriately for the current size of the repo
-- the structure remains maintainable as the Ruby surface grows
 - packaging/docs/examples were updated if the exposed contract changed
-- relevant linting and the smallest practical test layer were run, or the gap is called out
+- relevant linting and the smallest practical test layer were run, or the gap was called out
 - testing or manual verification covers the changed behavior, or the gap is called out

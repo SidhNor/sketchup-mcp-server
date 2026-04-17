@@ -11,7 +11,7 @@ module SU_MCP
     Sketchup::Dimension => 'dimension'
   }.freeze
 
-  # Normalizes SketchUp entities and bounds into bridge-safe hashes.
+  # Normalizes SketchUp entities and bounds into MCP-safe hashes.
   class SceneQuerySerializer
     def bounds_to_h(bounds)
       return nil unless bounds&.valid?

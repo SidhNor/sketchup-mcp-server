@@ -1,0 +1,108 @@
+{
+  "cases": [
+    {
+      "case_id": "create_site_element_unsupported_type_refused",
+      "request": {
+        "params": {
+          "arguments": {
+            "elementType": "water_feature_proxy",
+            "sourceElementId": "water-001",
+            "status": "proposed",
+            "footprint": [[0, 0], [1, 0], [0, 1]]
+          }
+        }
+      },
+      "response": {
+        "result": {
+          "success": true,
+          "outcome": "refused",
+          "refusal": {
+            "code": "unsupported_element_type",
+            "message": "Element type is not supported for semantic site creation.",
+            "details": {
+              "elementType": "water_feature_proxy"
+            }
+          }
+        }
+      }
+    },
+    {
+      "case_id": "set_entity_metadata_missing_change_refused",
+      "request": {
+        "params": {
+          "arguments": {
+            "target": {
+              "sourceElementId": "house-extension-001"
+            }
+          }
+        }
+      },
+      "response": {
+        "result": {
+          "success": true,
+          "outcome": "refused",
+          "refusal": {
+            "code": "missing_metadata_change",
+            "message": "At least one metadata change is required."
+          }
+        }
+      }
+    },
+    {
+      "case_id": "set_entity_metadata_required_clear_refused",
+      "request": {
+        "params": {
+          "arguments": {
+            "target": {
+              "sourceElementId": "house-extension-001"
+            },
+            "clear": ["status"]
+          }
+        }
+      },
+      "response": {
+        "result": {
+          "success": true,
+          "outcome": "refused",
+          "refusal": {
+            "code": "required_metadata_field",
+            "message": "Field cannot be cleared for a Managed Scene Object.",
+            "details": {
+              "field": "status"
+            }
+          }
+        }
+      }
+    },
+    {
+      "case_id": "set_entity_metadata_invalid_structure_category_refused",
+      "request": {
+        "params": {
+          "arguments": {
+            "target": {
+              "sourceElementId": "house-extension-001"
+            },
+            "set": {
+              "structureCategory": "garage"
+            }
+          }
+        }
+      },
+      "response": {
+        "result": {
+          "success": true,
+          "outcome": "refused",
+          "refusal": {
+            "code": "unsupported_option",
+            "message": "Option is not supported for this Managed Scene Object.",
+            "details": {
+              "field": "structureCategory",
+              "value": "garage",
+              "allowedValues": ["main_building", "outbuilding", "extension"]
+            }
+          }
+        }
+      }
+    }
+  ]
+}

@@ -5,7 +5,7 @@ require_relative 'component_geometry_builder'
 require_relative 'material_resolver'
 
 module SU_MCP
-  # Grouped command surface for SocketServer-owned editing and export operations.
+  # Grouped command surface for editing and export operations.
   class EditingCommands
     def initialize(model_adapter:, logger: nil, active_model_provider: nil, geometry_builder: nil,
                    material_resolver: nil)

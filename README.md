@@ -1,28 +1,62 @@
 # SketchUp MCP
 
-This repository is set up as a dual-runtime project:
+This repository ships an MCP server inside a SketchUp extension.
 
-- A SketchUp Ruby extension lives under `src/`.
-- A FastMCP Python server lives under `python/src/`.
-- The Python MCP server talks to the SketchUp extension over a local socket bridge on port `9876` by default.
+- The extension code lives under `src/`.
+- MCP tool registration and SketchUp behavior are both owned in Ruby.
+- The packaged artifact is a single staged RBZ built from the vendored support tree.
 
-The Ruby side follows the shape of SketchUp's VS Code extension template: editor config, RuboCop and Solargraph setup, VS Code tasks, and a `src/`-based extension layout.
-
-## Layout
+## Repo Structure
 
 ```text
 .
-├── .vscode/
-├── Gemfile
-├── pyproject.toml
-├── python/
-│   └── src/sketchup_mcp_server/
-└── src/
-    ├── su_mcp.rb
-    └── su_mcp/
+├── .github/
+│   └── workflows/
+├── config/
+│   └── runtime_package_manifest.json
+├── rakelib/
+│   ├── package.rake
+│   ├── release_support.rb
+│   ├── ruby.rake
+│   ├── version.rake
+│   └── release_support/
+├── specifications/
+│   ├── adrs/
+│   ├── guidelines/
+│   ├── hlds/
+│   ├── prds/
+│   └── tasks/
+├── src/
+│   ├── su_mcp.rb
+│   └── su_mcp/
+│       ├── adapters/
+│       ├── developer/
+│       ├── editing/
+│       ├── modeling/
+│       ├── runtime/
+│       │   └── native/
+│       ├── scene_query/
+│       └── semantic/
+└── test/
+    ├── adapters/
+    ├── editing/
+    ├── modeling/
+    ├── release_support/
+    ├── runtime/
+    │   └── native/
+    ├── scene_query/
+    ├── semantic/
+    └── support/
 ```
 
-## Ruby extension
+Key root files:
+
+- `Rakefile`: canonical local validation and packaging entrypoints
+- `releaserc.toml`: CI-owned semantic-release configuration
+- `VERSION`: release version source of truth
+- `AGENTS.md`: contributor/repo operating guidance
+
+## Local Development
 
 Install Ruby tooling:
 
@@ -30,63 +64,27 @@ Install Ruby tooling:
 bundle install
 ```
 
-The extension entrypoint is `src/su_mcp.rb`, which registers `src/su_mcp/main.rb` with SketchUp. On load, the extension starts the local SketchUp socket bridge and exposes menu actions for both the bridge and the native Ruby MCP runtime inside SketchUp.
+The extension entrypoint is `src/su_mcp.rb`, which registers `src/su_mcp/main.rb` with SketchUp. On load, the extension installs menu actions for the MCP server and attempts to start it automatically when the staged vendored support tree is present.
 
 For local development, load the extension from this repository by symlinking or copying the `src/` contents into SketchUp's `Plugins` directory.
 
-Build a local RBZ package:
+Build the canonical RBZ package:
 
 ```bash
 bundle exec rake package:rbz
 ```
 
-This writes `dist/su_mcp-<version>.rbz`, where the version comes from `VERSION`.
-
-## Python FastMCP server
-
-Install the Python environment with `uv`:
+Verify the staged package layout:
 
 ```bash
-uv sync --dev
+bundle exec rake package:verify
 ```
 
-The Python server is currently a compatibility surface while the Ruby-native runtime inside SketchUp is the canonical MCP host for the migrated tool surface.
+The package output is `dist/su_mcp-<version>.rbz`, where the version comes from `VERSION`.
 
-Run the server over stdio:
+## Current Tool Surface
 
-```bash
-uv run fastmcp run python/src/sketchup_mcp_server/server.py:mcp
-```
-
-Run the packaged console script:
-
-```bash
-uv run sketchup-mcp-server
-```
-
-The packaged server uses stdio by default, which is the expected mode for MCP clients that launch the server as a subprocess. That Python process then forwards tool calls to the SketchUp extension over the local TCP bridge.
-
-Run the server over HTTP:
-
-```bash
-SKETCHUP_MCP_TRANSPORT=http uv run sketchup-mcp-server
-```
-
-When HTTP transport is enabled, the server uses `127.0.0.1:8000` by default
-and exposes the MCP endpoint at `/mcp`.
-
-By default, the SketchUp extension listens on `0.0.0.0:9876`. Override the bridge endpoint with:
-
-```bash
-SKETCHUP_HOST=127.0.0.1
-SKETCHUP_PORT=9876
-```
-
-When the Python server runs under WSL, it will try to auto-detect the Windows host if `SKETCHUP_HOST` is not set.
-
-## Current tool surface
-
-The current cross-runtime tool surface includes scene inspection and targeting helpers such as:
+The current MCP surface includes scene inspection, semantic scene modeling, and editing helpers such as:
 
 - `get_scene_info`
 - `list_entities`
@@ -95,30 +93,17 @@ The current cross-runtime tool surface includes scene inspection and targeting h
 - `sample_surface_z`
 - `create_site_element`
 - `set_entity_metadata`
+- `create_component`
+- `transform_component`
+- `set_material`
+- `boolean_operation`
+- `chamfer_edges`
+- `fillet_edges`
+- `eval_ruby`
 
-`find_entities` resolves explicit targets through the supported MVP identifier and exact-match query paths. `sample_surface_z` samples explicit target geometry at one or more world-space XY points in meters and returns compact per-point `hit`, `miss`, or `ambiguous` outcomes. `create_site_element` is the semantic creation path and currently delivers the SEM-02 first-wave slice for `structure`, `pad`, `path`, `retaining_edge`, `planting_mass`, and `tree_proxy`, including structured refusal outcomes for unsupported types, missing payloads, contradictory payloads, invalid geometry, and invalid numeric values. `set_entity_metadata` is the semantic mutation path for existing managed objects. Current support is limited to `status` updates for managed objects and `structureCategory` updates for managed `structure` objects, with structured refusals for empty mutation requests, protected fields, required-field clears, unmanaged targets, and ambiguous or missing target references. Public geometric dimensions for `create_site_element` are interpreted and returned in meters, independent of the active SketchUp model unit display settings.
+Public geometric dimensions for `create_site_element` are interpreted and returned in meters, independent of the active SketchUp model unit display settings.
 
-## Bridge contract coverage
-
-Shared bridge contract coverage lives in `contracts/bridge/bridge_contract.json`.
-It captures durable Python/Ruby boundary invariants and wave-owned tool cases without moving behavior ownership out of Ruby.
-
-Any change that introduces or modifies a public bridge or tool contract should update in the same change:
-
-- the shared contract artifact
-- the Python contract suite under `python/tests/contracts/`
-- the Ruby contract suite under `test/contracts/`
-
-Run the contract suites directly with:
-
-```bash
-bundle exec rake ruby:contract
-bundle exec rake python:contract
-```
-
-These checks also run in CI as a separate `contract` job so boundary regressions stay visible rather than blending into generic unit-test output.
-
-## Local CI and release tasks
+## Local Validation
 
 Run the local CI task set:
 
@@ -126,36 +111,30 @@ Run the local CI task set:
 bundle exec rake ci
 ```
 
-This currently runs:
+This runs:
 
 - `version:assert`
 - `ruby:lint`
 - `ruby:test`
-- `ruby:contract`
-- `python:lint`
-- `python:test`
-- `python:contract`
 - `package:verify`
 
-Prepare a local versioned release artifact without running the GitHub release flow:
+## Release Automation
+
+Release automation is CI-owned and uses `python-semantic-release` from the standalone [`releaserc.toml`](./releaserc.toml) configuration. Normal development, testing, and package verification do not require a repo-local Python environment.
+
+Prepare a local versioned artifact:
 
 ```bash
 NEW_VERSION=0.1.1 bundle exec rake release:prepare
 ```
 
-This syncs version-bearing files, refreshes `uv.lock` for the releasing package version, and builds the RBZ.
+This syncs the version files and verifies the canonical RBZ package.
 
-The release workflow uses `python-semantic-release` from `pyproject.toml`. To preview the next computed version locally without creating a release:
-
-```bash
-uv run semantic-release --noop -v version --print
-```
-
-## VS Code tasks
+## VS Code Tasks
 
 The workspace includes tasks for:
 
 - `bundle install`
-- `uv sync`
-- running the FastMCP server over stdio or HTTP
+- `bundle exec rake ci`
+- `bundle exec rake package:verify`
 - launching SketchUp via the `SKETCHUP_EXECUTABLE` environment variable

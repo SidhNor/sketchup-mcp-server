@@ -7,11 +7,13 @@ require 'rubygems/package'
 module ReleaseSupport
   # Fetches, verifies, unpacks, and prunes vendored gems for the Ruby-native runtime.
   class RuntimePackageVendorStager
-    def initialize(manifest:, workspace_root:, command_runner: nil, archive_extractor: nil)
+    def initialize(manifest:, workspace_root:, command_runner: nil, archive_extractor: nil,
+                   local_archive_resolver: nil)
       @manifest = manifest
       @workspace_root = Pathname.new(workspace_root)
       @command_runner = command_runner || method(:run_command)
       @archive_extractor = archive_extractor || method(:extract_archive)
+      @local_archive_resolver = local_archive_resolver || method(:resolve_local_archive)
     end
 
     def stage!
@@ -33,7 +35,13 @@ module ReleaseSupport
 
     private
 
-    attr_reader :manifest, :workspace_root, :command_runner, :archive_extractor
+    attr_reader(
+      :manifest,
+      :workspace_root,
+      :command_runner,
+      :archive_extractor,
+      :local_archive_resolver
+    )
 
     def downloads_root
       workspace_root.join('downloads')
@@ -48,6 +56,9 @@ module ReleaseSupport
     end
 
     def fetch_gem(entry)
+      local_archive = local_archive_resolver.call(entry)
+      return Pathname.new(local_archive) if local_archive && File.file?(local_archive)
+
       FileUtils.mkdir_p(downloads_root)
       command_runner.call(
         command: [
@@ -64,6 +75,10 @@ module ReleaseSupport
       )
 
       downloads_root.join("#{entry.fetch('name')}-#{entry.fetch('version')}.gem")
+    end
+
+    def resolve_local_archive(entry)
+      ReleaseSupport::ROOT.join("#{entry.fetch('name')}-#{entry.fetch('version')}.gem").to_s
     end
 
     def verify_checksum!(archive_path, expected_sha256)

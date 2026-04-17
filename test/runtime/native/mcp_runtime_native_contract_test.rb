@@ -60,9 +60,9 @@ class McpRuntimeNativeContractTest < Minitest::Test
 
   def contract_cases_by_id
     @contract_cases_by_id ||= begin
-      contract_path = File.expand_path('../contracts/bridge/bridge_contract.json', __dir__)
+      contract_path = File.expand_path('../../support/native_runtime_contract_cases.json', __dir__)
       JSON
-        .parse(File.read(contract_path))
+        .parse(File.read(contract_path, encoding: 'utf-8'))
         .fetch('cases')
         .to_h { |entry| [entry.fetch('case_id'), entry] }
     end

@@ -55,41 +55,36 @@ Implement scene targeting and interrogation as a focused Ruby command slice with
 
 The design should stay intentionally simple:
 
-- each public tool maps to one coherent Ruby-owned command
-- Python remains a thin MCP adapter over the existing bridge
+- each public tool maps to one coherent command
+- the MCP runtime exposes the public tool surface directly
 - shared helpers are extracted only when reuse is proven across at least two commands
-- platform-owned concerns such as bridge transport and generic result-envelope policy remain outside this capability
+- platform-owned concerns such as generic transport and result-envelope policy remain outside this capability
 
 This avoids turning a small but important capability into a speculative subsystem before the codebase has earned that complexity.
 
 ### Current-State Posture
 
-The current repository already has the correct runtime split but concentrates behavior in two large entrypoints:
+The current repository already has the correct runtime ownership but still concentrates behavior in a few shared runtime seams such as `src/su_mcp/runtime/tool_dispatcher.rb` and `src/su_mcp/runtime/runtime_command_factory.rb`.
 
-- `src/su_mcp/socket_server.rb`
-- `python/src/sketchup_mcp_server/server.py`
-
-This HLD assumes implementation will start from that reality. The intended refinement path is to add the targeting and interrogation commands in Ruby and extract focused helpers only where duplication becomes real.
+This HLD assumes implementation will start from that reality. The intended refinement path is to keep adding targeting and interrogation commands in Ruby and extract focused helpers only where duplication becomes real.
 
 ### Boundary Posture
 
-- Ruby owns entity resolution, collection discovery, bounds summarization, surface-hit evaluation, topology analysis, and SketchUp-facing serialization.
-- Python owns tool registration, argument-shape validation, bridge invocation, and MCP-facing transport or bridge error mapping.
+- Ruby owns tool registration, entity resolution, collection discovery, bounds summarization, surface-hit evaluation, topology analysis, and SketchUp-facing serialization.
 - This capability may reuse platform-level serialization and result-envelope helpers, but it should not introduce a separate capability-specific response framework.
-- Python must not implement targeting, ambiguity ranking, surface-hit, or topology business logic beyond shape or type validation and transport-level error mapping.
-- Other Ruby capabilities should call the same Ruby command or helper paths directly when they need this behavior rather than routing back through the socket bridge.
+- Other Ruby capabilities should call the same Ruby command or helper paths directly when they need this behavior rather than routing back through a separate transport seam.
 - Validation and semantic modeling may consume this capability's outputs, but they should not force a centralized shared subsystem up front.
 
 ## Component Breakdown
 
-### 1. Python MCP Tool Adapters
+### 1. Native MCP Tool Registration
 
 **Responsibilities**
 
 - expose `find_entities`, `get_bounds`, `get_named_collections`, `sample_surface_z`, and `analyze_edge_network`
 - validate basic argument shape and types at the MCP boundary
-- forward requests over the existing socket bridge with minimal transformation
-- surface transport and bridge failures as structured MCP errors
+- route requests into the owning Ruby command seams
+- surface MCP-facing failures as structured errors
 
 **Must Not Own**
 
@@ -104,7 +99,7 @@ This HLD assumes implementation will start from that reality. The intended refin
 - provide one Ruby execution entrypoint per public tool
 - normalize command inputs into command-local execution paths
 - coordinate helper calls and return JSON-serializable results
-- keep tool naming aligned with the Python MCP surface
+- keep tool naming aligned with the MCP surface
 
 **Must Not Own**
 
@@ -186,7 +181,7 @@ V1 targeting and interrogation commands should share one JSON target-reference c
 
 ```text
 Agent
--> Python MCP tool adapter
+-> MCP tool registration
 -> Ruby targeting command
 -> query and collection helpers
 -> compact entity summaries
@@ -267,11 +262,7 @@ The capability should keep tool contracts compact and explicit.
 MCP Client
    |
    v
-[Python MCP Tool Adapters] ------------------------ [Python bridge / error mapping]
-   |                                                          |
-   | contract tests                                           | transport tests
-   v                                                          v
-========================= Ruby / Python Bridge Boundary =========================
+[Native MCP Tool Registration]
    |
    v
 [Ruby Targeting & Interrogation Commands]
@@ -290,9 +281,9 @@ JSON-serializable result payloads
 
 ### Verification Plan (MVP)
 
-- Ruby-side tests should cover query parsing, identifier preference, collection filtering, and response-shape determinism where SketchUp runtime is not required.
-- Python-side tests should cover MCP argument validation, bridge request shaping, and transport or error mapping without reimplementing Ruby logic.
-- Contract tests should cover each public tool's request and response shape, including happy-path, not-found, and ambiguous outcomes.
+- Ruby tests should cover query parsing, identifier preference, collection filtering, and response-shape determinism where SketchUp runtime is not required.
+- Ruby tests should cover MCP-facing argument handling and transport or error mapping without reimplementing capability logic.
+- Native runtime tests should cover representative public request and response shape behavior, including happy-path, not-found, and ambiguous outcomes.
 - SketchUp-hosted integration tests should cover `sample_surface_z` and `analyze_edge_network`, since their correctness depends on real SketchUp geometry behavior.
 - Manual SketchUp verification is still acceptable for early geometry scenarios that are not yet automated, but any such gaps should be called out explicitly.
 
@@ -392,15 +383,15 @@ This keeps behavior deterministic by default while allowing tighter or looser ch
 
 | Concern | Technology / Approach | Purpose |
 | --- | --- | --- |
-| MCP exposure | Python FastMCP tools | external command surface |
-| Bridge invocation | shared Python socket client and JSON request/response flow | Python-to-Ruby transport |
+| MCP exposure | MCP tools | external command surface |
+| Runtime invocation | native Ruby MCP dispatch and command seams | MCP-to-SketchUp transport |
 | command execution | Ruby command methods in the SketchUp extension | capability orchestration |
 | target identity | SketchUp persistent ids plus metadata stored in attribute dictionaries | stable lookup and workflow identity |
 | collection discovery | Ruby scene traversal and metadata-aware filtering | workflow collection lookup |
 | bounds summaries | SketchUp bounds and transformation data normalized in Ruby | placement and fit summaries |
 | surface interrogation | Ruby geometry evaluation against explicit SketchUp targets | terrain-aware and reprojection-aware sampling |
 | topology analysis | Ruby edge traversal with tolerance-aware endpoint comparison | connectivity and defect findings |
-| serialization | Ruby JSON-safe hashes and arrays | bridge-safe payloads |
+| serialization | Ruby JSON-safe hashes and arrays | MCP-safe payloads |
 
 ## Open Questions
 

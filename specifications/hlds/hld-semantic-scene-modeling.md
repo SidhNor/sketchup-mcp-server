@@ -14,7 +14,7 @@ It focuses on:
 - revision-safe semantic lifecycle boundaries
 - first-wave semantic builders for site and structure objects plus future semantic-family extension
 
-This is a capability HLD, not a platform HLD. Shared runtime structure, bridge transport, packaging, and cross-cutting runtime conventions remain in [`hld-platform-architecture-and-repo-structure.md`](./hld-platform-architecture-and-repo-structure.md).
+This is a capability HLD, not a platform HLD. Shared runtime structure, transport, packaging, and cross-cutting runtime conventions remain in [`hld-platform-architecture-and-repo-structure.md`](./hld-platform-architecture-and-repo-structure.md).
 
 The architecture and contract for scene targeting, collection lookup, and geometry interrogation remain in [`hld-scene-targeting-and-interrogation.md`](./hld-scene-targeting-and-interrogation.md). This HLD consumes those capabilities where semantic workflows need lookup, but it does not redefine their internal design.
 
@@ -28,6 +28,7 @@ The architecture in this HLD is centered on:
 
 - `create_site_element`
 - `set_entity_metadata`
+- limited hierarchy-maintenance primitives for managed-object workflows
 - Managed Scene Object metadata storage and invariant enforcement
 - semantic serialization for Managed Scene Objects
 - hierarchy-aware lifecycle behavior for Managed Scene Objects inside nested scene structure
@@ -49,7 +50,7 @@ The architecture should support those first-wave types directly without assuming
 
 This HLD does not define:
 
-- bridge transport or repository structure policy
+- transport or repository structure policy
 - the internal architecture of `find_entities`, `get_named_collections`, `sample_surface_z`, or `analyze_edge_network`
 - Asset Exemplar protection, staging, or instancing policy
 - validation pass or fail policy
@@ -75,7 +76,7 @@ The design should stay intentionally concrete:
 - Managed Scene Object truth lives on SketchUp entities through capability-owned metadata, not in long-lived Ruby memory
 - semantic lifecycle behavior must remain valid for managed objects nested inside grouped scene structure, not only for top-level objects
 - semantic revision and replacement preserve business identity through explicit metadata handoff rules
-- Python remains a thin MCP adapter over Ruby-owned semantic behavior
+- the MCP runtime remains the public semantic surface
 
 ### Contract Evolution and Migration Posture
 
@@ -88,12 +89,12 @@ This posture does not ratify the newer sectioned request shape as a final public
 Current implementation evidence from `SEM-05` strengthens this posture:
 
 - bounded `contractVersion: 2` handling now survives the live Ruby semantic seam for representative hard cases
-- Ruby can validate, normalize, resolve targets, and execute the chosen lifecycle flows without Python or bridge-contract changes
+- Ruby can validate, normalize, resolve targets, and execute the chosen lifecycle flows without cross-runtime translation changes
 - the strongest current overlap remains the command-level translation from a sectioned `v2` request shape into the current builder-facing payload shape
 
 That leads to an explicit migration rule for this capability:
 
-- Python and the shared bridge contract should remain unchanged until builder-native `v2` support is justified
+- the public MCP tool surface should remain stable until builder-native `v2` support is justified
 - the current `v2` Ruby seam should be treated as seeded migration infrastructure, not as throwaway spike code
 - the next architectural step is builder-native acceptance of the sectioned `v2` shape one family at a time
 - the command-level translation layer should be treated as transitional architecture, not the intended end state
@@ -103,7 +104,8 @@ That leads to an explicit migration rule for this capability:
 This capability should keep atomic semantic creation separate from composite feature assembly.
 
 - `create_site_element` should remain the home for atomic Managed Scene Object creation and lifecycle-safe adoption or replacement of supported atomic objects
-- grouped or multipart site features should be composed through dedicated grouping, duplication, and hierarchy-editing flows rather than being forced into one oversized atomic creation contract
+- grouped or multipart site features should be composed through dedicated grouping and hierarchy-editing flows rather than being forced into one oversized atomic creation contract
+- the first hierarchy-maintenance slice may expose narrow helper primitives such as active edit-context inspection, group creation, and explicit reparenting without widening into a full composition platform
 - this keeps the semantic creation contract durable while allowing larger features to be assembled from atomic managed objects
 
 ### Semantic Type Boundary Posture
@@ -118,11 +120,11 @@ The semantic boundary between `pad` and `structure` should be explicit in the ar
 
 ### Current-State Posture
 
-The current repository already has the correct runtime split and several platform seams this capability should reuse:
+The current repository already has the correct runtime ownership and several platform seams this capability should reuse:
 
 - Ruby request handling, tool dispatch, and shared adapter or serializer support
-- Python tool-module registration and shared bridge invocation
-- contract-test foundations for the Python/Ruby boundary
+- runtime tool registration and dispatch support
+- runtime response-shape coverage
 
 The current repository now has a first implemented semantic slice, including the initial `create_site_element` and `set_entity_metadata` posture plus the bounded `SEM-05` contract-evolution spike.
 
@@ -133,12 +135,11 @@ What the repository still does not yet have is a fully migrated semantic archite
 - `set_material`
 - `delete_component`
 
-This HLD therefore describes how the capability should continue to evolve on the current platform seams. It should not encourage adding semantic behavior back into transport-adjacent files such as `socket_server.rb` as the long-term design.
+This HLD therefore describes how the capability should continue to evolve on the current platform seams. It should not encourage adding semantic behavior back into runtime bootstrap or other transport-adjacent files as the long-term design.
 
 ### Boundary Posture
 
-- Ruby owns semantic payload normalization, builder selection, metadata writes, identity preservation, operation bracketing, and SketchUp-facing serialization.
-- Python owns MCP tool registration, argument-shape validation, bridge invocation, and MCP-facing error mapping.
+- Ruby owns semantic tool registration, payload normalization, builder selection, metadata writes, identity preservation, operation bracketing, and SketchUp-facing serialization.
 - The targeting and interrogation slice owns generic lookup and scene-targeting mechanics. Semantic modeling owns semantic metadata conventions and may depend on targeting outputs, but it must not define a second lookup subsystem.
 - Asset reuse owns exemplar-specific replacement, protection, and instancing rules. Semantic modeling may define identity-preserving replacement behavior for Managed Scene Objects without absorbing asset-library policy.
 - The SketchUp model is the source of truth for managed-object state. Ruby helpers may interpret and enforce metadata rules, but they should not rely on long-lived in-memory registries of Managed Scene Objects.
@@ -172,14 +173,20 @@ This does not mean semantic modeling should absorb a second scene-query subsyste
 - make parent reassignment explicit when a future lifecycle operation intentionally reparents or replaces an object
 - return structured refusal when a requested hierarchy-affecting change would violate identity or managed-object invariants
 
-The smallest planned first-class lifecycle primitives for this area are:
+The limited first-class hierarchy-maintenance primitives for the next slice should be:
 
 - inspect active edit context
+- create group containers for semantic work
 - reparent
+
+These primitives should be implemented as a narrow maintenance surface for managed-object organization and repair, not as a broad hierarchy-control API.
+
+Later hierarchy-aware lifecycle follow-ons may expand into:
+
 - duplicate into a target parent while preserving metadata and geometry
 - replace with identity handoff
 
-Those primitives remain follow-on semantic lifecycle work rather than being folded into metadata mutation by default.
+The limited primitives remain follow-on semantic lifecycle work rather than being folded into metadata mutation by default. Later duplicate or replace flows should stay separate until their identity-handoff rules are explicit enough to test as first-class semantic behavior.
 
 ### Undo and Atomicity Posture
 
@@ -189,14 +196,14 @@ This is a capability-level requirement, not an incidental implementation detail.
 
 ## Component Breakdown
 
-### 1. Python MCP Tool Adapters
+### 1. Native MCP Tool Registration
 
 **Responsibilities**
 
-- expose `create_site_element` and `set_entity_metadata`
+- expose `create_site_element`, `set_entity_metadata`, and the approved limited hierarchy-maintenance tools
 - validate basic argument shape and type information at the MCP boundary
-- forward semantic requests over the existing bridge with minimal transformation
-- surface transport and bridge failures as structured MCP errors
+- route semantic requests into the owning Ruby command seams
+- surface MCP-facing failures as structured errors
 
 **Must Not Own**
 
@@ -209,7 +216,7 @@ This is a capability-level requirement, not an incidental implementation detail.
 
 **Responsibilities**
 
-- provide Ruby execution entrypoints for `create_site_element` and `set_entity_metadata`
+- provide Ruby execution entrypoints for `create_site_element`, `set_entity_metadata`, and the approved limited hierarchy-maintenance tools
 - normalize command input into capability-local execution paths
 - route supported semantic contract generations through one capability-owned command seam
 - open and close SketchUp operation boundaries for semantic mutations
@@ -217,7 +224,8 @@ This is a capability-level requirement, not an incidental implementation detail.
 - resolve lifecycle, hosting, and parent-context targets at the semantic seam during contract migration
 - translate sectioned semantic requests into builder-native execution paths during migration where builders have not yet absorbed the newer contract shape
 - preserve existing parent context for supported hierarchy-safe mutations and lifecycle operations
-- keep public tool naming aligned with the Python MCP surface
+- return structured active-edit-context and group-container summaries when the limited hierarchy-maintenance surface requires them
+- keep public tool naming aligned with the MCP surface
 
 **Must Not Own**
 
@@ -259,7 +267,7 @@ This is a capability-level requirement, not an incidental implementation detail.
 
 - metadata policy
 - identity protection rules
-- bridge or transport behavior
+- transport behavior
 - serialized result-envelope policy
 
 ### 5. Element Builders
@@ -332,7 +340,7 @@ This is a capability-level requirement, not an incidental implementation detail.
 
 ```text
 Agent
--> Python MCP tool adapter
+-> MCP tool registration
 -> create_site_element
 -> Ruby semantic command
 -> SketchUp operation boundary
@@ -347,7 +355,7 @@ Agent
 
 ```text
 Agent
--> Python MCP tool adapter
+-> MCP tool registration
 -> create_site_element
 -> Ruby semantic command
 -> contract-version branch inside the semantic seam
@@ -364,7 +372,7 @@ Agent
 
 ```text
 Agent
--> Python MCP tool adapter
+-> MCP tool registration
 -> set_entity_metadata
 -> Ruby semantic command
 -> explicit target resolution through the established targeting dependency
@@ -405,11 +413,7 @@ Agent
 MCP Client
    |
    v
-[Python Semantic Tool Adapters] ------------------ [Python bridge / error mapping]
-   |                                                        |
-   | contract tests                                         | transport tests
-   v                                                        v
-========================= Ruby / Python Bridge Boundary =========================
+[Native Semantic Tool Registration]
    |
    v
 [Ruby Semantic Commands]
@@ -434,12 +438,12 @@ JSON-serializable Managed Scene Object results
 
 ### Verification Plan
 
-- Ruby-side tests should cover builder selection, per-element schema routing, metadata invariant enforcement, serializer determinism, and identity-handoff behavior where full SketchUp runtime behavior is not required.
-- Ruby-side tests should also cover any supported contract-version branching at the semantic seam, including bounded proofs for lifecycle-heavy or hosting-heavy flows before the newer contract shape is promoted publicly.
-- Python-side tests should cover MCP argument validation, bridge request shaping, and MCP-facing error mapping for `create_site_element` and `set_entity_metadata`.
-- Contract tests should extend the shared Python/Ruby bridge contract foundation for the semantic tool surface and stable result-envelope expectations.
+- Ruby tests should cover builder selection, per-element schema routing, metadata invariant enforcement, serializer determinism, and identity-handoff behavior where full SketchUp runtime behavior is not required.
+- Ruby tests should also cover any supported contract-version branching at the semantic seam, including bounded proofs for lifecycle-heavy or hosting-heavy flows before the newer contract shape is promoted publicly.
+- Ruby tests should cover MCP-facing argument handling and error mapping for `create_site_element` and `set_entity_metadata`.
+- Native runtime tests should protect representative semantic result-envelope expectations.
 - SketchUp-hosted integration tests should cover geometry-heavy semantic creation, including `structure` creation with polygon footprints, representative cases such as a rectangular shed, a polygon-footprint house extension, a concrete terrace or slab, and at least one deck or raised platform modeled as `pad`, explicit `pad` versus `structure` refusal behavior for ambiguous cases, one-operation undo behavior, and identity-preserving rebuild or replacement flows where real SketchUp runtime behavior matters.
-- Bounded Ruby-only spike evidence such as `SEM-05` is sufficient to justify architectural direction changes, but not to skip the later builder-native and SketchUp-hosted verification work required for broader rollout.
+- Bounded spike evidence such as `SEM-05` is sufficient to justify architectural direction changes, but not to skip the later builder-native and SketchUp-hosted verification work required for broader rollout.
 - If full hosted automation is not practical for some flows yet, the HLD should still require explicit manual-verification gaps to be called out rather than leaving undo or rebuild behavior implicit.
 
 ## Key Architectural Decisions
@@ -548,8 +552,8 @@ Keep one public `create_site_element` surface while allowing internal contract e
 
 | Concern | Technology / Approach | Purpose |
 | --- | --- | --- |
-| MCP exposure | Python FastMCP tool adapters | external semantic command surface |
-| bridge invocation | shared Python socket bridge client | Python-to-Ruby transport |
+| MCP exposure | MCP tools | external semantic command surface |
+| runtime invocation | Ruby command seams and dispatcher | MCP-to-SketchUp transport |
 | semantic command execution | Ruby command methods inside the SketchUp extension | semantic orchestration |
 | managed-object truth | SketchUp attribute dictionaries on managed entities or wrappers | durable identity and metadata state |
 | semantic creation | Ruby builder registry plus element-specific builders | extensible semantic geometry creation |

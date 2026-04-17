@@ -1,0 +1,27 @@
+[semantic_release]
+allow_zero_version = true
+build_command = "bundle exec rake release:prepare"
+commit_message = "chore(release): {version} [skip ci]"
+commit_parser = "conventional"
+tag_format = "v{version}"
+version_variables = [
+  "VERSION:*:nf",
+  "src/su_mcp/version.rb:VERSION:nf",
+  "src/su_mcp/extension.json:version:nf",
+]
+
+[semantic_release.commit_parser_options]
+patch_tags = ["fix", "perf", "refactor"]
+
+[semantic_release.changelog]
+exclude_commit_patterns = [
+  '''chore(?:\([^)]*?\))?: .+''',
+  '''ci(?:\([^)]*?\))?: .+''',
+  '''style(?:\([^)]*?\))?: .+''',
+  '''test(?:\([^)]*?\))?: .+''',
+  '''Initial [Cc]ommit.*''',
+]
+
+[semantic_release.publish]
+dist_glob_patterns = ["dist/*.rbz"]
+upload_to_vcs_release = true

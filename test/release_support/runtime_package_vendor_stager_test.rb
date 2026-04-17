@@ -77,6 +77,31 @@ class RuntimePackageVendorStagerTest < Minitest::Test
     end
   end
 
+  def test_vendor_stager_prefers_local_repo_archive_before_fetching
+    skip unless defined?(ReleaseSupport::RuntimePackageVendorStager)
+
+    Dir.mktmpdir do |workspace|
+      archive_path = write_demo_archive(workspace, 'demo archive')
+      command_calls = []
+      extractor = build_demo_extractor
+
+      stager = ReleaseSupport::RuntimePackageVendorStager.new(
+        manifest: demo_manifest(sha256: Digest::SHA256.hexdigest('demo archive')),
+        workspace_root: workspace,
+        command_runner: lambda do |command:, chdir:|
+          command_calls << { command: command, chdir: chdir }
+        end,
+        archive_extractor: extractor,
+        local_archive_resolver: ->(_entry) { archive_path }
+      )
+
+      vendor_root = stager.stage!
+
+      assert_equal(0, command_calls.length)
+      assert(File.file?(File.join(vendor_root, 'demo-1.2.3', 'lib', 'demo.rb')))
+    end
+  end
+
   private
 
   def write_demo_archive(workspace, contents)

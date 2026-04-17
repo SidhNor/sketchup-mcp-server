@@ -24,22 +24,8 @@ class RuntimeLoggerTest < Minitest::Test
     end
   end
 
-  def test_bridge_logs_to_console_when_available
-    console = SketchupConsoleStub.new
-    output = StringIO.new
-
-    SU_MCP::RuntimeLogger.bridge('hello', console: console, output: output)
-
-    assert_equal(["MCP: hello\n"], console.messages)
-    assert_equal('', output.string)
-  end
-
-  def test_bridge_falls_back_to_output_when_console_write_fails
-    output = StringIO.new
-
-    SU_MCP::RuntimeLogger.bridge('fallback', console: FailingConsole.new, output: output)
-
-    assert_equal("MCP: fallback\n", output.string)
+  def test_bridge_logger_entrypoint_is_retired
+    refute_respond_to(SU_MCP::RuntimeLogger, :bridge)
   end
 
   def test_main_logger_shows_console_and_writes_to_output

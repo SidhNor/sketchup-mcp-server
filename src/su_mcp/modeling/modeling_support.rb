@@ -3,7 +3,7 @@
 require 'sketchup'
 
 module SU_MCP
-  # Shared low-level modeling helpers extracted from SocketServer-owned flows.
+  # Shared low-level modeling helpers for solid modeling flows.
   class ModelingSupport
     private
 

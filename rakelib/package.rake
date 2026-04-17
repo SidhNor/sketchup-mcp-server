@@ -45,23 +45,34 @@ namespace :package do
   end
 
   desc 'Build the SketchUp RBZ package'
-  task rbz: ['package:clean', 'version:assert'] do
-    destination = ReleaseSupport.package_path
-    entries = ReleaseSupport.package_entries
+  task rbz: ['version:assert'] do
+    manifest = ReleaseSupport::RuntimePackageManifest.load_default
+    workspace_root = ReleaseSupport.runtime_package_workspace_root
+    vendor_root = ReleaseSupport::RuntimePackageVendorStager.new(
+      manifest: manifest,
+      workspace_root: workspace_root
+    ).stage!
+    stage_root = ReleaseSupport::RuntimePackageStageBuilder.new(
+      workspace_root: workspace_root
+    ).build!(vendor_root: vendor_root)
+    ReleaseSupport::RuntimePackageVerifier.new.ensure_valid_stage!(stage_root, manifest: manifest)
 
     build_archive(
-      destination: destination,
-      entries: entries,
-      relative_path_builder: ->(path) { ReleaseSupport.package_relative_path(path) }
+      destination: ReleaseSupport.package_path,
+      entries: ReleaseSupport.package_entries_for(stage_root),
+      relative_path_builder: lambda { |path|
+        ReleaseSupport.package_relative_path_for(path, stage_root)
+      }
     )
 
-    puts destination.relative_path_from(ReleaseSupport::ROOT)
+    puts ReleaseSupport.package_path.relative_path_from(ReleaseSupport::ROOT)
   end
 
   desc 'Build and verify the SketchUp RBZ package layout'
   task verify: ['package:rbz'] do
-    expected_entries = ReleaseSupport.package_entries.map do |path|
-      ReleaseSupport.package_relative_path(path)
+    stage_root = ReleaseSupport.runtime_package_workspace_root.join('stage')
+    expected_entries = ReleaseSupport.package_entries_for(stage_root).map do |path|
+      ReleaseSupport.package_relative_path_for(path, stage_root)
     end
 
     verify_archive_contents!(
@@ -69,52 +80,5 @@ namespace :package do
       expected_entries: expected_entries,
       required_prefix: 'su_mcp/'
     )
-  end
-
-  namespace :rbz do
-    desc 'Build the staged Ruby-native SketchUp RBZ package'
-    task ruby_native: ['version:assert'] do
-      manifest = ReleaseSupport::RuntimePackageManifest.load_default
-      workspace_root = ReleaseSupport.runtime_package_workspace_root
-      vendor_root = ReleaseSupport::RuntimePackageVendorStager.new(
-        manifest: manifest,
-        workspace_root: workspace_root
-      ).stage!
-      stage_root = ReleaseSupport::RuntimePackageStageBuilder.new(
-        workspace_root: workspace_root
-      ).build!(vendor_root: vendor_root)
-      ReleaseSupport::RuntimePackageVerifier.new.ensure_valid_stage!(stage_root, manifest: manifest)
-
-      destination = ReleaseSupport.runtime_package_path
-      entries = ReleaseSupport.package_entries_for(stage_root)
-      build_archive(
-        destination: destination,
-        entries: entries,
-        relative_path_builder: lambda { |path|
-          ReleaseSupport.package_relative_path_for(path, stage_root)
-        }
-      )
-
-      puts destination.relative_path_from(ReleaseSupport::ROOT)
-    end
-  end
-
-  namespace :verify do
-    desc 'Build and verify the staged Ruby-native SketchUp RBZ package layout'
-    task ruby_native: ['package:rbz:ruby_native'] do
-      stage_root = ReleaseSupport.runtime_package_workspace_root.join('stage')
-      expected_entries = ReleaseSupport.package_entries_for(stage_root).map do |path|
-        ReleaseSupport.package_relative_path_for(path, stage_root)
-      end
-
-      verify_archive_contents!(
-        archive_path: ReleaseSupport.runtime_package_path,
-        expected_entries: expected_entries,
-        required_prefix: 'su_mcp/'
-      )
-    end
-
-    desc 'Run package verification for both standard and Ruby-native package targets'
-    task all: ['package:verify', 'package:verify:ruby_native']
   end
 end

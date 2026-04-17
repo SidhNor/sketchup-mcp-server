@@ -1,7 +1,7 @@
 {
   "name": "SketchUp MCP",
-  "description": "SketchUp socket bridge and tool surface for the paired FastMCP server.",
-  "creator": "sidhnor",
+  "description": "MCP runtime and tool surface for SketchUp.",
+  "creator": "SidhNor",
   "copyright": "2026",
   "license": "MIT",
   "product_id": "SKETCHUP_MCP",

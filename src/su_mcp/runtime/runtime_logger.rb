@@ -5,14 +5,6 @@ module SU_MCP
   module RuntimeLogger
     module_function
 
-    def bridge(message, console: default_console, output: $stdout)
-      write_line(console, "MCP: #{message}")
-    rescue StandardError
-      write_line(output, "MCP: #{message}")
-    ensure
-      output.flush if output.respond_to?(:flush)
-    end
-
     def main(message, console: default_console, output: $stdout)
       console&.show
       write_line(output, "SketchUp MCP: #{message}")

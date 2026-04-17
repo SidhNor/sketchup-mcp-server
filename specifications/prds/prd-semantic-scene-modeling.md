@@ -2,7 +2,7 @@
 doc_type: prd
 title: Semantic Scene Modeling
 status: draft
-last_updated: 2026-04-16
+last_updated: 2026-04-17
 ---
 
 # PRD: Semantic Scene Modeling
@@ -26,7 +26,8 @@ The product needs a compact semantic creation and mutation surface that makes Ma
 2. Make Managed Scene Objects the default unit of creation, revision, and lifecycle tracking.
 3. Ensure semantic objects carry stable metadata and business identity from the moment they are created.
 4. Support common revision and composition workflows without forcing recreate-from-scratch behavior.
-5. Reduce the need for `eval_ruby` in normal modeling flows.
+5. Introduce a narrow hierarchy-maintenance surface for managed-object organization and repair workflows.
+6. Reduce the need for `eval_ruby` in normal modeling flows.
 
 ## Success Metrics & KPI
 
@@ -96,6 +97,7 @@ The product needs a compact semantic creation and mutation surface that makes Ma
 | Preserve stable business identity across revisions and representation changes | As a workflow orchestrator, I want replacements and revisions to keep lineage intact so that downstream automation stays reliable | `sourceElementId` and required managed-object identity survive supported revise, regroup, replace, and representation-rebuild flows in accordance with domain rules | P0 |
 | Support first-class lifecycle workflows within semantic creation | As an agent, I want the semantic creation surface to support creation, adoption of retained objects, and identity-preserving replacement so that semantic scene work does not collapse into fallback Ruby or ad hoc special tools | The documented semantic contract supports at minimum `create_new`, `adopt_existing`, and identity-preserving replacement workflows for supported managed objects, or returns a structured refusal when the request is incomplete or violates product rules | P0 |
 | Support hierarchy-aware maintenance of Managed Scene Objects | As an agent or operator, I want to maintain managed objects even when they live inside nested scene structure so that governed scene work does not depend on fallback Ruby for normal hierarchy-heavy workflows | Supported semantic lifecycle flows can target and update Managed Scene Objects inside nested groups or components while preserving business identity, intended parent placement, and structured downstream references, or else return a structured refusal when the requested change would violate product rules | P0 |
+| Support a limited first-class hierarchy-maintenance surface | As an agent or operator, I want a small set of hierarchy-aware primitives so that normal managed-object organization and repair flows do not require fallback Ruby | The product exposes a documented limited surface for inspecting active edit context, creating group containers for semantic work, and explicitly reparenting supported entities while preserving managed-object identity, parent intent, and structured outputs; unsupported hierarchy changes return structured refusals rather than silent fallback behavior | P1 |
 | Support explicit metadata creation and updates through `set_entity_metadata` | As an agent, I want to update provenance and semantic identity without rebuilding geometry | Metadata can be added or updated on Managed Scene Objects while preserving required identity rules; removal of required keys is blocked or surfaced as a product-level failure | P0 |
 | Support mutation of Managed Scene Objects through `transform_component` and `set_material` | As an agent, I want to revise created objects without recreating them so that iteration stays efficient and traceable | Managed Scene Objects can be transformed and assigned materials while retaining identity, structured metadata, and serializable state | P1 |
 | Support revision-safe replacement or rebuild of Managed Scene Objects where the workflow intent is to keep the same business object | As an agent or operator, I want to update the representation of an existing Managed Scene Object without breaking lineage so that revision workflows do not collapse into delete-and-recreate patterns | Supported semantic revision flows can replace or rebuild the representation of a Managed Scene Object while preserving required identity, metadata invariants, and structured downstream references, or else return a structured refusal when the requested revision would violate product rules | P1 |
@@ -117,6 +119,7 @@ Conflict flag: no functional requirements currently conflict with the business r
 - Initial semantic structure support must cover common irregular footprints without requiring primitive fallback for non-rectangular house or extension outlines.
 - Built-form classification rules must be explicit enough that agents do not have to infer `pad` versus `structure` from weak natural-language hints alone.
 - Normal semantic maintenance workflows must remain reliable when Managed Scene Objects are nested inside grouped scene structure rather than living only at the top level.
+- The first hierarchy-maintenance surface must stay intentionally narrow and managed-object-focused rather than turning into a broad scene-hierarchy control API.
 
 ## Constraints
 
@@ -135,6 +138,7 @@ Conflict flag: no functional requirements currently conflict with the business r
 - Complex water-feature generation beyond proxy-level support
 - Rich geometry-repair or topology-diagnostics workflows
 - Workflow-specific branch or canonical promotion helpers, scene-pass cleanup flows, or other orchestration concepts that are not yet stable product abstractions
+- Broad scene-hierarchy orchestration, canonical pass-root management, or unrestricted hierarchy editing beyond the limited managed-object maintenance surface
 - Replacing all legacy primitive tools in the first release
 
 ## Open Questions
@@ -185,3 +189,4 @@ Conflict flag: no functional requirements currently conflict with the business r
 | 2026-04-14 | Added explicit minimum metadata requirements for `structure` objects, standardized `pad` elevation and thickness semantics for raised hardscape and platform cases, and aligned the PRD conflict note with the updated domain analysis. |
 | 2026-04-15 | Clarified that semantic lifecycle behavior must remain reliable for Managed Scene Objects inside nested scene hierarchy, and made parent-placement preservation explicit in revision-friendly workflows. |
 | 2026-04-16 | Clarified that the primary semantic creation surface must support contract evolution for create, adopt, and identity-preserving replace workflows without fragmenting into many overlapping tools, and made composition a separate product layer from atomic semantic creation. |
+| 2026-04-17 | Added a limited first-class hierarchy-maintenance surface for managed-object workflows, including active edit-context inspection, group creation, and explicit reparenting while keeping broader hierarchy orchestration out of scope. |

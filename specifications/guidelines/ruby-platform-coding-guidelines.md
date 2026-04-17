@@ -22,24 +22,20 @@ Use this document for stable repo-specific concerns only:
 
 - Keep SketchUp-facing behavior in Ruby.
 - Keep scene queries, scene mutations, metadata behavior, and command behavior in Ruby.
-- Keep Python thin at the MCP boundary.
-- Do not duplicate business rules across Ruby and Python.
-- Do not move SketchUp-facing behavior into Python for convenience.
+- Do not duplicate business rules across multiple runtime layers.
 
 ## Platform Boundaries
 
-The current platform has a Ruby SketchUp runtime and a Python MCP adapter.
+The current platform is a SketchUp-hosted Ruby runtime with an MCP boundary.
 
 Within that shape:
 
 - keep direct SketchUp API access in Ruby
-- keep Python focused on MCP-facing adapter responsibilities
-- prefer one coherent Ruby operation per tool call over chatty cross-runtime flows
+- prefer one coherent Ruby operation per tool call over chatty internal flows
 - keep transport, command behavior, host interaction, and response shaping distinct enough to evolve safely
 
 Do not:
 
-- let Python accumulate product logic
 - let transport code become the home for reusable SketchUp helpers
 - return raw SketchUp objects across public boundaries
 
@@ -74,8 +70,8 @@ Do not design as if this were a normal standalone Ruby service with unrestricted
 
 When a shared boundary contract changes:
 
-- update the shared contract artifacts
-- update both native contract suites
+- update the owning runtime tests
+- update package or runtime verification where the public surface changed
 
 ## Validation
 
@@ -85,10 +81,7 @@ For Ruby changes, prefer:
 - `bundle exec rake ruby:lint`
 - `bundle exec rake package:verify`
 
-When shared boundary behavior changes, also run:
-
-- `bundle exec rake ruby:contract`
-- `bundle exec rake python:contract`
+When shared boundary behavior changes, also run focused runtime tests that cover the changed handler wiring or response shape.
 
 Call out manual SketchUp verification explicitly when host-runtime behavior cannot be fully verified locally.
 
@@ -97,7 +90,6 @@ Call out manual SketchUp verification explicitly when host-runtime behavior cann
 Before finishing a Ruby-platform change, verify:
 
 - ownership still sits in Ruby where it should
-- Python is still thin at the MCP boundary
 - transport, command behavior, host interaction, and response shaping remain distinct enough
 - outputs remain JSON-safe and contract-aware
 - packaging and host-runtime fit were considered

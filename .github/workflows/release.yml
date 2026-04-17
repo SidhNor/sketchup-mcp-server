@@ -28,21 +28,16 @@ jobs:
           ruby-version: "3.2"
           bundler-cache: true
 
+      - name: Run checks
+        run: bundle exec rake ci
+
       - name: Setup Python
         uses: actions/setup-python@v6
         with:
           python-version: "3.10"
 
-      - name: Setup uv
-        uses: astral-sh/setup-uv@v7
-        with:
-          enable-cache: true
-
-      - name: Install Python dependencies
-        run: uv sync --locked --dev
-
-      - name: Run checks
-        run: bundle exec rake ci
+      - name: Install semantic-release
+        run: python -m pip install python-semantic-release==10.5.3
 
       - name: Release version
         id: release
@@ -50,10 +45,11 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           set +e
-          uv run semantic-release --strict -v version --no-vcs-release
+          semantic-release --config releaserc.toml --strict -v version --no-vcs-release
           status=$?
           if [ "$status" -eq 0 ]; then
             echo "released=true" >> "$GITHUB_OUTPUT"
+            echo "tag=$(git describe --tags --abbrev=0)" >> "$GITHUB_OUTPUT"
             exit 0
           fi
           if [ "$status" -eq 2 ]; then
@@ -67,17 +63,11 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           RELEASE_TAG: ${{ steps.release.outputs.tag }}
-          RELEASE_NOTES: ${{ steps.release.outputs.release_notes }}
-        run: |
-          notes_file="$(mktemp)"
-          printf '%s' "$RELEASE_NOTES" > "$notes_file"
-          gh release create "$RELEASE_TAG" \
-            --title "$RELEASE_TAG" \
-            --notes-file "$notes_file"
+        run: gh release create "$RELEASE_TAG" --title "$RELEASE_TAG" --generate-notes
 
       - name: Upload RBZ assets to the GitHub release
         if: steps.release.outputs.released == 'true'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           RELEASE_TAG: ${{ steps.release.outputs.tag }}
-        run: uv run semantic-release -v publish --tag "$RELEASE_TAG"
+        run: semantic-release --config releaserc.toml -v publish --tag "$RELEASE_TAG"

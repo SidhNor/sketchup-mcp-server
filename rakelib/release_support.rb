@@ -10,10 +10,8 @@ module ReleaseSupport
 
   ROOT = Pathname.new(File.expand_path('..', __dir__)).freeze
   VERSION_FILE = ROOT.join('VERSION').freeze
-  PYPROJECT_FILE = ROOT.join('pyproject.toml').freeze
   RUBY_VERSION_FILE = ROOT.join('src/su_mcp/version.rb').freeze
   EXTENSION_METADATA_FILE = ROOT.join('src/su_mcp/extension.json').freeze
-  PYTHON_VERSION_FILE = ROOT.join('python/src/sketchup_mcp_server/version.py').freeze
   DIST_DIR = ROOT.join('dist').freeze
   TMP_DIR = ROOT.join('tmp').freeze
   SRC_DIR = ROOT.join('src').freeze
@@ -36,17 +34,11 @@ module ReleaseSupport
     DIST_DIR.join("#{PACKAGE_BASENAME}-#{version}.rbz")
   end
 
-  def runtime_package_path(version = release_version)
-    DIST_DIR.join("#{PACKAGE_BASENAME}-ruby-native-#{version}.rbz")
-  end
-
   def sync_version!(version)
     version = normalize_version(version)
     write_text(VERSION_FILE, "#{version}\n")
-    update_regex_file(PYPROJECT_FILE, /^version = ".*"$/, %(version = "#{version}"))
     update_regex_file(RUBY_VERSION_FILE, /^\s*VERSION = ['"].*['"](?:\.freeze)?$/,
                       %(  VERSION = '#{version}'))
-    update_regex_file(PYTHON_VERSION_FILE, /^__version__ = ".*"$/, %(__version__ = "#{version}"))
 
     metadata = JSON.parse(EXTENSION_METADATA_FILE.read(encoding: 'utf-8'))
     metadata['version'] = version
@@ -117,20 +109,10 @@ module ReleaseSupport
   def version_checks(expected)
     {
       VERSION_FILE => expected,
-      PYPROJECT_FILE => extract_match(
-        PYPROJECT_FILE,
-        /^version = "([^"]+)"$/,
-        'pyproject version'
-      ),
       RUBY_VERSION_FILE => extract_match(
         RUBY_VERSION_FILE,
         /^\s*VERSION = ['"]([^'"]+)['"]/,
         'Ruby version'
-      ),
-      PYTHON_VERSION_FILE => extract_match(
-        PYTHON_VERSION_FILE,
-        /^__version__ = "([^"]+)"/,
-        'Python version'
       ),
       EXTENSION_METADATA_FILE => extension_metadata_version
     }
