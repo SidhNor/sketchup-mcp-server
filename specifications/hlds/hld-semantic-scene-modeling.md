@@ -105,7 +105,7 @@ This capability should keep atomic semantic creation separate from composite fea
 
 - `create_site_element` should remain the home for atomic Managed Scene Object creation and lifecycle-safe adoption or replacement of supported atomic objects
 - grouped or multipart site features should be composed through dedicated grouping and hierarchy-editing flows rather than being forced into one oversized atomic creation contract
-- the first hierarchy-maintenance slice may expose narrow helper primitives such as active edit-context inspection, group creation, and explicit reparenting without widening into a full composition platform
+- the first hierarchy-maintenance slice may expose narrow helper primitives such as group creation and explicit reparenting without widening into a full composition platform
 - this keeps the semantic creation contract durable while allowing larger features to be assembled from atomic managed objects
 
 ### Semantic Type Boundary Posture
@@ -175,7 +175,6 @@ This does not mean semantic modeling should absorb a second scene-query subsyste
 
 The limited first-class hierarchy-maintenance primitives for the next slice should be:
 
-- inspect active edit context
 - create group containers for semantic work
 - reparent
 
