@@ -1,38 +1,15 @@
 # frozen_string_literal: true
 
 require 'sketchup'
-require_relative 'component_geometry_builder'
 require_relative 'material_resolver'
 
 module SU_MCP
-  # Grouped command surface for editing and export operations.
+  # Grouped command surface for generic editing operations.
   class EditingCommands
-    def initialize(model_adapter:, logger: nil, active_model_provider: nil, geometry_builder: nil,
-                   material_resolver: nil)
+    def initialize(model_adapter:, logger: nil, material_resolver: nil)
       @model_adapter = model_adapter
       @logger = logger
-      @active_model_provider = active_model_provider
-      @geometry_builder = geometry_builder || ComponentGeometryBuilder.new(logger: logger)
       @material_resolver = material_resolver || MaterialResolver.new
-    end
-
-    def create_component(params)
-      log("Creating component with params: #{params.inspect}")
-      model = active_model!
-      entities = model.active_entities
-
-      position = params['position'] || [0, 0, 0]
-      dimensions = params['dimensions'] || [1, 1, 1]
-
-      group = entities.add_group
-      geometry_builder.build(
-        group: group,
-        type: params['type'],
-        position: position,
-        dimensions: dimensions
-      )
-
-      { id: group.entityID, success: true }
     end
 
     def delete_component(params)
@@ -41,7 +18,7 @@ module SU_MCP
       { success: true }
     end
 
-    def transform_component(params)
+    def transform_entities(params)
       entity = model_adapter.find_entity!(params['id'])
 
       apply_translation(entity, params['position']) if params['position']
@@ -49,14 +26,6 @@ module SU_MCP
       apply_scale(entity, params['scale']) if params['scale']
 
       { success: true, id: entity.entityID }
-    end
-
-    def export_scene(params)
-      model_adapter.export_scene(
-        format: params['format'],
-        width: params['width'],
-        height: params['height']
-      )
     end
 
     def apply_material(params)
@@ -70,14 +39,7 @@ module SU_MCP
 
     private
 
-    attr_reader :model_adapter, :logger, :active_model_provider, :geometry_builder,
-                :material_resolver
-
-    def active_model!
-      return active_model_provider.call if active_model_provider.respond_to?(:call)
-
-      Sketchup.active_model
-    end
+    attr_reader :model_adapter, :logger, :material_resolver
 
     def apply_translation(entity, position)
       transformation = Geom::Transformation.translation(

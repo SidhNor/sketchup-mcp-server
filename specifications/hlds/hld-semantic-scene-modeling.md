@@ -32,7 +32,7 @@ The architecture in this HLD is centered on:
 - Managed Scene Object metadata storage and invariant enforcement
 - semantic serialization for Managed Scene Objects
 - hierarchy-aware lifecycle behavior for Managed Scene Objects inside nested scene structure
-- compatibility boundaries for existing mutation tools such as `transform_component` and `set_material`
+- compatibility boundaries for existing mutation tools such as `transform_entities` and `set_material`
 - identity-preserving rebuild or replacement support for semantic revision flows
 
 The current PRD first wave centers on these semantic element types:
@@ -130,8 +130,7 @@ The current repository now has a first implemented semantic slice, including the
 
 What the repository still does not yet have is a fully migrated semantic architecture across all families and layers. Important parts of the current state remain transitional:
 
-- `create_component`
-- `transform_component`
+- `transform_entities`
 - `set_material`
 - `delete_component`
 
@@ -325,7 +324,7 @@ This is a capability-level requirement, not an incidental implementation detail.
 
 - define how existing generic mutation tools may interact with Managed Scene Objects
 - ensure hard semantic invariants are not silently broken when generic tools are used on managed objects
-- make the compatibility posture explicit for `transform_component`, `set_material`, and adjacent generic tools
+- make the compatibility posture explicit for `transform_entities`, `set_material`, and adjacent generic tools
 
 **Must Not Own**
 
@@ -399,7 +398,7 @@ Semantic revision path
 
 ```text
 Agent
--> transform_component or set_material
+-> transform_entities or set_material
 -> generic Ruby mutation command
 -> Managed-object compatibility boundary
 -> allowed mutation or structured refusal when hard invariants would break

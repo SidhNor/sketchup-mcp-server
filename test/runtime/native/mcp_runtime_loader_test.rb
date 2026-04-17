@@ -18,15 +18,11 @@ class McpRuntimeLoaderTest < Minitest::Test
     set_entity_metadata
     create_group
     reparent_entities
-    create_component
     delete_component
-    transform_component
+    transform_entities
     get_selection
     set_material
-    export_scene
     boolean_operation
-    chamfer_edges
-    fillet_edges
     eval_ruby
   ].freeze
 
@@ -204,14 +200,14 @@ class McpRuntimeLoaderTest < Minitest::Test
       reparent_entities_tool.fetch('inputSchema').fetch('properties').keys.sort
     )
 
-    transform_component_tool = tools.find { |tool| tool.fetch('name') == 'transform_component' }
+    transform_entities_tool = tools.find { |tool| tool.fetch('name') == 'transform_entities' }
     assert_equal(
       ['id'],
-      transform_component_tool.fetch('inputSchema').fetch('required')
+      transform_entities_tool.fetch('inputSchema').fetch('required')
     )
     assert_equal(
       %w[id position rotation scale],
-      transform_component_tool.fetch('inputSchema').fetch('properties').keys.sort
+      transform_entities_tool.fetch('inputSchema').fetch('properties').keys.sort
     )
 
     boolean_operation_tool = tools.find { |tool| tool.fetch('name') == 'boolean_operation' }
@@ -334,8 +330,8 @@ class McpRuntimeLoaderTest < Minitest::Test
       handlers: {
         ping: -> { { success: true, message: 'pong' } },
         get_scene_info: ->(_params) { { success: true, entities: [{ id: 101 }] } },
-        create_component: lambda do |arguments|
-          { success: true, created: true, type: arguments.fetch('type') }
+        transform_entities: lambda do |arguments|
+          { success: true, id: arguments.fetch('id') }
         end
       }
     )
@@ -344,12 +340,12 @@ class McpRuntimeLoaderTest < Minitest::Test
       transport,
       id: 4,
       method: 'tools/call',
-      params: { name: 'create_component', arguments: { 'type' => 'cube' } }
+      params: { name: 'transform_entities', arguments: { 'id' => '301' } }
     )
 
     assert_equal(200, response[:status])
     assert_equal(
-      { 'success' => true, 'created' => true, 'type' => 'cube' },
+      { 'success' => true, 'id' => '301' },
       response[:body].dig('result', 'structuredContent')
     )
   end
@@ -487,9 +483,8 @@ class McpRuntimeLoaderTest < Minitest::Test
     get_entity_info = catalog.find { |tool| tool.fetch(:name) == 'get_entity_info' }
     create_site_element = catalog.find { |tool| tool.fetch(:name) == 'create_site_element' }
     set_entity_metadata = catalog.find { |tool| tool.fetch(:name) == 'set_entity_metadata' }
-    transform_component = catalog.find { |tool| tool.fetch(:name) == 'transform_component' }
+    transform_entities = catalog.find { |tool| tool.fetch(:name) == 'transform_entities' }
     boolean_operation = catalog.find { |tool| tool.fetch(:name) == 'boolean_operation' }
-    create_component = catalog.find { |tool| tool.fetch(:name) == 'create_component' }
     get_selection = catalog.find { |tool| tool.fetch(:name) == 'get_selection' }
     eval_ruby = catalog.find { |tool| tool.fetch(:name) == 'eval_ruby' }
 
@@ -503,8 +498,6 @@ class McpRuntimeLoaderTest < Minitest::Test
     assert_equal('object', find_entities.dig(:input_schema, :type))
     assert_equal('query', find_entities.dig(:input_schema, :required)&.first)
 
-    assert_equal(false, create_component.dig(:metadata, :annotations, :read_only_hint))
-    assert_equal('object', create_component.dig(:input_schema, :type))
     assert_equal('Sample Target Surface Elevation', sample_surface_z.dig(:metadata, :title))
     assert_equal(%w[target samplePoints], sample_surface_z.dig(:input_schema, :required))
     assert_equal(%i[entityId persistentId sourceElementId],
@@ -516,7 +509,8 @@ class McpRuntimeLoaderTest < Minitest::Test
                  create_site_element.dig(:input_schema, :required))
     assert_equal('Set Entity Metadata', set_entity_metadata.dig(:metadata, :title))
     assert_equal(['target'], set_entity_metadata.dig(:input_schema, :required))
-    assert_equal(['id'], transform_component.dig(:input_schema, :required))
+    assert_equal('Transform Entities', transform_entities.dig(:metadata, :title))
+    assert_equal(['id'], transform_entities.dig(:input_schema, :required))
     assert_equal(%w[target_id tool_id operation], boolean_operation.dig(:input_schema, :required))
     assert_equal(true, get_selection.dig(:metadata, :annotations, :read_only_hint))
     assert_equal(['code'], eval_ruby.dig(:input_schema, :required))
@@ -527,7 +521,7 @@ class McpRuntimeLoaderTest < Minitest::Test
 
   def test_tool_catalog_tracks_the_runtime_handler_key_for_representative_tools
     catalog = @loader.tool_catalog
-    representative_tools = %w[get_scene_info create_site_element export_scene eval_ruby]
+    representative_tools = %w[get_scene_info create_site_element transform_entities eval_ruby]
     matching_tools = catalog.select { |tool| representative_tools.include?(tool.fetch(:name)) }
 
     assert_equal(

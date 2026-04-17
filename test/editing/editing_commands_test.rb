@@ -12,10 +12,9 @@ class EditingCommandsTest < Minitest::Test
   class RecordingAdapter
     attr_reader :calls
 
-    def initialize(model:, entity:, export_result:)
+    def initialize(model:, entity:)
       @model = model
       @entity = entity
-      @export_result = export_result
       @calls = []
     end
 
@@ -28,11 +27,6 @@ class EditingCommandsTest < Minitest::Test
       @calls << [:find_entity!, id]
       @entity
     end
-
-    def export_scene(format:, width: nil, height: nil)
-      @calls << [:export_scene, format, width, height]
-      @export_result
-    end
   end
 
   def setup
@@ -40,24 +34,9 @@ class EditingCommandsTest < Minitest::Test
     @entity = @mutation_model.entities.first
     @adapter = RecordingAdapter.new(
       model: @mutation_model,
-      entity: @entity,
-      export_result: { success: true, path: '/tmp/export.png', format: 'png' }
+      entity: @entity
     )
-    @commands = SU_MCP::EditingCommands.new(
-      model_adapter: @adapter,
-      active_model_provider: -> { build_semantic_model }
-    )
-  end
-
-  def test_create_component_creates_a_cube_in_the_active_edit_context
-    result = @commands.create_component(
-      'type' => 'cube',
-      'position' => [0, 0, 0],
-      'dimensions' => [2, 3, 4]
-    )
-
-    assert_equal(true, result[:success])
-    assert(result[:id])
+    @commands = SU_MCP::EditingCommands.new(model_adapter: @adapter)
   end
 
   def test_delete_component_uses_the_shared_adapter_for_entity_lookup
@@ -68,8 +47,8 @@ class EditingCommandsTest < Minitest::Test
     assert_equal([[:find_entity!, '301']], @adapter.calls)
   end
 
-  def test_transform_component_uses_the_shared_adapter_for_entity_lookup
-    result = @commands.transform_component(
+  def test_transform_entities_uses_the_shared_adapter_for_entity_lookup
+    result = @commands.transform_entities(
       'id' => '301',
       'position' => [1, 2, 3],
       'rotation' => [0, 0, 0],
@@ -88,12 +67,5 @@ class EditingCommandsTest < Minitest::Test
     assert_equal(true, result[:success])
     assert_equal('Walnut', @entity.material.display_name)
     assert_equal([:active_model!, [:find_entity!, '301']], @adapter.calls)
-  end
-
-  def test_export_scene_uses_the_shared_adapter_for_export_execution
-    result = @commands.export_scene('format' => 'png', 'width' => 640, 'height' => 480)
-
-    assert_equal([[:export_scene, 'png', 640, 480]], @adapter.calls)
-    assert_equal({ success: true, path: '/tmp/export.png', format: 'png' }, result)
   end
 end

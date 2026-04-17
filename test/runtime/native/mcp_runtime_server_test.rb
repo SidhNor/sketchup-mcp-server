@@ -59,7 +59,7 @@ class McpRuntimeServerTest < Minitest::Test
         { handler_key: :get_scene_info },
         { handler_key: :list_entities },
         { handler_key: :create_site_element },
-        { handler_key: :create_component },
+        { handler_key: :transform_entities },
         { handler_key: :eval_ruby }
       ]
     end
@@ -152,7 +152,7 @@ class McpRuntimeServerTest < Minitest::Test
       def get_scene_info(_params = {}); end
       def list_entities(_params = {}); end
       def create_site_element(_params = {}); end
-      def create_component(_params = {}); end
+      def transform_entities(_params = {}); end
       def eval_ruby(_params = {}); end
     end.new
     server = SU_MCP::McpRuntimeServer.new(
@@ -166,7 +166,7 @@ class McpRuntimeServerTest < Minitest::Test
     server.start
 
     assert_equal(
-      %i[ping get_scene_info list_entities create_site_element create_component eval_ruby],
+      %i[ping get_scene_info list_entities create_site_element transform_entities eval_ruby],
       backend.start_calls.first.fetch(:handlers).keys
     )
   end

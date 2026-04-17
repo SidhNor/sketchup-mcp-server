@@ -413,26 +413,8 @@ module SU_MCP
       ]
     end
 
-    # rubocop:disable Metrics/AbcSize
     def mutation_tool_catalog
       [
-        tool_entry(
-          name: 'create_component',
-          title: 'Create Component',
-          description: 'Create a new component in SketchUp.',
-          handler_key: :create_component,
-          annotations: { read_only_hint: false, destructive_hint: false },
-          classification: 'first_class',
-          input_schema: {
-            type: 'object',
-            properties: {
-              type: string_schema,
-              position: numeric_array_schema,
-              dimensions: numeric_array_schema
-            },
-            additionalProperties: false
-          }
-        ),
         tool_entry(
           name: 'delete_component',
           title: 'Delete Component',
@@ -443,10 +425,10 @@ module SU_MCP
           input_schema: identifier_object_schema('id')
         ),
         tool_entry(
-          name: 'transform_component',
-          title: 'Transform Component',
-          description: "Transform a component's position, rotation, or scale.",
-          handler_key: :transform_component,
+          name: 'transform_entities',
+          title: 'Transform Entities',
+          description: "Transform a supported entity's position, rotation, or scale.",
+          handler_key: :transform_entities,
           annotations: { read_only_hint: false, destructive_hint: false },
           classification: 'first_class',
           input_schema: {
@@ -492,23 +474,6 @@ module SU_MCP
           }
         ),
         tool_entry(
-          name: 'export_scene',
-          title: 'Export Scene',
-          description: 'Export the current SketchUp scene.',
-          handler_key: :export_scene,
-          annotations: { read_only_hint: false, destructive_hint: false },
-          classification: 'first_class',
-          input_schema: {
-            type: 'object',
-            properties: {
-              format: string_schema,
-              width: integer_schema,
-              height: integer_schema
-            },
-            additionalProperties: false
-          }
-        ),
-        tool_entry(
           name: 'boolean_operation',
           title: 'Run Boolean Operation',
           description: 'Run a boolean operation between two SketchUp groups/components.',
@@ -523,45 +488,6 @@ module SU_MCP
               tool_id: string_schema,
               operation: string_schema,
               delete_originals: boolean_schema
-            },
-            additionalProperties: false
-          }
-        ),
-        tool_entry(
-          name: 'chamfer_edges',
-          title: 'Chamfer Edges',
-          description: 'Create a chamfer on selected edges of a group or component.',
-          handler_key: :chamfer_edges,
-          annotations: { read_only_hint: false, destructive_hint: false },
-          classification: 'first_class',
-          input_schema: {
-            type: 'object',
-            required: ['entity_id'],
-            properties: {
-              entity_id: string_schema,
-              distance: number_schema,
-              edge_indices: integer_array_schema,
-              delete_original: boolean_schema
-            },
-            additionalProperties: false
-          }
-        ),
-        tool_entry(
-          name: 'fillet_edges',
-          title: 'Fillet Edges',
-          description: 'Create a fillet on selected edges of a group or component.',
-          handler_key: :fillet_edges,
-          annotations: { read_only_hint: false, destructive_hint: false },
-          classification: 'first_class',
-          input_schema: {
-            type: 'object',
-            required: ['entity_id'],
-            properties: {
-              entity_id: string_schema,
-              radius: number_schema,
-              segments: integer_schema,
-              edge_indices: integer_array_schema,
-              delete_original: boolean_schema
             },
             additionalProperties: false
           }
@@ -589,7 +515,6 @@ module SU_MCP
         )
       ]
     end
-    # rubocop:enable Metrics/AbcSize
     # rubocop:enable Metrics/MethodLength
 
     # rubocop:disable Metrics/ParameterLists

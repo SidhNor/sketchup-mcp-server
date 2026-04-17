@@ -45,8 +45,7 @@ module SU_MCP
     def editing_commands
       @editing_commands ||= EditingCommands.new(
         model_adapter: model_adapter,
-        logger: logger,
-        active_model_provider: -> { Sketchup.active_model }
+        logger: logger
       )
     end
 

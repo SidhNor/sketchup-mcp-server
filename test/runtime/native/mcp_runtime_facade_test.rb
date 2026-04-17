@@ -108,7 +108,7 @@ class McpRuntimeFacadeTest < Minitest::Test
 
   def test_builds_command_targets_from_the_shared_runtime_command_factory
     expected = { success: true, outcome: 'created', id: 'component-1' }
-    component_commands = Class.new do
+    editing_commands = Class.new do
       attr_reader :calls
 
       def initialize(result)
@@ -116,18 +116,18 @@ class McpRuntimeFacadeTest < Minitest::Test
         @calls = []
       end
 
-      def create_component(params)
+      def transform_entities(params)
         @calls << params
         @result
       end
     end.new(expected)
-    factory = RecordingRuntimeCommandFactory.new(targets: [component_commands])
+    factory = RecordingRuntimeCommandFactory.new(targets: [editing_commands])
     facade = SU_MCP::McpRuntimeFacade.new(runtime_command_factory: factory)
 
-    result = facade.create_component('type' => 'cube')
+    result = facade.transform_entities('id' => '301', 'position' => [1, 2, 3])
 
     assert_equal(1, factory.calls)
-    assert_equal([{ 'type' => 'cube' }], component_commands.calls)
+    assert_equal([{ 'id' => '301', 'position' => [1, 2, 3] }], editing_commands.calls)
     assert_equal(expected, result)
   end
 

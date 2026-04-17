@@ -61,7 +61,7 @@ Scenario: metadata mutation lands with unit and contract coverage
 
 ## Non-Goals
 
-- defining managed-object compatibility behavior for `transform_component` or `set_material`
+- defining managed-object compatibility behavior for `transform_entities` or `set_material`
 - delivering identity-preserving rebuild or replacement flows
 - broad semantic query or collection-discovery behavior beyond the delivered targeting dependency
 - introducing full hierarchy-editing operations such as explicit reparent, active edit-context control, or duplicate-into-parent flows

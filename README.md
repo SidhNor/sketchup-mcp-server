@@ -95,12 +95,9 @@ The current MCP surface includes scene inspection, semantic scene modeling, and 
 - `set_entity_metadata`
 - `create_group`
 - `reparent_entities`
-- `create_component`
-- `transform_component`
+- `transform_entities`
 - `set_material`
 - `boolean_operation`
-- `chamfer_edges`
-- `fillet_edges`
 - `eval_ruby`
 
 Public geometric dimensions for `create_site_element` are interpreted and returned in meters, independent of the active SketchUp model unit display settings.

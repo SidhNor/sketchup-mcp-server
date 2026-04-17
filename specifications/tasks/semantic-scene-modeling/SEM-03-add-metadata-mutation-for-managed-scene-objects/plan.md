@@ -25,7 +25,7 @@ The task also needs to stay valid in hierarchy-heavy scenes. Managed Scene Objec
 
 ## Non-Goals
 
-- Defining generic mutation compatibility rules for `transform_component` or `set_material`.
+- Defining generic mutation compatibility rules for `transform_entities` or `set_material`.
 - Delivering identity-preserving rebuild or replacement flows.
 - Introducing a second lookup subsystem or broad query surface inside semantic modeling.
 - Expanding the semantic metadata schema beyond the fields already documented or already owned by the semantic slice.

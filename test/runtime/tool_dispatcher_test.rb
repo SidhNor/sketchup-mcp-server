@@ -16,9 +16,9 @@ class ToolDispatcherTest < Minitest::Test
       { success: true, scene: args.fetch('scene') }
     end
 
-    def export_scene(args)
-      @calls << [:export_scene, args]
-      { success: true, format: args.fetch('format') }
+    def transform_entities(args)
+      @calls << [:transform_entities, args]
+      { success: true, id: args.fetch('id') }
     end
 
     def selection_info
@@ -74,23 +74,9 @@ class ToolDispatcherTest < Minitest::Test
     end
     # rubocop:enable Naming/AccessorMethodName
 
-    private :get_scene_info, :export_scene, :selection_info, :find_entities, :sample_surface_z,
+    private :get_scene_info, :transform_entities, :selection_info, :find_entities,
+            :sample_surface_z,
             :create_group, :reparent_entities, :create_site_element, :set_entity_metadata
-  end
-
-  class ExportOnlyTarget
-    attr_reader :calls
-
-    def initialize
-      @calls = []
-    end
-
-    def export_scene(args)
-      @calls << [:export_scene, args]
-      { success: true, format: args.fetch('format'), source: :secondary }
-    end
-
-    private :export_scene
   end
 
   def setup
@@ -105,21 +91,11 @@ class ToolDispatcherTest < Minitest::Test
     assert_equal([[:get_scene_info, { 'scene' => 'active' }]], @target.calls)
   end
 
-  def test_dispatches_export_alias_to_export_scene
-    result = @dispatcher.call('export', { 'format' => 'png' })
+  def test_dispatches_transform_entities_to_the_editing_command
+    result = @dispatcher.call('transform_entities', { 'id' => '301', 'position' => [1, 2, 3] })
 
-    assert_equal({ success: true, format: 'png' }, result)
-    assert_equal([[:export_scene, { 'format' => 'png' }]], @target.calls)
-  end
-
-  def test_resolves_tool_method_from_later_command_target
-    secondary_target = ExportOnlyTarget.new
-    dispatcher = SU_MCP::ToolDispatcher.new(command_targets: [Object.new, secondary_target])
-
-    result = dispatcher.call('export', { 'format' => 'obj' })
-
-    assert_equal({ success: true, format: 'obj', source: :secondary }, result)
-    assert_equal([[:export_scene, { 'format' => 'obj' }]], secondary_target.calls)
+    assert_equal({ success: true, id: '301' }, result)
+    assert_equal([[:transform_entities, { 'id' => '301', 'position' => [1, 2, 3] }]], @target.calls)
   end
 
   def test_dispatches_get_selection_without_arguments

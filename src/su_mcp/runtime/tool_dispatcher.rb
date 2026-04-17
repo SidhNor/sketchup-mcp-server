@@ -13,16 +13,11 @@ module SU_MCP
       'set_entity_metadata' => :set_entity_metadata,
       'create_group' => :create_group,
       'reparent_entities' => :reparent_entities,
-      'create_component' => :create_component,
       'delete_component' => :delete_component,
-      'transform_component' => :transform_component,
+      'transform_entities' => :transform_entities,
       'get_selection' => :selection_info,
-      'export' => :export_scene,
-      'export_scene' => :export_scene,
       'set_material' => :apply_material,
       'boolean_operation' => :boolean_operation,
-      'chamfer_edges' => :chamfer_edges,
-      'fillet_edges' => :fillet_edges,
       'eval_ruby' => :eval_ruby
     }.freeze
 

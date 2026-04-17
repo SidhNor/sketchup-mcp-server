@@ -37,7 +37,7 @@ The current task set persists the three confirmed core tasks, one follow-up refi
 
 The following follow-ons were intentionally kept out of the active task folders for this iteration:
 
-- define managed-object compatibility behavior for generic mutation tools such as `transform_component` and `set_material`
+- define managed-object compatibility behavior for generic mutation tools such as `transform_entities` and `set_material`
 - support identity-preserving rebuild and replacement flows for Managed Scene Objects
 - define duplicate-into-parent and controlled deletion rules for managed objects beyond the limited hierarchy-maintenance slice
 - promote next-wave semantic element types such as `tree_instance`, `seat`, `water_feature_proxy`, and possibly `terrain_patch`
