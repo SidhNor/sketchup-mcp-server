@@ -174,6 +174,7 @@ module SU_MCP
       &handler
     )
       normalizer = method(:stringify_keys)
+      invoker = method(:invoke_tool_handler)
 
       MCP::Tool.define(
         name: name,
@@ -185,7 +186,7 @@ module SU_MCP
         arguments = kwargs.dup
         arguments.delete(:server_context)
 
-        result = invoke_tool_handler(
+        result = invoker.call(
           handler,
           normalizer.call(arguments),
           tool_name: name,

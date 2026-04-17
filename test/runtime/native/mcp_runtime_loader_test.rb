@@ -750,7 +750,11 @@ class McpRuntimeLoaderTest < Minitest::Test
     end
     tool_module = Module.new do
       define_singleton_method(:define) do |**_kwargs, &block|
-        block
+        Class.new do
+          define_method(:call) do |**kwargs|
+            self.class.instance_exec(**kwargs, &block)
+          end
+        end.new
       end
     end
     tool_module.const_set(:Response, response_class)
