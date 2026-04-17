@@ -2,6 +2,17 @@
 
 <!-- version list -->
 
+## v0.13.1 (2026-04-17)
+
+### Bug Fixes
+
+- **release**: Clean dist before preparing versioned rbz
+  ([`47c5837`](https://github.com/SidhNor/sketchup-mcp-server/commit/47c58376bba75b2f92d4785a21c63f66d5e66672))
+
+- **release**: Commit VERSION in semantic-release updates
+  ([`6bd5bd1`](https://github.com/SidhNor/sketchup-mcp-server/commit/6bd5bd12d161bd1ae512c4d593474a6fdac84721))
+
+
 ## v0.13.0 (2026-04-17)
 
 ### Bug Fixes
