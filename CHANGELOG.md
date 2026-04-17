@@ -2,6 +2,28 @@
 
 <!-- version list -->
 
+## v0.14.0 (2026-04-17)
+
+### Documentation
+
+- **platform**: Define PLAT-14 native MCP tool contract task
+  ([`28b1023`](https://github.com/SidhNor/sketchup-mcp-server/commit/28b1023c9ef6c3a5f45751332df0665da4286fc9))
+
+- **sem-08**: Finalize remaining-family migration plan
+  ([`2b2cfe6`](https://github.com/SidhNor/sketchup-mcp-server/commit/2b2cfe663fd88b442ab37a9c3adb445995c7198d))
+
+### Features
+
+- **SEM-07**: Add hierarchy maintenance primitives
+  ([`411d05b`](https://github.com/SidhNor/sketchup-mcp-server/commit/411d05b3a3cc8403685e68b9b1a004259a44ca81))
+
+- **SEM-08**: Complete builder-native v2 migration for remaining families
+  ([`62a9a75`](https://github.com/SidhNor/sketchup-mcp-server/commit/62a9a750baa6cdc743e4fd8d3ba9df9fd01b3203))
+
+- **semantic**: Cut over create_site_element to sectioned contract
+  ([`00de75b`](https://github.com/SidhNor/sketchup-mcp-server/commit/00de75bb8eb7fa7251064710d7344aa652b1ce46))
+
+
 ## v0.13.1 (2026-04-17)
 
 ### Bug Fixes
