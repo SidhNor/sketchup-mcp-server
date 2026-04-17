@@ -52,7 +52,7 @@ module SU_MCP
       end
 
       def build(model:, params:)
-        payload = params.fetch('tree_proxy')
+        payload = normalized_payload(params)
         wrapper_group = model.active_entities.add_group
         scene_properties.apply!(model: model, group: wrapper_group, params: params)
 
@@ -66,6 +66,14 @@ module SU_MCP
       private
 
       attr_reader :scene_properties
+
+      def normalized_payload(params)
+        payload = params.fetch('definition').dup
+        canopy_diameter_x = payload.fetch('canopyDiameterX')
+        payload['canopyDiameterY'] = canopy_diameter_x unless payload.key?('canopyDiameterY')
+        payload['canopyDiameterY'] = canopy_diameter_x if payload['canopyDiameterY'].nil?
+        payload
+      end
 
       def build_trunk(group:, payload:)
         base_ring = trunk_ring(payload: payload, z_ratio: 0.0)

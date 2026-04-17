@@ -51,6 +51,7 @@ module SU_MCP
 
       def normalize_create_site_element_params(params)
         normalized = deep_copy(params)
+        apply_section_defaults!(normalized)
         geometry_fields(params.fetch('elementType', nil)).each do |path, type|
           normalize_geometry_field!(normalized, path, type)
         end
@@ -60,6 +61,16 @@ module SU_MCP
       private
 
       attr_reader :length_converter
+
+      def apply_section_defaults!(params)
+        return unless params['elementType'] == 'tree_proxy'
+
+        definition = params['definition']
+        return unless definition.is_a?(Hash)
+        return if definition.key?('canopyDiameterY') && !definition['canopyDiameterY'].nil?
+
+        definition['canopyDiameterY'] = definition['canopyDiameterX']
+      end
 
       def geometry_fields(element_type)
         GEOMETRY_FIELDS_BY_TYPE.fetch(element_type.to_s, {})

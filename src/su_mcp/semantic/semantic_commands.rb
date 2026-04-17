@@ -211,16 +211,8 @@ module SU_MCP
 
     def v2_builder_payload(params)
       case params['elementType']
-      when 'path', 'structure'
+      when 'pad', 'structure', 'path', 'retaining_edge', 'planting_mass', 'tree_proxy'
         migrated_builder_payload(params)
-      when 'pad'
-        legacy_pad_builder_payload(params)
-      when 'retaining_edge'
-        legacy_retaining_edge_builder_payload(params)
-      when 'planting_mass'
-        legacy_planting_mass_builder_payload(params)
-      when 'tree_proxy'
-        legacy_tree_proxy_builder_payload(params)
       else
         {}
       end
@@ -231,71 +223,6 @@ module SU_MCP
       payload['sceneProperties'] = params['sceneProperties'] if params.key?('sceneProperties')
       payload['representation'] = params['representation'] if params.key?('representation')
       payload
-    end
-
-    def legacy_scene_properties_payload(params)
-      {}.tap do |payload|
-        scene_properties = params.fetch('sceneProperties', {})
-        representation = params.fetch('representation', {})
-
-        payload['name'] = scene_properties['name'] if scene_properties.key?('name')
-        payload['tag'] = scene_properties['tag'] if scene_properties.key?('tag')
-        payload['material'] = representation['material'] if representation.key?('material')
-      end
-    end
-
-    def legacy_pad_builder_payload(params)
-      definition = params.fetch('definition', {})
-      legacy_scene_properties_payload(params).merge(
-        'footprint' => definition['footprint'],
-        'elevation' => definition.fetch('elevation', 0.0),
-        'thickness' => definition['thickness']
-      )
-    end
-
-    def legacy_retaining_edge_builder_payload(params)
-      definition = params.fetch('definition', {})
-      legacy_scene_properties_payload(params).merge(
-        'retaining_edge' => {
-          'polyline' => definition['polyline'],
-          'height' => definition['height'],
-          'thickness' => definition['thickness']
-        }.tap do |payload|
-          payload['elevation'] = definition['elevation'] if definition.key?('elevation')
-        end
-      )
-    end
-
-    def legacy_planting_mass_builder_payload(params)
-      definition = params.fetch('definition', {})
-      legacy_scene_properties_payload(params).merge(
-        'planting_mass' => {
-          'boundary' => definition['boundary'],
-          'averageHeight' => definition['averageHeight']
-        }.tap do |payload|
-          payload['elevation'] = definition['elevation'] if definition.key?('elevation')
-          if definition.key?('plantingCategory')
-            payload['plantingCategory'] = definition['plantingCategory']
-          end
-        end
-      )
-    end
-
-    def legacy_tree_proxy_builder_payload(params)
-      definition = params.fetch('definition', {})
-      legacy_scene_properties_payload(params).merge(
-        'tree_proxy' => {
-          'position' => definition['position'],
-          'canopyDiameterX' => definition['canopyDiameterX'],
-          'height' => definition['height'],
-          'trunkDiameter' => definition['trunkDiameter']
-        }.tap do |payload|
-          if definition.key?('canopyDiameterY')
-            payload['canopyDiameterY'] = definition['canopyDiameterY']
-          end
-          payload['speciesHint'] = definition['speciesHint'] if definition.key?('speciesHint')
-        end
-      )
     end
 
     def create_site_element_v2_adopt(params, public_params:)
@@ -453,10 +380,11 @@ module SU_MCP
 
     def tree_proxy_metadata_attributes(params)
       payload = params.fetch('definition', {})
+      canopy_diameter_y = payload['canopyDiameterY'] || payload['canopyDiameterX']
       attributes = {
         'height' => payload['height'],
         'canopyDiameterX' => payload['canopyDiameterX'],
-        'canopyDiameterY' => payload.fetch('canopyDiameterY', payload['canopyDiameterX']),
+        'canopyDiameterY' => canopy_diameter_y,
         'trunkDiameter' => payload['trunkDiameter']
       }
       attributes['speciesHint'] = payload['speciesHint'] if payload.key?('speciesHint')

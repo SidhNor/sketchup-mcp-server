@@ -361,7 +361,7 @@ class SemanticCommandsTest < Minitest::Test
 
     result = commands.create_site_element(sectioned_pad_request(
                                             'definition' => {
-                                              'mode' => 'footprint_surface',
+                                              'mode' => 'polygon',
                                               'footprint' => [
                                                 [0.0, 0.0], [3.0, 0.0], [3.0, 2.0], [0.0, 2.0]
                                               ],
@@ -372,6 +372,26 @@ class SemanticCommandsTest < Minitest::Test
     assert_equal(true, result[:success])
     assert_equal('refused', result[:outcome])
     assert_equal('invalid_numeric_value', result.dig(:refusal, :code))
+  end
+
+  def test_create_site_element_refuses_non_finite_pad_elevation
+    commands = SU_MCP::SemanticCommands.new(model: @model)
+
+    result = commands.create_site_element(sectioned_pad_request(
+                                            'definition' => {
+                                              'mode' => 'polygon',
+                                              'footprint' => [
+                                                [0.0, 0.0], [3.0, 0.0], [3.0, 2.0], [0.0, 2.0]
+                                              ],
+                                              'elevation' => 'not-a-number',
+                                              'thickness' => 0.2
+                                            }
+                                          ))
+
+    assert_equal(true, result[:success])
+    assert_equal('refused', result[:outcome])
+    assert_equal('invalid_numeric_value', result.dig(:refusal, :code))
+    assert_equal('definition.elevation', result.dig(:refusal, :details, :field))
   end
 
   # rubocop:disable Metrics/AbcSize, Layout/LineLength
@@ -605,9 +625,30 @@ class SemanticCommandsTest < Minitest::Test
     assert_equal(0.1, metadata_writer.calls.first.last['thickness'])
   end
 
-  def test_create_site_element_keeps_non_migrated_pad_on_a_narrow_internal_bridge
+  def test_create_site_element_refuses_transitional_remaining_family_modes
+    commands = SU_MCP::SemanticCommands.new(model: @model)
+    requests = [
+      sectioned_pad_request('definition' => { 'mode' => 'footprint_surface' }),
+      sectioned_retaining_edge_request('definition' => { 'mode' => 'wall_profile' }),
+      sectioned_planting_mass_request('definition' => { 'mode' => 'boundary_mass' }),
+      sectioned_tree_proxy_request('definition' => { 'mode' => 'proxy_tree' })
+    ]
+
+    requests.each do |request|
+      result = commands.create_site_element(request)
+
+      assert_equal(true, result[:success])
+      assert_equal('refused', result[:outcome])
+      assert_equal('unsupported_option', result.dig(:refusal, :code))
+      assert_equal('definition.mode', result.dig(:refusal, :details, :field))
+      assert_equal(request.dig('definition', 'mode'), result.dig(:refusal, :details, :value))
+    end
+  end
+
+  def test_create_site_element_routes_sectioned_pad_requests_directly_to_builder_native_definition
     created_group = @model.active_entities.add_group
     captured_params = nil
+    host_target = FakeManagedEntity.new(parent: Object.new)
     builder = Object.new
     builder.define_singleton_method(:build) do |**kwargs|
       captured_params = kwargs.fetch(:params)
@@ -619,22 +660,144 @@ class SemanticCommandsTest < Minitest::Test
       model: @model,
       registry: registry,
       metadata_writer: FakeMetadataWriter.new,
-      serializer: serializer
+      serializer: serializer,
+      target_resolver: FakeTargetResolver.new(resolution: 'unique', entity: host_target)
     )
 
-    result = commands.create_site_element(sectioned_pad_request)
+    result = commands.create_site_element(sectioned_pad_request(
+                                            'definition' => {
+                                              'elevation' => 0.35
+                                            },
+                                            'hosting' => {
+                                              'mode' => 'surface_snap',
+                                              'target' => { 'sourceElementId' => 'terrain-main' }
+                                            }
+                                          ))
 
     assert_equal(true, result[:success])
     assert_equal('created', result[:outcome])
     assert_equal(['pad'], registry.calls)
-    assert_equal('Sectioned Terrace', captured_params['name'])
-    assert_equal('Hardscape', captured_params['tag'])
-    assert_equal('Concrete', captured_params['material'])
+    assert_equal('Sectioned Terrace', captured_params.dig('sceneProperties', 'name'))
+    assert_equal('Hardscape', captured_params.dig('sceneProperties', 'tag'))
+    assert_equal('Concrete', captured_params.dig('representation', 'material'))
+    assert_equal('polygon', captured_params.dig('definition', 'mode'))
+    assert_same(host_target, captured_params.dig('hosting', 'resolved_target'))
+    assert_in_delta(0.35 * METERS_TO_INTERNAL, captured_params.dig('definition', 'elevation'), 1e-9)
     assert_equal(
       [[0.0, 0.0], [3.0 * METERS_TO_INTERNAL, 0.0],
        [3.0 * METERS_TO_INTERNAL, 2.0 * METERS_TO_INTERNAL],
        [0.0, 2.0 * METERS_TO_INTERNAL]],
-      captured_params['footprint']
+      captured_params.dig('definition', 'footprint')
+    )
+  end
+
+  def test_create_site_element_routes_sectioned_retaining_edge_requests_directly_to_builder_native_definition
+    created_group = @model.active_entities.add_group
+    captured_params = nil
+    host_target = FakeManagedEntity.new(parent: Object.new)
+    builder = Object.new
+    builder.define_singleton_method(:build) do |**kwargs|
+      captured_params = kwargs.fetch(:params)
+      created_group
+    end
+    registry = FakeRegistry.new(builder)
+    serializer = FakeSerializer.new(sourceElementId: 'ret-edge-001', semanticType: 'retaining_edge')
+    commands = SU_MCP::SemanticCommands.new(
+      model: @model,
+      registry: registry,
+      metadata_writer: FakeMetadataWriter.new,
+      serializer: serializer,
+      target_resolver: FakeTargetResolver.new(resolution: 'unique', entity: host_target)
+    )
+
+    result = commands.create_site_element(sectioned_retaining_edge_request(
+                                            'definition' => {
+                                              'elevation' => 0.15
+                                            },
+                                            'hosting' => {
+                                              'mode' => 'edge_clamp',
+                                              'target' => { 'sourceElementId' => 'edge-main' }
+                                            }
+                                          ))
+
+    assert_equal(true, result[:success])
+    assert_equal('created', result[:outcome])
+    assert_equal(['retaining_edge'], registry.calls)
+    assert_equal('polyline', captured_params.dig('definition', 'mode'))
+    assert_equal('Stone', captured_params.dig('representation', 'material'))
+    assert_same(host_target, captured_params.dig('hosting', 'resolved_target'))
+    assert_in_delta(0.15 * METERS_TO_INTERNAL, captured_params.dig('definition', 'elevation'), 1e-9)
+    assert_equal(
+      [[2.0 * METERS_TO_INTERNAL, 0.0], [8.0 * METERS_TO_INTERNAL, 0.0],
+       [8.0 * METERS_TO_INTERNAL, 4.0 * METERS_TO_INTERNAL]],
+      captured_params.dig('definition', 'polyline')
+    )
+  end
+
+  def test_create_site_element_routes_sectioned_planting_mass_requests_directly_to_builder_native_definition
+    created_group = @model.active_entities.add_group
+    captured_params = nil
+    builder = Object.new
+    builder.define_singleton_method(:build) do |**kwargs|
+      captured_params = kwargs.fetch(:params)
+      created_group
+    end
+    registry = FakeRegistry.new(builder)
+    serializer = FakeSerializer.new(sourceElementId: 'hedge-001', semanticType: 'planting_mass')
+    commands = SU_MCP::SemanticCommands.new(
+      model: @model,
+      registry: registry,
+      metadata_writer: FakeMetadataWriter.new,
+      serializer: serializer
+    )
+
+    result = commands.create_site_element(sectioned_planting_mass_request)
+
+    assert_equal(true, result[:success])
+    assert_equal('created', result[:outcome])
+    assert_equal(['planting_mass'], registry.calls)
+    assert_equal('mass_polygon', captured_params.dig('definition', 'mode'))
+    assert_equal('Hedge Mass', captured_params.dig('sceneProperties', 'name'))
+    assert_equal(
+      [[0.0, 0.0], [4.0 * METERS_TO_INTERNAL, 0.0],
+       [4.0 * METERS_TO_INTERNAL, 2.0 * METERS_TO_INTERNAL],
+       [0.0, 2.0 * METERS_TO_INTERNAL]],
+      captured_params.dig('definition', 'boundary')
+    )
+  end
+
+  def test_create_site_element_routes_sectioned_tree_proxy_requests_directly_to_builder_native_definition
+    created_group = @model.active_entities.add_group
+    captured_params = nil
+    builder = Object.new
+    builder.define_singleton_method(:build) do |**kwargs|
+      captured_params = kwargs.fetch(:params)
+      created_group
+    end
+    registry = FakeRegistry.new(builder)
+    serializer = FakeSerializer.new(sourceElementId: 'tree-001', semanticType: 'tree_proxy')
+    commands = SU_MCP::SemanticCommands.new(
+      model: @model,
+      registry: registry,
+      metadata_writer: FakeMetadataWriter.new,
+      serializer: serializer
+    )
+
+    result = commands.create_site_element(sectioned_tree_proxy_request(
+                                            'definition' => {
+                                              'canopyDiameterY' => nil
+                                            }
+                                          ))
+
+    assert_equal(true, result[:success])
+    assert_equal('created', result[:outcome])
+    assert_equal(['tree_proxy'], registry.calls)
+    assert_equal('generated_proxy', captured_params.dig('definition', 'mode'))
+    assert_equal('Cherry Proxy', captured_params.dig('sceneProperties', 'name'))
+    assert_in_delta(
+      6.0 * METERS_TO_INTERNAL,
+      captured_params.dig('definition', 'canopyDiameterY'),
+      1e-9
     )
   end
 
@@ -1031,8 +1194,12 @@ class SemanticCommandsTest < Minitest::Test
           'sourceElementId' => 'tree-001',
           'status' => 'proposed'
         },
+        'sceneProperties' => {
+          'name' => 'Cherry Proxy',
+          'tag' => 'Trees'
+        },
         'definition' => {
-          'mode' => 'proxy_tree',
+          'mode' => 'generated_proxy',
           'position' => { 'x' => 14.0, 'y' => 37.7, 'z' => 0.0 },
           'canopyDiameterX' => 6.0,
           'canopyDiameterY' => 5.6,
@@ -1061,7 +1228,7 @@ class SemanticCommandsTest < Minitest::Test
           'tag' => 'Hardscape'
         },
         'definition' => {
-          'mode' => 'footprint_surface',
+          'mode' => 'polygon',
           'footprint' => [[0.0, 0.0], [3.0, 0.0], [3.0, 2.0], [0.0, 2.0]],
           'thickness' => 0.2
         },
@@ -1074,6 +1241,75 @@ class SemanticCommandsTest < Minitest::Test
         'representation' => {
           'mode' => 'procedural',
           'material' => 'Concrete'
+        },
+        'lifecycle' => {
+          'mode' => 'create_new'
+        }
+      },
+      overrides
+    )
+  end
+
+  def sectioned_retaining_edge_request(overrides = {})
+    deep_merge(
+      {
+        'elementType' => 'retaining_edge',
+        'metadata' => {
+          'sourceElementId' => 'ret-edge-001',
+          'status' => 'proposed'
+        },
+        'sceneProperties' => {
+          'tag' => 'Edges'
+        },
+        'definition' => {
+          'mode' => 'polyline',
+          'polyline' => [[2.0, 0.0], [8.0, 0.0], [8.0, 4.0]],
+          'height' => 0.45,
+          'thickness' => 0.2
+        },
+        'hosting' => {
+          'mode' => 'none'
+        },
+        'placement' => {
+          'mode' => 'host_resolved'
+        },
+        'representation' => {
+          'mode' => 'procedural',
+          'material' => 'Stone'
+        },
+        'lifecycle' => {
+          'mode' => 'create_new'
+        }
+      },
+      overrides
+    )
+  end
+
+  def sectioned_planting_mass_request(overrides = {})
+    deep_merge(
+      {
+        'elementType' => 'planting_mass',
+        'metadata' => {
+          'sourceElementId' => 'hedge-001',
+          'status' => 'proposed'
+        },
+        'sceneProperties' => {
+          'name' => 'Hedge Mass'
+        },
+        'definition' => {
+          'mode' => 'mass_polygon',
+          'boundary' => [[0.0, 0.0], [4.0, 0.0], [4.0, 2.0], [0.0, 2.0]],
+          'averageHeight' => 1.8,
+          'plantingCategory' => 'hedge'
+        },
+        'hosting' => {
+          'mode' => 'none'
+        },
+        'placement' => {
+          'mode' => 'host_resolved'
+        },
+        'representation' => {
+          'mode' => 'procedural'
         },
         'lifecycle' => {
           'mode' => 'create_new'

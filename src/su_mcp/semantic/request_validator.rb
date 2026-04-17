@@ -8,6 +8,14 @@ module SU_MCP
     # rubocop:disable Metrics/ClassLength
     class RequestValidator
       APPROVED_STRUCTURE_CATEGORIES = %w[main_building outbuilding extension].freeze
+      SUPPORTED_DEFINITION_MODES = {
+        'pad' => %w[polygon],
+        'structure' => %w[footprint_mass adopt_reference],
+        'path' => %w[centerline],
+        'retaining_edge' => %w[polyline],
+        'planting_mass' => %w[mass_polygon],
+        'tree_proxy' => %w[generated_proxy]
+      }.freeze
       SUPPORTED_ELEMENT_TYPES = %w[
         pad
         structure
@@ -78,6 +86,15 @@ module SU_MCP
             -> { missing_required_field_refusal(field: 'definition.mode') }
           ],
           [
+            unsupported_v2_definition_mode?(params),
+            lambda do
+              unsupported_option_refusal(
+                field: 'definition.mode',
+                value: params.dig('definition', 'mode')
+              )
+            end
+          ],
+          [
             missing_v2_lifecycle_mode?(params),
             -> { missing_required_field_refusal(field: 'lifecycle.mode') }
           ],
@@ -125,6 +142,10 @@ module SU_MCP
           [
             invalid_v2_pad_thickness?(params),
             -> { invalid_numeric_value_refusal(field: 'definition.thickness') }
+          ],
+          [
+            invalid_v2_pad_elevation?(params),
+            -> { invalid_numeric_value_refusal(field: 'definition.elevation') }
           ],
           [
             invalid_v2_path_geometry?(params),
@@ -229,6 +250,14 @@ module SU_MCP
         params.dig('lifecycle', 'mode').to_s.empty?
       end
 
+      def unsupported_v2_definition_mode?(params)
+        element_type = params['elementType'].to_s
+        supported_modes = SUPPORTED_DEFINITION_MODES.fetch(element_type, [])
+        definition_mode = params.dig('definition', 'mode').to_s
+
+        !definition_mode.empty? && !supported_modes.include?(definition_mode)
+      end
+
       def missing_v2_lifecycle_target?(params)
         %w[adopt_existing replace_preserve_identity].include?(params.dig('lifecycle', 'mode')) &&
           !params.dig('lifecycle', 'target').is_a?(Hash)
@@ -292,6 +321,13 @@ module SU_MCP
 
         thickness = params.dig('definition', 'thickness')
         !thickness.nil? && invalid_positive_number?(thickness)
+      end
+
+      def invalid_v2_pad_elevation?(params)
+        return false unless params['elementType'] == 'pad'
+
+        elevation = params.dig('definition', 'elevation')
+        !elevation.nil? && !finite_numeric?(elevation)
       end
 
       def invalid_v2_path_geometry?(params)

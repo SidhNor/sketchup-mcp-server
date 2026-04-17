@@ -11,13 +11,17 @@ module SU_MCP
       end
 
       def build(model:, params:)
+        definition = params.fetch('definition')
         group = model.active_entities.add_group
         scene_properties.apply!(model: model, group: group, params: params)
-        points = footprint_points(params.fetch('footprint'), params.fetch('elevation', 0.0))
+        points = footprint_points(
+          definition.fetch('footprint'),
+          definition.fetch('elevation', 0.0)
+        )
         face = group.entities.add_face(*points)
         normalize_horizontal_face!(face)
 
-        thickness = params['thickness']
+        thickness = definition['thickness']
         face.pushpull(-thickness.to_f) if thickness
 
         group

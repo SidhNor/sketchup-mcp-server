@@ -3,6 +3,7 @@
 require_relative '../test_helper'
 require_relative '../../src/su_mcp/semantic/request_normalizer'
 
+# rubocop:disable Metrics/ClassLength
 class SemanticRequestNormalizerTest < Minitest::Test
   METERS_TO_INTERNAL = 39.37007874015748
 
@@ -34,6 +35,59 @@ class SemanticRequestNormalizerTest < Minitest::Test
     assert_in_delta(5.5 * METERS_TO_INTERNAL, normalized.dig('definition', 'height'), 1e-9)
     assert_in_delta(0.45 * METERS_TO_INTERNAL, normalized.dig('definition', 'trunkDiameter'), 1e-9)
     assert_equal('cherry', normalized.dig('definition', 'speciesHint'))
+  end
+
+  # rubocop:disable Metrics/AbcSize, Metrics/MethodLength
+  def test_normalizes_remaining_family_geometry_fields_to_internal_lengths
+    pad = @normalizer.normalize_create_site_element_params(sectioned_pad_request)
+    retaining_edge = @normalizer.normalize_create_site_element_params(
+      sectioned_retaining_edge_request
+    )
+    planting_mass = @normalizer.normalize_create_site_element_params(
+      sectioned_planting_mass_request
+    )
+
+    assert_equal(
+      [[0.0, 0.0], [3.0 * METERS_TO_INTERNAL, 0.0],
+       [3.0 * METERS_TO_INTERNAL, 2.0 * METERS_TO_INTERNAL], [0.0, 2.0 * METERS_TO_INTERNAL]],
+      pad.dig('definition', 'footprint')
+    )
+    assert_in_delta(0.2 * METERS_TO_INTERNAL, pad.dig('definition', 'thickness'), 1e-9)
+    assert_equal(
+      [[2.0 * METERS_TO_INTERNAL, 0.0], [8.0 * METERS_TO_INTERNAL, 0.0],
+       [8.0 * METERS_TO_INTERNAL, 4.0 * METERS_TO_INTERNAL]],
+      retaining_edge.dig('definition', 'polyline')
+    )
+    assert_in_delta(0.45 * METERS_TO_INTERNAL, retaining_edge.dig('definition', 'height'), 1e-9)
+    assert_in_delta(0.2 * METERS_TO_INTERNAL, retaining_edge.dig('definition', 'thickness'), 1e-9)
+    assert_equal(
+      [[0.0, 0.0], [4.0 * METERS_TO_INTERNAL, 0.0],
+       [4.0 * METERS_TO_INTERNAL, 2.0 * METERS_TO_INTERNAL], [0.0, 2.0 * METERS_TO_INTERNAL]],
+      planting_mass.dig('definition', 'boundary')
+    )
+    assert_in_delta(
+      1.8 * METERS_TO_INTERNAL,
+      planting_mass.dig('definition', 'averageHeight'),
+      1e-9
+    )
+  end
+  # rubocop:enable Metrics/AbcSize, Metrics/MethodLength
+
+  def test_defaults_tree_proxy_canopy_diameter_y_from_canopy_diameter_x
+    normalized = @normalizer.normalize_create_site_element_params(
+      sectioned_tree_proxy_request(
+        'definition' => {
+          'canopyDiameterY' => nil
+        }
+      )
+    )
+
+    refute_nil(normalized.dig('definition', 'canopyDiameterY'))
+    assert_in_delta(
+      6.0 * METERS_TO_INTERNAL,
+      normalized.dig('definition', 'canopyDiameterY'),
+      1e-9
+    )
   end
 
   def test_preserves_public_meter_metadata_fields_for_later_persistence
@@ -177,28 +231,121 @@ class SemanticRequestNormalizerTest < Minitest::Test
     }
   end
 
-  def sectioned_tree_proxy_request
-    {
-      'elementType' => 'tree_proxy',
-      'metadata' => {
-        'sourceElementId' => 'tree-001',
-        'status' => 'retained'
+  def sectioned_pad_request(overrides = {})
+    deep_merge(
+      {
+        'elementType' => 'pad',
+        'metadata' => {
+          'sourceElementId' => 'terrace-001',
+          'status' => 'proposed'
+        },
+        'sceneProperties' => {
+          'name' => 'Sectioned Terrace',
+          'tag' => 'Hardscape'
+        },
+        'definition' => {
+          'mode' => 'polygon',
+          'footprint' => [[0.0, 0.0], [3.0, 0.0], [3.0, 2.0], [0.0, 2.0]],
+          'thickness' => 0.2
+        },
+        'hosting' => { 'mode' => 'none' },
+        'placement' => { 'mode' => 'host_resolved' },
+        'representation' => {
+          'mode' => 'procedural',
+          'material' => 'Concrete'
+        },
+        'lifecycle' => { 'mode' => 'create_new' }
       },
-      'definition' => {
-        'mode' => 'proxy_tree',
-        'position' => { 'x' => 14.0, 'y' => 37.7, 'z' => 0.0 },
-        'canopyDiameterX' => 6.0,
-        'canopyDiameterY' => 5.6,
-        'height' => 5.5,
-        'trunkDiameter' => 0.45,
-        'speciesHint' => 'cherry'
+      overrides
+    )
+  end
+
+  def sectioned_retaining_edge_request(overrides = {})
+    deep_merge(
+      {
+        'elementType' => 'retaining_edge',
+        'metadata' => {
+          'sourceElementId' => 'ret-edge-001',
+          'status' => 'proposed'
+        },
+        'definition' => {
+          'mode' => 'polyline',
+          'polyline' => [[2.0, 0.0], [8.0, 0.0], [8.0, 4.0]],
+          'height' => 0.45,
+          'thickness' => 0.2
+        },
+        'hosting' => { 'mode' => 'none' },
+        'placement' => { 'mode' => 'host_resolved' },
+        'representation' => {
+          'mode' => 'procedural',
+          'material' => 'Stone'
+        },
+        'lifecycle' => { 'mode' => 'create_new' }
       },
-      'hosting' => { 'mode' => 'none' },
-      'placement' => { 'mode' => 'host_resolved' },
-      'representation' => { 'mode' => 'proxy_mass' },
-      'lifecycle' => { 'mode' => 'create_new' }
-    }
+      overrides
+    )
+  end
+
+  def sectioned_planting_mass_request(overrides = {})
+    deep_merge(
+      {
+        'elementType' => 'planting_mass',
+        'metadata' => {
+          'sourceElementId' => 'hedge-001',
+          'status' => 'proposed'
+        },
+        'sceneProperties' => {
+          'name' => 'Hedge Mass'
+        },
+        'definition' => {
+          'mode' => 'mass_polygon',
+          'boundary' => [[0.0, 0.0], [4.0, 0.0], [4.0, 2.0], [0.0, 2.0]],
+          'averageHeight' => 1.8,
+          'plantingCategory' => 'hedge'
+        },
+        'hosting' => { 'mode' => 'none' },
+        'placement' => { 'mode' => 'host_resolved' },
+        'representation' => { 'mode' => 'procedural' },
+        'lifecycle' => { 'mode' => 'create_new' }
+      },
+      overrides
+    )
+  end
+
+  def sectioned_tree_proxy_request(overrides = {})
+    deep_merge(
+      {
+        'elementType' => 'tree_proxy',
+        'metadata' => {
+          'sourceElementId' => 'tree-001',
+          'status' => 'retained'
+        },
+        'definition' => {
+          'mode' => 'generated_proxy',
+          'position' => { 'x' => 14.0, 'y' => 37.7, 'z' => 0.0 },
+          'canopyDiameterX' => 6.0,
+          'canopyDiameterY' => 5.6,
+          'height' => 5.5,
+          'trunkDiameter' => 0.45,
+          'speciesHint' => 'cherry'
+        },
+        'hosting' => { 'mode' => 'none' },
+        'placement' => { 'mode' => 'host_resolved' },
+        'representation' => { 'mode' => 'proxy_mass' },
+        'lifecycle' => { 'mode' => 'create_new' }
+      },
+      overrides
+    )
+  end
+
+  def deep_merge(base, overrides)
+    return base unless overrides.is_a?(Hash)
+
+    base.merge(overrides) do |_key, left, right|
+      left.is_a?(Hash) && right.is_a?(Hash) ? deep_merge(left, right) : right
+    end
   end
 
   # rubocop:enable Metrics/MethodLength
 end
+# rubocop:enable Metrics/ClassLength

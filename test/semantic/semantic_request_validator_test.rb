@@ -55,7 +55,7 @@ class SemanticRequestValidatorTest < Minitest::Test
   def test_refuses_retaining_edge_payloads_with_non_positive_thickness
     refusal = @validator.refusal_for(sectioned_retaining_edge_request(
                                        'definition' => {
-                                         'mode' => 'wall_profile',
+                                         'mode' => 'polyline',
                                          'polyline' => [[2.0, 0.0], [8.0, 0.0], [8.0, 4.0]],
                                          'height' => 0.45,
                                          'thickness' => 0.0
@@ -65,10 +65,26 @@ class SemanticRequestValidatorTest < Minitest::Test
     assert_equal('invalid_numeric_value', refusal.dig(:refusal, :code))
   end
 
+  def test_refuses_pad_payloads_with_non_finite_elevation
+    refusal = @validator.refusal_for(sectioned_pad_request(
+                                       'definition' => {
+                                         'mode' => 'polygon',
+                                         'footprint' => [
+                                           [0.0, 0.0], [3.0, 0.0], [3.0, 2.0], [0.0, 2.0]
+                                         ],
+                                         'elevation' => 'not-a-number',
+                                         'thickness' => 0.2
+                                       }
+                                     ))
+
+    assert_equal('invalid_numeric_value', refusal.dig(:refusal, :code))
+    assert_equal('definition.elevation', refusal.dig(:refusal, :details, :field))
+  end
+
   def test_refuses_self_intersecting_planting_mass_boundaries
     refusal = @validator.refusal_for(sectioned_planting_mass_request(
                                        'definition' => {
-                                         'mode' => 'boundary_mass',
+                                         'mode' => 'mass_polygon',
                                          'boundary' => [
                                            [0.0, 0.0], [4.0, 2.0], [0.0, 2.0], [4.0, 0.0]
                                          ],
@@ -82,7 +98,7 @@ class SemanticRequestValidatorTest < Minitest::Test
   def test_refuses_tree_proxy_payloads_when_trunk_diameter_exceeds_canopy
     refusal = @validator.refusal_for(sectioned_tree_proxy_request(
                                        'definition' => {
-                                         'mode' => 'proxy_tree',
+                                         'mode' => 'generated_proxy',
                                          'position' => { 'x' => 14.0, 'y' => 37.7, 'z' => 0.0 },
                                          'canopyDiameterX' => 0.4,
                                          'height' => 5.5,
@@ -116,6 +132,42 @@ class SemanticRequestValidatorTest < Minitest::Test
     refusal = @validator.refusal_for(sectioned_terrain_path_request)
 
     assert_nil(refusal)
+  end
+
+  def test_accepts_supported_remaining_family_definition_modes
+    requests = [
+      sectioned_pad_request,
+      sectioned_retaining_edge_request,
+      sectioned_planting_mass_request,
+      sectioned_tree_proxy_request
+    ]
+
+    requests.each do |request|
+      refusal = @validator.refusal_for(request)
+
+      assert_nil(
+        refusal,
+        "expected #{request['elementType']} to accept #{request.dig('definition', 'mode')}"
+      )
+    end
+  end
+
+  def test_refuses_transitional_remaining_family_definition_modes
+    requests = [
+      sectioned_pad_request('definition' => { 'mode' => 'footprint_surface' }),
+      sectioned_retaining_edge_request('definition' => { 'mode' => 'wall_profile' }),
+      sectioned_planting_mass_request('definition' => { 'mode' => 'boundary_mass' }),
+      sectioned_tree_proxy_request('definition' => { 'mode' => 'proxy_tree' })
+    ]
+
+    requests.each do |request|
+      refusal = @validator.refusal_for(request)
+
+      refute_nil(refusal)
+      assert_equal('unsupported_option', refusal.dig(:refusal, :code))
+      assert_equal('definition.mode', refusal.dig(:refusal, :details, :field))
+      assert_equal(request.dig('definition', 'mode'), refusal.dig(:refusal, :details, :value))
+    end
   end
 
   def test_refuses_flat_create_shape_when_public_contract_is_sectioned_only
@@ -254,6 +306,28 @@ class SemanticRequestValidatorTest < Minitest::Test
     )
   end
 
+  def sectioned_pad_request(overrides = {})
+    deep_merge(
+      {
+        'elementType' => 'pad',
+        'metadata' => {
+          'sourceElementId' => 'terrace-001',
+          'status' => 'proposed'
+        },
+        'definition' => {
+          'mode' => 'polygon',
+          'footprint' => [[0.0, 0.0], [3.0, 0.0], [3.0, 2.0], [0.0, 2.0]],
+          'thickness' => 0.2
+        },
+        'hosting' => { 'mode' => 'none' },
+        'placement' => { 'mode' => 'host_resolved' },
+        'representation' => { 'mode' => 'procedural' },
+        'lifecycle' => { 'mode' => 'create_new' }
+      },
+      overrides
+    )
+  end
+
   def sectioned_retaining_edge_request(overrides = {})
     deep_merge(
       {
@@ -263,7 +337,7 @@ class SemanticRequestValidatorTest < Minitest::Test
           'status' => 'proposed'
         },
         'definition' => {
-          'mode' => 'wall_profile',
+          'mode' => 'polyline',
           'polyline' => [[2.0, 0.0], [8.0, 0.0], [8.0, 4.0]],
           'height' => 0.45,
           'thickness' => 0.2
@@ -286,7 +360,7 @@ class SemanticRequestValidatorTest < Minitest::Test
           'status' => 'proposed'
         },
         'definition' => {
-          'mode' => 'boundary_mass',
+          'mode' => 'mass_polygon',
           'boundary' => [[0.0, 0.0], [4.0, 0.0], [4.0, 2.0], [0.0, 2.0]],
           'averageHeight' => 1.8
         },
@@ -308,7 +382,7 @@ class SemanticRequestValidatorTest < Minitest::Test
           'status' => 'retained'
         },
         'definition' => {
-          'mode' => 'proxy_tree',
+          'mode' => 'generated_proxy',
           'position' => { 'x' => 14.0, 'y' => 37.7, 'z' => 0.0 },
           'canopyDiameterX' => 6.0,
           'canopyDiameterY' => 5.6,

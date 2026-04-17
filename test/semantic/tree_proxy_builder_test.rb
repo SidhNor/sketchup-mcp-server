@@ -20,18 +20,19 @@ class TreeProxyBuilderTest < Minitest::Test
       model: @model,
       params: {
         'elementType' => 'tree_proxy',
-        'sourceElementId' => 'tree-001',
-        'status' => 'retained',
-        'tree_proxy' => {
+        'sceneProperties' => {
+          'name' => 'Cherry Proxy',
+          'tag' => 'Trees'
+        },
+        'definition' => {
+          'mode' => 'generated_proxy',
           'position' => { 'x' => 14.0, 'y' => 37.7, 'z' => 0.0 },
           'canopyDiameterX' => 6.0,
           'canopyDiameterY' => 5.6,
           'height' => 5.5,
           'trunkDiameter' => 0.45,
           'speciesHint' => 'cherry'
-        },
-        'name' => 'Cherry Proxy',
-        'tag' => 'Trees'
+        }
       }
     )
 
@@ -84,6 +85,41 @@ class TreeProxyBuilderTest < Minitest::Test
     assert_three_lobe_profile(radii)
   end
   # rubocop:enable Metrics/AbcSize
+
+  def test_build_defaults_canopy_diameter_y_to_canopy_diameter_x_for_sectioned_input
+    implicit_group = @builder.build(
+      model: @model,
+      params: {
+        'elementType' => 'tree_proxy',
+        'definition' => {
+          'mode' => 'generated_proxy',
+          'position' => { 'x' => 14.0, 'y' => 37.7, 'z' => 0.0 },
+          'canopyDiameterX' => 6.0,
+          'height' => 5.5,
+          'trunkDiameter' => 0.45
+        }
+      }
+    )
+    explicit_group = @builder.build(
+      model: @model,
+      params: {
+        'elementType' => 'tree_proxy',
+        'definition' => {
+          'mode' => 'generated_proxy',
+          'position' => { 'x' => 14.0, 'y' => 37.7, 'z' => 0.0 },
+          'canopyDiameterX' => 6.0,
+          'canopyDiameterY' => 6.0,
+          'height' => 5.5,
+          'trunkDiameter' => 0.45
+        }
+      }
+    )
+
+    implicit_faces = implicit_group.entities.groups.first.entities.faces.map(&:points)
+    explicit_faces = explicit_group.entities.groups.first.entities.faces.map(&:points)
+
+    assert_equal(explicit_faces, implicit_faces)
+  end
 
   private
 
@@ -174,6 +210,11 @@ class TreeProxyBuilderTest < Minitest::Test
     Math.hypot(point[0] - center_x, point[1] - center_y)
   end
 
+  def span(points, axis:)
+    coordinates = points.map { |point| point.fetch(axis) }
+    coordinates.max - coordinates.min
+  end
+
   # rubocop:disable Metrics/AbcSize
   def assert_three_lobe_profile(radii)
     peak_indices = local_extrema_indices(radii, :>)
@@ -201,11 +242,6 @@ class TreeProxyBuilderTest < Minitest::Test
       following = values[(index + 1) % values.length]
       current.public_send(operator, previous) && current.public_send(operator, following)
     end
-  end
-
-  def span(points, axis:)
-    coordinates = points.map { |point| point.fetch(axis) }
-    coordinates.max - coordinates.min
   end
 end
 # rubocop:enable Metrics/MethodLength

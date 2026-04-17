@@ -423,3 +423,30 @@ Ship a complete first-wave builder-native migration under one sectioned `create_
 - [x] Rollout approach documented when needed
 - [x] Small reversible phases defined
 - [x] Premortem completed with falsifiable failure paths and mitigations
+
+## Implementation Notes
+
+- `RequestValidator` now enforces explicit `definition.mode` support for the remaining first-wave families and refuses the transitional bridge names from `SEM-06`.
+- `RequestNormalizer` now fills `tree_proxy.definition.canopyDiameterY` from `canopyDiameterX` when it is omitted or `nil`.
+- `PadBuilder`, `RetainingEdgeBuilder`, `PlantingMassBuilder`, and `TreeProxyBuilder` now consume section-native `definition` input directly while continuing to use shared `sceneProperties` and `representation` handling.
+- `RequestValidator` now rejects non-finite `pad.definition.elevation` values with `invalid_numeric_value` rather than allowing them to reach normalization or builder execution.
+- The migrated builders no longer keep the remaining-family legacy payload fallback branches; they now require section-native `definition` input.
+- `SemanticCommands` no longer synthesizes legacy builder payloads for `pad`, `retaining_edge`, `planting_mass`, or `tree_proxy`.
+- Task-facing tests now cover:
+  - remaining-family supported versus transitional mode handling
+  - tree canopy defaulting
+  - section-native builder inputs for all four remaining families
+  - command-level hosting/elevation and wrapper-field behavior for the migrated families
+
+## Final Validation
+
+- `bundle exec ruby -Itest test/semantic/semantic_request_validator_test.rb`
+- `bundle exec ruby -Itest test/semantic/semantic_request_normalizer_test.rb`
+- `bundle exec ruby -Itest test/semantic/pad_builder_test.rb`
+- `bundle exec ruby -Itest test/semantic/retaining_edge_builder_test.rb`
+- `bundle exec ruby -Itest test/semantic/planting_mass_builder_test.rb`
+- `bundle exec ruby -Itest test/semantic/tree_proxy_builder_test.rb`
+- `bundle exec ruby -Itest test/semantic/semantic_commands_test.rb`
+- `bundle exec rake ruby:test`
+- `bundle exec rake ruby:lint`
+- `bundle exec rake package:verify`

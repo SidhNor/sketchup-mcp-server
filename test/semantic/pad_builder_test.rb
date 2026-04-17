@@ -17,10 +17,11 @@ class PadBuilderTest < Minitest::Test
       model: @model,
       params: {
         'elementType' => 'pad',
-        'sourceElementId' => 'terrace-001',
-        'status' => 'proposed',
-        'footprint' => [[0.0, 0.0], [4.0, 0.0], [4.0, 3.0], [0.0, 3.0]],
-        'elevation' => 0.5
+        'definition' => {
+          'mode' => 'polygon',
+          'footprint' => [[0.0, 0.0], [4.0, 0.0], [4.0, 3.0], [0.0, 3.0]],
+          'elevation' => 0.5
+        }
       }
     )
 
@@ -34,11 +35,12 @@ class PadBuilderTest < Minitest::Test
       model: @model,
       params: {
         'elementType' => 'pad',
-        'sourceElementId' => 'deck-001',
-        'status' => 'proposed',
-        'footprint' => [[0.0, 0.0], [4.0, 0.0], [4.0, 3.0], [0.0, 3.0]],
-        'elevation' => 1.2,
-        'thickness' => 0.3
+        'definition' => {
+          'mode' => 'polygon',
+          'footprint' => [[0.0, 0.0], [4.0, 0.0], [4.0, 3.0], [0.0, 3.0]],
+          'elevation' => 1.2,
+          'thickness' => 0.3
+        }
       }
     )
 
@@ -50,12 +52,17 @@ class PadBuilderTest < Minitest::Test
       model: @model,
       params: {
         'elementType' => 'pad',
-        'sourceElementId' => 'terrace-001',
-        'status' => 'proposed',
-        'footprint' => [[0.0, 0.0], [4.0, 0.0], [4.0, 3.0], [0.0, 3.0]],
-        'name' => 'Front Terrace',
-        'tag' => 'Proposed',
-        'material' => 'Concrete'
+        'sceneProperties' => {
+          'name' => 'Front Terrace',
+          'tag' => 'Proposed'
+        },
+        'representation' => {
+          'material' => 'Concrete'
+        },
+        'definition' => {
+          'mode' => 'polygon',
+          'footprint' => [[0.0, 0.0], [4.0, 0.0], [4.0, 3.0], [0.0, 3.0]]
+        }
       }
     )
 
@@ -69,10 +76,11 @@ class PadBuilderTest < Minitest::Test
       model: @model,
       params: {
         'elementType' => 'pad',
-        'sourceElementId' => 'deck-001',
-        'status' => 'proposed',
-        'footprint' => [[0.0, 0.0], [0.0, 3.0], [4.0, 3.0], [4.0, 0.0]],
-        'thickness' => 0.3
+        'definition' => {
+          'mode' => 'polygon',
+          'footprint' => [[0.0, 0.0], [0.0, 3.0], [4.0, 3.0], [4.0, 0.0]],
+          'thickness' => 0.3
+        }
       }
     )
 

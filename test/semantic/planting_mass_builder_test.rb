@@ -17,15 +17,16 @@ class PlantingMassBuilderTest < Minitest::Test
       model: @model,
       params: {
         'elementType' => 'planting_mass',
-        'sourceElementId' => 'hedge-001',
-        'status' => 'proposed',
-        'planting_mass' => {
+        'sceneProperties' => {
+          'name' => 'Hedge Mass'
+        },
+        'definition' => {
+          'mode' => 'mass_polygon',
           'boundary' => [[0.0, 0.0], [4.0, 0.0], [4.0, 2.0], [0.0, 2.0]],
           'averageHeight' => 1.8,
           'plantingCategory' => 'hedge',
           'elevation' => 0.0
-        },
-        'name' => 'Hedge Mass'
+        }
       }
     )
 

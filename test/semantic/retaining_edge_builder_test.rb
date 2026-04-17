@@ -12,21 +12,25 @@ class RetainingEdgeBuilderTest < Minitest::Test
     @builder = SU_MCP::Semantic::RetainingEdgeBuilder.new
   end
 
+  # rubocop:disable Metrics/MethodLength
   def test_build_creates_a_retaining_edge_mass_from_polyline_height_and_thickness
     group = @builder.build(
       model: @model,
       params: {
         'elementType' => 'retaining_edge',
-        'sourceElementId' => 'ret-edge-001',
-        'status' => 'proposed',
-        'retaining_edge' => {
+        'sceneProperties' => {
+          'tag' => 'Edges'
+        },
+        'representation' => {
+          'material' => 'Stone'
+        },
+        'definition' => {
+          'mode' => 'polyline',
           'polyline' => [[2.0, 0.0], [8.0, 0.0], [8.0, 4.0]],
           'height' => 0.45,
           'thickness' => 0.25,
           'elevation' => 0.0
-        },
-        'tag' => 'Edges',
-        'material' => 'Stone'
+        }
       }
     )
 
@@ -35,4 +39,5 @@ class RetainingEdgeBuilderTest < Minitest::Test
     assert_equal([0.45], group.entities.faces.first.pushpull_calls)
     assert_equal('Edges', group.layer.name)
   end
+  # rubocop:enable Metrics/MethodLength
 end

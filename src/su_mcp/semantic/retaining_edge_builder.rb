@@ -14,7 +14,7 @@ module SU_MCP
       end
 
       def build(model:, params:)
-        payload = params.fetch('retaining_edge')
+        payload = params.fetch('definition')
         group = model.active_entities.add_group
         scene_properties.apply!(model: model, group: group, params: params)
         face = add_planar_face(

@@ -1,7 +1,7 @@
 # Task: SEM-08 Adopt Builder-Native V2 Input for the Remaining First-Wave Families
 **Task ID**: `SEM-08`
 **Title**: `Adopt Builder-Native V2 Input for the Remaining First-Wave Families`
-**Status**: `planned`
+**Status**: `completed`
 **Priority**: `P0`
 **Date**: `2026-04-17`
 
@@ -116,6 +116,7 @@ Scenario: remaining-family behavior edges stay explicit under the sectioned cont
 ## Related Technical Plan
 
 - [Technical plan](./plan.md)
+- [Implementation summary](./summary.md)
 
 ## Success Metrics
 
