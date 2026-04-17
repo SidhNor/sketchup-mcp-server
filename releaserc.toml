@@ -1,11 +1,11 @@
 [semantic_release]
 allow_zero_version = true
+assets = ["VERSION"]
 build_command = "bundle exec rake release:prepare"
 commit_message = "chore(release): {version} [skip ci]"
 commit_parser = "conventional"
 tag_format = "v{version}"
 version_variables = [
-  "VERSION:*:nf",
   "src/su_mcp/version.rb:VERSION:nf",
   "src/su_mcp/extension.json:version:nf",
 ]

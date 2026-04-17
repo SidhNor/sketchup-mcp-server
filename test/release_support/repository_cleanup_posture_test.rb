@@ -12,10 +12,12 @@ class RepositoryCleanupPostureTest < Minitest::Test
 
   def test_release_workflow_uses_standalone_semantic_release_config
     workflow = read_repo_file('.github/workflows/release.yml')
+    releaserc = read_repo_file('releaserc.toml')
 
     assert_path_exists('releaserc.toml')
     assert_includes(workflow, '--config releaserc.toml')
     assert_includes(workflow, 'echo "tag=$(git describe --tags --abbrev=0)" >> "$GITHUB_OUTPUT"')
+    assert_includes(releaserc, 'assets = ["VERSION"]')
     refute_includes(workflow, 'uv sync --locked --dev')
   end
 
