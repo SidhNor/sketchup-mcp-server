@@ -24,6 +24,7 @@ The current post-seeding breakdown is intentionally smaller than the recovered 1
 - 2 follow-on MCP adoption tasks derived from the completed spike
 - 1 post-validation runtime-retirement task for removing the Python compatibility layer after native validation
 - 1 post-migration Ruby support-tree cleanup task for expressing the settled runtime layers in the filesystem
+- 1 post-retirement contract-hardening task for shared native tool declarations and response conventions
 
 ## Task Order
 
@@ -56,13 +57,17 @@ The current post-seeding breakdown is intentionally smaller than the recovered 1
 
 11. [PLAT-12 Organize Ruby Support Tree Around Runtime Layers](PLAT-12-organize-ruby-support-tree-around-runtime-layers/task.md)
 
+### Post-Retirement Contract Hardening
+
+12. [PLAT-14 Establish Native MCP Tool Contract And Response Conventions](PLAT-14-establish-native-mcp-tool-contract-and-response-conventions/task.md)
+
 ### Deferred Low-Priority Tasks
 
-12. [PLAT-06 Add SketchUp-Hosted Smoke and Fixture Coverage](PLAT-06-add-sketchup-hosted-smoke-and-fixture-coverage/task.md)
+13. [PLAT-06 Add SketchUp-Hosted Smoke and Fixture Coverage](PLAT-06-add-sketchup-hosted-smoke-and-fixture-coverage/task.md)
 
 ### Architecture Spikes
 
-13. [PLAT-07 Spike Ruby-Native MCP Runtime In SketchUp](PLAT-07-spike-ruby-native-mcp-runtime-in-sketchup/task.md)
+14. [PLAT-07 Spike Ruby-Native MCP Runtime In SketchUp](PLAT-07-spike-ruby-native-mcp-runtime-in-sketchup/task.md)
 
 ## Dependency Summary
 
@@ -79,6 +84,7 @@ The current post-seeding breakdown is intentionally smaller than the recovered 1
 | `PLAT-10` | `PLAT-09`, `PLAT-07`, ADR 2026-04-16 | eventual Python demotion or removal decision |
 | `PLAT-13` | `PLAT-10`, ADR 2026-04-16 | single-runtime repo posture after native validation removes the bridge-era compatibility path |
 | `PLAT-12` | `PLAT-10`, `PLAT-08`, `PLAT-11` | clearer Ruby support-tree layering after runtime migration ownership settles |
+| `PLAT-14` | `PLAT-10`, `PLAT-13` | shared native tool declaration and response conventions for future MCP surface cleanup |
 | `PLAT-06` | `PLAT-01`, `PLAT-02` | deferred runtime-hosted confidence work |
 | `PLAT-07` | `PLAT-01`, `PLAT-02`, `PLAT-03`, ADR 2026-04-16 | future packaging decision and any decision to demote Python from the canonical MCP runtime |
 
@@ -99,4 +105,5 @@ The current post-seeding breakdown is intentionally smaller than the recovered 1
 - `PLAT-09` and `PLAT-10` are the post-spike adoption tasks. `PLAT-09` owns reproducible packaging and runtime foundations; `PLAT-10` owns migration of the current tool surface plus retirement of the experimental spike posture.
 - `PLAT-13` exists because `PLAT-10` intentionally stops at making Python removable. It owns the actual retirement of the Python compatibility runtime plus the resulting cleanup across docs, guidance, CI, dependencies, and package metadata, with any surviving Python limited to CI-owned release tooling rather than a repo Python project.
 - `PLAT-12` is a separate follow-on structure task. It exists to express the settled runtime layers in the support tree after the ownership migration work is far enough along, not to reopen `PLAT-10` scope.
+- `PLAT-14` is a bounded post-retirement contract-hardening task. It is intended to establish shared native tool declaration and response conventions without turning the effort into a broader selector redesign or full-catalog conformance program.
 - Tasks remain requirements-focused. They define what must be true when the task is complete, not how the implementation must be coded.
