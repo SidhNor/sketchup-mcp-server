@@ -2,6 +2,32 @@
 
 <!-- version list -->
 
+## v0.15.0 (2026-04-18)
+
+### Bug Fixes
+
+- **PLAT-14**: Enforce native tool runtime invocation and failure translation
+  ([`c9c7493`](https://github.com/SidhNor/sketchup-mcp-server/commit/c9c7493b7f2ecea409940eb0e306ba7d6b9a2e88))
+
+### Documentation
+
+- **PLAT-14**: Finalize task and technical plan
+  ([`b0142bb`](https://github.com/SidhNor/sketchup-mcp-server/commit/b0142bbd92c22c21dc988a55a44c631db7991a19))
+
+### Features
+
+- **PLAT-14**: Establish native tool contracts and shared response conventions
+  ([`2bb9781`](https://github.com/SidhNor/sketchup-mcp-server/commit/2bb97812d7e36f410a08b32a0b1fef84f7f78e38))
+
+- **PLAT-15**: Add selectors to list and find entities
+  ([`d7d03cf`](https://github.com/SidhNor/sketchup-mcp-server/commit/d7d03cf479b83b319b549f32831a4f1565f74fee))
+
+### Refactoring
+
+- **PLAT-14**: Remove low-value tools and rename transform_entities
+  ([`44665ae`](https://github.com/SidhNor/sketchup-mcp-server/commit/44665ae4ab5ca9117ff9e230d2d2cb302c3cee0f))
+
+
 ## v0.14.0 (2026-04-17)
 
 ### Documentation
