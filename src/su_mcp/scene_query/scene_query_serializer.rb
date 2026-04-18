@@ -12,6 +12,7 @@ module SU_MCP
   }.freeze
 
   # Normalizes SketchUp entities and bounds into MCP-safe hashes.
+  # rubocop:disable Metrics/ClassLength
   class SceneQuerySerializer
     def bounds_to_h(bounds)
       return nil unless bounds&.valid?
@@ -45,7 +46,21 @@ module SU_MCP
         name: entity_name(entity),
         tag: layer_name(entity),
         material: material_name_for(entity)
-      }.compact
+      }.merge(
+        serialize_target_metadata(entity).reject { |key, _| key == :managedSceneObject }
+      ).compact
+    end
+
+    def serialize_target_metadata(entity)
+      metadata = {
+        managedSceneObject: managed_scene_object?(entity),
+        semanticType: metadata_value(entity, 'semanticType'),
+        status: metadata_value(entity, 'status'),
+        state: metadata_value(entity, 'state'),
+        structureCategory: metadata_value(entity, 'structureCategory')
+      }
+      metadata.delete_if { |_key, value| value.nil? }
+      metadata
     end
 
     def serialize_xy_sample_point(x_value, y_value)
@@ -196,6 +211,19 @@ module SU_MCP
       value.to_s
     end
 
+    def metadata_value(entity, key)
+      return nil unless entity.respond_to?(:get_attribute)
+
+      value = entity.get_attribute('su_mcp', key)
+      return nil if value.to_s.empty?
+
+      value.to_s
+    end
+
+    def managed_scene_object?(entity)
+      !source_element_id_for(entity).nil?
+    end
+
     def public_meter_value(value)
       rounded_float(value.to_f)
     end
@@ -204,4 +232,5 @@ module SU_MCP
       entity.is_a?(Sketchup::Group) || entity.is_a?(Sketchup::ComponentInstance)
     end
   end
+  # rubocop:enable Metrics/ClassLength
 end

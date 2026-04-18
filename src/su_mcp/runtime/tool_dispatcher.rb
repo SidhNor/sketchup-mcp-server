@@ -13,7 +13,7 @@ module SU_MCP
       'set_entity_metadata' => :set_entity_metadata,
       'create_group' => :create_group,
       'reparent_entities' => :reparent_entities,
-      'delete_component' => :delete_component,
+      'delete_entities' => :delete_entities,
       'transform_entities' => :transform_entities,
       'get_selection' => :selection_info,
       'set_material' => :apply_material,

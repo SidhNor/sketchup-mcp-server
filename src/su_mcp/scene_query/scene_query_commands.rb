@@ -3,16 +3,29 @@
 require_relative '../adapters/model_adapter'
 require_relative 'sample_surface_query'
 require_relative 'scene_query_serializer'
+require_relative 'scope_resolver'
+require_relative 'target_reference_resolver'
 require_relative 'targeting_query'
 
 module SU_MCP
   # Read-oriented SketchUp command behavior and entity serialization helpers.
   class SceneQueryCommands
-    def initialize(logger: nil, adapter: nil, serializer: nil)
+    def initialize(logger: nil, adapter: nil, serializer: nil, scope_resolver: nil,
+                   target_reference_resolver: nil)
       @logger = logger
       @adapter = adapter || Adapters::ModelAdapter.new
       @serializer = serializer || SceneQuerySerializer.new
       @targeting_query = TargetingQuery.new(serializer: @serializer)
+      @target_reference_resolver =
+        target_reference_resolver || TargetReferenceResolver.new(
+          adapter: @adapter,
+          serializer: @serializer,
+          targeting_query: @targeting_query
+        )
+      @scope_resolver = scope_resolver || ScopeResolver.new(
+        adapter: @adapter,
+        target_resolver: @target_reference_resolver
+      )
       @sample_surface_query = SampleSurfaceQuery.new(serializer: @serializer)
     end
 
@@ -44,12 +57,16 @@ module SU_MCP
 
     def list_entities(params = {})
       adapter.active_model!
-      entities = adapter.top_level_entities(include_hidden: params['include_hidden'] == true)
+      scope = scope_resolver.resolve(
+        scope_selector: params['scopeSelector'],
+        output_options: params['outputOptions']
+      )
+      entities = scope.fetch(:entities)
 
       {
         success: true,
         count: entities.length,
-        entities: serialize_entities(entities.first(limit_from(params, 'limit', 100)))
+        entities: serialize_entities(entities.first(scope.fetch(:limit)))
       }
     end
 
@@ -62,8 +79,8 @@ module SU_MCP
 
     def find_entities(params)
       adapter.active_model!
-      query = targeting_query.normalized_query(params['query'])
-      matches = targeting_query.filter(adapter.queryable_entities, query)
+      target_selector = targeting_query.normalized_target_selector(params['targetSelector'])
+      matches = targeting_query.filter(adapter.all_entities_recursive, target_selector)
 
       {
         success: true,
@@ -89,7 +106,8 @@ module SU_MCP
 
     private
 
-    attr_reader :adapter, :serializer, :targeting_query, :sample_surface_query
+    attr_reader :adapter, :serializer, :targeting_query, :target_reference_resolver,
+                :scope_resolver, :sample_surface_query
 
     def model_summary(model)
       {

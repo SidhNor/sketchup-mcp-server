@@ -54,12 +54,65 @@ class SceneQueryCommandsTest < Minitest::Test
     assert_equal(1, result.dig(:model, :active_path_depth))
   end
 
-  def test_list_entities_filters_hidden_top_level_entities_by_default
-    result = @commands.list_entities('limit' => 10)
+  def test_list_entities_requires_a_scope_selector
+    error = assert_raises(RuntimeError) do
+      @commands.list_entities('outputOptions' => { 'limit' => 10 })
+    end
+
+    assert_equal('scopeSelector is required', error.message)
+  end
+
+  def test_list_entities_inventories_top_level_scope_by_default
+    result = @commands.list_entities(
+      'scopeSelector' => { 'mode' => 'top_level' },
+      'outputOptions' => { 'limit' => 10 }
+    )
 
     assert_equal(true, result[:success])
     assert_equal(1, result[:count])
     assert_equal([101], result[:entities].map { |entity| entity[:id] })
+  end
+
+  def test_list_entities_supports_selection_scope
+    result = @commands.list_entities(
+      'scopeSelector' => { 'mode' => 'selection' },
+      'outputOptions' => { 'limit' => 10 }
+    )
+
+    assert_equal(true, result[:success])
+    assert_equal(1, result[:count])
+    assert_equal([101], result[:entities].map { |entity| entity[:id] })
+  end
+
+  def test_list_entities_supports_children_of_target_scope
+    result = @commands.list_entities(
+      'scopeSelector' => {
+        'mode' => 'children_of_target',
+        'targetReference' => { 'entityId' => '101' }
+      },
+      'outputOptions' => { 'limit' => 10 }
+    )
+
+    assert_equal(true, result[:success])
+    assert_equal(1, result[:count])
+    assert_equal([201], result[:entities].map { |entity| entity[:id] })
+  end
+
+  def test_list_entities_rejects_unsupported_scope_modes
+    error = assert_raises(RuntimeError) do
+      @commands.list_entities('scopeSelector' => { 'mode' => 'search_everywhere' })
+    end
+
+    assert_equal('Unsupported scopeSelector.mode: search_everywhere', error.message)
+  end
+
+  def test_list_entities_requires_target_reference_for_children_scope
+    error = assert_raises(RuntimeError) do
+      @commands.list_entities('scopeSelector' => { 'mode' => 'children_of_target' })
+    end
+
+    assert_equal('scopeSelector.targetReference is required when mode is children_of_target',
+                 error.message)
   end
 
   def test_get_entity_info_uses_model_lookup_and_serializes_group_details
@@ -82,7 +135,10 @@ class SceneQueryCommandsTest < Minitest::Test
   end
 
   def test_list_entities_includes_hidden_entities_when_requested
-    result = @commands.list_entities('include_hidden' => true, 'limit' => 10)
+    result = @commands.list_entities(
+      'scopeSelector' => { 'mode' => 'top_level' },
+      'outputOptions' => { 'includeHidden' => true, 'limit' => 10 }
+    )
 
     assert_equal(true, result[:success])
     assert_equal(2, result[:count])
@@ -90,7 +146,10 @@ class SceneQueryCommandsTest < Minitest::Test
   end
 
   def test_list_entities_clamps_limit_to_at_least_one
-    result = @commands.list_entities('limit' => 0)
+    result = @commands.list_entities(
+      'scopeSelector' => { 'mode' => 'top_level' },
+      'outputOptions' => { 'limit' => 0 }
+    )
 
     assert_equal([101], result[:entities].map { |entity| entity[:id] })
   end

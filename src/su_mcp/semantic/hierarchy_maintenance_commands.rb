@@ -3,7 +3,7 @@
 require_relative 'entity_relocator'
 require_relative 'hierarchy_entity_serializer'
 require_relative '../runtime/tool_response'
-require_relative 'target_resolver'
+require_relative '../scene_query/target_reference_resolver'
 
 module SU_MCP
   # Coordinates the Ruby-owned SEM-07 hierarchy-maintenance slice.
@@ -14,7 +14,7 @@ module SU_MCP
 
     def initialize(
       model: Sketchup.active_model,
-      target_resolver: Semantic::TargetResolver.new,
+      target_resolver: TargetReferenceResolver.new,
       relocator: Semantic::EntityRelocator.new(model: model),
       serializer: Semantic::HierarchyEntitySerializer.new
     )

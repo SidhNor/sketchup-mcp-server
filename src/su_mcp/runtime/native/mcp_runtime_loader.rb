@@ -276,46 +276,37 @@ module SU_MCP
         ),
         tool_entry(
           name: 'list_entities',
-          title: 'List Top-Level Entities',
-          description: 'List top-level SketchUp model entities with an optional limit and ' \
-                       'optional hidden-entity inclusion.',
+          title: 'List Entities In Scope',
+          description: 'Inventory entities within a known scope such as the current ' \
+                       'selection, top-level model context, or children of an explicit ' \
+                       'target. This tool is for scoped inventory, not predicate search.',
           handler_key: :list_entities,
           annotations: { read_only_hint: true, destructive_hint: false },
           classification: 'first_class',
           input_schema: {
             type: 'object',
+            required: ['scopeSelector'],
             properties: {
-              limit: integer_schema,
-              include_hidden: boolean_schema
+              scopeSelector: scope_selector_schema,
+              outputOptions: list_entities_output_options_schema
             },
             additionalProperties: false
           }
         ),
         tool_entry(
           name: 'find_entities',
-          title: 'Find Scene Entities',
-          description: 'Find scene entities using the supported MVP targeting fields and ' \
-                       'return explicit match summaries. Supports identity references, ' \
-                       'name, tag, and material only.',
+          title: 'Find Target Entities',
+          description: 'Resolve entities by exact-match identity, attributes, or supported ' \
+                       'metadata predicates. This tool is for predicate targeting, not ' \
+                       'scoped inventory.',
           handler_key: :find_entities,
           annotations: { read_only_hint: true, destructive_hint: false },
           classification: 'first_class',
           input_schema: {
             type: 'object',
-            required: ['query'],
+            required: ['targetSelector'],
             properties: {
-              query: {
-                type: 'object',
-                properties: {
-                  sourceElementId: string_schema,
-                  persistentId: string_schema,
-                  entityId: string_schema,
-                  name: string_schema,
-                  tag: string_schema,
-                  material: string_schema
-                },
-                additionalProperties: false
-              }
+              targetSelector: target_selector_schema
             },
             additionalProperties: false
           }
@@ -416,13 +407,15 @@ module SU_MCP
     def mutation_tool_catalog
       [
         tool_entry(
-          name: 'delete_component',
-          title: 'Delete Component',
-          description: 'Delete a component by ID.',
-          handler_key: :delete_component,
-          annotations: { read_only_hint: false, destructive_hint: false },
+          name: 'delete_entities',
+          title: 'Delete Supported Entities',
+          description: 'Delete one supported group or component instance resolved from an ' \
+                       'explicit target reference. This tool is for explicit single-target ' \
+                       'deletion, not broad search or batch cleanup.',
+          handler_key: :delete_entities,
+          annotations: { read_only_hint: false, destructive_hint: true },
           classification: 'first_class',
-          input_schema: identifier_object_schema('id')
+          input_schema: delete_entities_schema
         ),
         tool_entry(
           name: 'transform_entities',
@@ -606,6 +599,119 @@ module SU_MCP
           sourceElementId: string_schema,
           persistentId: string_schema,
           entityId: string_schema
+        },
+        additionalProperties: false
+      }
+    end
+
+    def enum_schema(*values)
+      {
+        type: 'string',
+        enum: values.flatten
+      }
+    end
+
+    def scope_selector_schema
+      {
+        type: 'object',
+        required: ['mode'],
+        properties: {
+          mode: enum_schema('top_level', 'selection', 'children_of_target'),
+          targetReference: target_reference_schema
+        },
+        additionalProperties: false
+      }
+    end
+
+    def list_entities_output_options_schema
+      {
+        type: 'object',
+        properties: {
+          limit: integer_schema,
+          includeHidden: boolean_schema
+        },
+        additionalProperties: false
+      }
+    end
+
+    def identity_selector_schema
+      {
+        type: 'object',
+        properties: {
+          sourceElementId: string_schema,
+          persistentId: string_schema,
+          entityId: string_schema
+        },
+        additionalProperties: false
+      }
+    end
+
+    def attribute_selector_schema
+      {
+        type: 'object',
+        properties: {
+          name: string_schema,
+          tag: string_schema,
+          material: string_schema
+        },
+        additionalProperties: false
+      }
+    end
+
+    def metadata_selector_schema
+      {
+        type: 'object',
+        properties: {
+          managedSceneObject: boolean_schema,
+          semanticType: string_schema,
+          status: string_schema,
+          state: string_schema,
+          structureCategory: string_schema
+        },
+        additionalProperties: false
+      }
+    end
+
+    def target_selector_schema
+      {
+        type: 'object',
+        properties: {
+          identity: identity_selector_schema,
+          attributes: attribute_selector_schema,
+          metadata: metadata_selector_schema
+        },
+        additionalProperties: false
+      }
+    end
+
+    def delete_entities_constraints_schema
+      {
+        type: 'object',
+        properties: {
+          ambiguityPolicy: enum_schema('fail')
+        },
+        additionalProperties: false
+      }
+    end
+
+    def delete_entities_output_options_schema
+      {
+        type: 'object',
+        properties: {
+          responseFormat: enum_schema('concise')
+        },
+        additionalProperties: false
+      }
+    end
+
+    def delete_entities_schema
+      {
+        type: 'object',
+        required: ['targetReference'],
+        properties: {
+          targetReference: target_reference_schema,
+          constraints: delete_entities_constraints_schema,
+          outputOptions: delete_entities_output_options_schema
         },
         additionalProperties: false
       }

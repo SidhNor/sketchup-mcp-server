@@ -10,12 +10,20 @@ class SceneQueryCommandsAdapterTest < Minitest::Test
   class RecordingAdapter
     attr_reader :calls
 
-    def initialize(model:, top_level_entities:, selected_entities:, entity:, queryable_entities:)
+    def initialize(
+      model:,
+      top_level_entities:,
+      selected_entities:,
+      entity:,
+      queryable_entities:,
+      all_entities_recursive:
+    )
       @model = model
       @top_level_entities = top_level_entities
       @selected_entities = selected_entities
       @entity = entity
       @queryable_entities = queryable_entities
+      @all_entities_recursive = all_entities_recursive
       @calls = []
     end
 
@@ -43,6 +51,11 @@ class SceneQueryCommandsAdapterTest < Minitest::Test
       @calls << :queryable_entities
       @queryable_entities
     end
+
+    def all_entities_recursive
+      @calls << :all_entities_recursive
+      @all_entities_recursive
+    end
   end
 
   def setup
@@ -53,18 +66,31 @@ class SceneQueryCommandsAdapterTest < Minitest::Test
       top_level_entities: @model.entities,
       selected_entities: @model.selection,
       entity: @group,
-      queryable_entities: @model.entities
+      queryable_entities: @model.entities,
+      all_entities_recursive: @model.entities + @group.entities
     )
   end
 
   def test_list_entities_accepts_an_adapter_dependency_and_uses_top_level_lookup
     commands = SU_MCP::SceneQueryCommands.new(adapter: @adapter)
 
-    result = commands.list_entities('limit' => 10)
+    result = commands.list_entities(
+      'scopeSelector' => { 'mode' => 'top_level' },
+      'outputOptions' => { 'limit' => 10 }
+    )
 
     assert_equal([101], result[:entities].map { |entity| entity[:id] })
     assert_includes(@adapter.calls, :active_model!)
     assert_includes(@adapter.calls, [:top_level_entities, false])
+  end
+
+  def test_list_entities_uses_adapter_owned_selection_lookup_for_selection_scope
+    commands = SU_MCP::SceneQueryCommands.new(adapter: @adapter)
+
+    result = commands.list_entities('scopeSelector' => { 'mode' => 'selection' })
+
+    assert_equal([101], result[:entities].map { |entity| entity[:id] })
+    assert_includes(@adapter.calls, :selected_entities)
   end
 
   def test_selection_info_uses_adapter_owned_selection_lookup
@@ -88,8 +114,8 @@ class SceneQueryCommandsAdapterTest < Minitest::Test
   def test_find_entities_uses_adapter_owned_entity_enumeration
     commands = SU_MCP::SceneQueryCommands.new(adapter: @adapter)
 
-    commands.find_entities('query' => { 'entityId' => '101' })
+    commands.find_entities('targetSelector' => { 'identity' => { 'entityId' => '101' } })
 
-    assert_includes(@adapter.calls, :queryable_entities)
+    assert_includes(@adapter.calls, :all_entities_recursive)
   end
 end

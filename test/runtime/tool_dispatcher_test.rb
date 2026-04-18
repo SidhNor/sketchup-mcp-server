@@ -28,7 +28,16 @@ class ToolDispatcherTest < Minitest::Test
 
     def find_entities(args)
       @calls << [:find_entities, args]
-      { success: true, resolution: 'unique', matches: [args.fetch('query')] }
+      { success: true, resolution: 'unique', matches: [args.fetch('targetSelector')] }
+    end
+
+    def delete_entities(args)
+      @calls << [:delete_entities, args]
+      {
+        success: true,
+        outcome: 'deleted',
+        affectedEntities: { deleted: [args.fetch('targetReference')] }
+      }
     end
 
     def create_group(args)
@@ -75,6 +84,7 @@ class ToolDispatcherTest < Minitest::Test
     # rubocop:enable Naming/AccessorMethodName
 
     private :get_scene_info, :transform_entities, :selection_info, :find_entities,
+            :delete_entities,
             :sample_surface_z,
             :create_group, :reparent_entities, :create_site_element, :set_entity_metadata
   end
@@ -106,15 +116,48 @@ class ToolDispatcherTest < Minitest::Test
   end
 
   def test_dispatches_find_entities_to_the_scene_query_command
-    result = @dispatcher.call('find_entities', { 'query' => { 'persistentId' => '1001' } })
+    result = @dispatcher.call(
+      'find_entities',
+      { 'targetSelector' => { 'identity' => { 'persistentId' => '1001' } } }
+    )
 
     assert_equal(
-      { success: true, resolution: 'unique', matches: [{ 'persistentId' => '1001' }] },
+      {
+        success: true,
+        resolution: 'unique',
+        matches: [{ 'identity' => { 'persistentId' => '1001' } }]
+      },
       result
     )
     assert_equal(
-      [[:find_entities, { 'query' => { 'persistentId' => '1001' } }]],
+      [[
+        :find_entities,
+        { 'targetSelector' => { 'identity' => { 'persistentId' => '1001' } } }
+      ]],
       @target.calls
+    )
+  end
+
+  def test_dispatches_delete_entities_to_the_editing_command
+    result = @dispatcher.call(
+      'delete_entities',
+      { 'targetReference' => { 'entityId' => '301' } }
+    )
+
+    assert_equal(
+      {
+        success: true,
+        outcome: 'deleted',
+        affectedEntities: { deleted: [{ 'entityId' => '301' }] }
+      },
+      result
+    )
+    assert_equal(
+      [[
+        :delete_entities,
+        { 'targetReference' => { 'entityId' => '301' } }
+      ]],
+      @target.calls.last(1)
     )
   end
 

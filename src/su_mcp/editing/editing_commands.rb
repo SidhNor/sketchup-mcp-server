@@ -2,21 +2,54 @@
 
 require 'sketchup'
 require_relative 'material_resolver'
+require_relative '../runtime/tool_response'
+require_relative '../scene_query/scene_query_serializer'
+require_relative '../scene_query/target_reference_resolver'
 
 module SU_MCP
   # Grouped command surface for generic editing operations.
   class EditingCommands
-    def initialize(model_adapter:, logger: nil, material_resolver: nil)
+    DELETE_OPERATION_NAME = 'Delete Entities'
+
+    def initialize(model_adapter:, logger: nil, material_resolver: nil, serializer: nil,
+                   target_resolver: nil)
       @model_adapter = model_adapter
       @logger = logger
       @material_resolver = material_resolver || MaterialResolver.new
+      @serializer = serializer || SceneQuerySerializer.new
+      @target_resolver = target_resolver || TargetReferenceResolver.new(
+        adapter: model_adapter,
+        serializer: @serializer
+      )
     end
 
-    def delete_component(params)
-      entity = model_adapter.find_entity!(params['id'])
-      entity.erase!
-      { success: true }
+    # rubocop:disable Metrics/MethodLength
+    def delete_entities(params)
+      validate_delete_entities_params!(params)
+
+      resolution = target_resolver.resolve(params.fetch('targetReference'))
+      return target_not_found_refusal if resolution[:resolution] == 'none'
+      return ambiguous_target_refusal if resolution[:resolution] == 'ambiguous'
+
+      entity = resolution.fetch(:entity)
+      return unsupported_target_type_refusal unless supported_delete_target?(entity)
+
+      deleted_summary = serializer.serialize_target_match(entity)
+      run_delete_operation do
+        entity.erase!
+        ToolResponse.success(
+          outcome: 'deleted',
+          operation: {
+            name: DELETE_OPERATION_NAME,
+            targetKind: serializer.entity_type_key(entity)
+          },
+          affectedEntities: {
+            deleted: [deleted_summary]
+          }
+        )
+      end
     end
+    # rubocop:enable Metrics/MethodLength
 
     def transform_entities(params)
       entity = model_adapter.find_entity!(params['id'])
@@ -39,7 +72,60 @@ module SU_MCP
 
     private
 
-    attr_reader :model_adapter, :logger, :material_resolver
+    attr_reader :model_adapter, :logger, :material_resolver, :serializer, :target_resolver
+
+    def validate_delete_entities_params!(params)
+      ambiguity_policy = params.dig('constraints', 'ambiguityPolicy')
+      if ambiguity_policy && ambiguity_policy != 'fail'
+        raise "Unsupported ambiguityPolicy: #{ambiguity_policy}"
+      end
+
+      response_format = params.dig('outputOptions', 'responseFormat')
+      return if response_format.nil? || response_format == 'concise'
+
+      raise "Unsupported responseFormat: #{response_format}"
+    end
+
+    def supported_delete_target?(entity)
+      entity.is_a?(Sketchup::Group) || entity.is_a?(Sketchup::ComponentInstance)
+    end
+
+    def run_delete_operation
+      model = model_adapter.active_model!
+      operation_started = false
+      if model.respond_to?(:start_operation)
+        model.start_operation(DELETE_OPERATION_NAME, true)
+        operation_started = true
+      end
+
+      result = yield
+      model.commit_operation if operation_started && model.respond_to?(:commit_operation)
+      result
+    rescue StandardError
+      model.abort_operation if operation_started && model.respond_to?(:abort_operation)
+      raise
+    end
+
+    def target_not_found_refusal
+      ToolResponse.refusal(
+        code: 'target_not_found',
+        message: 'Target reference resolves to no entity.'
+      )
+    end
+
+    def ambiguous_target_refusal
+      ToolResponse.refusal(
+        code: 'ambiguous_target',
+        message: 'Target reference resolves ambiguously.'
+      )
+    end
+
+    def unsupported_target_type_refusal
+      ToolResponse.refusal(
+        code: 'unsupported_target_type',
+        message: 'Target reference must resolve to a supported group or component instance.'
+      )
+    end
 
     def apply_translation(entity, position)
       transformation = Geom::Transformation.translation(

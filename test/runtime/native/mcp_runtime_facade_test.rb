@@ -30,6 +30,20 @@ class McpRuntimeFacadeTest < Minitest::Test
     end
   end
 
+  class RecordingEditingCommands
+    attr_reader :calls
+
+    def initialize(result:)
+      @result = result
+      @calls = []
+    end
+
+    def delete_entities(params)
+      @calls << params
+      @result
+    end
+  end
+
   class RecordingDeveloperCommands
     attr_reader :calls
 
@@ -86,13 +100,37 @@ class McpRuntimeFacadeTest < Minitest::Test
   end
 
   def test_find_entities_reuses_the_existing_scene_query_response_shape
-    expected = { success: true, resolution: 'unique', matches: [{ 'persistentId' => '1001' }] }
+    expected = {
+      success: true,
+      resolution: 'unique',
+      matches: [{ 'identity' => { 'persistentId' => '1001' } }]
+    }
     commands = RecordingSceneQueryCommands.new(result: expected)
     facade = SU_MCP::McpRuntimeFacade.new(scene_query_commands: commands)
 
-    result = facade.find_entities('query' => { 'persistentId' => '1001' })
+    result = facade.find_entities(
+      'targetSelector' => { 'identity' => { 'persistentId' => '1001' } }
+    )
 
-    assert_equal([{ 'query' => { 'persistentId' => '1001' } }], commands.calls)
+    assert_equal(
+      [{ 'targetSelector' => { 'identity' => { 'persistentId' => '1001' } } }],
+      commands.calls
+    )
+    assert_equal(expected, result)
+  end
+
+  def test_delete_entities_reuses_the_existing_editing_response_shape
+    expected = {
+      success: true,
+      outcome: 'deleted',
+      affectedEntities: { deleted: [{ 'entityId' => '301' }] }
+    }
+    editing_commands = RecordingEditingCommands.new(result: expected)
+    facade = SU_MCP::McpRuntimeFacade.new(command_targets: [editing_commands])
+
+    result = facade.delete_entities('targetReference' => { 'entityId' => '301' })
+
+    assert_equal([{ 'targetReference' => { 'entityId' => '301' } }], editing_commands.calls)
     assert_equal(expected, result)
   end
 

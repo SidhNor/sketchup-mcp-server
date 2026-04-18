@@ -259,6 +259,15 @@ module SceneQueryTestSupport
       @definition = details.fetch(:definition)
       @transformation = details.fetch(:transformation, FakeTransformation.new(bounds.center))
       @transformations = []
+      @erased = false
+    end
+
+    def erase!
+      @erased = true
+    end
+
+    def erased?
+      @erased
     end
 
     def transform!(transformation)
@@ -341,11 +350,17 @@ module SceneQueryTestSupport
 
   def build_scene_query_state(layer:, material:, group_origin_x: 0, hidden_face_origin_x: 10,
                               nested_face_origin_x: 20, model_bounds_origin_x: -5)
+    nested_face = build_nested_face(
+      layer: layer,
+      material: material,
+      origin_x: nested_face_origin_x
+    )
     top_level_group = build_scene_query_group(
       entity_id: 101,
       origin_x: group_origin_x,
       layer: layer,
-      material: material
+      material: material,
+      details: { entities: [nested_face] }
     )
 
     {
@@ -353,9 +368,7 @@ module SceneQueryTestSupport
         top_level_group,
         build_hidden_face(layer: layer, material: material, origin_x: hidden_face_origin_x)
       ],
-      active_entities: [
-        build_nested_face(layer: layer, material: material, origin_x: nested_face_origin_x)
-      ],
+      active_entities: [nested_face],
       selection: [top_level_group],
       materials: [material],
       layers: [layer],
@@ -382,6 +395,27 @@ module SceneQueryTestSupport
     leaf = FakeMaterial.new('Leaf')
     concrete = FakeMaterial.new('Concrete')
     mulch = FakeMaterial.new('Mulch')
+    nested_structure = build_scene_query_group(
+      entity_id: 105,
+      origin_x: 2,
+      layer: trees,
+      material: bark,
+      details: {
+        name: 'Nested Arbor',
+        persistent_id: 1005,
+        entities: [],
+        attributes: {
+          'su_mcp' => {
+            'sourceElementId' => 'arbor-001',
+            'managedSceneObject' => true,
+            'semanticType' => 'structure',
+            'status' => 'existing',
+            'state' => 'existing',
+            'structureCategory' => 'outbuilding'
+          }
+        }
+      }
+    )
 
     entities = [
       build_scene_query_group(
@@ -392,7 +426,15 @@ module SceneQueryTestSupport
         details: {
           name: 'Retained Oak',
           persistent_id: 1001,
-          attributes: { 'su_mcp' => { 'sourceElementId' => 'tree-001' } }
+          entities: [nested_structure],
+          attributes: {
+            'su_mcp' => {
+              'sourceElementId' => 'tree-001',
+              'semanticType' => 'tree_proxy',
+              'status' => 'existing',
+              'state' => 'existing'
+            }
+          }
         }
       ),
       build_scene_query_group(
@@ -402,7 +444,15 @@ module SceneQueryTestSupport
         material: leaf,
         details: {
           name: 'Retained Maple',
-          persistent_id: 1002
+          persistent_id: 1002,
+          attributes: {
+            'su_mcp' => {
+              'sourceElementId' => 'tree-002',
+              'semanticType' => 'tree_proxy',
+              'status' => 'proposed',
+              'state' => 'proposed'
+            }
+          }
         }
       ),
       build_scene_query_face(
@@ -422,7 +472,17 @@ module SceneQueryTestSupport
         material: mulch,
         details: {
           name: 'Retained Oak',
-          persistent_id: 1004
+          persistent_id: 1004,
+          attributes: {
+            'su_mcp' => {
+              'sourceElementId' => 'hedge-001',
+              'managedSceneObject' => true,
+              'semanticType' => 'structure',
+              'status' => 'existing',
+              'state' => 'existing',
+              'structureCategory' => 'outbuilding'
+            }
+          }
         }
       )
     ]

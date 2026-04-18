@@ -2,14 +2,14 @@
 
 require_relative '../test_helper'
 require_relative '../support/scene_query_test_support'
-require_relative '../../src/su_mcp/semantic/target_resolver'
+require_relative '../../src/su_mcp/scene_query/target_reference_resolver'
 
-class SemanticTargetResolverTest < Minitest::Test
+class TargetReferenceResolverTest < Minitest::Test
   include SceneQueryTestSupport
 
   def setup
     Sketchup.active_model_override = build_metadata_target_model
-    @resolver = SU_MCP::Semantic::TargetResolver.new
+    @resolver = SU_MCP::TargetReferenceResolver.new
   end
 
   def teardown

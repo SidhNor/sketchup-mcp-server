@@ -6,9 +6,9 @@ require_relative 'pad_builder'
 require_relative 'request_normalizer'
 require_relative 'request_validator'
 require_relative '../runtime/tool_response'
+require_relative '../scene_query/target_reference_resolver'
 require_relative 'serializer'
 require_relative 'structure_builder'
-require_relative 'target_resolver'
 
 module SU_MCP
   # Coordinates the Ruby-owned SEM-01 semantic creation slice.
@@ -26,7 +26,7 @@ module SU_MCP
       request_normalizer: Semantic::RequestNormalizer.new,
       metadata_writer: Semantic::ManagedObjectMetadata.new,
       serializer: Semantic::Serializer.new,
-      target_resolver: Semantic::TargetResolver.new
+      target_resolver: TargetReferenceResolver.new
     )
       @model = model
       @registry = registry

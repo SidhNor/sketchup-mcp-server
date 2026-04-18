@@ -569,7 +569,7 @@ class SemanticCommandsTest < Minitest::Test
       registry: registry,
       metadata_writer: SU_MCP::Semantic::ManagedObjectMetadata.new,
       serializer: SU_MCP::Semantic::Serializer.new,
-      target_resolver: SU_MCP::Semantic::TargetResolver.new
+      target_resolver: SU_MCP::TargetReferenceResolver.new
     )
 
     result = commands.create_site_element(v2_replace_request_for_real_targeting)

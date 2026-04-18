@@ -157,6 +157,51 @@
           }
         }
       }
+    },
+    {
+      "case_id": "delete_entities_deleted",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "params": {
+          "name": "delete_entities",
+          "arguments": {
+            "targetReference": {
+              "sourceElementId": "shed-001"
+            },
+            "constraints": {
+              "ambiguityPolicy": "fail"
+            },
+            "outputOptions": {
+              "responseFormat": "concise"
+            }
+          }
+        },
+        "id": "delete-entities-deleted"
+      },
+      "response": {
+        "jsonrpc": "2.0",
+        "id": "delete-entities-deleted",
+        "result": {
+          "success": true,
+          "outcome": "deleted",
+          "operation": {
+            "name": "Delete Entities",
+            "targetKind": "group"
+          },
+          "affectedEntities": {
+            "deleted": [
+              {
+                "sourceElementId": "shed-001",
+                "persistentId": "7002",
+                "entityId": "702",
+                "type": "group",
+                "name": "Garden Shed"
+              }
+            ]
+          }
+        }
+      }
     }
   ]
 }

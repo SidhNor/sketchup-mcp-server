@@ -18,7 +18,7 @@ class McpRuntimeLoaderTest < Minitest::Test
     set_entity_metadata
     create_group
     reparent_entities
-    delete_component
+    delete_entities
     transform_entities
     get_selection
     set_material
@@ -124,12 +124,34 @@ class McpRuntimeLoaderTest < Minitest::Test
     )
 
     list_entities_tool = tools.find { |tool| tool.fetch('name') == 'list_entities' }
-    assert_equal('List Top-Level Entities', list_entities_tool.fetch('title'))
+    assert_equal('List Entities In Scope', list_entities_tool.fetch('title'))
     assert_equal(true, list_entities_tool.fetch('annotations').fetch('readOnlyHint'))
+    assert_equal(
+      ['scopeSelector'],
+      list_entities_tool.fetch('inputSchema').fetch('required')
+    )
+    assert_equal(
+      %w[outputOptions scopeSelector],
+      list_entities_tool.fetch('inputSchema').fetch('properties').keys.sort
+    )
 
     find_entities_tool = tools.find { |tool| tool.fetch('name') == 'find_entities' }
-    assert_equal('Find Scene Entities', find_entities_tool.fetch('title'))
+    assert_equal('Find Target Entities', find_entities_tool.fetch('title'))
     assert_equal(true, find_entities_tool.fetch('annotations').fetch('readOnlyHint'))
+    assert_equal(
+      ['targetSelector'],
+      find_entities_tool.fetch('inputSchema').fetch('required')
+    )
+    assert_equal(
+      %w[attributes identity metadata],
+      find_entities_tool
+        .fetch('inputSchema')
+        .fetch('properties')
+        .fetch('targetSelector')
+        .fetch('properties')
+        .keys
+        .sort
+    )
 
     sample_surface_z_tool = tools.find { |tool| tool.fetch('name') == 'sample_surface_z' }
     assert_equal(
@@ -198,6 +220,18 @@ class McpRuntimeLoaderTest < Minitest::Test
     assert_equal(
       %w[entities parent],
       reparent_entities_tool.fetch('inputSchema').fetch('properties').keys.sort
+    )
+
+    delete_entities_tool = tools.find { |tool| tool.fetch('name') == 'delete_entities' }
+    assert_equal('Delete Supported Entities', delete_entities_tool.fetch('title'))
+    assert_equal(true, delete_entities_tool.fetch('annotations').fetch('destructiveHint'))
+    assert_equal(
+      ['targetReference'],
+      delete_entities_tool.fetch('inputSchema').fetch('required')
+    )
+    assert_equal(
+      %w[constraints outputOptions targetReference],
+      delete_entities_tool.fetch('inputSchema').fetch('properties').keys.sort
     )
 
     transform_entities_tool = tools.find { |tool| tool.fetch('name') == 'transform_entities' }
@@ -479,6 +513,7 @@ class McpRuntimeLoaderTest < Minitest::Test
     catalog = @loader.tool_catalog
 
     find_entities = catalog.find { |tool| tool.fetch(:name) == 'find_entities' }
+    delete_entities = catalog.find { |tool| tool.fetch(:name) == 'delete_entities' }
     sample_surface_z = catalog.find { |tool| tool.fetch(:name) == 'sample_surface_z' }
     get_entity_info = catalog.find { |tool| tool.fetch(:name) == 'get_entity_info' }
     create_site_element = catalog.find { |tool| tool.fetch(:name) == 'create_site_element' }
@@ -492,11 +527,13 @@ class McpRuntimeLoaderTest < Minitest::Test
     list_entities = catalog.find { |tool| tool.fetch(:name) == 'list_entities' }
 
     assert_equal('Get Scene Summary', scene_info.dig(:metadata, :title))
-    assert_equal('List Top-Level Entities', list_entities.dig(:metadata, :title))
-    assert_equal('Find Scene Entities', find_entities.dig(:metadata, :title))
+    assert_equal('List Entities In Scope', list_entities.dig(:metadata, :title))
+    assert_equal('Find Target Entities', find_entities.dig(:metadata, :title))
     assert_equal(true, find_entities.dig(:metadata, :annotations, :read_only_hint))
     assert_equal('object', find_entities.dig(:input_schema, :type))
-    assert_equal('query', find_entities.dig(:input_schema, :required)&.first)
+    assert_equal('targetSelector', find_entities.dig(:input_schema, :required)&.first)
+    assert_equal('Delete Supported Entities', delete_entities.dig(:metadata, :title))
+    assert_equal('targetReference', delete_entities.dig(:input_schema, :required)&.first)
 
     assert_equal('Sample Target Surface Elevation', sample_surface_z.dig(:metadata, :title))
     assert_equal(%w[target samplePoints], sample_surface_z.dig(:input_schema, :required))
@@ -521,7 +558,9 @@ class McpRuntimeLoaderTest < Minitest::Test
 
   def test_tool_catalog_tracks_the_runtime_handler_key_for_representative_tools
     catalog = @loader.tool_catalog
-    representative_tools = %w[get_scene_info create_site_element transform_entities eval_ruby]
+    representative_tools = %w[
+      get_scene_info create_site_element delete_entities transform_entities eval_ruby
+    ]
     matching_tools = catalog.select { |tool| representative_tools.include?(tool.fetch(:name)) }
 
     assert_equal(
@@ -549,6 +588,111 @@ class McpRuntimeLoaderTest < Minitest::Test
       catalog.count { |tool| %w[first_class escape_hatch].include?(tool.fetch(:classification)) }
     )
   end
+
+  # rubocop:disable Metrics/AbcSize, Metrics/MethodLength
+  def test_list_entities_tool_schema_exposes_scope_selector_and_output_options
+    list_entities_tool = @loader.tool_catalog.find do |tool|
+      tool.fetch(:name) == 'list_entities'
+    end
+    input_schema = list_entities_tool.fetch(:input_schema)
+
+    assert_equal(['scopeSelector'], input_schema.fetch(:required))
+    assert_equal(
+      %w[outputOptions scopeSelector],
+      input_schema.fetch(:properties).keys.map(&:to_s).sort
+    )
+    assert_equal(
+      ['mode'],
+      input_schema.fetch(:properties).fetch(:scopeSelector).fetch(:required)
+    )
+    assert_equal(
+      %w[mode targetReference],
+      input_schema.fetch(:properties).fetch(:scopeSelector).fetch(:properties).keys.map(&:to_s).sort
+    )
+    assert_equal(
+      %w[children_of_target selection top_level],
+      input_schema.fetch(:properties)
+                  .fetch(:scopeSelector)
+                  .fetch(:properties)
+                  .fetch(:mode)
+                  .fetch(:enum)
+                  .sort
+    )
+    assert_equal(
+      %w[includeHidden limit],
+      input_schema.fetch(:properties).fetch(:outputOptions).fetch(:properties).keys.map(&:to_s).sort
+    )
+  end
+
+  def test_find_entities_tool_schema_exposes_nested_target_selector_families
+    find_entities_tool = @loader.tool_catalog.find do |tool|
+      tool.fetch(:name) == 'find_entities'
+    end
+    target_selector = find_entities_tool
+                      .fetch(:input_schema)
+                      .fetch(:properties)
+                      .fetch(:targetSelector)
+
+    assert_equal(['targetSelector'], find_entities_tool.fetch(:input_schema).fetch(:required))
+    assert_equal(
+      %w[attributes identity metadata],
+      target_selector.fetch(:properties).keys.map(&:to_s).sort
+    )
+    assert_equal(
+      %w[entityId persistentId sourceElementId],
+      target_selector.fetch(:properties).fetch(:identity).fetch(:properties).keys.map(&:to_s).sort
+    )
+    assert_equal(
+      %w[material name tag],
+      target_selector.fetch(:properties).fetch(:attributes).fetch(:properties).keys.map(&:to_s).sort
+    )
+    assert_equal(
+      %w[managedSceneObject semanticType state status structureCategory],
+      target_selector.fetch(:properties).fetch(:metadata).fetch(:properties).keys.map(&:to_s).sort
+    )
+  end
+
+  def test_delete_entities_tool_schema_replaces_delete_component_with_explicit_constraints
+    refute(@loader.tool_catalog.any? { |tool| tool.fetch(:name) == 'delete_component' })
+
+    delete_entities_tool = @loader.tool_catalog.find do |tool|
+      tool.fetch(:name) == 'delete_entities'
+    end
+    input_schema = delete_entities_tool.fetch(:input_schema)
+
+    assert_equal(['targetReference'], input_schema.fetch(:required))
+    assert_equal(
+      %w[constraints outputOptions targetReference],
+      input_schema.fetch(:properties).keys.map(&:to_s).sort
+    )
+    assert_equal(
+      %w[entityId persistentId sourceElementId],
+      input_schema
+        .fetch(:properties)
+        .fetch(:targetReference)
+        .fetch(:properties)
+        .keys
+        .map(&:to_s)
+        .sort
+    )
+    assert_equal(
+      ['fail'],
+      input_schema.fetch(:properties)
+                  .fetch(:constraints)
+                  .fetch(:properties)
+                  .fetch(:ambiguityPolicy)
+                  .fetch(:enum)
+    )
+    assert_equal(
+      ['concise'],
+      input_schema.fetch(:properties)
+                  .fetch(:outputOptions)
+                  .fetch(:properties)
+                  .fetch(:responseFormat)
+                  .fetch(:enum)
+    )
+  end
+  # rubocop:enable Metrics/AbcSize, Metrics/MethodLength
 
   def test_eval_ruby_is_the_only_escape_hatch_tool_definition
     catalog = @loader.tool_catalog

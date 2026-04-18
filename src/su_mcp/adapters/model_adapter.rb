@@ -63,6 +63,7 @@ module SU_MCP
       def collect_entities(entities)
         Array(entities).flat_map do |entity|
           next [] unless entity
+          next [] unless entity.respond_to?(:entityID)
 
           [entity] + child_entities_for(entity)
         end
