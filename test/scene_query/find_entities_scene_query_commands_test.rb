@@ -98,6 +98,16 @@ class FindEntitiesSceneQueryCommandsTest < Minitest::Test
     assert_equal(%w[104 105], result[:matches].map { |match| match[:entityId] }.sort)
   end
 
+  def test_supports_matching_managed_containers_by_semantic_type
+    result = @commands.find_entities(
+      'targetSelector' => { 'metadata' => { 'semanticType' => 'grouped_feature' } }
+    )
+
+    assert_equal('unique', result[:resolution])
+    assert_equal(['106'], result[:matches].map { |match| match[:entityId] })
+    assert_equal('built-form-cluster-001', result.dig(:matches, 0, :sourceElementId))
+  end
+
   def test_finds_nested_entities_recursively
     result = @commands.find_entities(
       'targetSelector' => { 'identity' => { 'sourceElementId' => 'arbor-001' } }

@@ -5,6 +5,7 @@
 require_relative '../test_helper'
 require_relative '../support/semantic_test_support'
 require_relative '../support/scene_query_test_support'
+require_relative '../../src/su_mcp/semantic/hierarchy_maintenance_commands'
 require_relative '../../src/su_mcp/semantic/semantic_commands'
 
 class SemanticCommandsTest < Minitest::Test
@@ -775,6 +776,46 @@ class SemanticCommandsTest < Minitest::Test
     assert_equal('created', result[:outcome])
     assert_equal(1, parent_group.entities.groups.length)
     assert_equal(2, @model.active_entities.groups.length)
+  end
+
+  def test_create_site_element_can_create_a_child_under_a_managed_container_created_by_create_group
+    hierarchy_commands = SU_MCP::HierarchyMaintenanceCommands.new(model: @model)
+    create_group_result = hierarchy_commands.create_group(
+      'metadata' => {
+        'sourceElementId' => 'built-form-cluster-001',
+        'status' => 'proposed'
+      },
+      'sceneProperties' => {
+        'name' => 'Built Form Cluster',
+        'tag' => 'Structures'
+      }
+    )
+    container = @model.active_entities.groups.first
+    commands = SU_MCP::SemanticCommands.new(
+      model: @model,
+      target_resolver: FakeTargetResolver.new(resolution: 'unique', entity: container)
+    )
+
+    result = commands.create_site_element(sectioned_structure_request(
+                                            'metadata' => {
+                                              'sourceElementId' => 'house-extension-001',
+                                              'status' => 'proposed'
+                                            },
+                                            'placement' => {
+                                              'mode' => 'parented',
+                                              'parent' => {
+                                                'persistentId' => container.persistent_id.to_s
+                                              }
+                                            }
+                                          ))
+
+    assert_equal('built-form-cluster-001', create_group_result.dig(:group, :sourceElementId))
+    assert_equal('grouped_feature', container.get_attribute('su_mcp', 'semanticType'))
+    assert_equal(true, result[:success])
+    assert_equal('created', result[:outcome])
+    assert_equal(1, container.entities.groups.length)
+    assert_equal('house-extension-001',
+                 container.entities.groups.first.get_attribute('su_mcp', 'sourceElementId'))
   end
 
   def test_create_site_element_refuses_unsupported_hosted_execution_combination

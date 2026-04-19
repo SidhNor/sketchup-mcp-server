@@ -2,6 +2,8 @@
 
 require_relative 'entity_relocator'
 require_relative 'hierarchy_entity_serializer'
+require_relative 'managed_object_metadata'
+require_relative 'scene_properties'
 require_relative '../runtime/tool_response'
 require_relative '../scene_query/target_reference_resolver'
 
@@ -12,34 +14,37 @@ module SU_MCP
     CREATE_GROUP_OPERATION_NAME = 'Create Group'
     REPARENT_ENTITIES_OPERATION_NAME = 'Reparent Entities'
 
+    # rubocop:disable Metrics/ParameterLists
     def initialize(
       model: Sketchup.active_model,
       target_resolver: TargetReferenceResolver.new,
       relocator: Semantic::EntityRelocator.new(model: model),
-      serializer: Semantic::HierarchyEntitySerializer.new
+      serializer: Semantic::HierarchyEntitySerializer.new,
+      metadata_writer: Semantic::ManagedObjectMetadata.new,
+      scene_properties: Semantic::SceneProperties.new
     )
       @model = model
       @target_resolver = target_resolver
       @relocator = relocator
       @serializer = serializer
+      @metadata_writer = metadata_writer
+      @scene_properties = scene_properties
     end
+    # rubocop:enable Metrics/ParameterLists
 
     def create_group(params)
-      parent = resolve_optional_parent(params['parent'])
-      return parent if refusal_response?(parent)
-
-      children = resolve_entities_list(params['children'] || [], field: 'children')
-      return children if refusal_response?(children)
+      validation = validate_create_group_request(params)
+      return validation if refusal_response?(validation)
 
       run_operation(CREATE_GROUP_OPERATION_NAME) do
-        group = target_collection_for(parent).add_group
-        relocated_children = relocator.relocate(entities: children, parent: group)
-
-        ToolResponse.success(
-          outcome: 'created',
-          group: serializer.serialize(group),
-          children: relocated_children.map { |entity| serializer.serialize(entity) }
+        group = target_collection_for(validation.fetch(:parent)).add_group
+        apply_managed_container_attributes(group, params)
+        relocated_children = relocator.relocate(
+          entities: validation.fetch(:children),
+          parent: group
         )
+
+        create_group_success(group, relocated_children)
       end
     end
 
@@ -68,7 +73,8 @@ module SU_MCP
 
     private
 
-    attr_reader :model, :target_resolver, :relocator, :serializer
+    attr_reader :model, :target_resolver, :relocator, :serializer, :metadata_writer,
+                :scene_properties
 
     def resolve_optional_parent(raw_parent)
       return nil unless raw_parent
@@ -229,6 +235,88 @@ module SU_MCP
 
     def refusal(code, message, details = nil)
       ToolResponse.refusal(code: code, message: message, details: details)
+    end
+
+    def validate_create_group_request(params)
+      parent = resolve_optional_parent(params['parent'])
+      return parent if refusal_response?(parent)
+
+      children = resolve_entities_list(params['children'] || [], field: 'children')
+      return children if refusal_response?(children)
+
+      refusal = managed_container_refusal(params['metadata'])
+      return refusal if refusal
+
+      { parent: parent, children: children }
+    end
+
+    def create_group_success(group, relocated_children)
+      ToolResponse.success(
+        outcome: 'created',
+        group: serializer.serialize(group),
+        children: relocated_children.map { |entity| serializer.serialize(entity) }
+      )
+    end
+
+    def managed_container_refusal(raw_metadata)
+      metadata = normalize_metadata(raw_metadata)
+      return nil if metadata.empty?
+
+      unless metadata['sourceElementId']
+        return missing_required_field_refusal('metadata.sourceElementId')
+      end
+
+      return missing_required_field_refusal('metadata.status') unless metadata['status']
+
+      unsupported_field = (metadata.keys - %w[sourceElementId status]).first
+      if unsupported_field
+        return unsupported_option_refusal(
+          "metadata.#{unsupported_field}",
+          metadata[unsupported_field]
+        )
+      end
+
+      nil
+    end
+
+    def normalize_metadata(raw_metadata)
+      return {} unless raw_metadata.is_a?(Hash)
+
+      raw_metadata.each_with_object({}) do |(key, value), normalized|
+        normalized[key.to_s] = value
+      end
+    end
+
+    def apply_managed_container_attributes(group, params)
+      metadata = normalize_metadata(params['metadata'])
+      return group if metadata.empty?
+
+      metadata_writer.write!(
+        group,
+        'sourceElementId' => metadata.fetch('sourceElementId'),
+        'semanticType' => 'grouped_feature',
+        'status' => metadata.fetch('status'),
+        'state' => 'Created',
+        'schemaVersion' => 1
+      )
+      scene_properties.apply!(model: model, group: group, params: params)
+      group
+    end
+
+    def missing_required_field_refusal(field)
+      refusal(
+        'missing_required_field',
+        'Required field is missing.',
+        { field: field }
+      )
+    end
+
+    def unsupported_option_refusal(field, value)
+      refusal(
+        'unsupported_option',
+        'Option is not supported for this tool.',
+        { field: field, value: value }
+      )
     end
   end
   # rubocop:enable Metrics/ClassLength

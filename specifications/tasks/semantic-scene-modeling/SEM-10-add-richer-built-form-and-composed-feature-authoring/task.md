@@ -1,9 +1,9 @@
 # Task: SEM-10 Add Richer Built-Form and Composed Feature Authoring
 **Task ID**: `SEM-10`
 **Title**: `Add Richer Built-Form and Composed Feature Authoring`
-**Status**: `draft`
+**Status**: `completed`
 **Priority**: `P0`
-**Date**: `2026-04-18`
+**Date**: `2026-04-19`
 
 ## Linked HLD
 
@@ -80,7 +80,7 @@ Scenario: richer built-form authoring stays inside the current product boundary
 
 ## Related Technical Plan
 
-- none yet
+- [Technical Plan](./plan.md)
 
 ## Success Metrics
 

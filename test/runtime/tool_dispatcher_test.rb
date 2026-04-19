@@ -3,6 +3,7 @@
 require_relative '../test_helper'
 require_relative '../../src/su_mcp/runtime/tool_dispatcher'
 
+# rubocop:disable Metrics/ClassLength
 class ToolDispatcherTest < Minitest::Test
   class CommandTarget
     attr_reader :calls
@@ -189,6 +190,45 @@ class ToolDispatcherTest < Minitest::Test
   # rubocop:enable Metrics/MethodLength
 
   # rubocop:disable Metrics/MethodLength
+  def test_dispatches_create_group_with_managed_container_arguments_to_the_hierarchy_command
+    result = @dispatcher.call(
+      'create_group',
+      {
+        'metadata' => {
+          'sourceElementId' => 'built-form-cluster-001',
+          'status' => 'proposed'
+        },
+        'sceneProperties' => {
+          'name' => 'Built Form Cluster',
+          'tag' => 'Structures'
+        }
+      }
+    )
+
+    assert_equal(
+      { success: true, outcome: 'created', group: { entityId: '42', type: 'group' } },
+      result
+    )
+    assert_equal(
+      [[
+        :create_group,
+        {
+          'metadata' => {
+            'sourceElementId' => 'built-form-cluster-001',
+            'status' => 'proposed'
+          },
+          'sceneProperties' => {
+            'name' => 'Built Form Cluster',
+            'tag' => 'Structures'
+          }
+        }
+      ]],
+      @target.calls.last(1)
+    )
+  end
+  # rubocop:enable Metrics/MethodLength
+
+  # rubocop:disable Metrics/MethodLength
   def test_dispatches_reparent_entities_to_the_hierarchy_command
     result = @dispatcher.call(
       'reparent_entities',
@@ -316,3 +356,4 @@ class ToolDispatcherTest < Minitest::Test
     assert_equal('Unknown tool: unknown_tool', error.message)
   end
 end
+# rubocop:enable Metrics/ClassLength

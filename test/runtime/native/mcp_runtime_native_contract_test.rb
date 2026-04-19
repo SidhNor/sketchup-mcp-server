@@ -71,6 +71,25 @@ class McpRuntimeNativeContractTest < Minitest::Test
     )
   end
 
+  def test_native_transport_preserves_managed_create_group_success_shape_from_shared_contract
+    skip_unless_staged_vendor_runtime!
+
+    contract_case = contract_case('create_group_managed_container_created')
+    transport = @loader.build_transport(
+      handlers: {
+        create_group: ->(_arguments) { contract_case.fetch('response').fetch('result') }
+      }
+    )
+
+    response = perform_raw_json_request(transport, contract_case.fetch('request'))
+
+    assert_equal(200, response[:status])
+    assert_equal(
+      contract_case.dig('response', 'result'),
+      response[:body].dig('result', 'structuredContent')
+    )
+  end
+
   def test_native_transport_preserves_reparent_entities_refusal_shape_from_shared_contract
     skip_unless_staged_vendor_runtime!
 

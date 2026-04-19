@@ -286,7 +286,10 @@ class McpRuntimeLoaderTest < Minitest::Test
     refute_nil(create_group_tool)
     input_schema = create_group_tool.fetch(:input_schema)
 
-    assert_equal(%w[children parent], input_schema.fetch(:properties).keys.map(&:to_s).sort)
+    assert_equal(
+      %w[children metadata parent sceneProperties],
+      input_schema.fetch(:properties).keys.map(&:to_s).sort
+    )
     assert_equal(
       %w[entityId persistentId sourceElementId],
       input_schema.fetch(:properties).fetch(:parent).fetch(:properties).keys.map(&:to_s).sort
@@ -304,6 +307,32 @@ class McpRuntimeLoaderTest < Minitest::Test
     )
     refute(input_schema.fetch(:properties).key?(:editContext))
     refute(input_schema.fetch(:properties).key?(:id))
+  end
+
+  def test_create_group_tool_schema_supports_managed_container_metadata_and_scene_properties
+    create_group_tool = @loader.tool_catalog.find do |tool|
+      tool.fetch(:name) == 'create_group'
+    end
+    refute_nil(create_group_tool)
+    input_schema = create_group_tool.fetch(:input_schema)
+
+    assert_equal(
+      %w[children metadata parent sceneProperties],
+      input_schema.fetch(:properties).keys.map(&:to_s).sort
+    )
+    assert_equal(
+      %w[sourceElementId status],
+      input_schema.fetch(:properties).fetch(:metadata).fetch(:properties).keys.map(&:to_s).sort
+    )
+    assert_equal(
+      %w[name tag],
+      input_schema.fetch(:properties)
+                  .fetch(:sceneProperties)
+                  .fetch(:properties)
+                  .keys
+                  .map(&:to_s)
+                  .sort
+    )
   end
 
   def test_reparent_entities_tool_schema_uses_compact_target_references_only

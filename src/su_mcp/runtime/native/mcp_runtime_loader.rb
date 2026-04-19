@@ -928,6 +928,22 @@ module SU_MCP
           children: {
             type: 'array',
             items: target_reference_schema
+          },
+          metadata: {
+            type: 'object',
+            properties: {
+              sourceElementId: string_schema,
+              status: string_schema
+            },
+            additionalProperties: false
+          },
+          sceneProperties: {
+            type: 'object',
+            properties: {
+              name: string_schema,
+              tag: string_schema
+            },
+            additionalProperties: false
           }
         },
         additionalProperties: false

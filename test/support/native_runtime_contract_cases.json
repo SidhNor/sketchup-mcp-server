@@ -123,6 +123,48 @@
       }
     },
     {
+      "case_id": "create_group_managed_container_created",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "params": {
+          "name": "create_group",
+          "arguments": {
+            "metadata": {
+              "sourceElementId": "built-form-cluster-001",
+              "status": "proposed"
+            },
+            "sceneProperties": {
+              "name": "Built Form Cluster",
+              "tag": "Structures"
+            }
+          }
+        },
+        "id": "create-group-managed-container-created"
+      },
+      "response": {
+        "jsonrpc": "2.0",
+        "id": "create-group-managed-container-created",
+        "result": {
+          "success": true,
+          "outcome": "created",
+          "group": {
+            "sourceElementId": "built-form-cluster-001",
+            "persistentId": "1002",
+            "entityId": "43",
+            "type": "group",
+            "semanticType": "grouped_feature",
+            "status": "proposed",
+            "state": "Created",
+            "name": "Built Form Cluster",
+            "tag": "Structures",
+            "childrenCount": 0
+          },
+          "children": []
+        }
+      }
+    },
+    {
       "case_id": "reparent_entities_cyclic_refused",
       "request": {
         "jsonrpc": "2.0",

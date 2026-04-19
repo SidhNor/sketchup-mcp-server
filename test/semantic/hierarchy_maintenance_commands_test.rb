@@ -38,6 +38,11 @@ class HierarchyMaintenanceCommandsTest < Minitest::Test
         persistentId: entity.respond_to?(:persistent_id) ? entity.persistent_id.to_s : nil,
         entityId: entity.entityID.to_s,
         type: entity.class.name.split('::').last.downcase,
+        semanticType: entity.get_attribute('su_mcp', 'semanticType'),
+        status: entity.get_attribute('su_mcp', 'status'),
+        state: entity.get_attribute('su_mcp', 'state'),
+        name: entity.respond_to?(:name) ? entity.name : nil,
+        tag: entity.respond_to?(:layer) && entity.layer ? entity.layer.name : nil,
         childrenCount: children_count_for(entity)
       }.compact
     end
@@ -114,6 +119,85 @@ class HierarchyMaintenanceCommandsTest < Minitest::Test
     assert_equal('created', result[:outcome])
     assert_equal(1, relocator.calls.length)
     assert_equal('tree-001', result.fetch(:children).first.fetch(:sourceElementId))
+  end
+
+  def test_create_group_can_create_a_managed_container_when_metadata_is_supplied
+    commands = build_commands
+
+    result = commands.create_group(
+      'metadata' => {
+        'sourceElementId' => 'built-form-cluster-001',
+        'status' => 'proposed'
+      }
+    )
+
+    assert_equal('created', result[:outcome])
+    assert_equal('built-form-cluster-001', result.dig(:group, :sourceElementId))
+    assert_equal('grouped_feature', result.dig(:group, :semanticType))
+    assert_equal('proposed', result.dig(:group, :status))
+    assert_equal('Created', result.dig(:group, :state))
+  end
+
+  def test_create_group_can_apply_scene_properties_to_a_managed_container
+    commands = build_commands
+
+    result = commands.create_group(
+      'metadata' => {
+        'sourceElementId' => 'built-form-cluster-001',
+        'status' => 'proposed'
+      },
+      'sceneProperties' => {
+        'name' => 'Built Form Cluster',
+        'tag' => 'Structures'
+      }
+    )
+
+    assert_equal('Built Form Cluster', result.dig(:group, :name))
+    assert_equal('Structures', result.dig(:group, :tag))
+  end
+
+  def test_create_group_refuses_managed_container_without_source_element_id
+    commands = build_commands
+
+    result = commands.create_group(
+      'metadata' => {
+        'status' => 'proposed'
+      }
+    )
+
+    assert_equal('refused', result[:outcome])
+    assert_equal('missing_required_field', result.dig(:refusal, :code))
+    assert_equal('metadata.sourceElementId', result.dig(:refusal, :details, :field))
+  end
+
+  def test_create_group_refuses_managed_container_without_status
+    commands = build_commands
+
+    result = commands.create_group(
+      'metadata' => {
+        'sourceElementId' => 'built-form-cluster-001'
+      }
+    )
+
+    assert_equal('refused', result[:outcome])
+    assert_equal('missing_required_field', result.dig(:refusal, :code))
+    assert_equal('metadata.status', result.dig(:refusal, :details, :field))
+  end
+
+  def test_create_group_refuses_unsupported_managed_container_metadata_fields
+    commands = build_commands
+
+    result = commands.create_group(
+      'metadata' => {
+        'sourceElementId' => 'built-form-cluster-001',
+        'status' => 'proposed',
+        'semanticType' => 'structure'
+      }
+    )
+
+    assert_equal('refused', result[:outcome])
+    assert_equal('unsupported_option', result.dig(:refusal, :code))
+    assert_equal('metadata.semanticType', result.dig(:refusal, :details, :field))
   end
 
   def test_reparent_entities_can_move_supported_entities_under_an_explicit_parent

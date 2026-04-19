@@ -391,10 +391,12 @@ module SceneQueryTestSupport
   def build_find_entities_model
     trees = FakeLayer.new('Trees')
     hardscape = FakeLayer.new('Hardscape')
+    structures = FakeLayer.new('Structures')
     bark = FakeMaterial.new('Bark')
     leaf = FakeMaterial.new('Leaf')
     concrete = FakeMaterial.new('Concrete')
     mulch = FakeMaterial.new('Mulch')
+    steel = FakeMaterial.new('Steel')
     nested_structure = build_scene_query_group(
       entity_id: 105,
       origin_x: 2,
@@ -484,6 +486,25 @@ module SceneQueryTestSupport
             }
           }
         }
+      ),
+      build_scene_query_group(
+        entity_id: 106,
+        origin_x: 20,
+        layer: structures,
+        material: steel,
+        details: {
+          name: 'Built Form Cluster',
+          persistent_id: 1006,
+          attributes: {
+            'su_mcp' => {
+              'sourceElementId' => 'built-form-cluster-001',
+              'managedSceneObject' => true,
+              'semanticType' => 'grouped_feature',
+              'status' => 'proposed',
+              'state' => 'Created'
+            }
+          }
+        }
       )
     ]
 
@@ -492,8 +513,8 @@ module SceneQueryTestSupport
         entities: entities,
         active_entities: [],
         selection: [],
-        materials: [bark, leaf, concrete, mulch],
-        layers: [trees, hardscape],
+        materials: [bark, leaf, concrete, mulch, steel],
+        layers: [trees, hardscape, structures],
         bounds: build_bounds(origin_x: -5)
       },
       details: { options: default_options }
