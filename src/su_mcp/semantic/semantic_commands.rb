@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require_relative 'builder_registry'
+require_relative 'destination_resolver'
 require_relative 'managed_object_metadata'
 require_relative 'pad_builder'
 require_relative 'request_normalizer'
@@ -17,6 +18,11 @@ module SU_MCP
     OPERATION_NAME = 'Create Site Element'
     METADATA_OPERATION_NAME = 'Set Entity Metadata'
     SCHEMA_VERSION = 1
+    SUPPORTED_HOSTING_MODES = {
+      'path' => ['surface_drape'],
+      'pad' => ['surface_snap'],
+      'retaining_edge' => ['edge_clamp']
+    }.freeze
 
     # rubocop:disable Metrics/ParameterLists
     def initialize(
@@ -26,7 +32,8 @@ module SU_MCP
       request_normalizer: Semantic::RequestNormalizer.new,
       metadata_writer: Semantic::ManagedObjectMetadata.new,
       serializer: Semantic::Serializer.new,
-      target_resolver: TargetReferenceResolver.new
+      target_resolver: TargetReferenceResolver.new,
+      destination_resolver: Semantic::DestinationResolver.new(model: model)
     )
       @model = model
       @registry = registry
@@ -35,6 +42,7 @@ module SU_MCP
       @metadata_writer = metadata_writer
       @serializer = serializer
       @target_resolver = target_resolver
+      @destination_resolver = destination_resolver
     end
     # rubocop:enable Metrics/ParameterLists
 
@@ -45,9 +53,6 @@ module SU_MCP
       # Normalize only validated requests so meter semantics stay at the Ruby boundary.
       normalized_params = request_normalizer.normalize_create_site_element_params(params)
       create_site_element_v2(normalized_params, public_params: params)
-    rescue StandardError
-      model.abort_operation if model.respond_to?(:abort_operation)
-      raise
     end
 
     # rubocop:disable Naming/AccessorMethodName
@@ -66,7 +71,7 @@ module SU_MCP
     private
 
     attr_reader :model, :registry, :validator, :request_normalizer, :metadata_writer, :serializer,
-                :target_resolver
+                :target_resolver, :destination_resolver
 
     def create_site_element_v2(params, public_params:)
       case params.dig('lifecycle', 'mode')
@@ -233,41 +238,39 @@ module SU_MCP
       )
       return previous_entity if refusal_response?(previous_entity)
 
-      parent_entity = resolve_v2_parent_entity(params)
-      return parent_entity if refusal_response?(parent_entity)
+      replacement_context = resolve_v2_replace_context(params, previous_entity)
+      return replacement_context if refusal_response?(replacement_context)
 
-      run_v2_operation do
-        entity = build_v2_entity(
-          params,
-          lifecycle_target: previous_entity,
-          parent_entity: parent_entity
-        )
-        replacement_result(entity, previous_entity, public_params)
-      end
+      run_v2_replace_operation(params, public_params, previous_entity, replacement_context)
     end
 
     def create_site_element_v2_new(params, public_params:)
-      hosting_entity = resolve_v2_hosting_entity(params)
-      return hosting_entity if refusal_response?(hosting_entity)
-
-      parent_entity = resolve_v2_parent_entity(params)
-      return parent_entity if refusal_response?(parent_entity)
+      creation_context = resolve_v2_new_context(params)
+      return creation_context if refusal_response?(creation_context)
 
       run_v2_operation do
         entity = build_v2_entity(
           params,
-          hosting_entity: hosting_entity,
-          parent_entity: parent_entity
+          hosting_entity: creation_context[:hosting_entity],
+          parent_entity: creation_context[:parent_entity],
+          destination: creation_context.fetch(:destination)
         )
         metadata_writer.write!(entity, metadata_attributes(public_params, state: 'Created'))
         success_result('created', entity)
       end
     end
 
-    def build_v2_entity(params, hosting_entity: nil, parent_entity: nil, lifecycle_target: nil)
+    def build_v2_entity(
+      params,
+      hosting_entity: nil,
+      parent_entity: nil,
+      lifecycle_target: nil,
+      destination: model.active_entities
+    )
       builder = registry.builder_for(params.fetch('elementType'))
       builder.build(
         model: model,
+        destination: destination,
         params: builder_params_for_v2(
           params,
           hosting_entity: hosting_entity,
@@ -279,7 +282,11 @@ module SU_MCP
 
     def replacement_result(entity, previous_entity, params)
       metadata_writer.write!(entity, replacement_metadata_attributes(previous_entity, params))
+      previous_entity.erase!
       success_result('replaced', entity)
+    rescue StandardError
+      cleanup_entity(entity)
+      raise
     end
 
     def v2_resolution_refusal(resolution, section)
@@ -297,10 +304,111 @@ module SU_MCP
       resolve_v2_target_entity(params.dig('hosting', 'target'), section: 'hosting')
     end
 
-    def resolve_v2_parent_entity(params)
+    def resolve_v2_explicit_parent_entity(params)
       return nil unless params.dig('placement', 'mode') == 'parented'
+      return nil unless params.dig('placement', 'parent').is_a?(Hash)
 
       resolve_v2_target_entity(params.dig('placement', 'parent'), section: 'placement')
+    end
+
+    def resolve_v2_new_context(params)
+      hosting_entity = resolve_v2_hosting_entity(params)
+      return hosting_entity if refusal_response?(hosting_entity)
+
+      parent_entity = resolve_v2_explicit_parent_entity(params)
+      return parent_entity if refusal_response?(parent_entity)
+
+      hosting_refusal = unsupported_hosting_refusal(params)
+      return hosting_refusal if hosting_refusal
+
+      destination = resolve_v2_create_destination(parent_entity)
+      return destination if refusal_response?(destination)
+
+      {
+        hosting_entity: hosting_entity,
+        parent_entity: parent_entity,
+        destination: destination.fetch(:destination)
+      }
+    end
+
+    def run_v2_replace_operation(params, public_params, previous_entity, replacement_context)
+      run_v2_operation do
+        entity = build_v2_entity(
+          params,
+          lifecycle_target: previous_entity,
+          parent_entity: replacement_context[:parent_entity],
+          destination: replacement_context.fetch(:destination)
+        )
+        replacement_result(entity, previous_entity, public_params)
+      end
+    end
+
+    def resolve_v2_replace_context(params, previous_entity)
+      replace_target_refusal = replacement_target_refusal(previous_entity)
+      return replace_target_refusal if replace_target_refusal
+
+      parent_entity = resolve_v2_explicit_parent_entity(params)
+      return parent_entity if refusal_response?(parent_entity)
+
+      destination = resolve_v2_replace_destination(
+        previous_entity: previous_entity,
+        explicit_parent_entity: parent_entity
+      )
+      return destination if refusal_response?(destination)
+
+      {
+        parent_entity: parent_entity,
+        destination: destination.fetch(:destination)
+      }
+    end
+
+    def resolve_v2_create_destination(parent_entity)
+      destination_resolver.resolve_for_create(parent_entity: parent_entity)
+    end
+
+    def resolve_v2_replace_destination(previous_entity:, explicit_parent_entity:)
+      destination_resolver.resolve_for_replace(
+        previous_entity: previous_entity,
+        explicit_parent: explicit_parent_entity
+      )
+    end
+
+    def unsupported_hosting_refusal(params)
+      hosting_mode = params.dig('hosting', 'mode').to_s
+      return nil if hosting_mode.empty? || hosting_mode == 'none'
+
+      supported_modes = SUPPORTED_HOSTING_MODES.fetch(params.fetch('elementType'), [])
+      return nil if supported_modes.include?(hosting_mode)
+
+      refusal(
+        'unsupported_hosting_mode',
+        'Hosting mode is not supported for this semantic element type.',
+        { section: 'hosting', mode: hosting_mode, elementType: params.fetch('elementType') }
+      )
+    end
+
+    def replacement_target_refusal(entity)
+      return locked_replace_target_refusal if entity.respond_to?(:locked?) && entity.locked?
+      return locked_replace_target_refusal unless entity.respond_to?(:erase!)
+
+      nil
+    end
+
+    def locked_replace_target_refusal
+      refusal(
+        'invalid_replace_target',
+        'Lifecycle target cannot be safely replaced in the current SketchUp context.',
+        { section: 'lifecycle' }
+      )
+    end
+
+    def cleanup_entity(entity)
+      return unless entity.respond_to?(:erase!)
+      return if entity.respond_to?(:erased?) && entity.erased?
+
+      entity.erase!
+    rescue StandardError
+      nil
     end
 
     def run_v2_operation

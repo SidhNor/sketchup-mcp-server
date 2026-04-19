@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-# rubocop:disable Metrics/MethodLength
+# rubocop:disable Metrics/MethodLength, Metrics/ClassLength
 
 require_relative '../test_helper'
 require_relative '../support/semantic_test_support'
@@ -119,6 +119,28 @@ class TreeProxyBuilderTest < Minitest::Test
     explicit_faces = explicit_group.entities.groups.first.entities.faces.map(&:points)
 
     assert_equal(explicit_faces, implicit_faces)
+  end
+
+  def test_build_creates_tree_proxy_into_supplied_destination_collection
+    parent_group = @model.active_entities.add_group
+
+    group = @builder.build(
+      model: @model,
+      destination: parent_group.entities,
+      params: {
+        'elementType' => 'tree_proxy',
+        'definition' => {
+          'mode' => 'generated_proxy',
+          'position' => { 'x' => 14.0, 'y' => 37.7, 'z' => 0.0 },
+          'canopyDiameterX' => 6.0,
+          'height' => 5.5,
+          'trunkDiameter' => 0.45
+        }
+      }
+    )
+
+    assert_same(group, parent_group.entities.groups.last)
+    assert_equal(1, @model.active_entities.groups.length)
   end
 
   private
@@ -244,4 +266,4 @@ class TreeProxyBuilderTest < Minitest::Test
     end
   end
 end
-# rubocop:enable Metrics/MethodLength
+# rubocop:enable Metrics/MethodLength, Metrics/ClassLength

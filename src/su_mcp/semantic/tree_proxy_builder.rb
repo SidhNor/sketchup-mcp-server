@@ -51,9 +51,10 @@ module SU_MCP
         @scene_properties = scene_properties
       end
 
-      def build(model:, params:)
+      def build(model:, params:, destination: nil)
         payload = normalized_payload(params)
-        wrapper_group = model.active_entities.add_group
+        target_collection = destination || model.active_entities
+        wrapper_group = target_collection.add_group
         scene_properties.apply!(model: model, group: wrapper_group, params: params)
 
         proxy_mesh = wrapper_group.entities.add_group

@@ -35,4 +35,24 @@ class PlantingMassBuilderTest < Minitest::Test
     assert_equal([1.8], group.entities.faces.first.pushpull_calls)
     assert_equal('Hedge Mass', group.name)
   end
+
+  def test_build_creates_planting_mass_into_supplied_destination_collection
+    parent_group = @model.active_entities.add_group
+
+    group = @builder.build(
+      model: @model,
+      destination: parent_group.entities,
+      params: {
+        'elementType' => 'planting_mass',
+        'definition' => {
+          'mode' => 'mass_polygon',
+          'boundary' => [[0.0, 0.0], [4.0, 0.0], [4.0, 2.0], [0.0, 2.0]],
+          'averageHeight' => 1.8
+        }
+      }
+    )
+
+    assert_same(group, parent_group.entities.groups.last)
+    assert_equal(1, @model.active_entities.groups.length)
+  end
 end

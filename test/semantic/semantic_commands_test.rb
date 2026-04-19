@@ -117,8 +117,11 @@ class SemanticCommandsTest < Minitest::Test
   class FakeManagedEntity
     attr_reader :parent, :attributes
 
-    def initialize(parent:, attributes: {})
+    def initialize(parent:, attributes: {}, locked: false, erase_error: nil)
       @parent = parent
+      @locked = locked
+      @erase_error = erase_error
+      @erased = false
       @attributes = Hash.new { |hash, key| hash[key] = {} }
       attributes.each do |dictionary, values|
         @attributes[dictionary] = values.dup
@@ -137,6 +140,30 @@ class SemanticCommandsTest < Minitest::Test
       return @attributes.delete(dictionary_name) if key.nil?
 
       @attributes.fetch(dictionary_name, {}).delete(key)
+    end
+
+    def locked?
+      @locked
+    end
+
+    def erase!
+      raise @erase_error if @erase_error
+
+      @erased = true
+      self
+    end
+
+    def erased?
+      @erased
+    end
+  end
+
+  class FakeNonWritableParent < Sketchup::Group
+    attr_reader :entities
+
+    def initialize(entities:)
+      super()
+      @entities = entities
     end
   end
 
@@ -504,7 +531,7 @@ class SemanticCommandsTest < Minitest::Test
   end
 
   def test_create_site_element_replaces_managed_object_while_preserving_identity_and_parent_context
-    old_parent = Object.new
+    old_parent = @model.active_entities.add_group
     target_entity = FakeManagedEntity.new(
       parent: old_parent,
       attributes: {
@@ -552,6 +579,263 @@ class SemanticCommandsTest < Minitest::Test
     assert_equal('existing', metadata_writer.calls.first.last['status'])
     assert_equal('extension', metadata_writer.calls.first.last['structureCategory'])
     assert_equal([replacement_entity], serializer.calls)
+  end
+
+  def test_create_site_element_inserts_structure_under_resolved_group_parent_context
+    parent_group = @model.active_entities.add_group
+    commands = SU_MCP::SemanticCommands.new(
+      model: @model,
+      target_resolver: FakeTargetResolver.new(resolution: 'unique', entity: parent_group)
+    )
+
+    result = commands.create_site_element(sectioned_structure_request(
+                                            'placement' => {
+                                              'mode' => 'parented',
+                                              'parent' => { 'entityId' => 'parent-group-22' }
+                                            }
+                                          ))
+
+    assert_equal(true, result[:success])
+    assert_equal('created', result[:outcome])
+    assert_equal(1, @model.active_entities.groups.length)
+    assert_equal(1, parent_group.entities.groups.length)
+    assert_equal('shed-001', parent_group.entities.groups.first.get_attribute('su_mcp', 'sourceElementId'))
+  end
+
+  def test_create_site_element_inserts_structure_under_resolved_component_parent_context
+    component_parent = build_component_parent_instance
+    commands = SU_MCP::SemanticCommands.new(
+      model: @model,
+      target_resolver: FakeTargetResolver.new(resolution: 'unique', entity: component_parent)
+    )
+
+    result = commands.create_site_element(sectioned_structure_request(
+                                            'placement' => {
+                                              'mode' => 'parented',
+                                              'parent' => { 'entityId' => 'component-parent-11' }
+                                            }
+                                          ))
+
+    assert_equal(true, result[:success])
+    assert_equal('created', result[:outcome])
+    assert_equal(0, @model.active_entities.groups.length)
+    assert_equal(1, component_parent.definition.entities.groups.length)
+    assert_equal(
+      'shed-001',
+      component_parent.definition.entities.groups.first.get_attribute('su_mcp', 'sourceElementId')
+    )
+  end
+
+  def test_create_site_element_refuses_parented_create_when_parent_destination_is_not_writable
+    build_called = false
+    model = @model
+    builder = Object.new
+    builder.define_singleton_method(:build) do |**_kwargs|
+      build_called = true
+      model.active_entities.add_group
+    end
+    registry = FakeRegistry.new(builder)
+    commands = SU_MCP::SemanticCommands.new(
+      model: @model,
+      registry: registry,
+      target_resolver: FakeTargetResolver.new(
+        resolution: 'unique',
+        entity: FakeNonWritableParent.new(entities: build_non_writable_collection)
+      )
+    )
+
+    result = commands.create_site_element(sectioned_structure_request(
+                                            'placement' => {
+                                              'mode' => 'parented',
+                                              'parent' => { 'entityId' => 'non-writable-parent-11' }
+                                            }
+                                          ))
+
+    assert_equal(true, result[:success])
+    assert_equal('refused', result[:outcome])
+    assert_equal('placement', result.dig(:refusal, :details, :section))
+    assert_equal(false, build_called)
+    assert_equal([], registry.calls)
+  end
+
+  def test_create_site_element_replace_without_explicit_parent_uses_target_parent_context
+    parent_group = @model.active_entities.add_group
+    previous_entity = parent_group.entities.add_group
+    metadata_writer = SU_MCP::Semantic::ManagedObjectMetadata.new
+    metadata_writer.write!(
+      previous_entity,
+      'sourceElementId' => 'house-extension-001',
+      'semanticType' => 'structure',
+      'status' => 'existing',
+      'state' => 'Created',
+      'schemaVersion' => 1,
+      'structureCategory' => 'extension'
+    )
+    commands = SU_MCP::SemanticCommands.new(
+      model: @model,
+      metadata_writer: metadata_writer,
+      serializer: SU_MCP::Semantic::Serializer.new,
+      target_resolver: FakeTargetResolver.new(resolution: 'unique', entity: previous_entity)
+    )
+
+    result = commands.create_site_element(v2_replace_request_without_explicit_parent)
+
+    assert_equal(true, result[:success])
+    assert_equal('replaced', result[:outcome])
+    assert_equal(true, previous_entity.erased?)
+    assert_equal(1, parent_group.entities.groups.length)
+    assert_equal('house-extension-001', parent_group.entities.groups.first.get_attribute('su_mcp', 'sourceElementId'))
+  end
+
+  def test_create_site_element_replace_uses_explicit_parent_override_when_supplied
+    old_parent = @model.active_entities.add_group
+    new_parent = @model.active_entities.add_group
+    previous_entity = old_parent.entities.add_group
+    metadata_writer = SU_MCP::Semantic::ManagedObjectMetadata.new
+    metadata_writer.write!(
+      previous_entity,
+      'sourceElementId' => 'house-extension-001',
+      'semanticType' => 'structure',
+      'status' => 'existing',
+      'state' => 'Created',
+      'schemaVersion' => 1,
+      'structureCategory' => 'extension'
+    )
+    target_resolver = FakeSequentialTargetResolver.new(
+      { resolution: 'unique', entity: previous_entity },
+      { resolution: 'unique', entity: new_parent }
+    )
+    commands = SU_MCP::SemanticCommands.new(
+      model: @model,
+      metadata_writer: metadata_writer,
+      serializer: SU_MCP::Semantic::Serializer.new,
+      target_resolver: target_resolver
+    )
+
+    result = commands.create_site_element(v2_replace_request)
+
+    assert_equal(true, result[:success])
+    assert_equal('replaced', result[:outcome])
+    assert_equal(true, previous_entity.erased?)
+    assert_empty(old_parent.entities.groups)
+    assert_equal(1, new_parent.entities.groups.length)
+    assert_equal('house-extension-001', new_parent.entities.groups.first.get_attribute('su_mcp', 'sourceElementId'))
+  end
+
+  def test_create_site_element_refuses_replace_when_target_is_locked
+    target_entity = FakeManagedEntity.new(
+      parent: Object.new,
+      locked: true,
+      attributes: {
+        'su_mcp' => {
+          'managedSceneObject' => true,
+          'sourceElementId' => 'house-extension-001',
+          'semanticType' => 'structure',
+          'status' => 'existing',
+          'state' => 'Created',
+          'schemaVersion' => 1,
+          'structureCategory' => 'extension'
+        }
+      }
+    )
+    build_called = false
+    builder = Object.new
+    builder.define_singleton_method(:build) { |**_kwargs| build_called = true }
+    commands = SU_MCP::SemanticCommands.new(
+      model: @model,
+      registry: FakeRegistry.new(builder),
+      target_resolver: FakeTargetResolver.new(resolution: 'unique', entity: target_entity)
+    )
+
+    result = commands.create_site_element(v2_replace_request_without_explicit_parent)
+
+    assert_equal(true, result[:success])
+    assert_equal('refused', result[:outcome])
+    assert_equal('lifecycle', result.dig(:refusal, :details, :section))
+    assert_equal(false, build_called)
+  end
+
+  def test_create_site_element_creates_supported_surface_drape_path_inside_parent_destination_context
+    host_target = @model.active_entities.add_group
+    parent_group = @model.active_entities.add_group
+    target_resolver = FakeSequentialTargetResolver.new(
+      { resolution: 'unique', entity: host_target },
+      { resolution: 'unique', entity: parent_group }
+    )
+    commands = SU_MCP::SemanticCommands.new(model: @model, target_resolver: target_resolver)
+
+    result = commands.create_site_element(sectioned_terrain_path_request(
+                                            'placement' => {
+                                              'mode' => 'parented',
+                                              'parent' => { 'entityId' => 'parent-group-22' }
+                                            }
+                                          ))
+
+    assert_equal(true, result[:success])
+    assert_equal('created', result[:outcome])
+    assert_equal(1, parent_group.entities.groups.length)
+    assert_equal(2, @model.active_entities.groups.length)
+  end
+
+  def test_create_site_element_refuses_unsupported_hosted_execution_combination
+    build_called = false
+    model = @model
+    builder = Object.new
+    builder.define_singleton_method(:build) do |**_kwargs|
+      build_called = true
+      model.active_entities.add_group
+    end
+    commands = SU_MCP::SemanticCommands.new(
+      model: @model,
+      registry: FakeRegistry.new(builder),
+      target_resolver: FakeTargetResolver.new(
+        resolution: 'unique',
+        entity: @model.active_entities.add_group
+      )
+    )
+
+    result = commands.create_site_element(sectioned_structure_request(
+                                            'hosting' => {
+                                              'mode' => 'surface_drape',
+                                              'target' => { 'entityId' => 'terrain-main' }
+                                            }
+                                          ))
+
+    assert_equal(true, result[:success])
+    assert_equal('refused', result[:outcome])
+    assert_equal('hosting', result.dig(:refusal, :details, :section))
+    assert_equal(false, build_called)
+  end
+
+  def test_create_site_element_aborts_and_cleans_up_replacement_when_old_entity_erase_fails
+    parent_group = @model.active_entities.add_group
+    previous_entity = parent_group.entities.add_group
+    previous_entity.instance_variable_set(:@erase_error, RuntimeError.new('erase failed'))
+    metadata_writer = SU_MCP::Semantic::ManagedObjectMetadata.new
+    metadata_writer.write!(
+      previous_entity,
+      'sourceElementId' => 'house-extension-001',
+      'semanticType' => 'structure',
+      'status' => 'existing',
+      'state' => 'Created',
+      'schemaVersion' => 1,
+      'structureCategory' => 'extension'
+    )
+    commands = SU_MCP::SemanticCommands.new(
+      model: @model,
+      metadata_writer: metadata_writer,
+      serializer: SU_MCP::Semantic::Serializer.new,
+      target_resolver: FakeTargetResolver.new(resolution: 'unique', entity: previous_entity)
+    )
+
+    error = assert_raises(RuntimeError) do
+      commands.create_site_element(v2_replace_request_without_explicit_parent)
+    end
+
+    assert_equal('erase failed', error.message)
+    assert_equal([[:start_operation, 'Create Site Element', true], [:abort_operation]], @model.operations)
+    assert_equal(1, parent_group.entities.groups.length)
+    assert_same(previous_entity, parent_group.entities.groups.first)
   end
 
   def test_create_site_element_replace_hybrid_uses_real_target_resolution_and_metadata_handoff
@@ -1133,6 +1417,12 @@ class SemanticCommandsTest < Minitest::Test
     }
   end
 
+  def v2_replace_request_without_explicit_parent
+    request = Marshal.load(Marshal.dump(v2_replace_request))
+    request['placement'] = { 'mode' => 'parented' }
+    request
+  end
+
   def v2_replace_request_for_real_targeting
     {
       'contractVersion' => 2,
@@ -1344,6 +1634,11 @@ class SemanticCommandsTest < Minitest::Test
   def build_v2_replace_target_model
     layer = FakeLayer.new('Structures')
     material = FakeMaterial.new('Timber')
+    writable_entities = SemanticTestSupport::FakeEntitiesCollection.new(
+      id_sequence: SemanticTestSupport::IdSequence.new,
+      layer: layer,
+      material: material
+    )
     target_entity = build_scene_query_group(
       entity_id: 777,
       origin_x: 12,
@@ -1375,9 +1670,11 @@ class SemanticCommandsTest < Minitest::Test
         name: 'Parent Group',
         persistent_id: 7001,
         attributes: { 'su_mcp' => { 'sourceElementId' => 'parent-group-22' } },
-        entities: [target_entity]
+        entities: writable_entities
       }
     )
+    writable_entities.owner = parent_group
+    writable_entities.groups << target_entity
 
     SceneQueryTestSupport::FakeModel.new(
       state: {
@@ -1390,6 +1687,20 @@ class SemanticCommandsTest < Minitest::Test
       },
       details: { options: default_options }
     )
+  end
+
+  def build_component_parent_instance
+    component_entities = SemanticTestSupport::FakeEntitiesCollection.new(
+      id_sequence: SemanticTestSupport::IdSequence.new,
+      layer: @model.layers.first,
+      material: @model.materials.to_a.first
+    )
+    definition = SceneQueryTestSupport::FakeComponentDefinition.new(
+      name: 'Parent Component',
+      entities: component_entities
+    )
+    component_entities.owner = definition
+    @model.active_entities.add_instance(definition)
   end
 end
 # rubocop:enable Metrics/MethodLength, Metrics/ClassLength

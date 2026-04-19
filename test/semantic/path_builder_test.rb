@@ -68,5 +68,25 @@ class PathBuilderTest < Minitest::Test
     assert_equal('Paths', group.layer.name)
     assert_equal('Gravel', group.material.name)
   end
+
+  def test_build_creates_path_into_supplied_destination_collection
+    parent_group = @model.active_entities.add_group
+
+    group = @builder.build(
+      model: @model,
+      destination: parent_group.entities,
+      params: {
+        'elementType' => 'path',
+        'definition' => {
+          'centerline' => [[0.0, 0.0], [4.0, 1.0], [8.0, 1.0]],
+          'width' => 1.6,
+          'thickness' => 0.1
+        }
+      }
+    )
+
+    assert_same(group, parent_group.entities.groups.last)
+    assert_equal(1, @model.active_entities.groups.length)
+  end
 end
 # rubocop:enable Metrics/MethodLength

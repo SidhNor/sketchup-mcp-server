@@ -272,6 +272,12 @@ module SU_MCP
       end
 
       def missing_v2_parent_target?(params)
+        if params.dig('lifecycle', 'mode') == 'replace_preserve_identity' &&
+           params.dig('placement', 'mode') == 'parented' &&
+           !params['placement'].key?('parent')
+          return false
+        end
+
         params.dig('placement', 'mode') == 'parented' &&
           !params.dig('placement', 'parent').is_a?(Hash)
       end

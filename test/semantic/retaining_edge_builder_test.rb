@@ -40,4 +40,25 @@ class RetainingEdgeBuilderTest < Minitest::Test
     assert_equal('Edges', group.layer.name)
   end
   # rubocop:enable Metrics/MethodLength
+
+  def test_build_creates_retaining_edge_into_supplied_destination_collection
+    parent_group = @model.active_entities.add_group
+
+    group = @builder.build(
+      model: @model,
+      destination: parent_group.entities,
+      params: {
+        'elementType' => 'retaining_edge',
+        'definition' => {
+          'mode' => 'polyline',
+          'polyline' => [[2.0, 0.0], [8.0, 0.0], [8.0, 4.0]],
+          'height' => 0.45,
+          'thickness' => 0.25
+        }
+      }
+    )
+
+    assert_same(group, parent_group.entities.groups.last)
+    assert_equal(1, @model.active_entities.groups.length)
+  end
 end

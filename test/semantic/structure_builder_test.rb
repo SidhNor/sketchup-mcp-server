@@ -63,6 +63,26 @@ class StructureBuilderTest < Minitest::Test
     assert_equal([2.4], group.entities.faces.first.pushpull_calls)
   end
 
+  def test_build_creates_structure_into_supplied_destination_collection
+    parent_group = @model.active_entities.add_group
+
+    group = @builder.build(
+      model: @model,
+      destination: parent_group.entities,
+      params: {
+        'elementType' => 'structure',
+        'definition' => {
+          'footprint' => [[0.0, 0.0], [2.0, 0.0], [2.0, 3.0], [0.0, 3.0]],
+          'height' => 2.4,
+          'structureCategory' => 'outbuilding'
+        }
+      }
+    )
+
+    assert_same(group, parent_group.entities.groups.last)
+    assert_equal(1, @model.active_entities.groups.length)
+  end
+
   # rubocop:disable Metrics/MethodLength
   def test_build_consumes_sectioned_structure_definition_and_scene_properties
     group = @builder.build(

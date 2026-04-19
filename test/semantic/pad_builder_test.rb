@@ -86,4 +86,24 @@ class PadBuilderTest < Minitest::Test
 
     assert_equal([-0.3], group.entities.faces.first.pushpull_calls)
   end
+
+  def test_build_creates_pad_into_supplied_destination_collection
+    parent_group = @model.active_entities.add_group
+
+    group = @builder.build(
+      model: @model,
+      destination: parent_group.entities,
+      params: {
+        'elementType' => 'pad',
+        'definition' => {
+          'mode' => 'polygon',
+          'footprint' => [[0.0, 0.0], [4.0, 0.0], [4.0, 3.0], [0.0, 3.0]],
+          'thickness' => 0.3
+        }
+      }
+    )
+
+    assert_same(group, parent_group.entities.groups.last)
+    assert_equal(1, @model.active_entities.groups.length)
+  end
 end

@@ -9,9 +9,9 @@ These tasks are derived from:
 
 ## Task Set Intent
 
-This task set covers the first semantic capability slice, the contract-direction spike that followed it, and the next chosen implementation shells derived from the updated PRD and HLD.
+This task set covers the first semantic capability slice, the contract-direction spike that followed it, and the current follow-on shells derived from the updated PRD, HLD, and the latest iteration-planning review.
 
-The current task set persists the three confirmed core tasks, one follow-up refinement task, one contract-validation spike task, and the next three implementation shells:
+The current task set persists the completed first-wave semantic work and the next chosen follow-on shells:
 
 - semantic core plus the first `create_site_element` vertical slice
 - completion of the remaining first-wave semantic creation vocabulary
@@ -21,6 +21,10 @@ The current task set persists the three confirmed core tasks, one follow-up refi
 - public `create_site_element` contract cutover to the sectioned create shape plus builder-native migration for `path` and `structure`
 - limited hierarchy-maintenance primitives for managed-object organization and repair
 - builder-native migration for the remaining first-wave semantic families
+- lifecycle primitives needed to make richer built-form authoring materially real
+- richer built-form and composed-feature authoring inside the current semantic product boundary
+- managed-object maintenance alignment for post-create semantic revision behavior
+- governed duplication and managed deletion policy
 
 ## Current Task Order
 
@@ -32,14 +36,15 @@ The current task set persists the three confirmed core tasks, one follow-up refi
 6. [SEM-06 Cut Over Create Site Element To The Sectioned Contract And Adopt Builder-Native V2 Input For Path And Structure](SEM-06-adopt-builder-native-v2-input-for-path-and-structure/task.md)
 7. [SEM-07 Add Limited Hierarchy Maintenance Primitives](SEM-07-add-minimal-composition-primitives/task.md)
 8. [SEM-08 Adopt Builder-Native V2 Input for the Remaining First-Wave Families](SEM-08-adopt-builder-native-v2-input-for-pad-and-retaining-edge/task.md)
+9. [SEM-09 Realize Lifecycle Primitives Needed for Richer Built-Form Authoring](SEM-09-realize-lifecycle-primitives-needed-for-richer-built-form-authoring/task.md)
+10. [SEM-10 Add Richer Built-Form and Composed Feature Authoring](SEM-10-add-richer-built-form-and-composed-feature-authoring/task.md)
+11. [SEM-11 Align Managed-Object Maintenance Surface](SEM-11-align-managed-object-maintenance-surface/task.md)
+12. [SEM-12 Add Governed Duplication and Managed Deletion Policy](SEM-12-add-governed-duplication-and-managed-deletion-policy/task.md)
 
 ## Deferred Follow-Ons
 
-The following follow-ons were intentionally kept out of the active task folders for this iteration:
+The following follow-ons remain intentionally deferred from the active task folders:
 
-- define managed-object compatibility behavior for generic mutation tools such as `transform_entities` and `set_material`
-- support identity-preserving rebuild and replacement flows for Managed Scene Objects
-- define duplicate-into-parent and controlled deletion rules for managed objects beyond the limited hierarchy-maintenance slice
 - promote next-wave semantic element types such as `tree_instance`, `seat`, `water_feature_proxy`, and possibly `terrain_patch`
 
 ## Notes
@@ -52,4 +57,7 @@ The following follow-ons were intentionally kept out of the active task folders 
 - `SEM-06` is the authoritative contract-cutover task for semantic creation. It removes the dual public create posture and makes the sectioned contract the single `create_site_element` baseline while migrating `path` and `structure` to builder-native sectioned input.
 - `SEM-07` remains separate from contract migration. It carries only the limited hierarchy-maintenance posture introduced after the lifecycle gap review.
 - `SEM-08` completes the remaining first-wave family migration under the sectioned create-contract baseline by covering `pad`, `retaining_edge`, `planting_mass`, and `tree_proxy`.
-- `SEM-06`, `SEM-07`, and `SEM-08` still require `task-planning` before implementation work starts.
+- `SEM-09` deliberately narrows the earlier lifecycle-hardening idea to the primitives needed for richer built-form authoring. It is not a full terrain or broad maintenance task.
+- `SEM-10` captures the next richer authoring slice inside the current semantic PRD boundary. Terrain authoring remains out of scope for the active set.
+- `SEM-11` and `SEM-12` move managed-object maintenance, duplication, and deletion policy after the richer built-form authoring slice instead of forcing all hardening work to land first.
+- `SEM-10`, `SEM-11`, and `SEM-12` remain draft task shells and still require `task-planning` before implementation work starts.

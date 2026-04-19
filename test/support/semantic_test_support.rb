@@ -32,17 +32,21 @@ module SemanticTestSupport
     include Enumerable
 
     attr_reader :groups, :faces, :component_instances
+    attr_accessor :owner
 
-    def initialize(id_sequence:, layer:, material:)
+    def initialize(id_sequence:, layer:, material:, owner: nil, writable: true)
       @id_sequence = id_sequence
       @layer = layer
       @material = material
+      @owner = owner
+      @writable = writable
       @groups = []
       @faces = []
       @component_instances = []
     end
 
     def add_group
+      ensure_writable!
       group = FakeGroup.new(
         entity_id: @id_sequence.next_entity_id,
         persistent_id: @id_sequence.next_persistent_id,
@@ -50,11 +54,12 @@ module SemanticTestSupport
         material: @material,
         id_sequence: @id_sequence
       )
-      @groups << group
+      attach_entity(group)
       group
     end
 
     def add_instance(definition, transformation = nil)
+      ensure_writable!
       component_instance = SceneQueryTestSupport::FakeComponentInstance.new(
         entity_id: @id_sequence.next_entity_id,
         bounds: SceneQueryTestSupport::FakeBounds.new(
@@ -72,11 +77,12 @@ module SemanticTestSupport
           )
         }
       )
-      @component_instances << component_instance
+      attach_entity(component_instance)
       component_instance
     end
 
     def add_face(*points)
+      ensure_writable!
       face = FakeFace.new(
         entity_id: @id_sequence.next_entity_id,
         persistent_id: @id_sequence.next_persistent_id,
@@ -84,8 +90,19 @@ module SemanticTestSupport
         material: @material,
         points: points
       )
-      @faces << face
+      attach_entity(face)
       face
+    end
+
+    def writable?
+      @writable
+    end
+
+    def delete_entity(entity)
+      @groups.delete(entity)
+      @component_instances.delete(entity)
+      @faces.delete(entity)
+      entity
     end
 
     def length
@@ -99,26 +116,57 @@ module SemanticTestSupport
       @component_instances.each(&block)
       @faces.each(&block)
     end
+
+    private
+
+    def ensure_writable!
+      raise ArgumentError, 'Entities collection is not writable' unless writable?
+    end
+
+    def attach_entity(entity)
+      entity.parent_collection = self if entity.respond_to?(:parent_collection=)
+
+      case entity
+      when FakeGroup
+        @groups << entity
+      when SceneQueryTestSupport::FakeComponentInstance
+        @component_instances << entity
+      when FakeFace
+        @faces << entity
+      end
+    end
   end
 
   class FakeGroup < Sketchup::Group
-    attr_accessor :name, :layer, :material, :bounds
+    attr_accessor :name, :layer, :material, :bounds, :parent_collection
     attr_reader :entities, :attributes, :persistent_id, :transformation
 
-    def initialize(entity_id:, persistent_id:, layer:, material:, id_sequence:)
+    def initialize(
+      entity_id:,
+      persistent_id:,
+      layer:,
+      material:,
+      id_sequence:,
+      locked: false,
+      erase_error: nil
+    )
       super()
       @entity_id = entity_id
       @persistent_id = persistent_id
       @layer = layer
       @material = material
       @name = ''
+      @locked = locked
+      @erase_error = erase_error
+      @erased = false
       @bounds = build_bounds
       @transformation = SceneQueryTestSupport::FakeTransformation.new(build_bounds.center)
       @attributes = Hash.new { |hash, key| hash[key] = {} }
       @entities = FakeEntitiesCollection.new(
         id_sequence: id_sequence,
         layer: layer,
-        material: material
+        material: material,
+        owner: self
       )
     end
 
@@ -152,6 +200,32 @@ module SemanticTestSupport
       @transformation = transformation
     end
 
+    def parent
+      return nil unless parent_collection
+
+      parent_collection.owner
+    end
+
+    def locked?
+      @locked
+    end
+
+    def erase!
+      raise @erase_error if @erase_error
+
+      @erased = true
+      parent_collection&.delete_entity(self)
+      self
+    end
+
+    def erased?
+      @erased
+    end
+
+    def valid?
+      !erased?
+    end
+
     private
 
     def build_bounds(min: [0.0, 0.0, 0.0], max: [1.0, 1.0, 1.0])
@@ -173,7 +247,7 @@ module SemanticTestSupport
   end
 
   class FakeFace < Sketchup::Face
-    attr_accessor :material, :bounds
+    attr_accessor :material, :bounds, :parent_collection
     attr_reader :pushpull_calls, :points, :layer, :persistent_id
 
     def initialize(entity_id:, persistent_id:, layer:, material:, points:)
@@ -190,6 +264,12 @@ module SemanticTestSupport
 
     def entityID
       @entity_id
+    end
+
+    def parent
+      return nil unless parent_collection
+
+      parent_collection.owner
     end
 
     def pushpull(distance)
@@ -256,6 +336,7 @@ module SemanticTestSupport
         layer: @layers.first,
         material: default_material
       )
+      @active_entities.owner = self
       @operations = []
     end
 
@@ -285,6 +366,15 @@ module SemanticTestSupport
 
   def build_semantic_model
     FakeModel.new
+  end
+
+  def build_non_writable_collection
+    FakeEntitiesCollection.new(
+      id_sequence: IdSequence.new,
+      layer: SceneQueryTestSupport::FakeLayer.new('Layer0'),
+      material: SceneQueryTestSupport::FakeMaterial.new('Default'),
+      writable: false
+    )
   end
 end
 # rubocop:enable Style/OptionalBooleanParameter

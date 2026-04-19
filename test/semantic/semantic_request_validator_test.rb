@@ -128,6 +128,18 @@ class SemanticRequestValidatorTest < Minitest::Test
     assert_equal('invalid_section_combination', refusal.dig(:refusal, :code))
   end
 
+  def test_accepts_v2_replace_requests_without_explicit_parent_target
+    request = deep_merge(
+      v2_replace_request_with_overlapping_targets,
+      'placement' => { 'mode' => 'parented' }
+    )
+    request['placement'].delete('parent')
+
+    refusal = @validator.refusal_for(request)
+
+    assert_nil(refusal)
+  end
+
   def test_accepts_sectioned_path_requests_without_contract_version
     refusal = @validator.refusal_for(sectioned_terrain_path_request)
 

@@ -13,9 +13,10 @@ module SU_MCP
         @scene_properties = scene_properties
       end
 
-      def build(model:, params:)
+      def build(model:, params:, destination: nil)
         payload = params['definition'] || params.fetch('path')
-        group = model.active_entities.add_group
+        target_collection = destination || model.active_entities
+        group = target_collection.add_group
         scene_properties.apply!(model: model, group: group, params: params)
         face = add_planar_face(
           group: group,
