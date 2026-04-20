@@ -2,6 +2,14 @@
 
 <!-- version list -->
 
+## v0.16.1 (2026-04-20)
+
+### Bug Fixes
+
+- **ci**: Release note generation
+  ([`f0326f4`](https://github.com/SidhNor/sketchup-mcp-server/commit/f0326f464efbf57de014bcdd7140e580cb39a42a))
+
+
 ## v0.16.0 (2026-04-20)
 
 ### Features
