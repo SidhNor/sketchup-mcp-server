@@ -2,6 +2,20 @@
 
 <!-- version list -->
 
+## v0.16.0 (2026-04-20)
+
+### Features
+
+- **SEM-09**: Destination resolver for semantic primitives
+  ([`a085cfd`](https://github.com/SidhNor/sketchup-mcp-server/commit/a085cfd418c15a2c608e605c2a0f06949a84a295))
+
+- **SEM-10**: Complex shape authoring and grouping
+  ([`d378fbc`](https://github.com/SidhNor/sketchup-mcp-server/commit/d378fbc36030ab2c276b74dd6472d24b99def56d))
+
+- **SEM-10,SEM-11**: Semantic placement and group features
+  ([`5f68a1d`](https://github.com/SidhNor/sketchup-mcp-server/commit/5f68a1da9ff971fad7853d46ee7407de9fd7d09b))
+
+
 ## v0.15.0 (2026-04-18)
 
 ### Bug Fixes
