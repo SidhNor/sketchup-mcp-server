@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require_relative '../semantic/managed_object_metadata'
+
 module SU_MCP
   SCENE_QUERY_TYPE_KEYS = {
     Sketchup::ComponentInstance => 'componentinstance',
@@ -35,6 +37,10 @@ module SU_MCP
       entities.each_with_object(Hash.new(0)) do |entity, counts|
         counts[entity_type_key(entity)] += 1
       end
+    end
+
+    def public_surface_entity?(entity)
+      !Semantic::ManagedObjectMetadata.placeholder_entity?(entity)
     end
 
     def serialize_target_match(entity)
@@ -178,10 +184,20 @@ module SU_MCP
     end
 
     def entity_children_count(entity)
-      return entity.entities.length if entity.is_a?(Sketchup::Group)
-      return entity.definition.entities.length if entity.is_a?(Sketchup::ComponentInstance)
+      case entity
+      when Sketchup::Group
+        count_non_placeholder_children(entity.entities)
+      when Sketchup::ComponentInstance
+        count_non_placeholder_children(entity.definition.entities)
+      else
+        0
+      end
+    end
 
-      0
+    def count_non_placeholder_children(collection)
+      Semantic::ManagedObjectMetadata
+        .collection_entities(collection)
+        .count { |entity| !Semantic::ManagedObjectMetadata.placeholder_entity?(entity) }
     end
 
     def entity_type_label(entity)

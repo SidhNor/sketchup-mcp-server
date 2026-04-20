@@ -244,6 +244,105 @@
           }
         }
       }
+    },
+    {
+      "case_id": "transform_entities_managed_target_transformed",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "params": {
+          "name": "transform_entities",
+          "arguments": {
+            "targetReference": {
+              "sourceElementId": "shed-001"
+            },
+            "position": [1.0, 2.0, 3.0]
+          }
+        },
+        "id": "transform-managed-target-transformed"
+      },
+      "response": {
+        "jsonrpc": "2.0",
+        "id": "transform-managed-target-transformed",
+        "result": {
+          "success": true,
+          "outcome": "transformed",
+          "id": "301",
+          "managedObject": {
+            "sourceElementId": "shed-001",
+            "persistentId": "1001",
+            "entityId": "301",
+            "semanticType": "structure",
+            "status": "existing",
+            "state": "Created"
+          }
+        }
+      }
+    },
+    {
+      "case_id": "set_material_managed_target_updated",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "params": {
+          "name": "set_material",
+          "arguments": {
+            "targetReference": {
+              "sourceElementId": "shed-001"
+            },
+            "material": "Walnut"
+          }
+        },
+        "id": "set-material-managed-target-updated"
+      },
+      "response": {
+        "jsonrpc": "2.0",
+        "id": "set-material-managed-target-updated",
+        "result": {
+          "success": true,
+          "outcome": "material_applied",
+          "id": "301",
+          "managedObject": {
+            "sourceElementId": "shed-001",
+            "persistentId": "1001",
+            "entityId": "301",
+            "semanticType": "structure",
+            "status": "existing",
+            "state": "Created",
+            "material": "Walnut"
+          }
+        }
+      }
+    },
+    {
+      "case_id": "transform_entities_conflicting_target_selectors_refused",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "params": {
+          "name": "transform_entities",
+          "arguments": {
+            "id": "301",
+            "targetReference": {
+              "entityId": "301"
+            },
+            "position": [1.0, 2.0, 3.0]
+          }
+        },
+        "id": "transform-conflicting-target-selectors-refused"
+      },
+      "response": {
+        "jsonrpc": "2.0",
+        "id": "transform-conflicting-target-selectors-refused",
+        "result": {
+          "success": true,
+          "outcome": "refused",
+          "refusal": {
+            "code": "conflicting_target_selectors",
+            "message": "Exactly one target selector is required."
+          }
+        }
+      }
     }
   ]
 }

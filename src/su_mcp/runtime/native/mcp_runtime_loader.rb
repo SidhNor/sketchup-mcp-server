@@ -424,17 +424,7 @@ module SU_MCP
           handler_key: :transform_entities,
           annotations: { read_only_hint: false, destructive_hint: false },
           classification: 'first_class',
-          input_schema: {
-            type: 'object',
-            required: ['id'],
-            properties: {
-              id: string_schema,
-              position: numeric_array_schema,
-              rotation: numeric_array_schema,
-              scale: numeric_array_schema
-            },
-            additionalProperties: false
-          }
+          input_schema: transform_entities_schema
         ),
         tool_entry(
           name: 'get_selection',
@@ -456,15 +446,7 @@ module SU_MCP
           handler_key: :set_material,
           annotations: { read_only_hint: false, destructive_hint: false },
           classification: 'first_class',
-          input_schema: {
-            type: 'object',
-            required: %w[id material],
-            properties: {
-              id: string_schema,
-              material: string_schema
-            },
-            additionalProperties: false
-          }
+          input_schema: set_material_schema
         ),
         tool_entry(
           name: 'boolean_operation',
@@ -717,6 +699,33 @@ module SU_MCP
       }
     end
 
+    def transform_entities_schema
+      {
+        type: 'object',
+        properties: {
+          id: string_schema,
+          targetReference: target_reference_schema,
+          position: numeric_array_schema,
+          rotation: numeric_array_schema,
+          scale: numeric_array_schema
+        },
+        additionalProperties: false
+      }
+    end
+
+    def set_material_schema
+      {
+        type: 'object',
+        required: ['material'],
+        properties: {
+          id: string_schema,
+          targetReference: target_reference_schema,
+          material: string_schema
+        },
+        additionalProperties: false
+      }
+    end
+
     def sample_points_schema
       {
         type: 'array',
@@ -910,7 +919,9 @@ module SU_MCP
             type: 'object',
             properties: {
               status: string_schema,
-              structureCategory: string_schema
+              structureCategory: string_schema,
+              plantingCategory: string_schema,
+              speciesHint: string_schema
             },
             additionalProperties: false
           },

@@ -128,6 +128,63 @@ class McpRuntimeNativeContractTest < Minitest::Test
     )
   end
 
+  def test_native_transport_preserves_managed_transform_success_shape_from_shared_contract
+    skip_unless_staged_vendor_runtime!
+
+    contract_case = contract_case('transform_entities_managed_target_transformed')
+    transport = @loader.build_transport(
+      handlers: {
+        transform_entities: ->(_arguments) { contract_case.fetch('response').fetch('result') }
+      }
+    )
+
+    response = perform_raw_json_request(transport, contract_case.fetch('request'))
+
+    assert_equal(200, response[:status])
+    assert_equal(
+      contract_case.dig('response', 'result'),
+      response[:body].dig('result', 'structuredContent')
+    )
+  end
+
+  def test_native_transport_preserves_managed_material_success_shape_from_shared_contract
+    skip_unless_staged_vendor_runtime!
+
+    contract_case = contract_case('set_material_managed_target_updated')
+    transport = @loader.build_transport(
+      handlers: {
+        set_material: ->(_arguments) { contract_case.fetch('response').fetch('result') }
+      }
+    )
+
+    response = perform_raw_json_request(transport, contract_case.fetch('request'))
+
+    assert_equal(200, response[:status])
+    assert_equal(
+      contract_case.dig('response', 'result'),
+      response[:body].dig('result', 'structuredContent')
+    )
+  end
+
+  def test_native_transport_preserves_conflicting_selector_refusal_for_transform_entities
+    skip_unless_staged_vendor_runtime!
+
+    contract_case = contract_case('transform_entities_conflicting_target_selectors_refused')
+    transport = @loader.build_transport(
+      handlers: {
+        transform_entities: ->(_arguments) { contract_case.fetch('response').fetch('result') }
+      }
+    )
+
+    response = perform_raw_json_request(transport, contract_case.fetch('request'))
+
+    assert_equal(200, response[:status])
+    assert_equal(
+      contract_case.dig('response', 'result'),
+      response[:body].dig('result', 'structuredContent')
+    )
+  end
+
   private
 
   def contract_case(case_id)

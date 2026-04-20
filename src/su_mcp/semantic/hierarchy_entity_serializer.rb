@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require_relative '../scene_query/scene_query_serializer'
+require_relative 'managed_object_metadata'
 
 module SU_MCP
   module Semantic
@@ -21,10 +22,20 @@ module SU_MCP
       attr_reader :scene_query_serializer
 
       def children_count(entity)
-        return entity.entities.length if entity.is_a?(Sketchup::Group)
-        return entity.definition.entities.length if entity.is_a?(Sketchup::ComponentInstance)
+        case entity
+        when Sketchup::Group
+          count_non_placeholder_children(entity.entities)
+        when Sketchup::ComponentInstance
+          count_non_placeholder_children(entity.definition.entities)
+        else
+          0
+        end
+      end
 
-        0
+      def count_non_placeholder_children(collection)
+        ManagedObjectMetadata
+          .collection_entities(collection)
+          .count { |entity| !ManagedObjectMetadata.placeholder_entity?(entity) }
       end
     end
   end

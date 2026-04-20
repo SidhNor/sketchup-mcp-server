@@ -31,7 +31,7 @@ module SemanticTestSupport
   class FakeEntitiesCollection
     include Enumerable
 
-    attr_reader :groups, :faces, :component_instances
+    attr_reader :groups, :faces, :component_instances, :construction_points
     attr_accessor :owner
 
     def initialize(id_sequence:, layer:, material:, owner: nil, writable: true)
@@ -43,6 +43,7 @@ module SemanticTestSupport
       @groups = []
       @faces = []
       @component_instances = []
+      @construction_points = []
     end
 
     def add_group
@@ -55,6 +56,7 @@ module SemanticTestSupport
         id_sequence: @id_sequence
       )
       attach_entity(group)
+      yield group if block_given?
       group
     end
 
@@ -94,6 +96,19 @@ module SemanticTestSupport
       face
     end
 
+    def add_cpoint(point)
+      ensure_writable!
+      cpoint = FakeConstructionPoint.new(
+        entity_id: @id_sequence.next_entity_id,
+        persistent_id: @id_sequence.next_persistent_id,
+        layer: @layer,
+        material: @material,
+        point: point
+      )
+      attach_entity(cpoint)
+      cpoint
+    end
+
     def writable?
       @writable
     end
@@ -102,11 +117,12 @@ module SemanticTestSupport
       @groups.delete(entity)
       @component_instances.delete(entity)
       @faces.delete(entity)
+      @construction_points.delete(entity)
       entity
     end
 
     def length
-      @groups.length + @component_instances.length + @faces.length
+      @groups.length + @component_instances.length + @faces.length + @construction_points.length
     end
 
     def each(&block)
@@ -115,6 +131,7 @@ module SemanticTestSupport
       @groups.each(&block)
       @component_instances.each(&block)
       @faces.each(&block)
+      @construction_points.each(&block)
     end
 
     private
@@ -133,6 +150,8 @@ module SemanticTestSupport
         @component_instances << entity
       when FakeFace
         @faces << entity
+      when FakeConstructionPoint
+        @construction_points << entity
       end
     end
   end
@@ -312,6 +331,49 @@ module SemanticTestSupport
       wrapped_points.each_cons(2).sum do |(x1, y1, _z1), (x2, y2, _z2)|
         (x1.to_f * y2.to_f) - (x2.to_f * y1.to_f)
       end / 2.0
+    end
+  end
+
+  class FakeConstructionPoint < Sketchup::ConstructionPoint
+    attr_accessor :hidden, :parent_collection
+    attr_reader :attributes, :persistent_id, :point
+
+    def initialize(entity_id:, persistent_id:, layer:, material:, point:)
+      super()
+      @entity_id = entity_id
+      @persistent_id = persistent_id
+      @layer = layer
+      @material = material
+      @point = point
+      @hidden = false
+      @erased = false
+      @attributes = Hash.new { |hash, key| hash[key] = {} }
+    end
+
+    def entityID
+      @entity_id
+    end
+
+    def set_attribute(dictionary_name, key, value)
+      @attributes[dictionary_name][key] = value
+    end
+
+    def get_attribute(dictionary_name, key, default = nil)
+      @attributes.fetch(dictionary_name, {}).fetch(key, default)
+    end
+
+    def erase!
+      @erased = true
+      parent_collection&.delete_entity(self)
+      self
+    end
+
+    def hidden?
+      @hidden
+    end
+
+    def erased?
+      @erased
     end
   end
 

@@ -355,4 +355,13 @@ Enable richer built-form authoring through a supported semantic workflow that st
   - `bundle exec rake ruby:test`
   - `RUBOCOP_CACHE_ROOT=/tmp/rubocop-cache bundle exec rake ruby:lint`
   - `bundle exec rake package:verify`
-- External review completed with `grok-4.20`; no medium-or-higher issues were identified. Remaining risk is limited to live SketchUp-hosted smoke validation of the managed-container workflow.
+- Live SketchUp-hosted validation completed for the shipped workflow:
+  - simple managed `create_group`
+  - `create_group` with existing-child relocation
+  - positive `reparent_entities`
+  - parented child creation under the managed container
+- Final host-correctness fixes required after the first local-green implementation:
+  - preserve empty managed containers in-host with a hidden internal placeholder until real children exist
+  - avoid forwarding nested collection iteration through host-sensitive `each` behavior in relocation paths
+  - avoid host-sensitive `attribute_dictionary.each_pair.with_object` usage when copying managed metadata during relocation
+- External review completed with `grok-4.20`; no code-level blockers remained after the host-driven fixes and cleanup pass.

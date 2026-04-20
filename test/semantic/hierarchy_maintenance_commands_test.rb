@@ -121,6 +121,31 @@ class HierarchyMaintenanceCommandsTest < Minitest::Test
     assert_equal('tree-001', result.fetch(:children).first.fetch(:sourceElementId))
   end
 
+  def test_create_group_with_real_relocator_groups_children_without_raising
+    child_group = @model.active_entities.add_group
+    metadata_writer = SU_MCP::Semantic::ManagedObjectMetadata.new
+    metadata_writer.write!(
+      child_group,
+      'sourceElementId' => 'tree-001',
+      'semanticType' => 'tree_proxy',
+      'status' => 'proposed',
+      'state' => 'Created',
+      'schemaVersion' => 1
+    )
+    commands = SU_MCP::HierarchyMaintenanceCommands.new(
+      model: @model,
+      target_resolver: FakeTargetResolver.new({ resolution: 'unique', entity: child_group }),
+      serializer: FakeHierarchySerializer.new
+    )
+
+    result = commands.create_group('children' => [{ 'sourceElementId' => 'tree-001' }])
+
+    assert_equal('created', result[:outcome])
+    assert_equal(1, result.fetch(:children).length)
+    assert_equal(1, @model.active_entities.groups.length)
+    assert_equal('tree-001', result.fetch(:children).first.fetch(:sourceElementId))
+  end
+
   def test_create_group_can_create_a_managed_container_when_metadata_is_supplied
     commands = build_commands
 
@@ -219,6 +244,29 @@ class HierarchyMaintenanceCommandsTest < Minitest::Test
 
     assert_equal('reparented', result[:outcome])
     assert_equal(1, relocator.calls.length)
+  end
+
+  def test_reparent_entities_with_real_relocator_moves_supported_entities
+    parent_group = @model.active_entities.add_group
+    child_group = managed_semantic_group('tree-001', semantic_type: 'tree_proxy')
+    commands = SU_MCP::HierarchyMaintenanceCommands.new(
+      model: @model,
+      target_resolver: FakeTargetResolver.new(
+        { resolution: 'unique', entity: parent_group },
+        { resolution: 'unique', entity: child_group }
+      ),
+      serializer: FakeHierarchySerializer.new
+    )
+
+    result = commands.reparent_entities(
+      'parent' => { 'persistentId' => parent_group.persistent_id.to_s },
+      'entities' => [{ 'sourceElementId' => 'tree-001' }]
+    )
+
+    assert_equal('reparented', result[:outcome])
+    assert_equal(1, parent_group.entities.groups.length)
+    relocated_child = parent_group.entities.groups.first
+    assert_equal('tree-001', relocated_child.get_attribute('su_mcp', 'sourceElementId'))
   end
 
   def test_reparent_entities_can_move_supported_entities_to_model_root
@@ -390,6 +438,19 @@ class HierarchyMaintenanceCommandsTest < Minitest::Test
       child_faces: [],
       source_element_id: source_element_id
     )
+  end
+
+  def managed_semantic_group(source_element_id, semantic_type:)
+    group = @model.active_entities.add_group
+    SU_MCP::Semantic::ManagedObjectMetadata.new.write!(
+      group,
+      'sourceElementId' => source_element_id,
+      'semanticType' => semantic_type,
+      'status' => 'proposed',
+      'state' => 'Created',
+      'schemaVersion' => 1
+    )
+    group
   end
 end
 # rubocop:enable Metrics/ClassLength

@@ -9,6 +9,20 @@ class EntityRelocatorTest < Minitest::Test
   include SemanticTestSupport
   include SceneQueryTestSupport
 
+  class HostLikeNestedCollection
+    def initialize(groups: [], component_instances: [], faces: [])
+      @groups = groups
+      @component_instances = component_instances
+      @faces = faces
+    end
+
+    def each
+      raise 'no block given'
+    end
+
+    attr_reader :groups, :component_instances, :faces
+  end
+
   def setup
     @model = build_semantic_model
     @layer = @model.layers.first
@@ -148,4 +162,65 @@ class EntityRelocatorTest < Minitest::Test
     )
   end
   # rubocop:enable Metrics/AbcSize
+
+  def test_relocates_nested_contents_without_calling_collection_each
+    child_group = @model.active_entities.add_group
+    child_group.set_attribute('su_mcp', 'sourceElementId', 'host-like-wrapper-001')
+    nested_group, nested_component, nested_face = build_host_like_nested_entities(child_group)
+    child_group.instance_variable_set(
+      :@entities,
+      HostLikeNestedCollection.new(
+        groups: [nested_group],
+        component_instances: [nested_component],
+        faces: [nested_face]
+      )
+    )
+    target_parent = @model.active_entities.add_group
+
+    result = @relocator.relocate(entities: [child_group], parent: target_parent)
+
+    relocated_group = result.first
+    assert_host_like_nested_entities_relocated(relocated_group)
+  end
+
+  private
+
+  def build_host_like_nested_entities(child_group)
+    nested_group = child_group.entities.add_group
+    nested_group.set_attribute('su_mcp', 'sourceElementId', 'host-like-child-001')
+
+    nested_component = child_group.entities.add_instance(
+      SceneQueryTestSupport::FakeComponentDefinition.new(
+        name: 'Host Like Definition',
+        entities: []
+      ),
+      child_group.transformation
+    )
+    nested_component.set_attribute('su_mcp', 'sourceElementId', 'host-like-component-001')
+
+    nested_face = child_group.entities.add_face(
+      [0.0, 0.0, 0.0],
+      [1.0, 0.0, 0.0],
+      [0.0, 1.0, 0.0]
+    )
+
+    [nested_group, nested_component, nested_face]
+  end
+
+  def assert_host_like_nested_entities_relocated(relocated_group)
+    assert_equal('host-like-wrapper-001',
+                 relocated_group.get_attribute('su_mcp', 'sourceElementId'))
+    assert_equal(1, relocated_group.entities.groups.length)
+    assert_equal(1, relocated_group.entities.component_instances.length)
+    assert_equal(1, relocated_group.entities.faces.length)
+    assert_equal('host-like-child-001',
+                 relocated_group.entities.groups.first.get_attribute('su_mcp', 'sourceElementId'))
+    assert_equal(
+      'host-like-component-001',
+      relocated_group.entities.component_instances.first.get_attribute(
+        'su_mcp',
+        'sourceElementId'
+      )
+    )
+  end
 end

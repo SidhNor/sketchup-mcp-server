@@ -235,13 +235,21 @@ class McpRuntimeLoaderTest < Minitest::Test
     )
 
     transform_entities_tool = tools.find { |tool| tool.fetch('name') == 'transform_entities' }
+    refute(transform_entities_tool.fetch('inputSchema').key?('required'))
     assert_equal(
-      ['id'],
-      transform_entities_tool.fetch('inputSchema').fetch('required')
+      %w[id position rotation scale targetReference],
+      transform_entities_tool.fetch('inputSchema').fetch('properties').keys.sort
     )
     assert_equal(
-      %w[id position rotation scale],
-      transform_entities_tool.fetch('inputSchema').fetch('properties').keys.sort
+      %w[entityId persistentId sourceElementId],
+      transform_entities_tool
+        .fetch('inputSchema')
+        .fetch('properties')
+        .fetch('targetReference')
+        .fetch('properties')
+        .keys
+        .map(&:to_s)
+        .sort
     )
 
     boolean_operation_tool = tools.find { |tool| tool.fetch('name') == 'boolean_operation' }
@@ -332,6 +340,40 @@ class McpRuntimeLoaderTest < Minitest::Test
                   .keys
                   .map(&:to_s)
                   .sort
+    )
+  end
+
+  def test_set_material_tool_schema_supports_compact_target_references_alongside_id
+    set_material_tool = @loader.tool_catalog.find do |tool|
+      tool.fetch(:name) == 'set_material'
+    end
+    refute_nil(set_material_tool)
+    input_schema = set_material_tool.fetch(:input_schema)
+
+    assert_equal(['material'], input_schema.fetch(:required))
+    assert_equal(
+      %w[id material targetReference],
+      input_schema.fetch(:properties).keys.map(&:to_s).sort
+    )
+    assert_equal(
+      %w[entityId persistentId sourceElementId],
+      input_schema
+        .fetch(:properties)
+        .fetch(:targetReference)
+        .fetch(:properties)
+        .keys
+        .map(&:to_s)
+        .sort
+    )
+  end
+
+  def test_set_entity_metadata_schema_advertises_widened_soft_mutation_fields
+    tool = @loader.tool_catalog.find { |entry| entry.fetch(:name) == 'set_entity_metadata' }
+    input_schema = tool.fetch(:input_schema)
+
+    assert_equal(
+      %w[plantingCategory speciesHint status structureCategory],
+      input_schema.fetch(:properties).fetch(:set).fetch(:properties).keys.map(&:to_s).sort
     )
   end
 
@@ -576,7 +618,11 @@ class McpRuntimeLoaderTest < Minitest::Test
     assert_equal('Set Entity Metadata', set_entity_metadata.dig(:metadata, :title))
     assert_equal(['target'], set_entity_metadata.dig(:input_schema, :required))
     assert_equal('Transform Entities', transform_entities.dig(:metadata, :title))
-    assert_equal(['id'], transform_entities.dig(:input_schema, :required))
+    refute(transform_entities[:input_schema].key?(:required))
+    assert_equal(
+      %i[id position rotation scale targetReference],
+      transform_entities.dig(:input_schema, :properties).keys.sort
+    )
     assert_equal(%w[target_id tool_id operation], boolean_operation.dig(:input_schema, :required))
     assert_equal(true, get_selection.dig(:metadata, :annotations, :read_only_hint))
     assert_equal(['code'], eval_ruby.dig(:input_schema, :required))

@@ -61,12 +61,13 @@ module SU_MCP
         scope_selector: params['scopeSelector'],
         output_options: params['outputOptions']
       )
-      entities = scope.fetch(:entities)
+      entities = visible_entities(scope.fetch(:entities))
+      limited_entities = entities.first(scope.fetch(:limit))
 
       {
         success: true,
         count: entities.length,
-        entities: serialize_entities(entities.first(scope.fetch(:limit)))
+        entities: serialize_entities(limited_entities)
       }
     end
 
@@ -96,7 +97,7 @@ module SU_MCP
 
     def selection_info
       adapter.active_model!
-      selection = adapter.selected_entities
+      selection = visible_entities(adapter.selected_entities)
 
       log "Getting selection, count: #{selection.length}"
 
@@ -129,6 +130,10 @@ module SU_MCP
 
     def serialize_entities(entities)
       entities.map { |entity| serializer.serialize_entity(entity) }
+    end
+
+    def visible_entities(entities)
+      entities.select { |entity| serializer.public_surface_entity?(entity) }
     end
 
     def limit_from(params, key, default)

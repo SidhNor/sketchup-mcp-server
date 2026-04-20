@@ -5,9 +5,23 @@ require_relative '../runtime/tool_response'
 module SU_MCP
   module Semantic
     # Owns the Managed Scene Object metadata contract and mutation policy.
+    # rubocop:disable Metrics/ClassLength
     class ManagedObjectMetadata
       DICTIONARY = 'su_mcp'
+      # Empty managed containers need a hidden internal entity so SketchUp keeps
+      # the wrapper group alive until real children are added.
+      INTERNAL_PLACEHOLDER_KEY = '_managedContainerPlaceholder'
       APPROVED_STRUCTURE_CATEGORIES = %w[main_building outbuilding extension].freeze
+      SOFT_MUTABLE_FIELDS_BY_TYPE = {
+        'structure' => %w[status structureCategory].freeze,
+        'planting_mass' => %w[status plantingCategory].freeze,
+        'tree_proxy' => %w[status speciesHint].freeze
+      }.freeze
+      DEFAULT_SOFT_MUTABLE_FIELDS = %w[status].freeze
+      REQUIRED_MUTABLE_FIELDS_BY_TYPE = {
+        'structure' => %w[status structureCategory].freeze
+      }.freeze
+      DEFAULT_REQUIRED_MUTABLE_FIELDS = %w[status].freeze
       PROTECTED_FIELDS = %w[
         managedSceneObject
         sourceElementId
@@ -15,6 +29,21 @@ module SU_MCP
         schemaVersion
         state
       ].freeze
+
+      def self.placeholder_entity?(entity)
+        entity.respond_to?(:get_attribute) &&
+          entity.get_attribute(DICTIONARY, INTERNAL_PLACEHOLDER_KEY) == true
+      end
+
+      def self.collection_entities(collection)
+        return collection.to_a if collection.respond_to?(:to_a)
+
+        Array(collection)
+      end
+
+      def self.placeholder_entities(collection)
+        collection_entities(collection).select { |entity| placeholder_entity?(entity) }
+      end
 
       def write!(entity, attributes)
         entity.set_attribute(DICTIONARY, 'managedSceneObject', true)
@@ -70,8 +99,10 @@ module SU_MCP
           dictionary = entity.attribute_dictionary(DICTIONARY, false)
           return {} unless dictionary
 
-          dictionary.each_pair.with_object({}) do |(key, value), attributes|
-            attributes[key.to_s] = value
+          {}.tap do |attributes|
+            dictionary.each_pair do |key, value|
+              attributes[key.to_s] = value
+            end
           end
         else
           {}
@@ -96,20 +127,26 @@ module SU_MCP
       def validate_update(entity, updates, clears)
         protected_field = protected_field(updates, clears)
         return protected_field_refusal(protected_field) if protected_field
-        return required_field_refusal('status') if clears.include?('status')
 
-        validate_structure_category(entity, updates, clears)
+        unsupported_field = unsupported_field(entity, updates, clears)
+        if unsupported_field
+          return unsupported_option_refusal(
+            unsupported_field,
+            field_value(updates, unsupported_field)
+          )
+        end
+
+        required_field = required_field(entity, clears)
+        return required_field_refusal(required_field) if required_field
+
+        validate_structure_category(entity, updates)
       end
 
       def protected_field(updates, clears)
         (updates.keys + clears).find { |field| PROTECTED_FIELDS.include?(field) }
       end
 
-      def validate_structure_category(entity, updates, clears)
-        if structure_entity?(entity) && clears.include?('structureCategory')
-          return required_field_refusal('structureCategory')
-        end
-
+      def validate_structure_category(entity, updates)
         return nil unless updates.key?('structureCategory')
         unless structure_entity?(entity)
           return unsupported_option_refusal('structureCategory', updates['structureCategory'])
@@ -130,6 +167,34 @@ module SU_MCP
 
       def structure_entity?(entity)
         entity.get_attribute(DICTIONARY, 'semanticType') == 'structure'
+      end
+
+      def semantic_type_for(entity)
+        entity.get_attribute(DICTIONARY, 'semanticType')
+      end
+
+      def soft_mutable_fields_for(entity)
+        SOFT_MUTABLE_FIELDS_BY_TYPE.fetch(semantic_type_for(entity), DEFAULT_SOFT_MUTABLE_FIELDS)
+      end
+
+      def required_mutable_fields_for(entity)
+        REQUIRED_MUTABLE_FIELDS_BY_TYPE.fetch(
+          semantic_type_for(entity),
+          DEFAULT_REQUIRED_MUTABLE_FIELDS
+        )
+      end
+
+      def unsupported_field(entity, updates, clears)
+        supported_fields = soft_mutable_fields_for(entity)
+        (updates.keys + clears).find { |field| !supported_fields.include?(field) }
+      end
+
+      def required_field(entity, clears)
+        required_mutable_fields_for(entity).find { |field| clears.include?(field) }
+      end
+
+      def field_value(updates, field)
+        updates.key?(field) ? updates[field] : nil
       end
 
       def unmanaged_object_refusal
@@ -175,5 +240,6 @@ module SU_MCP
           .reject { |key, _value| key == :success }
       end
     end
+    # rubocop:enable Metrics/ClassLength
   end
 end

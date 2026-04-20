@@ -285,7 +285,8 @@ module SceneQueryTestSupport
 
   class FakeModel
     attr_reader :entities, :active_entities, :selection, :materials, :layers, :bounds, :title,
-                :path, :active_path, :active_view, :saved_paths, :export_calls, :options
+                :path, :active_path, :active_view, :saved_paths, :export_calls, :options,
+                :operations
 
     def initialize(state:, details: {})
       @entities = state.fetch(:entities)
@@ -301,6 +302,7 @@ module SceneQueryTestSupport
       @options = details.fetch(:options)
       @saved_paths = []
       @export_calls = []
+      @operations = []
     end
 
     def find_entity_by_id(id)
@@ -315,6 +317,20 @@ module SceneQueryTestSupport
     def export(path, options)
       @export_calls << [path, options]
       true
+    end
+
+    # rubocop:disable Style/OptionalBooleanParameter
+    def start_operation(name, disable_ui = true)
+      @operations << [:start_operation, name, disable_ui]
+    end
+    # rubocop:enable Style/OptionalBooleanParameter
+
+    def commit_operation
+      @operations << [:commit_operation]
+    end
+
+    def abort_operation
+      @operations << [:abort_operation]
     end
   end
 

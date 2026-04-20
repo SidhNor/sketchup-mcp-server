@@ -89,6 +89,7 @@ module ModelingTestSupport
       group = FakeGroup.new(entities: self.class.new)
       @added_groups << group
       @items << group
+      yield group if block_given?
       group
     end
 

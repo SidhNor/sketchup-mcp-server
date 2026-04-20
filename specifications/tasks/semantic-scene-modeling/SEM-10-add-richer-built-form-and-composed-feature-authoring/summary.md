@@ -18,6 +18,10 @@
   - `create_group` creates the wrapper
   - `create_site_element` remains the atomic child-creation tool
   - `reparent_entities` remains the path for adding existing supported children later
+- Finalized the host-correctness details needed for live SketchUp behavior:
+  - empty managed containers are preserved until real children exist
+  - relocation avoids host-sensitive collection-iteration assumptions
+  - public inventory and child counts hide the internal placeholder entity
 - Added or updated coverage for:
   - managed `create_group` success and refusal behavior
   - runtime schema and dispatcher passthrough
@@ -34,6 +38,11 @@
 - `bundle exec rake ruby:test`
 - `RUBOCOP_CACHE_ROOT=/tmp/rubocop-cache bundle exec rake ruby:lint`
 - `bundle exec rake package:verify`
+- Live SketchUp-hosted validation passed for:
+  - simple managed `create_group`
+  - `create_group` with existing-child relocation
+  - positive `reparent_entities`
+  - parented child creation under a managed container
 
 ## External Review
 
@@ -53,10 +62,10 @@
 - Updated [task.md](./task.md) status to `completed`.
 - Updated [plan.md](./plan.md) with the shipped implementation outcome and final validation record.
 
-## Remaining Manual Verification
+## Final Hosted Outcome
 
-- SketchUp-hosted smoke validation is still needed for:
-  - creating a managed `grouped_feature` container through the live MCP runtime
-  - creating a new `structure` or `pad` child under that container with `placement.mode: "parented"`
-  - reparenting an existing supported child into the container
-  - confirming the resulting container stays targetable through normal metadata selectors in a real hosted session
+- The managed `grouped_feature` workflow is now host-proven in SketchUp:
+  - managed containers persist and remain targetable
+  - child creation under `placement.parent` works
+  - existing supported children can be relocated into the container
+  - post-relocation children receive new runtime ids while preserving business identity through `sourceElementId`

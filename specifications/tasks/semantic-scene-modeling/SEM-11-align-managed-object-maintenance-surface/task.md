@@ -1,9 +1,9 @@
 # Task: SEM-11 Align Managed-Object Maintenance Surface
 **Task ID**: `SEM-11`
 **Title**: `Align Managed-Object Maintenance Surface`
-**Status**: `draft`
+**Status**: `completed`
 **Priority**: `P1`
-**Date**: `2026-04-18`
+**Date**: `2026-04-20`
 
 ## Linked HLD
 
@@ -80,7 +80,7 @@ Scenario: maintenance alignment does not widen into destructive-policy work
 
 ## Related Technical Plan
 
-- none yet
+- [Technical Plan](./plan.md)
 
 ## Success Metrics
 

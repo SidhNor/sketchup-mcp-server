@@ -255,6 +255,7 @@ module SU_MCP
           parent_entity: creation_context[:parent_entity],
           destination: creation_context.fetch(:destination)
         )
+        cleanup_placeholder(creation_context[:parent_entity]) if creation_context[:parent_entity]
         metadata_writer.write!(entity, metadata_attributes(public_params, state: 'Created'))
         success_result('created', entity)
       end
@@ -419,6 +420,12 @@ module SU_MCP
     rescue StandardError
       model.abort_operation if model.respond_to?(:abort_operation)
       raise
+    end
+
+    def cleanup_placeholder(parent_entity)
+      return unless parent_entity.respond_to?(:entities)
+
+      Semantic::ManagedObjectMetadata.placeholder_entities(parent_entity.entities).each(&:erase!)
     end
 
     def success_result(outcome, entity)

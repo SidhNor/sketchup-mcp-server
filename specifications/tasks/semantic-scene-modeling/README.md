@@ -60,4 +60,5 @@ The following follow-ons remain intentionally deferred from the active task fold
 - `SEM-09` deliberately narrows the earlier lifecycle-hardening idea to the primitives needed for richer built-form authoring. It is not a full terrain or broad maintenance task.
 - `SEM-10` captures the next richer authoring slice inside the current semantic PRD boundary. Terrain authoring remains out of scope for the active set.
 - `SEM-11` and `SEM-12` move managed-object maintenance, duplication, and deletion policy after the richer built-form authoring slice instead of forcing all hardening work to land first.
-- `SEM-10`, `SEM-11`, and `SEM-12` remain draft task shells and still require `task-planning` before implementation work starts.
+- `SEM-10` and `SEM-11` are now completed and live-validated against SketchUp-hosted hierarchy and managed-maintenance flows.
+- `SEM-12` remains the next draft follow-on for governed duplication and managed deletion policy.

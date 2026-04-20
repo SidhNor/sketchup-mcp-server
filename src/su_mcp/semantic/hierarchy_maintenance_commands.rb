@@ -37,24 +37,14 @@ module SU_MCP
       return validation if refusal_response?(validation)
 
       run_operation(CREATE_GROUP_OPERATION_NAME) do
-        group = target_collection_for(validation.fetch(:parent)).add_group
-        apply_managed_container_attributes(group, params)
-        relocated_children = relocator.relocate(
-          entities: validation.fetch(:children),
-          parent: group
-        )
-
-        create_group_success(group, relocated_children)
+        perform_group_creation(validation: validation, params: params)
       end
     end
 
     def reparent_entities(params)
       entities_request = params['entities']
-      missing_entities_refusal = missing_entities_refusal(entities_request)
-      return missing_entities_refusal if missing_entities_refusal
-
-      duplicate_refusal = duplicate_reference_refusal(entities_request)
-      return duplicate_refusal if duplicate_refusal
+      request_refusal = reparent_request_refusal(entities_request)
+      return request_refusal if request_refusal
 
       parent = resolve_optional_parent(params['parent'])
       return parent if refusal_response?(parent)
@@ -67,6 +57,7 @@ module SU_MCP
 
       run_operation(REPARENT_ENTITIES_OPERATION_NAME) do
         relocated_entities = relocator.relocate(entities: entities, parent: parent)
+        cleanup_placeholder(parent) if parent && !relocated_entities.empty?
         reparent_success(parent, relocated_entities)
       end
     end
@@ -151,6 +142,10 @@ module SU_MCP
       refusal('missing_entities', 'At least one entity target is required.')
     end
 
+    def reparent_request_refusal(entities_request)
+      missing_entities_refusal(entities_request) || duplicate_reference_refusal(entities_request)
+    end
+
     def cyclic_reparent_refusal(parent, entities)
       return nil unless parent
       return nil unless entities.include?(parent) || descendant_of_any?(parent, entities)
@@ -217,6 +212,48 @@ module SU_MCP
       else
         parent.entities
       end
+    end
+
+    def create_empty_group(target_collection, preserve_empty: false)
+      group = target_collection.add_group
+      preserve_empty_group(group) if preserve_empty
+      group
+    end
+
+    def perform_group_creation(validation:, params:)
+      children = validation.fetch(:children)
+      group = create_empty_group(
+        target_collection_for(validation.fetch(:parent)),
+        preserve_empty: children.empty?
+      )
+      apply_managed_container_attributes(group, params)
+      relocated_children = relocator.relocate(
+        entities: children,
+        parent: group
+      )
+      cleanup_placeholder(group) unless relocated_children.empty?
+      create_group_success(group, relocated_children)
+    end
+
+    def preserve_empty_group(group)
+      return group unless group.respond_to?(:entities)
+
+      # SketchUp can discard empty groups in-host, so keep a hidden internal
+      # placeholder until semantic children are created or reparented in.
+      placeholder = group.entities.add_cpoint(Geom::Point3d.new(0, 0, 0))
+      placeholder.hidden = true if placeholder.respond_to?(:hidden=)
+      placeholder.set_attribute(
+        Semantic::ManagedObjectMetadata::DICTIONARY,
+        Semantic::ManagedObjectMetadata::INTERNAL_PLACEHOLDER_KEY,
+        true
+      )
+      group
+    end
+
+    def cleanup_placeholder(group)
+      return unless group.respond_to?(:entities)
+
+      Semantic::ManagedObjectMetadata.placeholder_entities(group.entities).each(&:erase!)
     end
 
     def run_operation(name)

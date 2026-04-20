@@ -19,7 +19,12 @@ class ToolDispatcherTest < Minitest::Test
 
     def transform_entities(args)
       @calls << [:transform_entities, args]
-      { success: true, id: args.fetch('id') }
+      {
+        success: true,
+        outcome: 'transformed',
+        id: args['id'] || args.dig('targetReference', 'entityId'),
+        managedObject: nil
+      }
     end
 
     def selection_info
@@ -82,12 +87,23 @@ class ToolDispatcherTest < Minitest::Test
         managedObject: { sourceElementId: args.dig('target', 'sourceElementId') }
       }
     end
+
+    def apply_material(args)
+      @calls << [:apply_material, args]
+      {
+        success: true,
+        outcome: 'material_applied',
+        id: args['id'] || args.dig('targetReference', 'entityId'),
+        managedObject: nil
+      }
+    end
     # rubocop:enable Naming/AccessorMethodName
 
     private :get_scene_info, :transform_entities, :selection_info, :find_entities,
             :delete_entities,
             :sample_surface_z,
-            :create_group, :reparent_entities, :create_site_element, :set_entity_metadata
+            :create_group, :reparent_entities, :create_site_element, :set_entity_metadata,
+            :apply_material
   end
 
   def setup
@@ -105,8 +121,30 @@ class ToolDispatcherTest < Minitest::Test
   def test_dispatches_transform_entities_to_the_editing_command
     result = @dispatcher.call('transform_entities', { 'id' => '301', 'position' => [1, 2, 3] })
 
-    assert_equal({ success: true, id: '301' }, result)
+    assert_equal(
+      { success: true, outcome: 'transformed', id: '301', managedObject: nil },
+      result
+    )
     assert_equal([[:transform_entities, { 'id' => '301', 'position' => [1, 2, 3] }]], @target.calls)
+  end
+
+  def test_dispatches_transform_entities_with_target_reference_to_the_editing_command
+    result = @dispatcher.call(
+      'transform_entities',
+      { 'targetReference' => { 'entityId' => '301' }, 'position' => [1, 2, 3] }
+    )
+
+    assert_equal(
+      { success: true, outcome: 'transformed', id: '301', managedObject: nil },
+      result
+    )
+    assert_equal(
+      [[
+        :transform_entities,
+        { 'targetReference' => { 'entityId' => '301' }, 'position' => [1, 2, 3] }
+      ]],
+      @target.calls.last(1)
+    )
   end
 
   def test_dispatches_get_selection_without_arguments
@@ -157,6 +195,25 @@ class ToolDispatcherTest < Minitest::Test
       [[
         :delete_entities,
         { 'targetReference' => { 'entityId' => '301' } }
+      ]],
+      @target.calls.last(1)
+    )
+  end
+
+  def test_dispatches_set_material_to_the_editing_command
+    result = @dispatcher.call(
+      'set_material',
+      { 'targetReference' => { 'entityId' => '301' }, 'material' => 'Walnut' }
+    )
+
+    assert_equal(
+      { success: true, outcome: 'material_applied', id: '301', managedObject: nil },
+      result
+    )
+    assert_equal(
+      [[
+        :apply_material,
+        { 'targetReference' => { 'entityId' => '301' }, 'material' => 'Walnut' }
       ]],
       @target.calls.last(1)
     )

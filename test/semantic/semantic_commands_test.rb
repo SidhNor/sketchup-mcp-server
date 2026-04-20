@@ -1352,6 +1352,125 @@ class SemanticCommandsTest < Minitest::Test
 
     assert_equal(contract_case.dig('response', 'result'), normalized_result(result))
   end
+
+  def test_set_entity_metadata_updates_supported_planting_category_and_serializes_updated_object
+    metadata_writer = SU_MCP::Semantic::ManagedObjectMetadata.new
+    entity = @model.active_entities.add_group
+    metadata_writer.write!(
+      entity,
+      'sourceElementId' => 'hedge-001',
+      'semanticType' => 'planting_mass',
+      'status' => 'proposed',
+      'state' => 'Created',
+      'schemaVersion' => 1,
+      'plantingCategory' => 'hedge'
+    )
+    target_resolver = FakeTargetResolver.new(resolution: 'unique', entity: entity)
+    commands = SU_MCP::SemanticCommands.new(
+      model: @model,
+      metadata_writer: metadata_writer,
+      target_resolver: target_resolver
+    )
+
+    result = commands.set_entity_metadata(
+      'target' => { 'sourceElementId' => 'hedge-001' },
+      'set' => { 'plantingCategory' => 'groundcover' }
+    )
+
+    assert_equal(true, result[:success])
+    assert_equal('updated', result[:outcome])
+    assert_equal(
+      [[:start_operation, 'Set Entity Metadata', true], [:commit_operation]],
+      @model.operations
+    )
+    assert_equal('groundcover', result.dig(:managedObject, :plantingCategory))
+  end
+
+  def test_set_entity_metadata_updates_supported_species_hint_and_serializes_updated_object
+    metadata_writer = SU_MCP::Semantic::ManagedObjectMetadata.new
+    entity = @model.active_entities.add_group
+    metadata_writer.write!(
+      entity,
+      'sourceElementId' => 'tree-001',
+      'semanticType' => 'tree_proxy',
+      'status' => 'proposed',
+      'state' => 'Created',
+      'schemaVersion' => 1,
+      'speciesHint' => 'cherry'
+    )
+    target_resolver = FakeTargetResolver.new(resolution: 'unique', entity: entity)
+    commands = SU_MCP::SemanticCommands.new(
+      model: @model,
+      metadata_writer: metadata_writer,
+      target_resolver: target_resolver
+    )
+
+    result = commands.set_entity_metadata(
+      'target' => { 'sourceElementId' => 'tree-001' },
+      'set' => { 'speciesHint' => 'plum' }
+    )
+
+    assert_equal(true, result[:success])
+    assert_equal('updated', result[:outcome])
+    assert_equal(
+      [[:start_operation, 'Set Entity Metadata', true], [:commit_operation]],
+      @model.operations
+    )
+    assert_equal('plum', result.dig(:managedObject, :speciesHint))
+  end
+
+  def test_set_entity_metadata_updates_status_for_grouped_feature_containers
+    metadata_writer = SU_MCP::Semantic::ManagedObjectMetadata.new
+    entity = @model.active_entities.add_group
+    metadata_writer.write!(
+      entity,
+      'sourceElementId' => 'built-form-cluster-001',
+      'semanticType' => 'grouped_feature',
+      'status' => 'proposed',
+      'state' => 'Created',
+      'schemaVersion' => 1
+    )
+    target_resolver = FakeTargetResolver.new(resolution: 'unique', entity: entity)
+    commands = SU_MCP::SemanticCommands.new(
+      model: @model,
+      metadata_writer: metadata_writer,
+      target_resolver: target_resolver
+    )
+
+    result = commands.set_entity_metadata(
+      'target' => { 'sourceElementId' => 'built-form-cluster-001' },
+      'set' => { 'status' => 'existing' }
+    )
+
+    assert_equal(true, result[:success])
+    assert_equal('updated', result[:outcome])
+    assert_equal('existing', result.dig(:managedObject, :status))
+  end
+
+  def test_set_entity_metadata_planting_category_update_matches_shared_contract
+    contract_case = contract_cases_by_id.fetch('set_entity_metadata_planting_category_updated')
+    metadata_writer = SU_MCP::Semantic::ManagedObjectMetadata.new
+    entity = @model.active_entities.add_group
+    metadata_writer.write!(
+      entity,
+      'sourceElementId' => 'hedge-001',
+      'semanticType' => 'planting_mass',
+      'status' => 'proposed',
+      'state' => 'Created',
+      'schemaVersion' => 1,
+      'plantingCategory' => 'hedge'
+    )
+    target_resolver = FakeTargetResolver.new(resolution: 'unique', entity: entity)
+    commands = SU_MCP::SemanticCommands.new(
+      model: @model,
+      metadata_writer: metadata_writer,
+      target_resolver: target_resolver
+    )
+
+    result = commands.set_entity_metadata(contract_case.dig('request', 'params', 'arguments'))
+
+    assert_equal(contract_case.dig('response', 'result'), normalized_result(result))
+  end
   # rubocop:enable Layout/LineLength
 
   private

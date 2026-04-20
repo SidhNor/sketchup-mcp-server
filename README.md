@@ -103,10 +103,12 @@ The current MCP surface includes scene inspection, semantic scene modeling, and 
 
 Public geometric dimensions for `create_site_element` are interpreted and returned in meters, independent of the active SketchUp model unit display settings.
 The public `create_site_element` request is sectioned: `elementType`, `metadata`, `definition`, `hosting`, `placement`, `representation`, and `lifecycle`, with optional `sceneProperties` for wrapper `name` and `tag`.
-The hierarchy-maintenance surface is intentionally narrow: `create_group` creates a plain group container, optionally grouping supplied child groups or component instances, and `reparent_entities` explicitly reparents supported groups or component instances using the same compact target-reference contract (`sourceElementId`, `persistentId`, `entityId`).
+The hierarchy-maintenance surface is intentionally narrow: `create_group` creates either a plain group container or, when `metadata.sourceElementId` and `metadata.status` are supplied, a managed `grouped_feature` container with optional `sceneProperties.name` and `sceneProperties.tag`. `reparent_entities` explicitly reparents supported groups or component instances using the same compact target-reference contract (`sourceElementId`, `persistentId`, `entityId`).
 `list_entities` is an explicit inventory tool that now requires `scopeSelector` (`top_level`, `selection`, or `children_of_target`) plus optional `outputOptions`.
 `find_entities` is an exact-match targeting tool that now requires `targetSelector` with nested `identity`, `attributes`, and `metadata` sections.
 `delete_entities` replaces `delete_component` and deletes one explicitly referenced supported group or component instance, returning structured `operation` and `affectedEntities.deleted` data.
+`transform_entities` and `set_material` now accept either legacy `id` or compact `targetReference` (`sourceElementId`, `persistentId`, `entityId`), refuse requests that provide both or neither, and return additive mutation envelopes with `outcome`, `id`, and `managedObject`.
+`set_entity_metadata` remains the semantic metadata path and now supports approved soft-field updates for `status`, `structureCategory`, `plantingCategory`, and `speciesHint` while continuing to refuse protected managed-object identity fields.
 
 ## Local Validation
 

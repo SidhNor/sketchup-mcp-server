@@ -98,6 +98,24 @@ class SceneQueryCommandsTest < Minitest::Test
     assert_equal([201], result[:entities].map { |entity| entity[:id] })
   end
 
+  def test_list_entities_hides_internal_managed_container_placeholders
+    placeholder = placeholder_entity(entity_id: 301, persistent_id: 3001)
+    parent = @model.entities.first
+    parent.entities << placeholder
+
+    result = @commands.list_entities(
+      'scopeSelector' => {
+        'mode' => 'children_of_target',
+        'targetReference' => { 'entityId' => '101' }
+      },
+      'outputOptions' => { 'limit' => 10, 'includeHidden' => true }
+    )
+
+    assert_equal(true, result[:success])
+    assert_equal(1, result[:count])
+    assert_equal([201], result[:entities].map { |entity| entity[:id] })
+  end
+
   def test_list_entities_rejects_unsupported_scope_modes
     error = assert_raises(RuntimeError) do
       @commands.list_entities('scopeSelector' => { 'mode' => 'search_everywhere' })
@@ -178,5 +196,30 @@ class SceneQueryCommandsTest < Minitest::Test
     end
 
     assert_equal('Entity not found', error.message)
+  end
+
+  private
+
+  def placeholder_entity(entity_id:, persistent_id:)
+    SceneQueryTestSupport::FakeGroup.new(
+      entity_id: entity_id,
+      bounds: SceneQueryTestSupport::FakeBounds.new(
+        min: SceneQueryTestSupport::FakePoint.new(0.0, 0.0, 0.0),
+        max: SceneQueryTestSupport::FakePoint.new(0.0, 0.0, 0.0),
+        center: SceneQueryTestSupport::FakePoint.new(0.0, 0.0, 0.0),
+        size: [0.0, 0.0, 0.0]
+      ),
+      layer: @model.layers.first,
+      material: nil,
+      details: {
+        persistent_id: persistent_id,
+        hidden: true,
+        attributes: {
+          'su_mcp' => {
+            SU_MCP::Semantic::ManagedObjectMetadata::INTERNAL_PLACEHOLDER_KEY => true
+          }
+        }
+      }
+    )
   end
 end

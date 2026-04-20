@@ -132,8 +132,6 @@ module SU_MCP
       end
 
       def each_collection_entity(collection, &block)
-        return collection.each(&block) if collection.respond_to?(:each)
-
         extract_collection_entities(collection).each(&block)
       end
 

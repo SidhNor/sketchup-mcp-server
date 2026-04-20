@@ -5,6 +5,7 @@ require_relative '../support/scene_query_test_support'
 require_relative '../support/semantic_test_support'
 require_relative '../../src/su_mcp/editing/editing_commands'
 
+# rubocop:disable Metrics/ClassLength
 class EditingCommandsTest < Minitest::Test
   include SceneQueryTestSupport
   include SemanticTestSupport
@@ -46,6 +47,20 @@ class EditingCommandsTest < Minitest::Test
     def all_entities_recursive
       @calls << :all_entities_recursive
       @all_entities_recursive
+    end
+  end
+
+  class RecordingLengthConverter
+    attr_reader :calls
+
+    def initialize(multiplier: 100.0)
+      @multiplier = multiplier
+      @calls = []
+    end
+
+    def public_meters_to_internal(value)
+      @calls << value
+      value.to_f * @multiplier
     end
   end
 
@@ -179,8 +194,31 @@ class EditingCommandsTest < Minitest::Test
     )
 
     assert_equal(true, result[:success])
+    assert_equal('transformed', result[:outcome])
     assert_equal(301, result[:id])
-    assert_equal([[:find_entity!, '301']], @adapter.calls)
+    assert_nil(result[:managedObject])
+    assert_equal([:active_model!, [:find_entity!, '301']], @adapter.calls)
+    assert_equal(
+      [[:start_operation, 'Transform Entities', true], [:commit_operation]],
+      @mutation_model.operations
+    )
+    refute_empty(@entity.transformations)
+  end
+
+  def test_transform_entities_converts_public_meter_translation_to_internal_units
+    converter = RecordingLengthConverter.new(multiplier: 39.37)
+    commands = SU_MCP::EditingCommands.new(
+      model_adapter: @adapter,
+      length_converter: converter
+    )
+
+    result = commands.transform_entities(
+      'id' => '301',
+      'position' => [1.0, 2.0, 3.0]
+    )
+
+    assert_equal(true, result[:success])
+    assert_equal([1.0, 2.0, 3.0], converter.calls)
     refute_empty(@entity.transformations)
   end
 
@@ -188,7 +226,116 @@ class EditingCommandsTest < Minitest::Test
     result = @commands.apply_material('id' => '301', 'material' => 'Walnut')
 
     assert_equal(true, result[:success])
+    assert_equal('material_applied', result[:outcome])
+    assert_equal(301, result[:id])
+    assert_nil(result[:managedObject])
     assert_equal('Walnut', @entity.material.display_name)
     assert_equal([:active_model!, [:find_entity!, '301']], @adapter.calls)
+    assert_equal(
+      [[:start_operation, 'Set Entity Material', true], [:commit_operation]],
+      @mutation_model.operations
+    )
+  end
+
+  def test_transform_entities_supports_managed_targets_resolved_by_target_reference
+    @entity.set_attribute('su_mcp', 'managedSceneObject', true)
+    @entity.set_attribute('su_mcp', 'sourceElementId', 'shed-001')
+    @entity.set_attribute('su_mcp', 'semanticType', 'structure')
+    @entity.set_attribute('su_mcp', 'status', 'existing')
+    @entity.set_attribute('su_mcp', 'state', 'Created')
+    result = @commands.transform_entities(
+      'targetReference' => { 'sourceElementId' => 'shed-001' },
+      'position' => [1, 2, 3]
+    )
+
+    assert_equal(true, result[:success])
+    assert_equal('transformed', result[:outcome])
+    assert_equal(301, result[:id])
+    assert_equal('shed-001', result.dig(:managedObject, :sourceElementId))
+    assert_equal('structure', result.dig(:managedObject, :semanticType))
+    assert_equal(%i[all_entities_recursive active_model!], @adapter.calls)
+    assert_equal(
+      [[:start_operation, 'Transform Entities', true], [:commit_operation]],
+      @mutation_model.operations
+    )
+  end
+
+  def test_transform_entities_refuses_when_no_target_selector_is_provided
+    result = @commands.transform_entities('position' => [1, 2, 3])
+
+    assert_equal(true, result[:success])
+    assert_equal('refused', result[:outcome])
+    assert_equal('missing_target', result.dig(:refusal, :code))
+  end
+
+  def test_transform_entities_refuses_conflicting_target_selectors
+    result = @commands.transform_entities(
+      'id' => '301',
+      'targetReference' => { 'entityId' => '301' },
+      'position' => [1, 2, 3]
+    )
+
+    assert_equal(true, result[:success])
+    assert_equal('refused', result[:outcome])
+    assert_equal('conflicting_target_selectors', result.dig(:refusal, :code))
+  end
+
+  def test_transform_entities_refuses_ambiguous_target_references
+    resolver = FakeTargetResolver.new(result: { resolution: 'ambiguous' })
+    commands = SU_MCP::EditingCommands.new(model_adapter: @adapter, target_resolver: resolver)
+
+    result = commands.transform_entities(
+      'targetReference' => { 'sourceElementId' => 'duplicate-001' },
+      'position' => [1, 2, 3]
+    )
+
+    assert_equal(true, result[:success])
+    assert_equal('refused', result[:outcome])
+    assert_equal('ambiguous_target', result.dig(:refusal, :code))
+  end
+
+  def test_apply_material_supports_managed_targets_resolved_by_target_reference
+    @entity.set_attribute('su_mcp', 'managedSceneObject', true)
+    @entity.set_attribute('su_mcp', 'sourceElementId', 'shed-001')
+    @entity.set_attribute('su_mcp', 'semanticType', 'structure')
+    @entity.set_attribute('su_mcp', 'status', 'existing')
+    @entity.set_attribute('su_mcp', 'state', 'Created')
+
+    result = @commands.apply_material(
+      'targetReference' => { 'sourceElementId' => 'shed-001' },
+      'material' => 'Walnut'
+    )
+
+    assert_equal(true, result[:success])
+    assert_equal('material_applied', result[:outcome])
+    assert_equal(301, result[:id])
+    assert_equal('shed-001', result.dig(:managedObject, :sourceElementId))
+    assert_equal('Walnut', @entity.material.display_name)
+    assert_equal(%i[all_entities_recursive active_model!], @adapter.calls)
+    assert_equal(
+      [[:start_operation, 'Set Entity Material', true], [:commit_operation]],
+      @mutation_model.operations
+    )
+  end
+
+  def test_apply_material_refuses_when_no_target_selector_is_provided
+    result = @commands.apply_material('material' => 'Walnut')
+
+    assert_equal(true, result[:success])
+    assert_equal('refused', result[:outcome])
+    assert_equal('missing_target', result.dig(:refusal, :code))
+  end
+
+  def test_apply_material_refuses_conflicting_target_selectors
+    result = @commands.apply_material(
+      'id' => '301',
+      'targetReference' => { 'entityId' => '301' },
+      'material' => 'Walnut'
+    )
+
+    assert_equal(true, result[:success])
+    assert_equal('refused', result[:outcome])
+    assert_equal('conflicting_target_selectors', result.dig(:refusal, :code))
   end
 end
+# rubocop:enable Metrics/ClassLength

@@ -103,6 +103,42 @@
           }
         }
       }
+    },
+    {
+      "case_id": "set_entity_metadata_planting_category_updated",
+      "request": {
+        "params": {
+          "arguments": {
+            "target": {
+              "sourceElementId": "hedge-001"
+            },
+            "set": {
+              "plantingCategory": "groundcover"
+            }
+          }
+        }
+      },
+      "response": {
+        "result": {
+          "success": true,
+          "outcome": "updated",
+          "managedObject": {
+            "sourceElementId": "hedge-001",
+            "persistentId": "5000",
+            "entityId": "1000",
+            "semanticType": "planting_mass",
+            "status": "proposed",
+            "state": "Created",
+            "plantingCategory": "groundcover",
+            "tag": "Layer0",
+            "material": "Default",
+            "bounds": {
+              "min": [0.0, 0.0, 0.0],
+              "max": [0.0254, 0.0254, 0.0254]
+            }
+          }
+        }
+      }
     }
   ]
 }

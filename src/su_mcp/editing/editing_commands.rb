@@ -1,18 +1,25 @@
 # frozen_string_literal: true
 
 require 'sketchup'
+require_relative 'managed_mutation_helper'
 require_relative 'material_resolver'
+require_relative 'mutation_target_resolver'
+require_relative '../semantic/length_converter'
 require_relative '../runtime/tool_response'
 require_relative '../scene_query/scene_query_serializer'
 require_relative '../scene_query/target_reference_resolver'
 
 module SU_MCP
   # Grouped command surface for generic editing operations.
+  # rubocop:disable Metrics/ClassLength
   class EditingCommands
     DELETE_OPERATION_NAME = 'Delete Entities'
+    TRANSFORM_OPERATION_NAME = 'Transform Entities'
+    SET_MATERIAL_OPERATION_NAME = 'Set Entity Material'
 
+    # rubocop:disable Metrics/ParameterLists
     def initialize(model_adapter:, logger: nil, material_resolver: nil, serializer: nil,
-                   target_resolver: nil)
+                   target_resolver: nil, managed_mutation_helper: nil, length_converter: nil)
       @model_adapter = model_adapter
       @logger = logger
       @material_resolver = material_resolver || MaterialResolver.new
@@ -21,7 +28,15 @@ module SU_MCP
         adapter: model_adapter,
         serializer: @serializer
       )
+      @managed_mutation_helper = managed_mutation_helper || Editing::ManagedMutationHelper.new
+      @mutation_target_resolver = Editing::MutationTargetResolver.new(
+        model_adapter: model_adapter,
+        target_resolver: @target_resolver,
+        supported_target: method(:supported_mutation_target?)
+      )
+      @length_converter = length_converter || Semantic::LengthConverter.new
     end
+    # rubocop:enable Metrics/ParameterLists
 
     # rubocop:disable Metrics/MethodLength
     def delete_entities(params)
@@ -52,27 +67,45 @@ module SU_MCP
     # rubocop:enable Metrics/MethodLength
 
     def transform_entities(params)
-      entity = model_adapter.find_entity!(params['id'])
+      mutation_target = resolve_mutation_target(params)
+      return mutation_target if refusal_response?(mutation_target)
 
-      apply_translation(entity, params['position']) if params['position']
-      apply_rotation(entity, params['rotation']) if params['rotation']
-      apply_scale(entity, params['scale']) if params['scale']
+      run_mutation_operation(mutation_target.fetch(:model), TRANSFORM_OPERATION_NAME) do
+        entity = mutation_target.fetch(:entity)
+        apply_translation(entity, params['position']) if params['position']
+        apply_rotation(entity, params['rotation']) if params['rotation']
+        apply_scale(entity, params['scale']) if params['scale']
 
-      { success: true, id: entity.entityID }
+        ToolResponse.success(
+          outcome: 'transformed',
+          **managed_mutation_helper.success_payload(entity)
+        )
+      end
     end
 
     def apply_material(params)
-      model = model_adapter.active_model!
-      entity = model_adapter.find_entity!(params['id'])
-      material = material_resolver.resolve(model: model, material_name: params['material'])
-      apply_material_to_entity(entity, material)
+      mutation_target = resolve_mutation_target(params)
+      return mutation_target if refusal_response?(mutation_target)
 
-      { success: true, id: entity.entityID }
+      run_mutation_operation(mutation_target.fetch(:model), SET_MATERIAL_OPERATION_NAME) do
+        entity = mutation_target.fetch(:entity)
+        material = material_resolver.resolve(
+          model: mutation_target.fetch(:model),
+          material_name: params['material']
+        )
+        apply_material_to_entity(entity, material)
+
+        ToolResponse.success(
+          outcome: 'material_applied',
+          **managed_mutation_helper.success_payload(entity)
+        )
+      end
     end
 
     private
 
-    attr_reader :model_adapter, :logger, :material_resolver, :serializer, :target_resolver
+    attr_reader :model_adapter, :logger, :material_resolver, :serializer, :target_resolver,
+                :managed_mutation_helper, :mutation_target_resolver, :length_converter
 
     def validate_delete_entities_params!(params)
       ambiguity_policy = params.dig('constraints', 'ambiguityPolicy')
@@ -90,11 +123,19 @@ module SU_MCP
       entity.is_a?(Sketchup::Group) || entity.is_a?(Sketchup::ComponentInstance)
     end
 
-    def run_delete_operation
+    def supported_mutation_target?(entity)
+      supported_delete_target?(entity)
+    end
+
+    def run_delete_operation(&block)
       model = model_adapter.active_model!
+      run_mutation_operation(model, DELETE_OPERATION_NAME, &block)
+    end
+
+    def run_mutation_operation(model, operation_name)
       operation_started = false
       if model.respond_to?(:start_operation)
-        model.start_operation(DELETE_OPERATION_NAME, true)
+        model.start_operation(operation_name, true)
         operation_started = true
       end
 
@@ -104,6 +145,14 @@ module SU_MCP
     rescue StandardError
       model.abort_operation if operation_started && model.respond_to?(:abort_operation)
       raise
+    end
+
+    def resolve_mutation_target(params)
+      mutation_target_resolver.resolve(params)
+    end
+
+    def refusal_response?(result)
+      result.is_a?(Hash) && result[:outcome] == 'refused'
     end
 
     def target_not_found_refusal
@@ -129,9 +178,15 @@ module SU_MCP
 
     def apply_translation(entity, position)
       transformation = Geom::Transformation.translation(
-        Geom::Point3d.new(position[0], position[1], position[2])
+        Geom::Point3d.new(*internal_position(position))
       )
       entity.transform!(transformation)
+    end
+
+    def internal_position(position)
+      Array(position).first(3).map do |value|
+        length_converter.public_meters_to_internal(value)
+      end
     end
 
     def apply_rotation(entity, rotation)
@@ -177,4 +232,5 @@ module SU_MCP
       logger&.call(message)
     end
   end
+  # rubocop:enable Metrics/ClassLength
 end
