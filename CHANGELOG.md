@@ -2,6 +2,22 @@
 
 <!-- version list -->
 
+## v0.17.0 (2026-04-21)
+
+### Documentation
+
+- **SEM-13**: Testing summary clarifications
+  ([`2e2d664`](https://github.com/SidhNor/sketchup-mcp-server/commit/2e2d66460e1dc4d03959884f50c234d9656efa9c))
+
+### Features
+
+- **SEM-13**: Path drapping on terrain
+  ([`b664390`](https://github.com/SidhNor/sketchup-mcp-server/commit/b66439018031a0d11f1cf4012e69a4d2b0fb1fcf))
+
+- **SVR-01**: Validate scene baseline
+  ([`d8b2a9d`](https://github.com/SidhNor/sketchup-mcp-server/commit/d8b2a9db399ed852980edebaa28bf1448af14224))
+
+
 ## v0.16.1 (2026-04-20)
 
 ### Bug Fixes
