@@ -21,6 +21,8 @@
   - the invalid centerline refusal message is now user-facing and specific
   - thickness now builds one coherent bottom ribbon plus side/end shell instead of per-triangle `pushpull`
   - draped face emission now prefers `entities.build { |builder| ... }` when available, with direct `add_face` retained as a compatibility fallback
+  - host sampling now prepares and reuses a per-build sampling context instead of recollecting sampleable faces for every station sample
+  - prepared host sampling caches reusable world-space face data so repeated elevation queries no longer refit the same terrain faces over and over
 - Updated [README.md](../../../../README.md) so the public `create_site_element` guidance now describes the realized drape behavior rather than leaving `surface_drape` as an implied hosting intent only.
 
 ## Validation
@@ -41,6 +43,7 @@
   - tessellation cap refusal
   - exact 1m station-boundary segment length
   - complex multi-hill / multi-valley terrain with coherent thick shell output
+- Final live timing on the complex drape scenario improved from a `38.24s` average before the prepared-sampling-context optimization to a `2.40s` average after it, about `15.9x` faster.
 
 ## External Review
 
@@ -58,5 +61,6 @@
 ## Final State
 
 - SEM-13 is fully closed and live-validated for the intended shipped slice.
+- The final accepted implementation includes the prepared host-sampling optimization; no further optimization work is planned in this task.
 - No code cleanup blockers remain from the implementation/fix/optimization rounds.
 - Future work, if needed, is performance follow-up beyond the current slice rather than correctness repair.

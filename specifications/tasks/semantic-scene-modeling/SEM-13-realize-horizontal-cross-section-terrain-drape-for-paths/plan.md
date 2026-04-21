@@ -411,6 +411,8 @@ Ship a terrain-aware semantic `path + surface_drape` mode that is actually trust
   - exact station-boundary paths no longer duplicate the terminal station
   - thickness uses a coherent bottom ribbon plus perimeter shell instead of per-triangle pushpull
   - draped face emission now prefers `entities.build { |builder| ... }` when available to reduce main-thread geometry creation cost
+  - host sampling now prepares and reuses a per-build sampling context instead of recollecting and recomputing sampleable face data for every station sample
+  - prepared sampling caches sampleable face entries plus world-space face data needed for repeated elevation queries
 - Local validation completed successfully:
   - `bundle exec rake ruby:test`
   - `RUBOCOP_CACHE_ROOT=/tmp/rubocop-cache bundle exec rake ruby:lint`
@@ -418,6 +420,11 @@ Ship a terrain-aware semantic `path + surface_drape` mode that is actually trust
 - Live SketchUp validation completed successfully for:
   - sloped host surfaces
   - cross-slope terrain
+  - ridge / smoothing behavior
+  - exact `1.0 m` station-boundary paths
+  - thick draped paths on complex multi-hill / multi-valley terrain
+- Final live timing on the complex drape scenario improved from an earlier `38.24s` average to `2.40s` average after the prepared-sampling-context optimization, a measured improvement of about `15.9x`.
+- No further optimization work is planned in this task; the shipped performance and live correctness outcomes were accepted as sufficient for closeout.
   - ridge smoothing / local-peak preservation
   - dense input vertices
   - thickness-downward shell output
