@@ -103,6 +103,7 @@ The current MCP surface includes scene inspection, semantic scene modeling, and 
 
 Public geometric dimensions for `create_site_element` are interpreted and returned in meters, independent of the active SketchUp model unit display settings.
 The public `create_site_element` request is sectioned: `elementType`, `metadata`, `definition`, `hosting`, `placement`, `representation`, and `lifecycle`, with optional `sceneProperties` for wrapper `name` and `tag`.
+For `elementType: "path"` with `hosting.mode: "surface_drape"`, the runtime now creates a terrain-following top ribbon that stays level across each cross-section, smooths along the path length, keeps the top surface slightly above terrain to avoid visual overlap, and still applies any `thickness` downward for visual grounding.
 The hierarchy-maintenance surface is intentionally narrow: `create_group` creates either a plain group container or, when `metadata.sourceElementId` and `metadata.status` are supplied, a managed `grouped_feature` container with optional `sceneProperties.name` and `sceneProperties.tag`. `reparent_entities` explicitly reparents supported groups or component instances using the same compact target-reference contract (`sourceElementId`, `persistentId`, `entityId`).
 `list_entities` is an explicit inventory tool that now requires `scopeSelector` (`top_level`, `selection`, or `children_of_target`) plus optional `outputOptions`.
 `find_entities` is an exact-match targeting tool that now requires `targetSelector` with nested `identity`, `attributes`, and `metadata` sections.

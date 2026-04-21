@@ -31,7 +31,7 @@ module SemanticTestSupport
   class FakeEntitiesCollection
     include Enumerable
 
-    attr_reader :groups, :faces, :component_instances, :construction_points
+    attr_reader :groups, :faces, :component_instances, :construction_points, :build_calls
     attr_accessor :owner
 
     def initialize(id_sequence:, layer:, material:, owner: nil, writable: true)
@@ -44,6 +44,7 @@ module SemanticTestSupport
       @faces = []
       @component_instances = []
       @construction_points = []
+      @build_calls = 0
     end
 
     def add_group
@@ -109,6 +110,16 @@ module SemanticTestSupport
       cpoint
     end
 
+    def build
+      ensure_writable!
+      @build_calls += 1
+      builder = FakeEntitiesBuilder.new(self)
+      return builder unless block_given?
+
+      yield builder
+      nil
+    end
+
     def writable?
       @writable
     end
@@ -153,6 +164,16 @@ module SemanticTestSupport
       when FakeConstructionPoint
         @construction_points << entity
       end
+    end
+  end
+
+  class FakeEntitiesBuilder
+    def initialize(entities)
+      @entities = entities
+    end
+
+    def add_face(*points)
+      @entities.add_face(*points)
     end
   end
 

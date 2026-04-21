@@ -531,6 +531,38 @@ class SemanticCommandsTest < Minitest::Test
     assert_equal('hosting', result.dig(:refusal, :details, :section))
   end
 
+  def test_create_site_element_refuses_surface_drape_path_when_terrain_sampling_misses
+    terrain_target = build_sample_surface_face(
+      entity_id: 501,
+      persistent_id: 5001,
+      source_element_id: 'terrain-main',
+      name: 'Short Terrain',
+      layer: SceneQueryTestSupport::FakeLayer.new('Terrain'),
+      material: SceneQueryTestSupport::FakeMaterial.new('Soil'),
+      x_range: [0.0, 4.0],
+      y_range: [-1.0, 1.0],
+      z_value: 1.0
+    )
+    commands = SU_MCP::SemanticCommands.new(
+      model: @model,
+      target_resolver: FakeTargetResolver.new(resolution: 'unique', entity: terrain_target)
+    )
+
+    result = commands.create_site_element(sectioned_terrain_path_request(
+                                            'definition' => {
+                                              'mode' => 'centerline',
+                                              'centerline' => [[0.0, 0.0], [10.0, 0.0]],
+                                              'width' => 1.6,
+                                              'thickness' => 0.1
+                                            }
+                                          ))
+
+    assert_equal(true, result[:success])
+    assert_equal('refused', result[:outcome])
+    assert_equal('terrain_sample_miss', result.dig(:refusal, :code))
+    assert_equal('hosting', result.dig(:refusal, :details, :section))
+  end
+
   def test_create_site_element_replaces_managed_object_while_preserving_identity_and_parent_context
     old_parent = @model.active_entities.add_group
     target_entity = FakeManagedEntity.new(
@@ -757,7 +789,27 @@ class SemanticCommandsTest < Minitest::Test
   end
 
   def test_create_site_element_creates_supported_surface_drape_path_inside_parent_destination_context
-    host_target = @model.active_entities.add_group
+    host_target = build_sample_surface_group(
+      entity_id: 601,
+      persistent_id: 6001,
+      name: 'Terrain Host',
+      layer: SceneQueryTestSupport::FakeLayer.new('Terrain'),
+      material: SceneQueryTestSupport::FakeMaterial.new('Soil'),
+      child_faces: [
+        build_sample_surface_face(
+          entity_id: 602,
+          persistent_id: 6002,
+          name: 'Terrain Face',
+          layer: SceneQueryTestSupport::FakeLayer.new('Terrain'),
+          material: SceneQueryTestSupport::FakeMaterial.new('Soil'),
+          x_range: [-2.0 * METERS_TO_INTERNAL, 10.0 * METERS_TO_INTERNAL],
+          y_range: [-3.0 * METERS_TO_INTERNAL, 4.0 * METERS_TO_INTERNAL],
+          z_value: 0.0,
+          source_element_id: 'terrain-main'
+        )
+      ],
+      source_element_id: 'terrain-main'
+    )
     parent_group = @model.active_entities.add_group
     target_resolver = FakeSequentialTargetResolver.new(
       { resolution: 'unique', entity: host_target },
@@ -775,7 +827,8 @@ class SemanticCommandsTest < Minitest::Test
     assert_equal(true, result[:success])
     assert_equal('created', result[:outcome])
     assert_equal(1, parent_group.entities.groups.length)
-    assert_equal(2, @model.active_entities.groups.length)
+    assert_equal('main-garden-walk-001',
+                 parent_group.entities.groups.first.get_attribute('su_mcp', 'sourceElementId'))
   end
 
   def test_create_site_element_can_create_a_child_under_a_managed_container_created_by_create_group

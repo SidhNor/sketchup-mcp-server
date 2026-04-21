@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require_relative 'builder_registry'
+require_relative 'builder_refusal'
 require_relative 'destination_resolver'
 require_relative 'managed_object_metadata'
 require_relative 'pad_builder'
@@ -53,6 +54,8 @@ module SU_MCP
       # Normalize only validated requests so meter semantics stay at the Ruby boundary.
       normalized_params = request_normalizer.normalize_create_site_element_params(params)
       create_site_element_v2(normalized_params, public_params: params)
+    rescue Semantic::BuilderRefusal => e
+      ToolResponse.refusal(code: e.code, message: e.message, details: e.details)
     end
 
     # rubocop:disable Naming/AccessorMethodName

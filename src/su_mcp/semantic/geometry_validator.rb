@@ -17,6 +17,7 @@ module SU_MCP
       def invalid_polyline?(points)
         normalized = normalize_polyline(points)
         return true if normalized.nil?
+        return true if consecutive_duplicate_points?(normalized)
 
         normalized.uniq.length < 2
       end

@@ -24,6 +24,7 @@ The current task set persists the completed first-wave semantic work and the nex
 - lifecycle primitives needed to make richer built-form authoring materially real
 - richer built-form and composed-feature authoring inside the current semantic product boundary
 - managed-object maintenance alignment for post-create semantic revision behavior
+- horizontal-cross-section terrain-drape realization for hosted semantic paths
 - governed duplication and managed deletion policy
 
 ## Current Task Order
@@ -40,6 +41,7 @@ The current task set persists the completed first-wave semantic work and the nex
 10. [SEM-10 Add Richer Built-Form and Composed Feature Authoring](SEM-10-add-richer-built-form-and-composed-feature-authoring/task.md)
 11. [SEM-11 Align Managed-Object Maintenance Surface](SEM-11-align-managed-object-maintenance-surface/task.md)
 12. [SEM-12 Add Governed Duplication and Managed Deletion Policy](SEM-12-add-governed-duplication-and-managed-deletion-policy/task.md)
+13. [SEM-13 Realize Horizontal Cross-Section Terrain Drape for Paths](SEM-13-realize-horizontal-cross-section-terrain-drape-for-paths/task.md)
 
 ## Deferred Follow-Ons
 
@@ -62,3 +64,4 @@ The following follow-ons remain intentionally deferred from the active task fold
 - `SEM-11` and `SEM-12` move managed-object maintenance, duplication, and deletion policy after the richer built-form authoring slice instead of forcing all hardening work to land first.
 - `SEM-10` and `SEM-11` are now completed and live-validated against SketchUp-hosted hierarchy and managed-maintenance flows.
 - `SEM-12` remains the next draft follow-on for governed duplication and managed deletion policy.
+- `SEM-13` is now completed and live-validated: `path + surface_drape` builds a smoothed terrain-following top ribbon with horizontal cross-sections, coherent downward thickness shell output, and structured refusals.

@@ -52,6 +52,21 @@ class SemanticRequestValidatorTest < Minitest::Test
     assert_equal('invalid_geometry', refusal.dig(:refusal, :code))
   end
 
+  def test_refuses_path_payloads_with_consecutive_duplicate_points
+    refusal = @validator.refusal_for(
+      sectioned_terrain_path_request(
+        'definition' => {
+          'mode' => 'centerline',
+          'centerline' => [[0.0, 0.0], [0.0, 0.0], [4.0, 0.0]],
+          'width' => 1.6
+        }
+      )
+    )
+
+    assert_equal('invalid_geometry', refusal.dig(:refusal, :code))
+    assert_equal('definition.centerline', refusal.dig(:refusal, :details, :field))
+  end
+
   def test_refuses_retaining_edge_payloads_with_non_positive_thickness
     refusal = @validator.refusal_for(sectioned_retaining_edge_request(
                                        'definition' => {
