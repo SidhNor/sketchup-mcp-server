@@ -37,6 +37,11 @@ class ToolDispatcherTest < Minitest::Test
       { success: true, resolution: 'unique', matches: [args.fetch('targetSelector')] }
     end
 
+    def validate_scene_update(args)
+      @calls << [:validate_scene_update, args]
+      { success: true, outcome: 'passed', errors: [], warnings: [], summary: {} }
+    end
+
     def delete_entities(args)
       @calls << [:delete_entities, args]
       {
@@ -100,6 +105,7 @@ class ToolDispatcherTest < Minitest::Test
     # rubocop:enable Naming/AccessorMethodName
 
     private :get_scene_info, :transform_entities, :selection_info, :find_entities,
+            :validate_scene_update,
             :delete_entities,
             :sample_surface_z,
             :create_group, :reparent_entities, :create_site_element, :set_entity_metadata,
@@ -174,6 +180,29 @@ class ToolDispatcherTest < Minitest::Test
         { 'targetSelector' => { 'identity' => { 'persistentId' => '1001' } } }
       ]],
       @target.calls
+    )
+  end
+
+  def test_dispatches_validate_scene_update_to_the_validation_command
+    result = @dispatcher.call(
+      'validate_scene_update',
+      { 'expectations' => { 'mustExist' => [{ 'targetReference' => { 'entityId' => '101' } }] } }
+    )
+
+    assert_equal(
+      { success: true, outcome: 'passed', errors: [], warnings: [], summary: {} },
+      result
+    )
+    assert_equal(
+      [[
+        :validate_scene_update,
+        {
+          'expectations' => {
+            'mustExist' => [{ 'targetReference' => { 'entityId' => '101' } }]
+          }
+        }
+      ]],
+      @target.calls.last(1)
     )
   end
 

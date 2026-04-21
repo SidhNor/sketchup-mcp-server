@@ -90,6 +90,7 @@ The current MCP surface includes scene inspection, semantic scene modeling, and 
 - `list_entities`
 - `get_entity_info`
 - `find_entities`
+- `validate_scene_update`
 - `sample_surface_z`
 - `create_site_element`
 - `set_entity_metadata`
@@ -107,6 +108,7 @@ For `elementType: "path"` with `hosting.mode: "surface_drape"`, the runtime now 
 The hierarchy-maintenance surface is intentionally narrow: `create_group` creates either a plain group container or, when `metadata.sourceElementId` and `metadata.status` are supplied, a managed `grouped_feature` container with optional `sceneProperties.name` and `sceneProperties.tag`. `reparent_entities` explicitly reparents supported groups or component instances using the same compact target-reference contract (`sourceElementId`, `persistentId`, `entityId`).
 `list_entities` is an explicit inventory tool that now requires `scopeSelector` (`top_level`, `selection`, or `children_of_target`) plus optional `outputOptions`.
 `find_entities` is an exact-match targeting tool that now requires `targetSelector` with nested `identity`, `attributes`, and `metadata` sections.
+`validate_scene_update` is the first public validation surface. It accepts a top-level `expectations` object and currently supports `mustExist`, `mustPreserve`, `metadataRequirements`, `tagRequirements`, `materialRequirements`, and `geometryRequirements`, with each expectation using exactly one of `targetReference` or `targetSelector`.
 `delete_entities` replaces `delete_component` and deletes one explicitly referenced supported group or component instance, returning structured `operation` and `affectedEntities.deleted` data.
 `transform_entities` and `set_material` now accept either legacy `id` or compact `targetReference` (`sourceElementId`, `persistentId`, `entityId`), refuse requests that provide both or neither, and return additive mutation envelopes with `outcome`, `id`, and `managedObject`.
 `set_entity_metadata` remains the semantic metadata path and now supports approved soft-field updates for `status`, `structureCategory`, `plantingCategory`, and `speciesHint` while continuing to refuse protected managed-object identity fields.

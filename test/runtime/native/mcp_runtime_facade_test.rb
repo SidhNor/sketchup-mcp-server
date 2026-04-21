@@ -3,6 +3,7 @@
 require_relative '../../test_helper'
 require_relative '../../support/scene_query_test_support'
 require_relative '../../support/semantic_test_support'
+require_relative '../../../src/su_mcp/scene_validation/scene_validation_commands'
 require_relative '../../../src/su_mcp/scene_query/scene_query_commands'
 require_relative '../../../src/su_mcp/runtime/native/mcp_runtime_facade'
 require_relative '../../../src/su_mcp/runtime/runtime_command_factory'
@@ -53,6 +54,20 @@ class McpRuntimeFacadeTest < Minitest::Test
     end
 
     def eval_ruby(params = {})
+      @calls << params
+      @result
+    end
+  end
+
+  class RecordingValidationCommands
+    attr_reader :calls
+
+    def initialize(result:)
+      @result = result
+      @calls = []
+    end
+
+    def validate_scene_update(params)
       @calls << params
       @result
     end
@@ -166,6 +181,32 @@ class McpRuntimeFacadeTest < Minitest::Test
 
     assert_equal(1, factory.calls)
     assert_equal([{ 'id' => '301', 'position' => [1, 2, 3] }], editing_commands.calls)
+    assert_equal(expected, result)
+  end
+
+  def test_real_runtime_command_factory_includes_the_validation_command_target
+    factory = SU_MCP::RuntimeCommandFactory.new
+
+    assert(factory.build_command_targets.any?(SU_MCP::SceneValidationCommands))
+  end
+
+  def test_validate_scene_update_dispatches_through_the_shared_runtime_command_factory
+    expected = { success: true, outcome: 'passed', errors: [], warnings: [], summary: {} }
+    validation_commands = RecordingValidationCommands.new(result: expected)
+    factory = RecordingRuntimeCommandFactory.new(targets: [validation_commands])
+    facade = SU_MCP::McpRuntimeFacade.new(runtime_command_factory: factory)
+
+    result = facade.validate_scene_update(
+      'expectations' => { 'mustExist' => [{ 'targetReference' => { 'entityId' => '101' } }] }
+    )
+
+    assert_equal(1, factory.calls)
+    assert_equal(
+      [{
+        'expectations' => { 'mustExist' => [{ 'targetReference' => { 'entityId' => '101' } }] }
+      }],
+      validation_commands.calls
+    )
     assert_equal(expected, result)
   end
 

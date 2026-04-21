@@ -5,6 +5,7 @@ require_relative '../developer/developer_commands'
 require_relative '../editing/editing_commands'
 require_relative '../modeling/modeling_support'
 require_relative '../scene_query/scene_query_commands'
+require_relative '../scene_validation/scene_validation_commands'
 require_relative '../semantic/hierarchy_maintenance_commands'
 require_relative '../semantic/semantic_commands'
 require_relative '../modeling/solid_modeling_commands'
@@ -20,6 +21,7 @@ module SU_MCP
     def build_command_targets
       [
         scene_query_commands,
+        scene_validation_commands,
         semantic_commands,
         hierarchy_maintenance_commands,
         editing_commands,
@@ -34,6 +36,10 @@ module SU_MCP
 
     def semantic_commands
       @semantic_commands ||= SemanticCommands.new(model: Sketchup.active_model)
+    end
+
+    def scene_validation_commands
+      @scene_validation_commands ||= SceneValidationCommands.new
     end
 
     def hierarchy_maintenance_commands

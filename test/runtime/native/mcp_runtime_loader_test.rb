@@ -12,6 +12,7 @@ class McpRuntimeLoaderTest < Minitest::Test
     get_scene_info
     list_entities
     find_entities
+    validate_scene_update
     sample_surface_z
     get_entity_info
     create_site_element
@@ -148,6 +149,33 @@ class McpRuntimeLoaderTest < Minitest::Test
         .fetch('inputSchema')
         .fetch('properties')
         .fetch('targetSelector')
+        .fetch('properties')
+        .keys
+        .sort
+    )
+
+    validate_scene_update_tool = tools.find do |tool|
+      tool.fetch('name') == 'validate_scene_update'
+    end
+    assert_equal('Validate Scene Update', validate_scene_update_tool.fetch('title'))
+    assert_equal(true, validate_scene_update_tool.fetch('annotations').fetch('readOnlyHint'))
+    assert_equal(
+      ['expectations'],
+      validate_scene_update_tool.fetch('inputSchema').fetch('required')
+    )
+    assert_equal(
+      ['expectations'],
+      validate_scene_update_tool.fetch('inputSchema').fetch('properties').keys
+    )
+    assert_equal(
+      %w[
+        geometryRequirements materialRequirements metadataRequirements mustExist
+        mustPreserve tagRequirements
+      ],
+      validate_scene_update_tool
+        .fetch('inputSchema')
+        .fetch('properties')
+        .fetch('expectations')
         .fetch('properties')
         .keys
         .sort
@@ -315,6 +343,38 @@ class McpRuntimeLoaderTest < Minitest::Test
     )
     refute(input_schema.fetch(:properties).key?(:editContext))
     refute(input_schema.fetch(:properties).key?(:id))
+  end
+
+  def test_validate_scene_update_tool_schema_reuses_shared_target_shapes
+    validation_tool = @loader.tool_catalog.find do |tool|
+      tool.fetch(:name) == 'validate_scene_update'
+    end
+    refute_nil(validation_tool)
+
+    input_schema = validation_tool.fetch(:input_schema)
+    expectations_schema = input_schema.fetch(:properties).fetch(:expectations).fetch(:properties)
+    must_exist_item = expectations_schema.fetch(:mustExist).fetch(:items).fetch(:properties)
+    metadata_requirement_item = expectations_schema
+                                .fetch(:metadataRequirements)
+                                .fetch(:items)
+                                .fetch(:properties)
+    geometry_requirement_item = expectations_schema
+                                .fetch(:geometryRequirements)
+                                .fetch(:items)
+                                .fetch(:properties)
+
+    assert_equal(
+      %w[entityId persistentId sourceElementId],
+      must_exist_item.fetch(:targetReference).fetch(:properties).keys.map(&:to_s).sort
+    )
+    assert_equal(
+      %w[attributes identity metadata],
+      metadata_requirement_item.fetch(:targetSelector).fetch(:properties).keys.map(&:to_s).sort
+    )
+    assert_equal(
+      %w[expectationId kind targetReference targetSelector],
+      geometry_requirement_item.keys.map(&:to_s).sort
+    )
   end
 
   def test_create_group_tool_schema_supports_managed_container_metadata_and_scene_properties

@@ -310,6 +310,16 @@ module SU_MCP
             },
             additionalProperties: false
           }
+        ),
+        tool_entry(
+          name: 'validate_scene_update',
+          title: 'Validate Scene Update',
+          description: 'Validate explicit scene-update expectations against resolved scene ' \
+                       'targets and return structured acceptance findings.',
+          handler_key: :validate_scene_update,
+          annotations: { read_only_hint: true, destructive_hint: false },
+          classification: 'first_class',
+          input_schema: validate_scene_update_schema
         )
       ]
     end
@@ -757,6 +767,129 @@ module SU_MCP
           width: number_schema,
           elevation: number_schema,
           thickness: number_schema
+        },
+        additionalProperties: false
+      }
+    end
+
+    def expectation_target_schema
+      {
+        type: 'object',
+        properties: {
+          targetReference: target_reference_schema,
+          targetSelector: target_selector_schema,
+          expectationId: string_schema
+        },
+        additionalProperties: false
+      }
+    end
+
+    def metadata_requirement_schema
+      {
+        type: 'object',
+        properties: {
+          targetReference: target_reference_schema,
+          targetSelector: target_selector_schema,
+          expectationId: string_schema,
+          requiredKeys: string_array_schema
+        },
+        additionalProperties: false
+      }
+    end
+
+    def tag_requirement_schema
+      {
+        type: 'object',
+        properties: {
+          targetReference: target_reference_schema,
+          targetSelector: target_selector_schema,
+          expectationId: string_schema,
+          expectedTag: string_schema
+        },
+        additionalProperties: false
+      }
+    end
+
+    def material_requirement_schema
+      {
+        type: 'object',
+        properties: {
+          targetReference: target_reference_schema,
+          targetSelector: target_selector_schema,
+          expectationId: string_schema,
+          expectedMaterial: string_schema
+        },
+        additionalProperties: false
+      }
+    end
+
+    def geometry_requirement_schema
+      {
+        type: 'object',
+        properties: {
+          targetReference: target_reference_schema,
+          targetSelector: target_selector_schema,
+          expectationId: string_schema,
+          kind: enum_schema(
+            'mustHaveGeometry',
+            'mustNotBeNonManifold',
+            'mustBeValidSolid'
+          )
+        },
+        additionalProperties: false
+      }
+    end
+
+    def validation_core_expectations_schema
+      {
+        mustExist: {
+          type: 'array',
+          items: expectation_target_schema
+        },
+        mustPreserve: {
+          type: 'array',
+          items: expectation_target_schema
+        },
+        metadataRequirements: {
+          type: 'array',
+          items: metadata_requirement_schema
+        }
+      }
+    end
+
+    def validation_geometry_expectations_schema
+      {
+        tagRequirements: {
+          type: 'array',
+          items: tag_requirement_schema
+        },
+        materialRequirements: {
+          type: 'array',
+          items: material_requirement_schema
+        },
+        geometryRequirements: {
+          type: 'array',
+          items: geometry_requirement_schema
+        }
+      }
+    end
+
+    def validation_expectations_schema
+      {
+        type: 'object',
+        properties: validation_core_expectations_schema.merge(
+          validation_geometry_expectations_schema
+        ),
+        additionalProperties: false
+      }
+    end
+
+    def validate_scene_update_schema
+      {
+        type: 'object',
+        required: ['expectations'],
+        properties: {
+          expectations: validation_expectations_schema
         },
         additionalProperties: false
       }
