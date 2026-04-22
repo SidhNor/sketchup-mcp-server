@@ -129,6 +129,17 @@ Conflict flag: no functional requirements currently conflict with the business r
 - The tool surface should stay small and parameterized rather than expanding into many overlapping constructors.
 - Existing primitive tools may need to coexist during migration but should not remain the primary product surface.
 - Composite feature assembly should remain a separate workflow layer rather than being forced into one oversized atomic-creation contract.
+- Terrain authoring should remain `eval_ruby`-first until repeated workflows justify a stable first-class terrain-modification contract.
+
+## Terrain Relationship Boundary
+
+- Terrain relationships for managed objects are in scope before broad terrain authoring is in scope.
+- The product should distinguish between:
+- `terrain_following`: geometry follows sampled terrain directly
+- `fixed_datum_with_uniform_thickness`: top elevation is authoritative and body depth is uniform
+- `fixed_datum_extend_to_terrain`: top elevation is authoritative and the underside/support geometry resolves downward to the host terrain
+- `rigid_object_on_terrain`: object placement depends on terrain support or clearance, but the object should not be auto-warped to match terrain edits
+- Terrain-dependent managed objects should preserve enough intent to support later validation and reconciliation against a named terrain target.
 
 ## Out of Scope
 
@@ -149,6 +160,7 @@ Conflict flag: no functional requirements currently conflict with the business r
 - Should the MVP require any additional `structure` metadata beyond `sourceElementId`, `status`, and subtype/category for certain workflows such as retained existing buildings?
 - How should roof or enclosure expectations be represented for `structure` without turning the PRD into a building-modeling spec?
 - Should `terrain_patch` remain in the first semantic-modeling release or move to a later phase if terrain-authoring scope proves too broad?
+- Which terrain relationship fields should become first-class before any terrain-authoring contract is introduced, such as host target, hosting mode, anchor geometry, tolerance, and repair policy?
 - How strict should metadata validation be at creation time versus update time?
 - What identity rules should apply when `duplicate_entity` creates a variant from an existing Managed Scene Object?
 - Which representation-rebuild or replacement flows should be treated as first-class semantic revisions versus deferred to fallback execution until the product rules stabilize?
@@ -190,3 +202,4 @@ Conflict flag: no functional requirements currently conflict with the business r
 | 2026-04-15 | Clarified that semantic lifecycle behavior must remain reliable for Managed Scene Objects inside nested scene hierarchy, and made parent-placement preservation explicit in revision-friendly workflows. |
 | 2026-04-16 | Clarified that the primary semantic creation surface must support contract evolution for create, adopt, and identity-preserving replace workflows without fragmenting into many overlapping tools, and made composition a separate product layer from atomic semantic creation. |
 | 2026-04-17 | Added a limited first-class hierarchy-maintenance surface for managed-object workflows, centered on explicit target-based group creation and explicit reparenting while keeping broader hierarchy orchestration out of scope. |
+| 2026-04-22 | Clarified that terrain authoring remains `eval_ruby`-first for now, while terrain relationships for managed objects are product scope and should distinguish terrain-following, fixed-datum, extend-to-terrain, and rigid-on-terrain cases. |
