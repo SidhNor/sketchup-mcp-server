@@ -25,6 +25,11 @@ module SU_MCP
         planting_mass
         tree_proxy
       ].freeze
+      SUPPORTED_LIFECYCLE_MODES = %w[
+        create_new
+        adopt_existing
+        replace_preserve_identity
+      ].freeze
       def initialize(geometry_validator: GeometryValidator.new)
         @geometry_validator = geometry_validator
       end
@@ -91,7 +96,8 @@ module SU_MCP
             lambda do
               unsupported_option_refusal(
                 field: 'definition.mode',
-                value: params.dig('definition', 'mode')
+                value: params.dig('definition', 'mode'),
+                allowed_values: supported_definition_modes_for(params['elementType'])
               )
             end
           ],
@@ -124,7 +130,8 @@ module SU_MCP
             lambda do
               unsupported_option_refusal(
                 field: 'definition.structureCategory',
-                value: params.dig('definition', 'structureCategory')
+                value: params.dig('definition', 'structureCategory'),
+                allowed_values: APPROVED_STRUCTURE_CATEGORIES
               )
             end
           ],
@@ -218,7 +225,13 @@ module SU_MCP
           ],
           [
             unsupported_v2_lifecycle_mode?(lifecycle_mode),
-            -> { unsupported_option_refusal(field: 'lifecycle.mode', value: lifecycle_mode) }
+            lambda do
+              unsupported_option_refusal(
+                field: 'lifecycle.mode',
+                value: lifecycle_mode,
+                allowed_values: SUPPORTED_LIFECYCLE_MODES
+              )
+            end
           ]
         ]
       end
@@ -253,10 +266,14 @@ module SU_MCP
 
       def unsupported_v2_definition_mode?(params)
         element_type = params['elementType'].to_s
-        supported_modes = SUPPORTED_DEFINITION_MODES.fetch(element_type, [])
+        supported_modes = supported_definition_modes_for(element_type)
         definition_mode = params.dig('definition', 'mode').to_s
 
         !definition_mode.empty? && !supported_modes.include?(definition_mode)
+      end
+
+      def supported_definition_modes_for(element_type)
+        SUPPORTED_DEFINITION_MODES.fetch(element_type.to_s, [])
       end
 
       def missing_v2_lifecycle_target?(params)
@@ -462,7 +479,7 @@ module SU_MCP
       end
 
       def unsupported_v2_lifecycle_mode?(lifecycle_mode)
-        !%w[create_new adopt_existing replace_preserve_identity].include?(lifecycle_mode.to_s)
+        !SUPPORTED_LIFECYCLE_MODES.include?(lifecycle_mode.to_s)
       end
 
       def invalid_polyline?(points)
@@ -505,11 +522,9 @@ module SU_MCP
         )
       end
 
-      def unsupported_option_refusal(field:, value:)
+      def unsupported_option_refusal(field:, value:, allowed_values: nil)
         details = { field: field, value: value }
-        if %w[structureCategory definition.structureCategory].include?(field)
-          details[:allowedValues] = APPROVED_STRUCTURE_CATEGORIES
-        end
+        details[:allowedValues] = allowed_values if allowed_values
 
         semantic_refusal(
           code: 'unsupported_option',

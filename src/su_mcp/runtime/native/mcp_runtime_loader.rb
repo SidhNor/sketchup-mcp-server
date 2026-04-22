@@ -4,6 +4,7 @@ require 'json'
 require 'stringio'
 
 require_relative 'tool_definition'
+require_relative '../../semantic/request_validator'
 
 module SU_MCP
   # Loader for the staged Ruby-native MCP runtime.
@@ -955,7 +956,9 @@ module SU_MCP
         type: 'object',
         required: %w[elementType metadata definition hosting placement representation lifecycle],
         properties: {
-          elementType: string_schema,
+          elementType: enum_schema(
+            SU_MCP::Semantic::RequestValidator::SUPPORTED_ELEMENT_TYPES
+          ),
           metadata: {
             type: 'object',
             properties: {
@@ -975,12 +978,16 @@ module SU_MCP
           definition: {
             type: 'object',
             properties: {
-              mode: string_schema,
+              mode: enum_schema(
+                SU_MCP::Semantic::RequestValidator::SUPPORTED_DEFINITION_MODES.values
+              ),
               footprint: xy_point_array_schema,
               elevation: number_schema,
               height: number_schema,
               thickness: number_schema,
-              structureCategory: string_schema,
+              structureCategory: enum_schema(
+                SU_MCP::Semantic::RequestValidator::APPROVED_STRUCTURE_CATEGORIES
+              ),
               centerline: xy_point_array_schema,
               width: number_schema,
               polyline: xy_point_array_schema,
@@ -1007,7 +1014,13 @@ module SU_MCP
           hosting: {
             type: 'object',
             properties: {
-              mode: string_schema,
+              mode: enum_schema(
+                'none',
+                'surface_drape',
+                'surface_snap',
+                'terrain_anchored',
+                'edge_clamp'
+              ),
               target: target_reference_schema
             },
             additionalProperties: false
@@ -1015,7 +1028,7 @@ module SU_MCP
           placement: {
             type: 'object',
             properties: {
-              mode: string_schema,
+              mode: enum_schema('host_resolved', 'parented', 'preserve_existing'),
               parent: target_reference_schema
             },
             additionalProperties: false
@@ -1023,7 +1036,7 @@ module SU_MCP
           representation: {
             type: 'object',
             properties: {
-              mode: string_schema,
+              mode: enum_schema('procedural', 'path_surface_proxy', 'proxy_mass', 'adopted'),
               material: string_schema
             },
             additionalProperties: false
@@ -1031,7 +1044,9 @@ module SU_MCP
           lifecycle: {
             type: 'object',
             properties: {
-              mode: string_schema,
+              mode: enum_schema(
+                SU_MCP::Semantic::RequestValidator::SUPPORTED_LIFECYCLE_MODES
+              ),
               target: target_reference_schema
             },
             additionalProperties: false

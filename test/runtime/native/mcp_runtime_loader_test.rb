@@ -220,6 +220,34 @@ class McpRuntimeLoaderTest < Minitest::Test
       ],
       create_site_element_tool.fetch('inputSchema').fetch('properties').keys.sort
     )
+    assert_equal(
+      SU_MCP::Semantic::RequestValidator::SUPPORTED_ELEMENT_TYPES,
+      create_site_element_tool
+        .fetch('inputSchema')
+        .fetch('properties')
+        .fetch('elementType')
+        .fetch('enum')
+    )
+    assert_equal(
+      SU_MCP::Semantic::RequestValidator::SUPPORTED_DEFINITION_MODES.values.flatten,
+      create_site_element_tool
+        .fetch('inputSchema')
+        .fetch('properties')
+        .fetch('definition')
+        .fetch('properties')
+        .fetch('mode')
+        .fetch('enum')
+    )
+    assert_equal(
+      SU_MCP::Semantic::RequestValidator::SUPPORTED_LIFECYCLE_MODES,
+      create_site_element_tool
+        .fetch('inputSchema')
+        .fetch('properties')
+        .fetch('lifecycle')
+        .fetch('properties')
+        .fetch('mode')
+        .fetch('enum')
+    )
 
     set_entity_metadata_tool = tools.find { |tool| tool.fetch('name') == 'set_entity_metadata' }
     assert_equal('Set Entity Metadata', set_entity_metadata_tool.fetch('title'))
@@ -309,6 +337,23 @@ class McpRuntimeLoaderTest < Minitest::Test
         sceneProperties
       ],
       input_schema.fetch(:properties).keys.map(&:to_s).sort
+    )
+    assert_equal(
+      SU_MCP::Semantic::RequestValidator::SUPPORTED_ELEMENT_TYPES,
+      input_schema.fetch(:properties).fetch(:elementType).fetch(:enum)
+    )
+    assert_equal(
+      SU_MCP::Semantic::RequestValidator::SUPPORTED_DEFINITION_MODES.values.flatten,
+      input_schema
+        .fetch(:properties)
+        .fetch(:definition)
+        .fetch(:properties)
+        .fetch(:mode)
+        .fetch(:enum)
+    )
+    assert_equal(
+      SU_MCP::Semantic::RequestValidator::SUPPORTED_LIFECYCLE_MODES,
+      input_schema.fetch(:properties).fetch(:lifecycle).fetch(:properties).fetch(:mode).fetch(:enum)
     )
     refute(input_schema.fetch(:properties).key?(:sourceElementId))
     refute(input_schema.fetch(:properties).key?(:path))

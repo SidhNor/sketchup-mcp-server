@@ -194,7 +194,31 @@ class SemanticRequestValidatorTest < Minitest::Test
       assert_equal('unsupported_option', refusal.dig(:refusal, :code))
       assert_equal('definition.mode', refusal.dig(:refusal, :details, :field))
       assert_equal(request.dig('definition', 'mode'), refusal.dig(:refusal, :details, :value))
+      assert_equal(
+        SU_MCP::Semantic::RequestValidator::SUPPORTED_DEFINITION_MODES.fetch(
+          request.fetch('elementType')
+        ),
+        refusal.dig(:refusal, :details, :allowedValues)
+      )
     end
+  end
+
+  def test_refuses_unknown_lifecycle_modes_with_allowed_values
+    refusal = @validator.refusal_for(
+      sectioned_structure_request(
+        'lifecycle' => {
+          'mode' => 'replace_existing'
+        }
+      )
+    )
+
+    assert_equal('unsupported_option', refusal.dig(:refusal, :code))
+    assert_equal('lifecycle.mode', refusal.dig(:refusal, :details, :field))
+    assert_equal('replace_existing', refusal.dig(:refusal, :details, :value))
+    assert_equal(
+      SU_MCP::Semantic::RequestValidator::SUPPORTED_LIFECYCLE_MODES,
+      refusal.dig(:refusal, :details, :allowedValues)
+    )
   end
 
   def test_refuses_flat_create_shape_when_public_contract_is_sectioned_only
