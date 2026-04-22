@@ -2,6 +2,14 @@
 
 <!-- version list -->
 
+## v0.18.0 (2026-04-22)
+
+### Features
+
+- **SVR-02**: Enhance request validation with supported modes and categories
+  ([`f3c64d5`](https://github.com/SidhNor/sketchup-mcp-server/commit/f3c64d5862c187bf3a9e28c2e265731d960dab89))
+
+
 ## v0.17.0 (2026-04-21)
 
 ### Documentation
