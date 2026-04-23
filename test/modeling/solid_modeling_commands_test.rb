@@ -3,6 +3,7 @@
 require_relative '../test_helper'
 require_relative '../support/modeling_test_support'
 require_relative '../../src/su_mcp/modeling/modeling_support'
+require_relative '../../src/su_mcp/runtime/tool_response'
 require_relative '../../src/su_mcp/modeling/solid_modeling_commands'
 
 class SolidModelingCommandsTest < Minitest::Test
@@ -33,15 +34,24 @@ class SolidModelingCommandsTest < Minitest::Test
   end
 
   def test_boolean_operation_rejects_invalid_operation_names
-    error = assert_raises(RuntimeError) do
-      @commands.boolean_operation(
-        'operation' => 'slice',
-        'target_id' => '101',
-        'tool_id' => '202'
-      )
-    end
+    result = @commands.boolean_operation(
+      'operation' => 'slice',
+      'target_id' => '101',
+      'tool_id' => '202'
+    )
 
-    assert_match(/Invalid boolean operation/, error.message)
+    assert_equal(
+      SU_MCP::ToolResponse.refusal(
+        code: 'unsupported_option',
+        message: 'Boolean operation is not supported.',
+        details: {
+          field: 'operation',
+          value: 'slice',
+          allowedValues: %w[union difference intersection]
+        }
+      ),
+      result
+    )
   end
 
   def test_boolean_operation_rejects_missing_target_or_tool_entities

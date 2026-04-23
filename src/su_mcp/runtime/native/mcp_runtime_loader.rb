@@ -4,6 +4,7 @@ require 'json'
 require 'stringio'
 
 require_relative 'tool_definition'
+require_relative '../../semantic/managed_object_metadata'
 require_relative '../../semantic/request_validator'
 
 module SU_MCP
@@ -13,6 +14,7 @@ module SU_MCP
     JSON_SCHEMA_SPEC = 'json-schema'
     POST_ACCEPT_TYPES = ['application/json', 'text/event-stream'].freeze
     REQUIRED_GEMS = %w[public_suffix addressable rack mcp json-schema].freeze
+    BOOLEAN_OPERATION_VALUES = %w[union difference intersection].freeze
     BASE_DIR = begin
       dir = __dir__.dup
       dir.force_encoding('UTF-8') if dir.respond_to?(:force_encoding)
@@ -472,7 +474,7 @@ module SU_MCP
             properties: {
               target_id: string_schema,
               tool_id: string_schema,
-              operation: string_schema,
+              operation: enum_schema(BOOLEAN_OPERATION_VALUES),
               delete_originals: boolean_schema
             },
             additionalProperties: false
@@ -1099,7 +1101,9 @@ module SU_MCP
             type: 'object',
             properties: {
               status: string_schema,
-              structureCategory: string_schema,
+              structureCategory: enum_schema(
+                SU_MCP::Semantic::ManagedObjectMetadata::APPROVED_STRUCTURE_CATEGORIES
+              ),
               plantingCategory: string_schema,
               speciesHint: string_schema
             },

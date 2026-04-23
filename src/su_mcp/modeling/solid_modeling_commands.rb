@@ -1,12 +1,15 @@
 # frozen_string_literal: true
 
 require 'sketchup'
+require_relative '../runtime/tool_response'
 
 module SU_MCP
   # Grouped command surface for solid-modeling operations.
   # rubocop:disable Metrics/AbcSize, Metrics/CyclomaticComplexity
   # rubocop:disable Metrics/MethodLength, Metrics/PerceivedComplexity
   class SolidModelingCommands
+    VALID_BOOLEAN_OPERATIONS = %w[union difference intersection].freeze
+
     def initialize(model_provider:, support:, logger: nil)
       @model_provider = model_provider
       @logger = logger
@@ -18,10 +21,15 @@ module SU_MCP
       model = active_model
 
       operation_type = params['operation']
-      unless %w[union difference intersection].include?(operation_type)
-        raise(
-          "Invalid boolean operation: #{operation_type}. " \
-          "Must be 'union', 'difference', or 'intersection'."
+      unless VALID_BOOLEAN_OPERATIONS.include?(operation_type)
+        return ToolResponse.refusal(
+          code: 'unsupported_option',
+          message: 'Boolean operation is not supported.',
+          details: {
+            field: 'operation',
+            value: operation_type,
+            allowedValues: VALID_BOOLEAN_OPERATIONS
+          }
         )
       end
 

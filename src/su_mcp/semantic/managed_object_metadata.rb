@@ -131,13 +131,14 @@ module SU_MCP
         unsupported_field = unsupported_field(entity, updates, clears)
         if unsupported_field
           return unsupported_option_refusal(
+            entity,
             unsupported_field,
             field_value(updates, unsupported_field)
           )
         end
 
         required_field = required_field(entity, clears)
-        return required_field_refusal(required_field) if required_field
+        return required_field_refusal(entity, required_field) if required_field
 
         validate_structure_category(entity, updates)
       end
@@ -149,11 +150,15 @@ module SU_MCP
       def validate_structure_category(entity, updates)
         return nil unless updates.key?('structureCategory')
         unless structure_entity?(entity)
-          return unsupported_option_refusal('structureCategory', updates['structureCategory'])
+          return unsupported_option_refusal(
+            entity,
+            'structureCategory',
+            updates['structureCategory']
+          )
         end
         return nil if APPROVED_STRUCTURE_CATEGORIES.include?(updates['structureCategory'])
 
-        unsupported_option_refusal('structureCategory', updates['structureCategory'])
+        unsupported_option_refusal(entity, 'structureCategory', updates['structureCategory'])
       end
 
       def apply_updates(entity, updates, clears)
@@ -184,6 +189,10 @@ module SU_MCP
         )
       end
 
+      def clearable_fields_for(entity)
+        soft_mutable_fields_for(entity) - required_mutable_fields_for(entity)
+      end
+
       def unsupported_field(entity, updates, clears)
         supported_fields = soft_mutable_fields_for(entity)
         (updates.keys + clears).find { |field| !supported_fields.include?(field) }
@@ -212,20 +221,27 @@ module SU_MCP
         )
       end
 
-      def required_field_refusal(field)
+      def required_field_refusal(entity, field)
         refusal_without_success(
           code: 'required_metadata_field',
           message: 'Field cannot be cleared for a Managed Scene Object.',
-          details: { field: field }
+          details: {
+            field: field,
+            allowedValues: clearable_fields_for(entity)
+          }
         )
       end
 
-      def unsupported_option_refusal(field, value)
+      def unsupported_option_refusal(entity, field, value)
         details = {
           field: field,
           value: value
         }
-        details[:allowedValues] = APPROVED_STRUCTURE_CATEGORIES if field == 'structureCategory'
+        if field == 'structureCategory'
+          details[:allowedValues] = APPROVED_STRUCTURE_CATEGORIES
+        elsif value.nil?
+          details[:allowedValues] = clearable_fields_for(entity)
+        end
 
         refusal_without_success(
           code: 'unsupported_option',

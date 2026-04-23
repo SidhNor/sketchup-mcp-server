@@ -85,7 +85,8 @@
             "code": "required_metadata_field",
             "message": "Field cannot be cleared for a Managed Scene Object.",
             "details": {
-              "field": "status"
+              "field": "status",
+              "allowedValues": []
             }
           }
         }

@@ -80,6 +80,129 @@
       }
     },
     {
+      "case_id": "set_entity_metadata_required_clear_allowed_values_refused",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "params": {
+          "name": "set_entity_metadata",
+          "arguments": {
+            "target": {
+              "sourceElementId": "hedge-001"
+            },
+            "clear": ["status"]
+          }
+        },
+        "id": "semantic-metadata-required-clear-allowed-values-refused"
+      },
+      "response": {
+        "jsonrpc": "2.0",
+        "id": "semantic-metadata-required-clear-allowed-values-refused",
+        "result": {
+          "success": true,
+          "outcome": "refused",
+          "refusal": {
+            "code": "required_metadata_field",
+            "message": "Field cannot be cleared for a Managed Scene Object.",
+            "details": {
+              "field": "status",
+              "allowedValues": ["plantingCategory"]
+            }
+          }
+        }
+      }
+    },
+    {
+      "case_id": "boolean_operation_invalid_operation_refused",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "params": {
+          "name": "boolean_operation",
+          "arguments": {
+            "target_id": "101",
+            "tool_id": "202",
+            "operation": "slice"
+          }
+        },
+        "id": "boolean-operation-invalid-operation-refused"
+      },
+      "response": {
+        "jsonrpc": "2.0",
+        "id": "boolean-operation-invalid-operation-refused",
+        "result": {
+          "success": true,
+          "outcome": "refused",
+          "refusal": {
+            "code": "unsupported_option",
+            "message": "Boolean operation is not supported.",
+            "details": {
+              "field": "operation",
+              "value": "slice",
+              "allowedValues": ["union", "difference", "intersection"]
+            }
+          }
+        }
+      }
+    },
+    {
+      "case_id": "create_site_element_unsupported_hosting_mode_refused",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "params": {
+          "name": "create_site_element",
+          "arguments": {
+            "elementType": "path",
+            "metadata": {
+              "sourceElementId": "walk-001",
+              "status": "proposed"
+            },
+            "definition": {
+              "mode": "centerline_ribbon",
+              "centerline": [[0.0, 0.0], [4.0, 0.0]],
+              "width": 1.6,
+              "thickness": 0.1
+            },
+            "hosting": {
+              "mode": "edge_clamp",
+              "target": {
+                "persistentId": "4001"
+              }
+            },
+            "placement": {
+              "mode": "host_resolved"
+            },
+            "representation": {
+              "mode": "path_surface_proxy"
+            },
+            "lifecycle": {
+              "mode": "create_new"
+            }
+          }
+        },
+        "id": "create-site-element-unsupported-hosting-mode-refused"
+      },
+      "response": {
+        "jsonrpc": "2.0",
+        "id": "create-site-element-unsupported-hosting-mode-refused",
+        "result": {
+          "success": true,
+          "outcome": "refused",
+          "refusal": {
+            "code": "unsupported_hosting_mode",
+            "message": "Hosting mode is not supported for this semantic element type.",
+            "details": {
+              "section": "hosting",
+              "mode": "edge_clamp",
+              "elementType": "path",
+              "allowedValues": ["surface_drape"]
+            }
+          }
+        }
+      }
+    },
+    {
       "case_id": "create_group_created",
       "request": {
         "jsonrpc": "2.0",

@@ -387,7 +387,12 @@ module SU_MCP
       refusal(
         'unsupported_hosting_mode',
         'Hosting mode is not supported for this semantic element type.',
-        { section: 'hosting', mode: hosting_mode, elementType: params.fetch('elementType') }
+        {
+          section: 'hosting',
+          mode: hosting_mode,
+          elementType: params.fetch('elementType'),
+          allowedValues: supported_modes
+        }
       )
     end
 

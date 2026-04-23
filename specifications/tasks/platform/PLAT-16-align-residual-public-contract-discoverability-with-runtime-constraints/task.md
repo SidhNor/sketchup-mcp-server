@@ -1,7 +1,7 @@
 # Task: PLAT-16 Align Residual Public Contract Discoverability With Runtime Constraints
 **Task ID**: PLAT-16
 **Title**: Align Residual Public Contract Discoverability With Runtime Constraints
-**Status**: planned
+**Status**: `completed`
 **Priority**: P1
 **Date**: 2026-04-23
 
@@ -95,3 +95,26 @@ Scenario: The task stays bounded to discoverability cleanup
 - the known residual mismatches covered by this task no longer require trial-and-error to discover valid values
 - touched public tools expose supported finite values through schema, refusal behavior, or both according to the true contract shape
 - dedicated contract coverage fails if runtime restrictions drift away from their published discoverability surface again
+
+## Implementation Notes
+
+- Completed scope:
+  - `boolean_operation.operation` now returns a structured `unsupported_option` refusal with `allowedValues`
+  - `boolean_operation.operation` and `set_entity_metadata.set.structureCategory` now publish enums in the native loader schema
+  - `set_entity_metadata` required and unsupported `clear` refusals now expose contextual `allowedValues`
+  - `create_site_element.hosting.mode` unsupported refusals now expose contextual `allowedValues`
+- Contract artifacts updated:
+  - owning runtime tests for modeling, loader, semantic metadata, and semantic commands
+  - shared semantic contract fixture updates for required-clear refusal shape
+  - representative native contract fixtures and tests for touched refusal surfaces
+- Local validation:
+  - focused suites passed for `test/modeling/solid_modeling_commands_test.rb`
+  - focused suites passed for `test/runtime/native/mcp_runtime_loader_test.rb`
+  - focused suites passed for `test/semantic/semantic_metadata_test.rb`
+  - focused suites passed for `test/semantic/semantic_commands_test.rb`
+  - `bundle exec rake ruby:test` passed
+  - `bundle exec rake ruby:lint` passed
+  - `bundle exec rake package:verify` passed
+  - `test/runtime/native/mcp_runtime_native_contract_test.rb` remained fully skipped locally because the staged native vendor runtime is absent in this environment
+- Remaining manual verification gap:
+  - rerun native transport preservation assertions in an environment where the staged vendor runtime is available to the direct native contract test file

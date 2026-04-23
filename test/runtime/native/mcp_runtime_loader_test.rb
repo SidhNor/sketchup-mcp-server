@@ -313,6 +313,15 @@ class McpRuntimeLoaderTest < Minitest::Test
       %w[target_id tool_id operation],
       boolean_operation_tool.fetch('inputSchema').fetch('required')
     )
+    assert_equal(
+      %w[difference intersection union],
+      boolean_operation_tool
+        .fetch('inputSchema')
+        .fetch('properties')
+        .fetch('operation')
+        .fetch('enum')
+        .sort
+    )
 
     eval_ruby_tool = tools.find { |tool| tool.fetch('name') == 'eval_ruby' }
     assert_equal(
@@ -528,6 +537,16 @@ class McpRuntimeLoaderTest < Minitest::Test
     assert_equal(
       %w[plantingCategory speciesHint status structureCategory],
       input_schema.fetch(:properties).fetch(:set).fetch(:properties).keys.map(&:to_s).sort
+    )
+    assert_equal(
+      %w[extension main_building outbuilding],
+      input_schema
+        .fetch(:properties)
+        .fetch(:set)
+        .fetch(:properties)
+        .fetch(:structureCategory)
+        .fetch(:enum)
+        .sort
     )
   end
 

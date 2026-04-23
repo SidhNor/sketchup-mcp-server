@@ -183,6 +183,27 @@ class SemanticMetadataTest < Minitest::Test
     assert_equal('required_metadata_field', result.dig(:refusal, :code))
   end
 
+  def test_required_clear_refusal_exposes_contextual_allowed_values
+    entity = build_semantic_model.active_entities.add_group
+    metadata = SU_MCP::Semantic::ManagedObjectMetadata.new
+    metadata.write!(
+      entity,
+      'sourceElementId' => 'hedge-001',
+      'semanticType' => 'planting_mass',
+      'status' => 'proposed',
+      'state' => 'Created',
+      'schemaVersion' => 1,
+      'plantingCategory' => 'hedge'
+    )
+
+    result = metadata.update(entity, set: {}, clear: ['status'])
+
+    assert_equal('refused', result[:outcome])
+    assert_equal('required_metadata_field', result.dig(:refusal, :code))
+    assert_equal('status', result.dig(:refusal, :details, :field))
+    assert_equal(['plantingCategory'], result.dig(:refusal, :details, :allowedValues))
+  end
+
   def test_refuses_invalid_structure_category_updates_for_structures
     entity = build_semantic_model.active_entities.add_group
     metadata = SU_MCP::Semantic::ManagedObjectMetadata.new
@@ -246,6 +267,28 @@ class SemanticMetadataTest < Minitest::Test
       %w[main_building outbuilding extension],
       result.dig(:refusal, :details, :allowedValues)
     )
+  end
+
+  def test_refuses_unknown_clear_fields_with_contextual_allowed_values
+    entity = build_semantic_model.active_entities.add_group
+    metadata = SU_MCP::Semantic::ManagedObjectMetadata.new
+    metadata.write!(
+      entity,
+      'sourceElementId' => 'hedge-001',
+      'semanticType' => 'planting_mass',
+      'status' => 'proposed',
+      'state' => 'Created',
+      'schemaVersion' => 1,
+      'plantingCategory' => 'hedge'
+    )
+
+    result = metadata.update(entity, set: {}, clear: ['speciesHint'])
+
+    assert_equal('refused', result[:outcome])
+    assert_equal('unsupported_option', result.dig(:refusal, :code))
+    assert_equal('speciesHint', result.dig(:refusal, :details, :field))
+    assert_nil(result.dig(:refusal, :details, :value))
+    assert_equal(['plantingCategory'], result.dig(:refusal, :details, :allowedValues))
   end
 
   def test_updates_supported_planting_category_for_planting_mass_objects

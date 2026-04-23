@@ -365,6 +365,31 @@ class SemanticCommandsTest < Minitest::Test
     )
   end
 
+  def test_create_site_element_unsupported_hosting_mode_exposes_contextual_allowed_values
+    commands = SU_MCP::SemanticCommands.new(
+      model: @model,
+      target_resolver: FakeTargetResolver.new(
+        resolution: 'unique',
+        entity: FakeManagedEntity.new(parent: Object.new)
+      )
+    )
+
+    result = commands.create_site_element(sectioned_terrain_path_request(
+                                            'hosting' => {
+                                              'mode' => 'edge_clamp',
+                                              'target' => { 'persistentId' => '4001' }
+                                            }
+                                          ))
+
+    assert_equal(true, result[:success])
+    assert_equal('refused', result[:outcome])
+    assert_equal('unsupported_hosting_mode', result.dig(:refusal, :code))
+    assert_equal('hosting', result.dig(:refusal, :details, :section))
+    assert_equal('edge_clamp', result.dig(:refusal, :details, :mode))
+    assert_equal('path', result.dig(:refusal, :details, :elementType))
+    assert_equal(['surface_drape'], result.dig(:refusal, :details, :allowedValues))
+  end
+
   def test_set_entity_metadata_uses_the_shared_refusal_envelope_for_missing_mutations
     commands = SU_MCP::SemanticCommands.new(model: @model)
 
