@@ -292,6 +292,109 @@ class SemanticCommandsTest < Minitest::Test
     assert_equal([], registry.calls)
   end
 
+  def test_create_site_element_recovers_definition_wrapped_requests_into_canonical_builder_execution
+    built_entity = FakeManagedEntity.new(parent: Object.new)
+    builder = Object.new
+    captured_params = nil
+    builder.define_singleton_method(:build) do |model:, destination:, params:|
+      _ = [model, destination]
+      captured_params = params
+      built_entity
+    end
+    registry = FakeRegistry.new(builder)
+    serializer = FakeSerializer.new(sourceElementId: 'tree-001', semanticType: 'tree_proxy')
+    commands = SU_MCP::SemanticCommands.new(
+      model: @model,
+      registry: registry,
+      serializer: serializer
+    )
+
+    result = commands.create_site_element('definition' => sectioned_tree_proxy_request)
+
+    assert_equal(true, result[:success])
+    assert_equal('created', result[:outcome])
+    assert_equal(['tree_proxy'], registry.calls)
+    assert_equal('tree_proxy', captured_params['elementType'])
+    refute(captured_params.dig('definition', 'elementType'))
+  end
+
+  def test_create_site_element_refuses_ambiguous_misnested_geometry_before_builder_execution
+    built_entity = FakeManagedEntity.new(parent: Object.new)
+    builder = Object.new
+    builder.define_singleton_method(:build) do |model:, destination:, params:|
+      _ = [model, destination, params]
+      built_entity
+    end
+    registry = FakeRegistry.new(builder)
+    serializer = FakeSerializer.new(sourceElementId: 'shed-001', semanticType: 'structure')
+    commands = SU_MCP::SemanticCommands.new(
+      model: @model,
+      registry: registry,
+      serializer: serializer
+    )
+    request = sectioned_structure_request
+    request['height'] = 3.2
+
+    result = commands.create_site_element(request)
+
+    assert_equal(true, result[:success])
+    assert_equal('refused', result[:outcome])
+    assert_equal('malformed_request_shape', result.dig(:refusal, :code))
+    assert_equal([], registry.calls)
+  end
+
+  # rubocop:disable Metrics/AbcSize
+  def test_create_site_element_recovers_wrapped_misnested_geometry_into_canonical_builder_execution
+    built_entity = FakeManagedEntity.new(parent: Object.new)
+    builder = Object.new
+    captured_params = nil
+    builder.define_singleton_method(:build) do |model:, destination:, params:|
+      _ = [model, destination]
+      captured_params = params
+      built_entity
+    end
+    registry = FakeRegistry.new(builder)
+    serializer = FakeSerializer.new(sourceElementId: 'walk-001', semanticType: 'path')
+    commands = SU_MCP::SemanticCommands.new(
+      model: @model,
+      registry: registry,
+      serializer: serializer
+    )
+    wrapped_request = sectioned_terrain_path_request
+    wrapped_request['hosting'] = { 'mode' => 'none' }
+    definition = wrapped_request.delete('definition')
+    wrapped_request.merge!(definition)
+
+    result = commands.create_site_element('definition' => wrapped_request)
+
+    assert_equal(true, result[:success])
+    assert_equal('created', result[:outcome])
+    assert_equal(['path'], registry.calls)
+    assert_equal('centerline', captured_params.dig('definition', 'mode'))
+    refute(captured_params.key?('mode'))
+  end
+  # rubocop:enable Metrics/AbcSize
+
+  def test_create_site_element_refuses_ambiguous_wrapped_misnested_geometry_before_builder_execution
+    built_entity = FakeManagedEntity.new(parent: Object.new)
+    builder = Object.new
+    builder.define_singleton_method(:build) do |model:, destination:, params:|
+      _ = [model, destination, params]
+      built_entity
+    end
+    registry = FakeRegistry.new(builder)
+    commands = SU_MCP::SemanticCommands.new(model: @model, registry: registry)
+    wrapped_request = sectioned_terrain_path_request
+    wrapped_request['width'] = 3.2
+
+    result = commands.create_site_element('definition' => wrapped_request)
+
+    assert_equal(true, result[:success])
+    assert_equal('refused', result[:outcome])
+    assert_equal('malformed_request_shape', result.dig(:refusal, :code))
+    assert_equal([], registry.calls)
+  end
+
   def test_create_site_element_refuses_invalid_path_geometry_before_builder_execution
     commands = SU_MCP::SemanticCommands.new(model: @model)
 

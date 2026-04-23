@@ -5,6 +5,7 @@ require 'stringio'
 
 require_relative 'tool_definition'
 require_relative '../../semantic/managed_object_metadata'
+require_relative '../../semantic/request_shape_contract'
 require_relative '../../semantic/request_validator'
 
 module SU_MCP
@@ -372,9 +373,12 @@ module SU_MCP
         tool_entry(
           name: 'create_site_element',
           title: 'Create Semantic Site Element',
-          description: 'Create a managed semantic site element in SketchUp. Current support ' \
-                       'is limited to structure, pad, path, retaining_edge, ' \
-                       'planting_mass, and tree_proxy creation.',
+          description: 'Create one managed semantic site element from explicit sectioned ' \
+                       'input. Use for new structure, pad, path, retaining_edge, ' \
+                       'planting_mass, or tree_proxy creation. Bounded malformed-shape ' \
+                       'ingress is recovery-only, not a second supported contract. ' \
+                       'Do not use for metadata-only edits, hierarchy moves, or broad ' \
+                       'scene search.',
           handler_key: :create_site_element,
           annotations: { read_only_hint: false, destructive_hint: false },
           classification: 'first_class',
@@ -383,10 +387,9 @@ module SU_MCP
         tool_entry(
           name: 'set_entity_metadata',
           title: 'Set Entity Metadata',
-          description: 'Update semantic metadata on an existing managed object in ' \
-                       'SketchUp. Current support is limited to status updates for ' \
-                       'managed objects and structureCategory updates for managed ' \
-                       'structure objects.',
+          description: 'Update supported mutable semantic metadata on one managed object. ' \
+                       'Use for managed-object metadata only, not geometry changes, ' \
+                       'hierarchy moves, or new element creation.',
           handler_key: :set_entity_metadata,
           annotations: { read_only_hint: false, destructive_hint: false },
           classification: 'first_class',
@@ -433,7 +436,9 @@ module SU_MCP
         tool_entry(
           name: 'transform_entities',
           title: 'Transform Entities',
-          description: "Transform a supported entity's position, rotation, or scale.",
+          description: 'Transform one explicit supported entity by position, rotation, or ' \
+                       'scale. Use for direct geometric transforms, not semantic ' \
+                       'hosting, replacement, or metadata-only changes.',
           handler_key: :transform_entities,
           annotations: { read_only_hint: false, destructive_hint: false },
           classification: 'first_class',
@@ -455,7 +460,8 @@ module SU_MCP
         tool_entry(
           name: 'set_material',
           title: 'Set Entity Material',
-          description: 'Set the material for a SketchUp entity.',
+          description: 'Set the display material for one explicit SketchUp entity. Do ' \
+                       'not use for semantic metadata changes or geometry edits.',
           handler_key: :set_material,
           annotations: { read_only_hint: false, destructive_hint: false },
           classification: 'first_class',
@@ -464,7 +470,9 @@ module SU_MCP
         tool_entry(
           name: 'boolean_operation',
           title: 'Run Boolean Operation',
-          description: 'Run a boolean operation between two SketchUp groups/components.',
+          description: 'Run union, difference, or intersection between two explicit ' \
+                       'SketchUp groups/components. Use for solid-modeling composition, ' \
+                       'not semantic replacement or broad cleanup.',
           handler_key: :boolean_operation,
           annotations: { read_only_hint: false, destructive_hint: false },
           classification: 'first_class',
@@ -604,6 +612,10 @@ module SU_MCP
         type: 'string',
         enum: values.flatten
       }
+    end
+
+    def described_schema(schema, description)
+      schema.merge(description: description)
     end
 
     def scope_selector_schema
@@ -984,16 +996,63 @@ module SU_MCP
       }
     end
 
+    def create_site_element_required_sections
+      SU_MCP::Semantic::RequestShapeContract::CANONICAL_TOP_LEVEL_SECTIONS
+    end
+
     # rubocop:disable Metrics/AbcSize
-    def create_site_element_schema
+    def create_site_element_definition_properties
       {
-        type: 'object',
-        required: %w[elementType metadata definition hosting placement representation lifecycle],
-        properties: {
-          elementType: enum_schema(
+        mode: described_schema(
+          enum_schema(
+            SU_MCP::Semantic::RequestValidator::SUPPORTED_DEFINITION_MODES.values
+          ),
+          'Native geometry contract for the requested elementType. Unsupported ' \
+          'combinations refuse with allowedValues for the requested element type.'
+        ),
+        footprint: xy_point_array_schema,
+        elevation: number_schema,
+        height: number_schema,
+        thickness: number_schema,
+        structureCategory: enum_schema(
+          SU_MCP::Semantic::RequestValidator::APPROVED_STRUCTURE_CATEGORIES
+        ),
+        centerline: xy_point_array_schema,
+        width: number_schema,
+        polyline: xy_point_array_schema,
+        boundary: xy_point_array_schema,
+        averageHeight: number_schema,
+        plantingCategory: string_schema,
+        position: {
+          type: 'object',
+          required: %w[x y],
+          properties: {
+            x: number_schema,
+            y: number_schema,
+            z: number_schema
+          },
+          additionalProperties: false
+        },
+        canopyDiameterX: number_schema,
+        canopyDiameterY: number_schema,
+        trunkDiameter: number_schema,
+        speciesHint: string_schema
+      }
+    end
+    # rubocop:enable Metrics/AbcSize
+
+    # rubocop:disable Metrics/AbcSize
+    def create_site_element_canonical_properties
+      {
+        elementType: described_schema(
+          enum_schema(
             SU_MCP::Semantic::RequestValidator::SUPPORTED_ELEMENT_TYPES
           ),
-          metadata: {
+          'Semantic element type to create. This selects the valid definition, hosting, ' \
+          'representation, and lifecycle modes for the request.'
+        ),
+        metadata: described_schema(
+          {
             type: 'object',
             properties: {
               sourceElementId: string_schema,
@@ -1001,7 +1060,11 @@ module SU_MCP
             },
             additionalProperties: false
           },
-          sceneProperties: {
+          'Managed identity and status for the created element. Owns workflow identity, ' \
+          'not geometric shape, hosting, or replacement behavior.'
+        ),
+        sceneProperties: described_schema(
+          {
             type: 'object',
             properties: {
               name: string_schema,
@@ -1009,107 +1072,163 @@ module SU_MCP
             },
             additionalProperties: false
           },
-          definition: {
+          'Optional SketchUp wrapper presentation only. Use for name/tag decoration, ' \
+          'not semantic identity or geometry.'
+        ),
+        definition: described_schema(
+          {
             type: 'object',
-            properties: {
-              mode: enum_schema(
-                SU_MCP::Semantic::RequestValidator::SUPPORTED_DEFINITION_MODES.values
-              ),
-              footprint: xy_point_array_schema,
-              elevation: number_schema,
-              height: number_schema,
-              thickness: number_schema,
-              structureCategory: enum_schema(
-                SU_MCP::Semantic::RequestValidator::APPROVED_STRUCTURE_CATEGORIES
-              ),
-              centerline: xy_point_array_schema,
-              width: number_schema,
-              polyline: xy_point_array_schema,
-              boundary: xy_point_array_schema,
-              averageHeight: number_schema,
-              plantingCategory: string_schema,
-              position: {
-                type: 'object',
-                required: %w[x y],
-                properties: {
-                  x: number_schema,
-                  y: number_schema,
-                  z: number_schema
-                },
-                additionalProperties: false
-              },
-              canopyDiameterX: number_schema,
-              canopyDiameterY: number_schema,
-              trunkDiameter: number_schema,
-              speciesHint: string_schema
-            },
+            properties: create_site_element_definition_properties,
             additionalProperties: false
           },
-          hosting: {
+          'Element-type-specific geometric definition and dimensions. Owns native shape, ' \
+          'not terrain conformity, parent placement, or lifecycle replacement.'
+        ),
+        hosting: described_schema(
+          {
             type: 'object',
             properties: {
-              mode: enum_schema(
-                'none',
-                'surface_drape',
-                'surface_snap',
-                'terrain_anchored',
-                'edge_clamp'
+              mode: described_schema(
+                enum_schema(
+                  'none',
+                  'surface_drape',
+                  'surface_snap',
+                  'terrain_anchored',
+                  'edge_clamp'
+                ),
+                'Terrain or edge conformity mode. Contextual by elementType; unsupported ' \
+                'requests refuse with allowedValues for the requested element type.'
               ),
               target: target_reference_schema
             },
             additionalProperties: false
           },
-          placement: {
+          'Terrain, surface, or edge conformity only. Use for host relationship ' \
+          'resolution, not parent placement or identity-preserving replacement.'
+        ),
+        placement: described_schema(
+          {
             type: 'object',
             properties: {
-              mode: enum_schema('host_resolved', 'parented', 'preserve_existing'),
+              mode: described_schema(
+                enum_schema('host_resolved', 'parented', 'preserve_existing'),
+                'Parent-context placement after hosting is resolved. Use for parent/root ' \
+                'placement, not terrain conformity or lifecycle replacement.'
+              ),
               parent: target_reference_schema
             },
             additionalProperties: false
           },
-          representation: {
+          'Parent or world placement policy after hosting is resolved. This section ' \
+          'does not own terrain conformity or lifecycle replacement.'
+        ),
+        representation: described_schema(
+          {
             type: 'object',
             properties: {
-              mode: enum_schema('procedural', 'path_surface_proxy', 'proxy_mass', 'adopted'),
+              mode: described_schema(
+                enum_schema('procedural', 'path_surface_proxy', 'proxy_mass', 'adopted'),
+                'Rendered or proxy form of the created element. This changes presentation, ' \
+                'not semantic type, hosting, or lifecycle behavior.'
+              ),
               material: string_schema
             },
             additionalProperties: false
           },
-          lifecycle: {
+          'Representational output only. Use for display/proxy style, not geometry ' \
+          'ownership or target resolution.'
+        ),
+        lifecycle: described_schema(
+          {
             type: 'object',
             properties: {
-              mode: enum_schema(
-                SU_MCP::Semantic::RequestValidator::SUPPORTED_LIFECYCLE_MODES
+              mode: described_schema(
+                enum_schema(
+                  SU_MCP::Semantic::RequestValidator::SUPPORTED_LIFECYCLE_MODES
+                ),
+                'Creation/adoption mode for the managed identity. Use replace-target ' \
+                'flows only for identity-preserving replacement of an explicit target.'
               ),
               target: target_reference_schema
             },
             additionalProperties: false
-          }
-        },
-        additionalProperties: false
+          },
+          'Managed-object lifecycle policy. Owns create/adopt/replace intent, not ' \
+          'shape definition, terrain conformity, or parent placement.'
+        )
       }
     end
     # rubocop:enable Metrics/AbcSize
+
+    def create_site_element_schema
+      canonical_properties = create_site_element_canonical_properties
+      recovery_properties = canonical_properties.merge(create_site_element_definition_properties)
+
+      {
+        type: 'object',
+        properties: recovery_properties,
+        anyOf: [
+          {
+            type: 'object',
+            required: create_site_element_required_sections,
+            properties: canonical_properties,
+            additionalProperties: false
+          },
+          {
+            type: 'object',
+            required: ['definition'],
+            properties: {
+              definition: {
+                type: 'object',
+                required: create_site_element_required_sections,
+                properties: canonical_properties,
+                additionalProperties: false
+              }
+            },
+            additionalProperties: false
+          },
+          {
+            type: 'object',
+            required: %w[elementType metadata hosting placement representation lifecycle mode],
+            properties: recovery_properties,
+            additionalProperties: false
+          }
+        ],
+        additionalProperties: false
+      }
+    end
 
     def set_entity_metadata_schema
       {
         type: 'object',
         required: ['target'],
         properties: {
-          target: target_reference_schema,
-          set: {
-            type: 'object',
-            properties: {
-              status: string_schema,
-              structureCategory: enum_schema(
-                SU_MCP::Semantic::ManagedObjectMetadata::APPROVED_STRUCTURE_CATEGORIES
-              ),
-              plantingCategory: string_schema,
-              speciesHint: string_schema
+          target: described_schema(
+            target_reference_schema,
+            'Explicit managed-object target. Use for one resolved managed object, not ' \
+            'broad search or batch updates.'
+          ),
+          set: described_schema(
+            {
+              type: 'object',
+              properties: {
+                status: string_schema,
+                structureCategory: enum_schema(
+                  SU_MCP::Semantic::ManagedObjectMetadata::APPROVED_STRUCTURE_CATEGORIES
+                ),
+                plantingCategory: string_schema,
+                speciesHint: string_schema
+              },
+              additionalProperties: false
             },
-            additionalProperties: false
-          },
-          clear: string_array_schema
+            'Set supported soft-mutable metadata fields only. Unsupported field/type ' \
+            'combinations refuse instead of mutating arbitrary metadata.'
+          ),
+          clear: described_schema(
+            string_array_schema,
+            'Clear supported non-required soft-mutable metadata fields. Clearable fields ' \
+            'are contextual by managed-object type, and refusals return allowedValues.'
+          )
         },
         additionalProperties: false
       }

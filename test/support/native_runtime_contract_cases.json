@@ -203,6 +203,80 @@
       }
     },
     {
+      "case_id": "create_site_element_malformed_request_shape_refused",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "params": {
+          "name": "create_site_element",
+          "arguments": {
+            "definition": {
+              "elementType": "tree_proxy",
+              "metadata": {
+                "sourceElementId": "tree-001",
+                "status": "proposed"
+              },
+              "definition": {
+                "mode": "generated_proxy",
+                "position": { "x": 14.0, "y": 37.7 },
+                "canopyDiameterX": 6.0,
+                "height": 5.5,
+                "trunkDiameter": 0.45
+              },
+              "hosting": {
+                "mode": "none"
+              },
+              "placement": {
+                "mode": "host_resolved"
+              },
+              "representation": {
+                "mode": "proxy_mass"
+              },
+              "lifecycle": {
+                "mode": "create_new"
+              }
+            }
+          }
+        },
+        "id": "create-site-element-malformed-request-shape-refused"
+      },
+      "response": {
+        "jsonrpc": "2.0",
+        "id": "create-site-element-malformed-request-shape-refused",
+        "result": {
+          "success": true,
+          "outcome": "refused",
+          "refusal": {
+            "code": "malformed_request_shape",
+            "message": "Request shape is malformed for semantic site creation.",
+            "details": {
+              "elementType": "tree_proxy",
+              "expectedTopLevelSections": [
+                "elementType",
+                "metadata",
+                "definition",
+                "hosting",
+                "placement",
+                "representation",
+                "lifecycle"
+              ],
+              "misnestedFields": ["definition"],
+              "allowedDefinitionFields": [
+                "mode",
+                "position",
+                "canopyDiameterX",
+                "canopyDiameterY",
+                "height",
+                "trunkDiameter",
+                "speciesHint"
+              ],
+              "suggestedCorrection": "Move the canonical sections to top level and keep geometry leaf fields inside definition."
+            }
+          }
+        }
+      }
+    },
+    {
       "case_id": "create_group_created",
       "request": {
         "jsonrpc": "2.0",

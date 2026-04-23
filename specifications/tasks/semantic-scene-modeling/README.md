@@ -42,6 +42,7 @@ The current task set persists the completed first-wave semantic work and the nex
 11. [SEM-11 Align Managed-Object Maintenance Surface](SEM-11-align-managed-object-maintenance-surface/task.md)
 12. [SEM-12 Add Governed Duplication and Managed Deletion Policy](SEM-12-add-governed-duplication-and-managed-deletion-policy/task.md)
 13. [SEM-13 Realize Horizontal Cross-Section Terrain Drape for Paths](SEM-13-realize-horizontal-cross-section-terrain-drape-for-paths/task.md)
+14. [SEM-14 Harden Create Site Element Request Recovery and Definition Boundaries](SEM-14-harden-create-site-element-request-recovery-and-definition-boundaries/task.md)
 
 ## Deferred Follow-Ons
 
@@ -65,3 +66,4 @@ The following follow-ons remain intentionally deferred from the active task fold
 - `SEM-10` and `SEM-11` are now completed and live-validated against SketchUp-hosted hierarchy and managed-maintenance flows.
 - `SEM-12` remains the next draft follow-on for governed duplication and managed deletion policy.
 - `SEM-13` is now completed and live-validated: `path + surface_drape` builds a smoothed terrain-following top ribbon with horizontal cross-sections, coherent downward thickness shell output, and structured refusals.
+- `SEM-14` is the current create-contract hardening follow-on. It keeps one canonical sectioned `create_site_element` surface while addressing bounded malformed request-shape recovery and family-specific `definition` boundary drift at the MCP seam.

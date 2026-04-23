@@ -6,6 +6,7 @@ require_relative 'destination_resolver'
 require_relative 'managed_object_metadata'
 require_relative 'pad_builder'
 require_relative 'request_normalizer'
+require_relative 'request_shape_recovery'
 require_relative 'request_validator'
 require_relative '../runtime/tool_response'
 require_relative '../scene_query/target_reference_resolver'
@@ -30,6 +31,7 @@ module SU_MCP
       model: Sketchup.active_model,
       registry: Semantic::BuilderRegistry.new,
       validator: Semantic::RequestValidator.new,
+      request_shape_recovery: Semantic::RequestShapeRecovery.new,
       request_normalizer: Semantic::RequestNormalizer.new,
       metadata_writer: Semantic::ManagedObjectMetadata.new,
       serializer: Semantic::Serializer.new,
@@ -39,6 +41,7 @@ module SU_MCP
       @model = model
       @registry = registry
       @validator = validator
+      @request_shape_recovery = request_shape_recovery
       @request_normalizer = request_normalizer
       @metadata_writer = metadata_writer
       @serializer = serializer
@@ -48,12 +51,15 @@ module SU_MCP
     # rubocop:enable Metrics/ParameterLists
 
     def create_site_element(params)
-      refusal = validator.refusal_for(params)
+      recovered_params = request_shape_recovery.recover_create_site_element_params(params)
+      return recovered_params if refusal_response?(recovered_params)
+
+      refusal = validator.refusal_for(recovered_params)
       return refusal if refusal
 
       # Normalize only validated requests so meter semantics stay at the Ruby boundary.
-      normalized_params = request_normalizer.normalize_create_site_element_params(params)
-      create_site_element_v2(normalized_params, public_params: params)
+      normalized_params = request_normalizer.normalize_create_site_element_params(recovered_params)
+      create_site_element_v2(normalized_params, public_params: recovered_params)
     rescue Semantic::BuilderRefusal => e
       ToolResponse.refusal(code: e.code, message: e.message, details: e.details)
     end
@@ -73,7 +79,8 @@ module SU_MCP
 
     private
 
-    attr_reader :model, :registry, :validator, :request_normalizer, :metadata_writer, :serializer,
+    attr_reader :model, :registry, :validator, :request_shape_recovery, :request_normalizer,
+                :metadata_writer, :serializer,
                 :target_resolver, :destination_resolver
 
     def create_site_element_v2(params, public_params:)

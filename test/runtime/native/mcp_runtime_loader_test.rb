@@ -330,20 +330,24 @@ class McpRuntimeLoaderTest < Minitest::Test
     )
   end
 
-  def test_create_site_element_tool_schema_is_sectioned_only
+  def test_create_site_element_tool_schema_keeps_a_canonical_sectioned_branch
     create_site_element_tool = @loader.tool_catalog.find do |tool|
       tool.fetch(:name) == 'create_site_element'
     end
     input_schema = create_site_element_tool.fetch(:input_schema)
+    canonical_branch = input_schema.fetch(:anyOf).find do |branch|
+      branch.fetch(:required, nil) == %w[
+        elementType metadata definition hosting placement representation lifecycle
+      ]
+    end
 
-    assert_equal(
-      %w[elementType metadata definition hosting placement representation lifecycle],
-      input_schema.fetch(:required)
-    )
+    refute_nil(canonical_branch)
     assert_equal(
       %w[
-        definition elementType hosting lifecycle metadata placement representation
-        sceneProperties
+        averageHeight boundary canopyDiameterX canopyDiameterY centerline definition elementType
+        elevation footprint height hosting lifecycle metadata mode placement plantingCategory
+        polyline position representation sceneProperties speciesHint structureCategory thickness
+        trunkDiameter width
       ],
       input_schema.fetch(:properties).keys.map(&:to_s).sort
     )
@@ -548,6 +552,93 @@ class McpRuntimeLoaderTest < Minitest::Test
         .fetch(:enum)
         .sort
     )
+  end
+
+  def test_create_site_element_tool_description_and_sections_expose_operational_boundaries
+    tool = @loader.tool_catalog.find { |entry| entry.fetch(:name) == 'create_site_element' }
+    input_schema = tool.fetch(:input_schema)
+
+    assert_includes(tool.fetch(:description), 'Do not use for metadata-only edits')
+    assert_includes(
+      input_schema.fetch(:properties).fetch(:definition).fetch(:description),
+      'Owns native shape'
+    )
+    assert_includes(
+      input_schema.fetch(:properties).fetch(:hosting).fetch(:description),
+      'not parent placement or identity-preserving replacement'
+    )
+    assert_includes(
+      input_schema.fetch(:properties).fetch(:placement).fetch(:description),
+      'does not own terrain conformity or lifecycle replacement'
+    )
+    assert_includes(
+      input_schema.fetch(:properties).fetch(:lifecycle).fetch(:description),
+      'create/adopt/replace intent'
+    )
+    assert_includes(
+      input_schema.fetch(:properties).fetch(:hosting).fetch(:properties).fetch(:mode)
+                  .fetch(:description),
+      'Contextual by elementType'
+    )
+  end
+
+  def test_create_site_element_schema_keeps_canonical_sections_and_bounded_recovery_variants
+    tool = @loader.tool_catalog.find { |entry| entry.fetch(:name) == 'create_site_element' }
+    input_schema = tool.fetch(:input_schema)
+
+    assert(input_schema.key?(:anyOf), 'expected create_site_element schema to add bounded variants')
+
+    branches = input_schema.fetch(:anyOf)
+    canonical_branch = branches.find do |branch|
+      branch.fetch(:required, nil) == %w[
+        elementType metadata definition hosting placement representation lifecycle
+      ]
+    end
+    definition_wrapped_branch = branches.find do |branch|
+      branch.fetch(:required, nil) == ['definition']
+    end
+    misnested_geometry_branch = branches.find do |branch|
+      branch.fetch(:properties, {}).key?(:mode)
+    end
+
+    refute_nil(canonical_branch)
+    refute_nil(definition_wrapped_branch)
+    refute_nil(misnested_geometry_branch)
+  end
+
+  def test_create_site_element_description_marks_recovery_variants_as_non_canonical
+    tool = @loader.tool_catalog.find { |entry| entry.fetch(:name) == 'create_site_element' }
+
+    assert_includes(tool.fetch(:description), 'recovery-only')
+  end
+
+  def test_set_entity_metadata_tool_description_and_clear_field_expose_contextual_ownership
+    tool = @loader.tool_catalog.find { |entry| entry.fetch(:name) == 'set_entity_metadata' }
+    input_schema = tool.fetch(:input_schema)
+
+    assert_includes(tool.fetch(:description), 'not geometry changes')
+    assert_includes(
+      input_schema.fetch(:properties).fetch(:clear).fetch(:description),
+      'contextual by managed-object type'
+    )
+    assert_includes(
+      input_schema.fetch(:properties).fetch(:set).fetch(:description),
+      'Unsupported field/type combinations refuse'
+    )
+  end
+
+  def test_mutation_tool_descriptions_expose_usage_boundaries_without_long_examples
+    boolean_operation = @loader.tool_catalog.find do |entry|
+      entry.fetch(:name) == 'boolean_operation'
+    end
+    transform_entities = @loader.tool_catalog.find do |entry|
+      entry.fetch(:name) == 'transform_entities'
+    end
+    set_material = @loader.tool_catalog.find { |entry| entry.fetch(:name) == 'set_material' }
+
+    assert_includes(boolean_operation.fetch(:description), 'not semantic replacement')
+    assert_includes(transform_entities.fetch(:description), 'not semantic hosting')
+    assert_includes(set_material.fetch(:description), 'Do not use for semantic metadata changes')
   end
 
   def test_reparent_entities_tool_schema_uses_compact_target_references_only
@@ -786,8 +877,7 @@ class McpRuntimeLoaderTest < Minitest::Test
     assert_equal('Get Entity Information', get_entity_info.dig(:metadata, :title))
     assert_equal(['id'], get_entity_info.dig(:input_schema, :required))
     assert_equal('Create Semantic Site Element', create_site_element.dig(:metadata, :title))
-    assert_equal(%w[elementType metadata definition hosting placement representation lifecycle],
-                 create_site_element.dig(:input_schema, :required))
+    assert(create_site_element[:input_schema].key?(:anyOf))
     assert_equal('Set Entity Metadata', set_entity_metadata.dig(:metadata, :title))
     assert_equal(['target'], set_entity_metadata.dig(:input_schema, :required))
     assert_equal('Transform Entities', transform_entities.dig(:metadata, :title))

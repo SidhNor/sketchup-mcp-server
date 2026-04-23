@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require_relative 'geometry_validator'
+require_relative 'request_shape_contract'
 require_relative '../runtime/tool_response'
 
 module SU_MCP
@@ -8,7 +9,9 @@ module SU_MCP
     # Validates the SEM-02 semantic request surface before builder execution.
     # rubocop:disable Metrics/ClassLength
     class RequestValidator
+      CANONICAL_TOP_LEVEL_SECTIONS = RequestShapeContract::CANONICAL_TOP_LEVEL_SECTIONS
       APPROVED_STRUCTURE_CATEGORIES = %w[main_building outbuilding extension].freeze
+      ALLOWED_DEFINITION_FIELDS_BY_TYPE = RequestShapeContract::ALLOWED_DEFINITION_FIELDS_BY_TYPE
       SUPPORTED_DEFINITION_MODES = {
         'pad' => %w[polygon],
         'structure' => %w[footprint_mass adopt_reference],
@@ -98,6 +101,15 @@ module SU_MCP
                 field: 'definition.mode',
                 value: params.dig('definition', 'mode'),
                 allowed_values: supported_definition_modes_for(params['elementType'])
+              )
+            end
+          ],
+          [
+            unsupported_definition_fields?(params),
+            lambda do
+              malformed_request_shape_refusal(
+                params,
+                misnested_fields: unsupported_definition_fields_for(params)
               )
             end
           ],
@@ -274,6 +286,18 @@ module SU_MCP
 
       def supported_definition_modes_for(element_type)
         SUPPORTED_DEFINITION_MODES.fetch(element_type.to_s, [])
+      end
+
+      def unsupported_definition_fields?(params)
+        !unsupported_definition_fields_for(params).empty?
+      end
+
+      def unsupported_definition_fields_for(params)
+        definition = params['definition']
+        return [] unless definition.is_a?(Hash)
+
+        allowed_fields = ALLOWED_DEFINITION_FIELDS_BY_TYPE.fetch(params['elementType'].to_s, [])
+        definition.keys - allowed_fields
       end
 
       def missing_v2_lifecycle_target?(params)
@@ -546,6 +570,23 @@ module SU_MCP
           code: 'invalid_section_combination',
           message: 'The requested section combination is not valid for semantic site creation.',
           details: { sections: sections }
+        )
+      end
+
+      def malformed_request_shape_refusal(params, misnested_fields:)
+        semantic_refusal(
+          code: 'malformed_request_shape',
+          message: 'Request shape is malformed for semantic site creation.',
+          details: {
+            elementType: params['elementType'],
+            expectedTopLevelSections: CANONICAL_TOP_LEVEL_SECTIONS,
+            misnestedFields: misnested_fields,
+            allowedDefinitionFields: ALLOWED_DEFINITION_FIELDS_BY_TYPE.fetch(
+              params['elementType'].to_s,
+              []
+            ),
+            suggestedCorrection: 'Keep geometry leaf fields inside definition.'
+          }
         )
       end
 

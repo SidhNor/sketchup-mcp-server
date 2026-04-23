@@ -236,6 +236,27 @@ class SemanticRequestValidatorTest < Minitest::Test
     assert_equal('metadata', refusal.dig(:refusal, :details, :field))
   end
 
+  def test_refuses_wrong_family_definition_fields_with_allowed_definition_guidance
+    refusal = @validator.refusal_for(
+      sectioned_structure_request(
+        'definition' => {
+          'mode' => 'footprint_mass',
+          'footprint' => [[0.0, 0.0], [2.0, 0.0], [2.0, 3.0], [0.0, 3.0]],
+          'height' => 2.4,
+          'structureCategory' => 'outbuilding',
+          'averageHeight' => 1.8
+        }
+      )
+    )
+
+    refute_nil(refusal)
+    assert_equal('malformed_request_shape', refusal.dig(:refusal, :code))
+    assert_equal('structure', refusal.dig(:refusal, :details, :elementType))
+    assert_equal(['averageHeight'], refusal.dig(:refusal, :details, :misnestedFields))
+    assert_includes(refusal.dig(:refusal, :details, :allowedDefinitionFields), 'footprint')
+    refute_includes(refusal.dig(:refusal, :details, :allowedDefinitionFields), 'averageHeight')
+  end
+
   private
 
   # rubocop:disable Metrics/MethodLength
