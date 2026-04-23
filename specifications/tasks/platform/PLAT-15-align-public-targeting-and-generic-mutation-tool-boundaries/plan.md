@@ -169,6 +169,27 @@ This task should correct those public boundaries without broadening into collect
 - Keep nested `targetSelector` normalization inside [src/su_mcp/scene_query/targeting_query.rb](src/su_mcp/scene_query/targeting_query.rb) rather than creating a second selector grammar.
 - Extend [src/su_mcp/runtime/tool_dispatcher.rb](src/su_mcp/runtime/tool_dispatcher.rb) and [src/su_mcp/runtime/native/mcp_runtime_facade.rb](src/su_mcp/runtime/native/mcp_runtime_facade.rb) to route `delete_entities` instead of `delete_component`.
 
+### Public Contract Updates
+
+- `list_entities`
+  - Request delta: replace the implicit top-level listing posture with required `scopeSelector` plus optional `outputOptions`.
+  - Response delta: keep the existing serialized inventory-row shape; only the scope-selection contract changes.
+  - Schema and registration updates: publish `scopeSelector.mode` as an enum covering `top_level`, `selection`, and `children_of_target`; keep `targetReference` required only for `children_of_target`.
+  - Dispatcher and routing updates: keep command ownership in the scene-query slice; no new runtime command family is introduced.
+  - Contract tests and docs: update loader/catalog tests plus [README.md](README.md) and [sketchup_mcp_guide.md](sketchup_mcp_guide.md) together so inventory is described as scope-first rather than search-first.
+- `find_entities`
+  - Request delta: replace the flat MVP `query` input with required `targetSelector` containing supported `identity`, `attributes`, and `metadata` sections.
+  - Response delta: preserve `success`, `resolution`, and `matches`, while allowing compact metadata summary fields in match rows when present.
+  - Schema and registration updates: publish the nested selector sections and supported field names from the loader so clients can discover the bounded predicate families from the schema.
+  - Dispatcher and routing updates: keep command ownership in the scene-query slice and keep selector normalization in `targeting_query.rb`.
+  - Contract tests and docs: update loader/catalog tests, scene-query behavior tests, native contract fixtures, [README.md](README.md), and [sketchup_mcp_guide.md](sketchup_mcp_guide.md) in the same change.
+- `delete_entities`
+  - Request delta: replace `delete_component` with `delete_entities`, using required `targetReference`, optional `constraints`, and optional `outputOptions`.
+  - Response delta: return structured mutation results with `operation` and `affectedEntities.deleted` instead of a thinner component-specific mutation shape.
+  - Schema and registration updates: remove `delete_component` from the native catalog, publish `ambiguityPolicy` and `responseFormat` as bounded enums, and mark the tool as destructive in loader metadata.
+  - Dispatcher and routing updates: route `delete_entities` through the editing slice while reusing targeting-owned direct-reference resolution.
+  - Contract tests and docs: update loader/catalog tests, dispatcher/facade tests, native contract fixtures, [README.md](README.md), and [sketchup_mcp_guide.md](sketchup_mcp_guide.md) together so the public mutation boundary converges on one tool name and one request shape.
+
 ### Error Handling
 
 - Preserve the current rule that malformed requests fail on the runtime error path rather than as successful results.
@@ -390,6 +411,7 @@ Start with failing catalog tests so the revised public names, titles, descriptio
 - Ship this as one steady-state public-contract change.
 - Do not add aliases for `delete_component` or dual support for both `query` and `targetSelector`.
 - Update documentation in the same change so downstream agents and operators are not left with mixed guidance.
+- Treat residual historical references in older specs or archival task artifacts as separate cleanup work if they remain after the runtime, primary docs, and contract tests converge; do not reintroduce runtime compatibility just to mask stale historical prose.
 - Use repository revert as the fallback if the final integrated contract proves incorrect; do not maintain a compatibility layer in runtime code.
 
 ## Risks and Controls
@@ -400,6 +422,7 @@ Start with failing catalog tests so the revised public names, titles, descriptio
 - Metadata targeting could overclaim unsupported behavior: limit supported metadata fields to those already owned by the `su_mcp` dictionary and document collection lookup as deferred.
 - Mutation results could remain too thin to be chainable even after the rename: require `operation` and `affectedEntities.deleted` in tests and native fixtures.
 - Renaming public tools without complete doc/test updates could leave the surface internally inconsistent: require loader, dispatcher, native contract, README, and guide updates in one change.
+- Historical specs or older task artifacts could continue teaching `delete_component` or pre-PLAT-15 selector vocabulary after the live runtime is correct: treat active user docs and contract artifacts as the PLAT-15 convergence boundary, and track any broader repo-history cleanup as follow-on work rather than silently assuming it is complete.
 
 ## Dependencies
 

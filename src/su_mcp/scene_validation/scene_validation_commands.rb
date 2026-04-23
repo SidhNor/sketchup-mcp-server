@@ -3,6 +3,7 @@
 require_relative '../adapters/model_adapter'
 require_relative '../runtime/tool_response'
 require_relative '../scene_query/scene_query_serializer'
+require_relative '../scene_query/sample_surface_query'
 require_relative '../scene_query/target_reference_resolver'
 require_relative '../scene_query/targeting_query'
 require_relative 'geometry_health_inspector'
@@ -20,13 +21,20 @@ module SU_MCP
       geometryRequirements
     ].freeze
     TARGET_ONLY_FIELDS = %w[targetReference targetSelector expectationId].freeze
+    SURFACE_OFFSET_FIELDS = %w[surfaceReference anchorSelector constraints].freeze
+    SURFACE_OFFSET_ANCHOR_VALUES = %w[
+      approximate_bottom_bounds_center
+      approximate_bottom_bounds_corners
+      approximate_top_bounds_center
+      approximate_top_bounds_corners
+    ].freeze
     FAMILY_FIELDS = {
       'mustExist' => TARGET_ONLY_FIELDS,
       'mustPreserve' => TARGET_ONLY_FIELDS,
       'metadataRequirements' => TARGET_ONLY_FIELDS + ['requiredKeys'],
       'tagRequirements' => TARGET_ONLY_FIELDS + ['expectedTag'],
       'materialRequirements' => TARGET_ONLY_FIELDS + ['expectedMaterial'],
-      'geometryRequirements' => TARGET_ONLY_FIELDS + ['kind']
+      'geometryRequirements' => TARGET_ONLY_FIELDS + ['kind'] + SURFACE_OFFSET_FIELDS
     }.freeze
     REQUIRED_FAMILY_FIELDS = {
       'metadataRequirements' => ['requiredKeys'],
@@ -38,10 +46,13 @@ module SU_MCP
       mustHaveGeometry
       mustNotBeNonManifold
       mustBeValidSolid
+      surfaceOffset
     ].freeze
 
+    # rubocop:disable Metrics/ParameterLists
     def initialize(adapter: nil, serializer: nil, targeting_query: nil,
-                   target_reference_resolver: nil, geometry_health: nil)
+                   target_reference_resolver: nil, geometry_health: nil,
+                   sample_surface_query: nil)
       @adapter = adapter || Adapters::ModelAdapter.new
       @serializer = serializer || SceneQuerySerializer.new
       @targeting_query = targeting_query || TargetingQuery.new(serializer: @serializer)
@@ -51,7 +62,11 @@ module SU_MCP
         targeting_query: @targeting_query
       )
       @geometry_health = geometry_health || GeometryHealthInspector.new
+      @sample_surface_query = sample_surface_query || SampleSurfaceQuery.new(
+        serializer: @serializer
+      )
     end
+    # rubocop:enable Metrics/ParameterLists
 
     # rubocop:disable Metrics/MethodLength
     def validate_scene_update(params)
@@ -80,7 +95,7 @@ module SU_MCP
     private
 
     attr_reader :adapter, :serializer, :targeting_query, :target_reference_resolver,
-                :geometry_health
+                :geometry_health, :sample_surface_query
 
     # rubocop:disable Metrics/MethodLength
     def refusal_for_request(params)
@@ -176,6 +191,9 @@ module SU_MCP
       missing_required_fields = Array(REQUIRED_FAMILY_FIELDS[family]).reject do |field|
         field_value_present?(item[field] || item[field.to_sym])
       end
+      if missing_required_fields.empty? && family == 'geometryRequirements'
+        return geometry_expectation_refusal(item)
+      end
       return nil if missing_required_fields.empty?
 
       ToolResponse.refusal(
@@ -185,6 +203,77 @@ module SU_MCP
     end
     # rubocop:enable Metrics/MethodLength, Metrics/PerceivedComplexity
     # rubocop:enable Metrics/AbcSize, Metrics/CyclomaticComplexity
+
+    def geometry_expectation_refusal(item)
+      return nil unless item['kind'] == 'surfaceOffset'
+
+      missing_surface_offset_field_refusal(item) ||
+        surface_offset_anchor_selector_refusal(item) ||
+        surface_offset_constraints_refusal(item)
+    end
+
+    def missing_surface_offset_field_refusal(item)
+      %w[surfaceReference anchorSelector constraints].each do |field|
+        next if field_value_present?(item[field] || item[field.to_sym])
+
+        return ToolResponse.refusal(
+          code: 'invalid_expectation',
+          message: "Missing required geometryRequirements field: #{field}"
+        )
+      end
+
+      nil
+    end
+
+    def surface_offset_anchor_selector_refusal(item)
+      anchor_selector = normalize_hash(item['anchorSelector'] || item[:anchorSelector])
+      anchor_value = anchor_selector['anchor']
+      return nil if SURFACE_OFFSET_ANCHOR_VALUES.include?(anchor_value)
+
+      ToolResponse.refusal(
+        code: 'unsupported_anchor_selector',
+        message: "Unsupported anchorSelector.anchor: #{anchor_value}",
+        details: {
+          field: 'anchorSelector.anchor',
+          value: anchor_value,
+          allowedValues: SURFACE_OFFSET_ANCHOR_VALUES
+        }
+      )
+    end
+
+    def surface_offset_constraints_refusal(item)
+      constraints = normalize_hash(item['constraints'] || item[:constraints])
+      missing_refusal = missing_surface_offset_constraint_refusal(constraints)
+      return missing_refusal if missing_refusal
+
+      non_numeric_surface_offset_constraint_refusal(constraints)
+    end
+
+    def missing_surface_offset_constraint_refusal(constraints)
+      %w[expectedOffset tolerance].each do |field|
+        next if field_value_present?(constraints[field])
+
+        return ToolResponse.refusal(
+          code: 'invalid_expectation',
+          message: "Missing required geometryRequirements.constraints field: #{field}"
+        )
+      end
+
+      nil
+    end
+
+    def non_numeric_surface_offset_constraint_refusal(constraints)
+      %w[expectedOffset tolerance].each do |field|
+        next if numeric_string?(constraints.fetch(field))
+
+        return ToolResponse.refusal(
+          code: 'invalid_expectation',
+          message: "geometryRequirements.constraints.#{field} must be numeric"
+        )
+      end
+
+      nil
+    end
 
     def evaluate_expectations(expectations)
       initial_result = { errors: [], validated_expectations: 0 }
@@ -369,10 +458,180 @@ module SU_MCP
                   index,
                   geometry
                 )
+              when 'surfaceOffset'
+                surface_offset_error(expectation, entity, family, index)
               end
       { error: error }
     end
     # rubocop:enable Metrics/MethodLength
+
+    # rubocop:disable Metrics/MethodLength
+    def surface_offset_error(expectation, entity, family, index)
+      failed_anchors = build_failed_surface_offset_anchors(expectation, entity)
+      return nil if failed_anchors.empty?
+
+      error(
+        type: 'geometry_requirement_failed',
+        family: family,
+        expectation: expectation,
+        index: index,
+        entity: entity,
+        message: "Resolved target did not satisfy #{expectation['kind']}",
+        details: {
+          kind: expectation['kind'],
+          failedAnchors: failed_anchors
+        }
+      )
+    rescue RuntimeError => e
+      error(
+        type: 'surface_sampling_failed',
+        family: family,
+        expectation: expectation,
+        index: index,
+        entity: entity,
+        message: "Resolved target did not satisfy #{expectation['kind']}",
+        details: {
+          kind: expectation['kind'],
+          samplingError: e.message
+        }
+      )
+    end
+    # rubocop:enable Metrics/MethodLength
+
+    def build_failed_surface_offset_anchors(expectation, entity)
+      anchor_selector = normalize_hash(expectation['anchorSelector'])
+      constraints = normalize_hash(expectation['constraints'])
+      derived_anchors = derived_anchors_for(entity, anchor_selector.fetch('anchor'))
+      sample_results = surface_offset_sample_results(expectation, entity, derived_anchors)
+
+      derived_anchors.zip(sample_results).filter_map.with_index do |pair, anchor_index|
+        anchor, sample_result = pair
+        failed_anchor(anchor, sample_result, constraints, anchor_selector, anchor_index)
+      end
+    end
+
+    def surface_offset_sample_results(expectation, entity, derived_anchors)
+      sample_surface_query.execute(
+        entities: adapter.all_entities_recursive,
+        params: {
+          'target' => normalize_hash(expectation['surfaceReference']),
+          'samplePoints' => sample_points_for(derived_anchors),
+          'ignoreTargets' => [entity_reference(entity)],
+          'visibleOnly' => false
+        }
+      ).fetch(:results)
+    end
+
+    def sample_points_for(derived_anchors)
+      derived_anchors.map do |anchor|
+        { 'x' => anchor[:x], 'y' => anchor[:y] }
+      end
+    end
+
+    # rubocop:disable Metrics/AbcSize, Metrics/MethodLength
+    def failed_anchor(anchor, sample_result, constraints, anchor_selector, anchor_index)
+      status = sample_result.fetch(:status)
+      unless status == 'hit'
+        return non_hit_failed_anchor(anchor, sample_result, anchor_selector, anchor_index)
+      end
+
+      sampled_surface_point = normalize_hash(sample_result[:hitPoint] || sample_result['hitPoint'])
+      expected_offset = Float(constraints.fetch('expectedOffset'))
+      tolerance = Float(constraints.fetch('tolerance'))
+      actual_offset = anchor[:z] - sampled_surface_point.fetch('z')
+      offset_delta = (actual_offset - expected_offset).abs
+      return nil if offset_delta <= tolerance
+
+      {
+        anchorIndex: anchor_index,
+        anchorName: anchor[:name],
+        anchorSelector: { anchor: anchor_selector['anchor'] },
+        derivedPoint: serializer.serialize_xyz_sample_point(anchor[:x], anchor[:y], anchor[:z]),
+        expectedOffset: expected_offset,
+        tolerance: tolerance,
+        surfaceSampleStatus: status,
+        sampledSurfacePoint: sampled_surface_point,
+        actualOffset: actual_offset,
+        offsetDelta: offset_delta
+      }
+    end
+    # rubocop:enable Metrics/AbcSize, Metrics/MethodLength
+
+    def non_hit_failed_anchor(anchor, sample_result, anchor_selector, anchor_index)
+      {
+        anchorIndex: anchor_index,
+        anchorName: anchor[:name],
+        anchorSelector: { anchor: anchor_selector['anchor'] },
+        derivedPoint: serializer.serialize_xyz_sample_point(anchor[:x], anchor[:y], anchor[:z]),
+        surfaceSampleStatus: sample_result.fetch(:status)
+      }
+    end
+
+    def derived_anchors_for(entity, anchor_name)
+      builder = {
+        'approximate_bottom_bounds_corners' => :approximate_bottom_bounds_corners,
+        'approximate_top_bounds_corners' => :approximate_top_bounds_corners,
+        'approximate_bottom_bounds_center' => :approximate_bottom_bounds_center,
+        'approximate_top_bounds_center' => :approximate_top_bounds_center
+      }[anchor_name]
+      return [] if builder.nil?
+
+      send(builder, entity.bounds)
+    end
+
+    def derived_anchor(name, x_value, y_value, z_value)
+      {
+        name: name,
+        x: public_meter_length(x_value),
+        y: public_meter_length(y_value),
+        z: public_meter_length(z_value)
+      }
+    end
+
+    def entity_reference(entity)
+      summary = serializer.serialize_target_match(entity)
+      %i[sourceElementId persistentId entityId].each_with_object({}) do |key, result|
+        value = summary[key]
+        result[key.to_s] = value unless value.nil? || value.to_s.empty?
+      end
+    end
+
+    # rubocop:disable Metrics/AbcSize
+    def approximate_bottom_bounds_corners(bounds)
+      [
+        derived_anchor('min_min', bounds.min.x, bounds.min.y, bounds.min.z),
+        derived_anchor('min_max', bounds.min.x, bounds.max.y, bounds.min.z),
+        derived_anchor('max_min', bounds.max.x, bounds.min.y, bounds.min.z),
+        derived_anchor('max_max', bounds.max.x, bounds.max.y, bounds.min.z)
+      ]
+    end
+    # rubocop:enable Metrics/AbcSize
+
+    # rubocop:disable Metrics/AbcSize
+    def approximate_top_bounds_corners(bounds)
+      [
+        derived_anchor('min_min', bounds.min.x, bounds.min.y, bounds.max.z),
+        derived_anchor('min_max', bounds.min.x, bounds.max.y, bounds.max.z),
+        derived_anchor('max_min', bounds.max.x, bounds.min.y, bounds.max.z),
+        derived_anchor('max_max', bounds.max.x, bounds.max.y, bounds.max.z)
+      ]
+    end
+    # rubocop:enable Metrics/AbcSize
+
+    def approximate_bottom_bounds_center(bounds)
+      [derived_anchor('center', bounds.center.x, bounds.center.y, bounds.min.z)]
+    end
+
+    def approximate_top_bounds_center(bounds)
+      [derived_anchor('center', bounds.center.x, bounds.center.y, bounds.max.z)]
+    end
+
+    def numeric_string?(value)
+      Float(value)
+      true
+    rescue ArgumentError, TypeError
+      false
+    end
 
     # rubocop:disable Metrics/ParameterLists
     def build_geometry_error(passed, expectation, entity, family, index, geometry)
@@ -420,6 +679,20 @@ module SU_MCP
         !value.empty?
       else
         !value.nil?
+      end
+    end
+
+    def public_meter_length(value)
+      return value.to_m.to_f if value.respond_to?(:to_m)
+
+      value.to_f
+    end
+
+    def normalize_hash(value)
+      return {} unless value.is_a?(Hash)
+
+      value.each_with_object({}) do |(key, nested_value), result|
+        result[key.to_s] = nested_value
       end
     end
 

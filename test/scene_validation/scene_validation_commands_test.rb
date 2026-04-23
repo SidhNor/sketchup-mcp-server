@@ -83,6 +83,29 @@ class SceneValidationCommandsTest < Minitest::Test
       }.compact
     end
 
+    def entity_type_key(entity)
+      case entity
+      when Sketchup::Group
+        'group'
+      when Sketchup::ComponentInstance
+        'componentinstance'
+      when Sketchup::Face
+        'face'
+      when Sketchup::Edge
+        'edge'
+      else
+        entity.class.name.split('::').last.downcase
+      end
+    end
+
+    def serialize_xy_sample_point(x_value, y_value)
+      { x: x_value, y: y_value }
+    end
+
+    def serialize_xyz_sample_point(x_value, y_value, z_value)
+      { x: x_value, y: y_value, z: z_value }
+    end
+
     def public_surface_entity?(entity)
       !entity.get_attribute('su_mcp', 'placeholder', false)
     end
@@ -98,6 +121,30 @@ class SceneValidationCommandsTest < Minitest::Test
 
     def inspect(entity)
       @calls << entity
+      @result
+    end
+  end
+
+  class FakeLength
+    def initialize(meters)
+      @meters = meters
+    end
+
+    def to_m
+      @meters
+    end
+  end
+
+  class RecordingSampleSurfaceQuery
+    attr_reader :calls
+
+    def initialize(result:)
+      @result = result
+      @calls = []
+    end
+
+    def execute(entities:, params:)
+      @calls << { entities: entities, params: params }
       @result
     end
   end
@@ -211,6 +258,199 @@ class SceneValidationCommandsTest < Minitest::Test
     assert_equal('refused', result[:outcome])
     assert_equal('invalid_expectation', result.dig(:refusal, :code))
   end
+
+  def test_refuses_surface_offset_geometry_requirements_without_surface_reference
+    commands = build_commands
+
+    result = commands.validate_scene_update(
+      'expectations' => {
+        'geometryRequirements' => [
+          {
+            'targetReference' => { 'entityId' => '101' },
+            'kind' => 'surfaceOffset',
+            'anchorSelector' => { 'anchor' => 'approximate_bottom_bounds_corners' },
+            'constraints' => { 'expectedOffset' => 0.0, 'tolerance' => 0.02 }
+          }
+        ]
+      }
+    )
+
+    assert_equal(true, result[:success])
+    assert_equal('refused', result[:outcome])
+    assert_equal('invalid_expectation', result.dig(:refusal, :code))
+    assert_match(/surfaceReference/, result.dig(:refusal, :message))
+  end
+
+  def test_refuses_surface_offset_geometry_requirements_without_anchor_selector
+    commands = build_commands
+
+    result = commands.validate_scene_update(
+      'expectations' => {
+        'geometryRequirements' => [
+          {
+            'targetReference' => { 'entityId' => '101' },
+            'kind' => 'surfaceOffset',
+            'surfaceReference' => { 'sourceElementId' => 'terrain-main' },
+            'constraints' => { 'expectedOffset' => 0.0, 'tolerance' => 0.02 }
+          }
+        ]
+      }
+    )
+
+    assert_equal(true, result[:success])
+    assert_equal('refused', result[:outcome])
+    assert_equal('invalid_expectation', result.dig(:refusal, :code))
+    assert_match(/anchorSelector/, result.dig(:refusal, :message))
+  end
+
+  def test_refuses_surface_offset_geometry_requirements_without_constraints
+    commands = build_commands
+
+    result = commands.validate_scene_update(
+      'expectations' => {
+        'geometryRequirements' => [
+          {
+            'targetReference' => { 'entityId' => '101' },
+            'kind' => 'surfaceOffset',
+            'surfaceReference' => { 'sourceElementId' => 'terrain-main' },
+            'anchorSelector' => { 'anchor' => 'approximate_bottom_bounds_corners' }
+          }
+        ]
+      }
+    )
+
+    assert_equal(true, result[:success])
+    assert_equal('refused', result[:outcome])
+    assert_equal('invalid_expectation', result.dig(:refusal, :code))
+    assert_match(/constraints/, result.dig(:refusal, :message))
+  end
+
+  def test_refuses_surface_offset_geometry_requirements_without_expected_offset
+    commands = build_commands
+
+    result = commands.validate_scene_update(
+      'expectations' => {
+        'geometryRequirements' => [
+          {
+            'targetReference' => { 'entityId' => '101' },
+            'kind' => 'surfaceOffset',
+            'surfaceReference' => { 'sourceElementId' => 'terrain-main' },
+            'anchorSelector' => { 'anchor' => 'approximate_bottom_bounds_corners' },
+            'constraints' => { 'tolerance' => 0.02 }
+          }
+        ]
+      }
+    )
+
+    assert_equal(true, result[:success])
+    assert_equal('refused', result[:outcome])
+    assert_equal('invalid_expectation', result.dig(:refusal, :code))
+    assert_match(/expectedOffset/, result.dig(:refusal, :message))
+  end
+
+  def test_refuses_surface_offset_geometry_requirements_without_tolerance
+    commands = build_commands
+
+    result = commands.validate_scene_update(
+      'expectations' => {
+        'geometryRequirements' => [
+          {
+            'targetReference' => { 'entityId' => '101' },
+            'kind' => 'surfaceOffset',
+            'surfaceReference' => { 'sourceElementId' => 'terrain-main' },
+            'anchorSelector' => { 'anchor' => 'approximate_bottom_bounds_corners' },
+            'constraints' => { 'expectedOffset' => 0.0 }
+          }
+        ]
+      }
+    )
+
+    assert_equal(true, result[:success])
+    assert_equal('refused', result[:outcome])
+    assert_equal('invalid_expectation', result.dig(:refusal, :code))
+    assert_match(/tolerance/, result.dig(:refusal, :message))
+  end
+
+  def test_refuses_surface_offset_geometry_requirements_with_non_numeric_expected_offset
+    commands = build_commands
+
+    result = commands.validate_scene_update(
+      'expectations' => {
+        'geometryRequirements' => [
+          {
+            'targetReference' => { 'entityId' => '101' },
+            'kind' => 'surfaceOffset',
+            'surfaceReference' => { 'sourceElementId' => 'terrain-main' },
+            'anchorSelector' => { 'anchor' => 'approximate_bottom_bounds_corners' },
+            'constraints' => { 'expectedOffset' => 'zero', 'tolerance' => 0.02 }
+          }
+        ]
+      }
+    )
+
+    assert_equal(true, result[:success])
+    assert_equal('refused', result[:outcome])
+    assert_equal('invalid_expectation', result.dig(:refusal, :code))
+    assert_match(/expectedOffset/, result.dig(:refusal, :message))
+  end
+
+  def test_refuses_surface_offset_geometry_requirements_with_non_numeric_tolerance
+    commands = build_commands
+
+    result = commands.validate_scene_update(
+      'expectations' => {
+        'geometryRequirements' => [
+          {
+            'targetReference' => { 'entityId' => '101' },
+            'kind' => 'surfaceOffset',
+            'surfaceReference' => { 'sourceElementId' => 'terrain-main' },
+            'anchorSelector' => { 'anchor' => 'approximate_bottom_bounds_corners' },
+            'constraints' => { 'expectedOffset' => 0.0, 'tolerance' => 'tight' }
+          }
+        ]
+      }
+    )
+
+    assert_equal(true, result[:success])
+    assert_equal('refused', result[:outcome])
+    assert_equal('invalid_expectation', result.dig(:refusal, :code))
+    assert_match(/tolerance/, result.dig(:refusal, :message))
+  end
+
+  # rubocop:disable Metrics/MethodLength
+  def test_refuses_unsupported_surface_offset_anchor_selector_and_echoes_allowed_values
+    commands = build_commands
+
+    result = commands.validate_scene_update(
+      'expectations' => {
+        'geometryRequirements' => [
+          {
+            'targetReference' => { 'entityId' => '101' },
+            'kind' => 'surfaceOffset',
+            'surfaceReference' => { 'sourceElementId' => 'terrain-main' },
+            'anchorSelector' => { 'anchor' => 'footprint_vertices' },
+            'constraints' => { 'expectedOffset' => 0.0, 'tolerance' => 0.02 }
+          }
+        ]
+      }
+    )
+
+    assert_equal(true, result[:success])
+    assert_equal('refused', result[:outcome])
+    assert_equal('unsupported_anchor_selector', result.dig(:refusal, :code))
+    assert_equal('anchorSelector.anchor', result.dig(:refusal, :details, :field))
+    assert_equal('footprint_vertices', result.dig(:refusal, :details, :value))
+    assert_equal(
+      %w[
+        approximate_bottom_bounds_center
+        approximate_bottom_bounds_corners
+        approximate_top_bounds_center
+        approximate_top_bounds_corners
+      ],
+      result.dig(:refusal, :details, :allowedValues)
+    )
+  end
+  # rubocop:enable Metrics/MethodLength
 
   def test_reports_none_resolution_as_a_validation_error_for_target_references
     target_resolver = FakeTargetReferenceResolver.new({ resolution: 'none' })
@@ -408,6 +648,135 @@ class SceneValidationCommandsTest < Minitest::Test
     assert_equal('missing-walk', result.dig(:errors, 0, :expectationId))
   end
 
+  # rubocop:disable Metrics/MethodLength
+  def test_surface_offset_passes_when_approximate_bottom_bounds_corners_match_expected_offset
+    terrain_layer = FakeLayer.new('Terrain')
+    terrain_material = FakeMaterial.new('Soil')
+    terrain_face = build_sample_surface_face(
+      entity_id: 401,
+      persistent_id: 4001,
+      name: 'Terrain Face',
+      layer: terrain_layer,
+      material: terrain_material,
+      x_range: [0.0, 1.0],
+      y_range: [0.0, 2.0],
+      z_value: 0.0
+    )
+    terrain_group = build_sample_surface_group(
+      entity_id: 402,
+      persistent_id: 4002,
+      name: 'Terrain Group',
+      layer: terrain_layer,
+      material: terrain_material,
+      child_faces: [terrain_face],
+      source_element_id: 'terrain-main'
+    )
+    commands = build_commands(
+      adapter_entities: [@group, terrain_group],
+      target_reference_resolver: :real
+    )
+
+    result = commands.validate_scene_update(
+      'expectations' => {
+        'geometryRequirements' => [
+          surface_offset_expectation
+        ]
+      }
+    )
+
+    assert_equal(true, result[:success])
+    assert_equal('passed', result[:outcome])
+  end
+  # rubocop:enable Metrics/MethodLength
+
+  # rubocop:disable Metrics/MethodLength
+  def test_surface_offset_reports_failed_anchors_for_offset_mismatch
+    terrain_layer = FakeLayer.new('Terrain')
+    terrain_material = FakeMaterial.new('Soil')
+    terrain_face = build_sample_surface_face(
+      entity_id: 411,
+      persistent_id: 4011,
+      name: 'Terrain Face',
+      layer: terrain_layer,
+      material: terrain_material,
+      x_range: [0.0, 1.0],
+      y_range: [0.0, 2.0],
+      z_value: 0.0
+    )
+    terrain_group = build_sample_surface_group(
+      entity_id: 412,
+      persistent_id: 4012,
+      name: 'Terrain Group',
+      layer: terrain_layer,
+      material: terrain_material,
+      child_faces: [terrain_face],
+      source_element_id: 'terrain-main'
+    )
+    commands = build_commands(
+      adapter_entities: [@group, terrain_group],
+      target_reference_resolver: :real
+    )
+
+    result = commands.validate_scene_update(
+      'expectations' => {
+        'geometryRequirements' => [
+          surface_offset_expectation(
+            'constraints' => { 'expectedOffset' => 1.0, 'tolerance' => 0.02 }
+          )
+        ]
+      }
+    )
+
+    assert_equal(true, result[:success])
+    assert_equal('failed', result[:outcome])
+    assert_equal('geometry_requirement_failed', result.dig(:errors, 0, :type))
+    assert_equal('surfaceOffset', result.dig(:errors, 0, :details, :kind))
+    refute_empty(result.dig(:errors, 0, :details, :failedAnchors))
+    assert_equal(
+      'approximate_bottom_bounds_corners',
+      result.dig(:errors, 0, :details, :failedAnchors, 0, :anchorSelector, :anchor)
+    )
+  end
+  # rubocop:enable Metrics/MethodLength
+
+  def test_surface_offset_reports_surface_sampling_failures_as_validation_errors
+    commands = build_commands(
+      adapter_entities: [@group],
+      target_reference_resolver: :real
+    )
+
+    result = commands.validate_scene_update(
+      'expectations' => {
+        'geometryRequirements' => [
+          surface_offset_expectation(
+            'surfaceReference' => { 'sourceElementId' => 'terrain-missing' }
+          )
+        ]
+      }
+    )
+
+    assert_equal(true, result[:success])
+    assert_equal('failed', result[:outcome])
+    assert_equal('surface_sampling_failed', result.dig(:errors, 0, :type))
+    assert_match(/resolves to no entity/, result.dig(:errors, 0, :details, :samplingError))
+  end
+
+  def test_surface_offset_converts_anchor_coordinates_and_disables_visibility_filtering
+    custom_group = measured_group
+    sample_surface_query = RecordingSampleSurfaceQuery.new(result: successful_surface_offset_hit)
+    commands = build_commands(
+      adapter_entities: [custom_group],
+      target_reference_resolver: FakeTargetReferenceResolver.new(
+        { resolution: 'unique', entity: custom_group }
+      ),
+      sample_surface_query: sample_surface_query
+    )
+
+    result = commands.validate_scene_update(surface_offset_request_for_center_anchor)
+
+    assert_surface_offset_sampling_contract(result, sample_surface_query)
+  end
+
   def test_must_have_geometry_fails_when_the_resolved_target_has_no_geometry
     geometry_health = FakeGeometryHealth.new(result: { hasGeometry: false })
     commands = build_commands(
@@ -518,16 +887,106 @@ class SceneValidationCommandsTest < Minitest::Test
   private
 
   def build_commands(target_reference_resolver: nil, targeting_query: nil, serializer: nil,
-                     geometry_health: nil)
+                     geometry_health: nil, adapter_entities: nil, sample_surface_query: nil)
+    adapter = RecordingAdapter.new(entities: adapter_entities || [@group])
+    serializer_instance = serializer || FakeSerializer.new
+    target_reference_resolver_instance =
+      case target_reference_resolver
+      when :real
+        nil
+      else
+        target_reference_resolver || FakeTargetReferenceResolver.new(
+          { resolution: 'unique', entity: @group }
+        )
+      end
+
     SU_MCP::SceneValidationCommands.new(
-      adapter: RecordingAdapter.new(entities: [@group]),
-      target_reference_resolver: target_reference_resolver || FakeTargetReferenceResolver.new(
-        { resolution: 'unique', entity: @group }
-      ),
+      adapter: adapter,
+      target_reference_resolver: target_reference_resolver_instance,
       targeting_query: targeting_query || FakeTargetingQuery.new(matches: [@group]),
-      serializer: serializer || FakeSerializer.new,
-      geometry_health: geometry_health || FakeGeometryHealth.new(result: { hasGeometry: true })
+      serializer: serializer_instance,
+      geometry_health: geometry_health || FakeGeometryHealth.new(result: { hasGeometry: true }),
+      sample_surface_query: sample_surface_query
     )
+  end
+
+  def surface_offset_expectation(overrides = {})
+    {
+      'targetReference' => { 'sourceElementId' => 'path-main' },
+      'kind' => 'surfaceOffset',
+      'surfaceReference' => { 'sourceElementId' => 'terrain-main' },
+      'anchorSelector' => { 'anchor' => 'approximate_bottom_bounds_corners' },
+      'constraints' => { 'expectedOffset' => 0.0, 'tolerance' => 0.02 },
+      'expectationId' => 'surface-offset-001'
+    }.merge(overrides)
+  end
+
+  def measured_group
+    FakeGroup.new(
+      entity_id: 150,
+      bounds: measured_bounds,
+      layer: @layer,
+      material: @material,
+      details: {
+        persistent_id: 1150,
+        name: 'Measured Pad',
+        entities: [Object.new],
+        attributes: {
+          'su_mcp' => {
+            'sourceElementId' => 'path-main',
+            'status' => 'proposed',
+            'semanticType' => 'path'
+          }
+        }
+      }
+    )
+  end
+
+  def measured_bounds
+    FakeBounds.new(
+      min: length_point(83.0, 82.0, 0.5),
+      max: length_point(84.0, 83.0, 1.5),
+      center: length_point(83.5, 82.5, 1.0),
+      size: [FakeLength.new(1.0), FakeLength.new(1.0), FakeLength.new(1.0)]
+    )
+  end
+
+  def length_point(x_value, y_value, z_value)
+    FakePoint.new(FakeLength.new(x_value), FakeLength.new(y_value), FakeLength.new(z_value))
+  end
+
+  def successful_surface_offset_hit
+    {
+      success: true,
+      results: [
+        {
+          status: 'hit',
+          hitPoint: { 'x' => 83.0, 'y' => 82.0, 'z' => 0.5 }
+        }
+      ]
+    }
+  end
+
+  def surface_offset_request_for_center_anchor
+    {
+      'expectations' => {
+        'geometryRequirements' => [
+          surface_offset_expectation(
+            'anchorSelector' => { 'anchor' => 'approximate_bottom_bounds_center' }
+          )
+        ]
+      }
+    }
+  end
+
+  def assert_surface_offset_sampling_contract(result, sample_surface_query)
+    assert_equal(true, result[:success])
+    assert_equal('passed', result[:outcome])
+    assert_equal(
+      [{ 'x' => 83.5, 'y' => 82.5 }],
+      sample_surface_query.calls.first.dig(:params, 'samplePoints')
+    )
+    assert_equal(false, sample_surface_query.calls.first.dig(:params, 'visibleOnly'))
   end
 end
 # rubocop:enable Metrics/ClassLength

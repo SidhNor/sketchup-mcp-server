@@ -206,6 +206,51 @@ class ToolDispatcherTest < Minitest::Test
     )
   end
 
+  # rubocop:disable Metrics/MethodLength
+  def test_dispatches_validate_scene_update_surface_offset_payload_to_the_validation_command
+    result = @dispatcher.call(
+      'validate_scene_update',
+      {
+        'expectations' => {
+          'geometryRequirements' => [
+            {
+              'targetReference' => { 'sourceElementId' => 'house-pad-001' },
+              'kind' => 'surfaceOffset',
+              'surfaceReference' => { 'sourceElementId' => 'terrain-main' },
+              'anchorSelector' => { 'anchor' => 'approximate_bottom_bounds_corners' },
+              'constraints' => { 'expectedOffset' => 0.0, 'tolerance' => 0.02 }
+            }
+          ]
+        }
+      }
+    )
+
+    assert_equal(
+      { success: true, outcome: 'passed', errors: [], warnings: [], summary: {} },
+      result
+    )
+    assert_equal(
+      [[
+        :validate_scene_update,
+        {
+          'expectations' => {
+            'geometryRequirements' => [
+              {
+                'targetReference' => { 'sourceElementId' => 'house-pad-001' },
+                'kind' => 'surfaceOffset',
+                'surfaceReference' => { 'sourceElementId' => 'terrain-main' },
+                'anchorSelector' => { 'anchor' => 'approximate_bottom_bounds_corners' },
+                'constraints' => { 'expectedOffset' => 0.0, 'tolerance' => 0.02 }
+              }
+            ]
+          }
+        }
+      ]],
+      @target.calls.last(1)
+    )
+  end
+  # rubocop:enable Metrics/MethodLength
+
   def test_dispatches_delete_entities_to_the_editing_command
     result = @dispatcher.call(
       'delete_entities',

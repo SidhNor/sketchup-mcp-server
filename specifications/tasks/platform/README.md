@@ -25,6 +25,7 @@ The current post-seeding breakdown is intentionally smaller than the recovered 1
 - 1 post-validation runtime-retirement task for removing the Python compatibility layer after native validation
 - 1 post-migration Ruby support-tree cleanup task for expressing the settled runtime layers in the filesystem
 - 1 post-retirement contract-hardening task for shared native tool declarations and response conventions
+- 1 post-hardening cleanup task for residual public contract discoverability drift across the shipped tool catalog
 
 ## Task Order
 
@@ -61,13 +62,21 @@ The current post-seeding breakdown is intentionally smaller than the recovered 1
 
 12. [PLAT-14 Establish Native MCP Tool Contract And Response Conventions](PLAT-14-establish-native-mcp-tool-contract-and-response-conventions/task.md)
 
+### Public Tool Boundary Cleanup
+
+13. [PLAT-15 Align Public Targeting and Generic Mutation Tool Boundaries](PLAT-15-align-public-targeting-and-generic-mutation-tool-boundaries/task.md)
+
+### Post-Hardening Contract Discoverability Cleanup
+
+14. [PLAT-16 Align Residual Public Contract Discoverability With Runtime Constraints](PLAT-16-align-residual-public-contract-discoverability-with-runtime-constraints/task.md)
+
 ### Deferred Low-Priority Tasks
 
-13. [PLAT-06 Add SketchUp-Hosted Smoke and Fixture Coverage](PLAT-06-add-sketchup-hosted-smoke-and-fixture-coverage/task.md)
+15. [PLAT-06 Add SketchUp-Hosted Smoke and Fixture Coverage](PLAT-06-add-sketchup-hosted-smoke-and-fixture-coverage/task.md)
 
 ### Architecture Spikes
 
-14. [PLAT-07 Spike Ruby-Native MCP Runtime In SketchUp](PLAT-07-spike-ruby-native-mcp-runtime-in-sketchup/task.md)
+16. [PLAT-07 Spike Ruby-Native MCP Runtime In SketchUp](PLAT-07-spike-ruby-native-mcp-runtime-in-sketchup/task.md)
 
 ## Dependency Summary
 
@@ -85,6 +94,8 @@ The current post-seeding breakdown is intentionally smaller than the recovered 1
 | `PLAT-13` | `PLAT-10`, ADR 2026-04-16 | single-runtime repo posture after native validation removes the bridge-era compatibility path |
 | `PLAT-12` | `PLAT-10`, `PLAT-08`, `PLAT-11` | clearer Ruby support-tree layering after runtime migration ownership settles |
 | `PLAT-14` | `PLAT-10`, `PLAT-13` | shared native tool declaration and response conventions for future MCP surface cleanup |
+| `PLAT-15` | `STI-01`, `SEM-03`, `PLAT-14` | clearer public targeting, inventory, and generic deletion boundaries |
+| `PLAT-16` | `PLAT-14`, `PLAT-15`, `SEM-11`, `SEM-13` | residual public contract discoverability cleanup for shipped finite option sets |
 | `PLAT-06` | `PLAT-01`, `PLAT-02` | deferred runtime-hosted confidence work |
 | `PLAT-07` | `PLAT-01`, `PLAT-02`, `PLAT-03`, ADR 2026-04-16 | future packaging decision and any decision to demote Python from the canonical MCP runtime |
 
@@ -106,4 +117,6 @@ The current post-seeding breakdown is intentionally smaller than the recovered 1
 - `PLAT-13` exists because `PLAT-10` intentionally stops at making Python removable. It owns the actual retirement of the Python compatibility runtime plus the resulting cleanup across docs, guidance, CI, dependencies, and package metadata, with any surviving Python limited to CI-owned release tooling rather than a repo Python project.
 - `PLAT-12` is a separate follow-on structure task. It exists to express the settled runtime layers in the support tree after the ownership migration work is far enough along, not to reopen `PLAT-10` scope.
 - `PLAT-14` is a bounded post-retirement contract-hardening task. It is intended to establish shared native tool declaration and response conventions without turning the effort into a broader selector redesign or full-catalog conformance program.
+- `PLAT-15` remains the focused public-boundary cleanup task for targeting, inventory, and generic deletion semantics after the shared native declaration work in `PLAT-14`.
+- `PLAT-16` is the bounded follow-on cleanup task for residual discoverability drift where shipped public runtime constraints are still not surfaced coherently through schema, refusal behavior, contract coverage, or docs.
 - Tasks remain requirements-focused. They define what must be true when the task is complete, not how the implementation must be coded.

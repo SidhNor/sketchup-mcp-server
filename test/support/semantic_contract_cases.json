@@ -6,9 +6,26 @@
         "params": {
           "arguments": {
             "elementType": "water_feature_proxy",
-            "sourceElementId": "water-001",
-            "status": "proposed",
-            "footprint": [[0, 0], [1, 0], [0, 1]]
+            "metadata": {
+              "sourceElementId": "water-001",
+              "status": "proposed"
+            },
+            "definition": {
+              "mode": "polygon",
+              "footprint": [[0, 0], [1, 0], [0, 1]]
+            },
+            "hosting": {
+              "mode": "none"
+            },
+            "placement": {
+              "mode": "host_resolved"
+            },
+            "representation": {
+              "mode": "procedural"
+            },
+            "lifecycle": {
+              "mode": "create_new"
+            }
           }
         }
       },

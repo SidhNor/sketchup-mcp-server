@@ -343,6 +343,61 @@
           }
         }
       }
+    },
+    {
+      "case_id": "validate_scene_update_surface_offset_invalid_anchor_refused",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "params": {
+          "name": "validate_scene_update",
+          "arguments": {
+            "expectations": {
+              "geometryRequirements": [
+                {
+                  "targetReference": {
+                    "sourceElementId": "house-pad-001"
+                  },
+                  "kind": "surfaceOffset",
+                  "surfaceReference": {
+                    "sourceElementId": "terrain-main"
+                  },
+                  "anchorSelector": {
+                    "anchor": "footprint_vertices"
+                  },
+                  "constraints": {
+                    "expectedOffset": 0.0,
+                    "tolerance": 0.02
+                  }
+                }
+              ]
+            }
+          }
+        },
+        "id": "validate-scene-update-surface-offset-invalid-anchor-refused"
+      },
+      "response": {
+        "jsonrpc": "2.0",
+        "id": "validate-scene-update-surface-offset-invalid-anchor-refused",
+        "result": {
+          "success": true,
+          "outcome": "refused",
+          "refusal": {
+            "code": "unsupported_anchor_selector",
+            "message": "Unsupported anchorSelector.anchor: footprint_vertices",
+            "details": {
+              "field": "anchorSelector.anchor",
+              "value": "footprint_vertices",
+              "allowedValues": [
+                "approximate_bottom_bounds_center",
+                "approximate_bottom_bounds_corners",
+                "approximate_top_bounds_center",
+                "approximate_top_bounds_corners"
+              ]
+            }
+          }
+        }
+      }
     }
   ]
 }

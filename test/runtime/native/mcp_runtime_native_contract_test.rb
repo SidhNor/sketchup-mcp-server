@@ -4,6 +4,7 @@ require_relative '../../test_helper'
 require 'tmpdir'
 require_relative '../../../src/su_mcp/runtime/native/mcp_runtime_loader'
 
+# rubocop:disable Metrics/ClassLength
 class McpRuntimeNativeContractTest < Minitest::Test
   def setup
     @vendor_root = File.expand_path('../vendor/ruby', __dir__)
@@ -185,6 +186,29 @@ class McpRuntimeNativeContractTest < Minitest::Test
     )
   end
 
+  def test_native_transport_preserves_validate_scene_update_surface_offset_refusal_details
+    skip_unless_staged_vendor_runtime!
+
+    contract_case = contract_case('validate_scene_update_surface_offset_invalid_anchor_refused')
+    transport = @loader.build_transport(
+      handlers: {
+        validate_scene_update: ->(_arguments) { contract_case.fetch('response').fetch('result') }
+      }
+    )
+
+    response = perform_raw_json_request(transport, contract_case.fetch('request'))
+
+    assert_equal(200, response[:status])
+    assert_equal(
+      contract_case.dig('response', 'result', 'refusal', 'details', 'allowedValues'),
+      response[:body].dig('result', 'structuredContent', 'refusal', 'details', 'allowedValues')
+    )
+    assert_equal(
+      contract_case.dig('response', 'result'),
+      response[:body].dig('result', 'structuredContent')
+    )
+  end
+
   private
 
   def contract_case(case_id)
@@ -234,3 +258,4 @@ class McpRuntimeNativeContractTest < Minitest::Test
     )
   end
 end
+# rubocop:enable Metrics/ClassLength

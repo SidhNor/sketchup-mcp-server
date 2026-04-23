@@ -824,6 +824,33 @@ module SU_MCP
       }
     end
 
+    def anchor_selector_schema
+      {
+        type: 'object',
+        properties: {
+          anchor: enum_schema(
+            'approximate_bottom_bounds_center',
+            'approximate_bottom_bounds_corners',
+            'approximate_top_bounds_center',
+            'approximate_top_bounds_corners'
+          )
+        },
+        additionalProperties: false
+      }
+    end
+
+    def surface_offset_constraints_schema
+      {
+        type: 'object',
+        properties: {
+          expectedOffset: number_schema,
+          tolerance: number_schema
+        },
+        additionalProperties: false
+      }
+    end
+
+    # rubocop:disable Metrics/MethodLength
     def geometry_requirement_schema
       {
         type: 'object',
@@ -831,15 +858,20 @@ module SU_MCP
           targetReference: target_reference_schema,
           targetSelector: target_selector_schema,
           expectationId: string_schema,
+          surfaceReference: target_reference_schema,
+          anchorSelector: anchor_selector_schema,
+          constraints: surface_offset_constraints_schema,
           kind: enum_schema(
             'mustHaveGeometry',
             'mustNotBeNonManifold',
-            'mustBeValidSolid'
+            'mustBeValidSolid',
+            'surfaceOffset'
           )
         },
         additionalProperties: false
       }
     end
+    # rubocop:enable Metrics/MethodLength
 
     def validation_core_expectations_schema
       {

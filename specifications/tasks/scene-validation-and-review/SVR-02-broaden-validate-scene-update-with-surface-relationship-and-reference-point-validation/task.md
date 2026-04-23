@@ -1,7 +1,7 @@
 # Task: SVR-02 Broaden `validate_scene_update` With Surface-Relationship And Reference-Point Validation
 **Task ID**: `SVR-02`
 **Title**: `Broaden validate_scene_update With Object-Anchor Surface-Offset Validation`
-**Status**: `planned`
+**Status**: `completed`
 **Priority**: `P1`
 **Date**: `2026-04-21`
 

@@ -210,6 +210,48 @@ class McpRuntimeFacadeTest < Minitest::Test
     assert_equal(expected, result)
   end
 
+  # rubocop:disable Metrics/MethodLength, Layout/LineLength
+  def test_validate_scene_update_surface_offset_payload_dispatches_through_the_shared_runtime_command_factory
+    expected = { success: true, outcome: 'passed', errors: [], warnings: [], summary: {} }
+    validation_commands = RecordingValidationCommands.new(result: expected)
+    factory = RecordingRuntimeCommandFactory.new(targets: [validation_commands])
+    facade = SU_MCP::McpRuntimeFacade.new(runtime_command_factory: factory)
+
+    result = facade.validate_scene_update(
+      'expectations' => {
+        'geometryRequirements' => [
+          {
+            'targetReference' => { 'sourceElementId' => 'house-pad-001' },
+            'kind' => 'surfaceOffset',
+            'surfaceReference' => { 'sourceElementId' => 'terrain-main' },
+            'anchorSelector' => { 'anchor' => 'approximate_bottom_bounds_corners' },
+            'constraints' => { 'expectedOffset' => 0.0, 'tolerance' => 0.02 }
+          }
+        ]
+      }
+    )
+
+    assert_equal(1, factory.calls)
+    assert_equal(
+      [{
+        'expectations' => {
+          'geometryRequirements' => [
+            {
+              'targetReference' => { 'sourceElementId' => 'house-pad-001' },
+              'kind' => 'surfaceOffset',
+              'surfaceReference' => { 'sourceElementId' => 'terrain-main' },
+              'anchorSelector' => { 'anchor' => 'approximate_bottom_bounds_corners' },
+              'constraints' => { 'expectedOffset' => 0.0, 'tolerance' => 0.02 }
+            }
+          ]
+        }
+      }],
+      validation_commands.calls
+    )
+    assert_equal(expected, result)
+  end
+  # rubocop:enable Metrics/MethodLength, Layout/LineLength
+
   def test_create_group_dispatches_through_the_real_runtime_command_factory
     Sketchup.active_model_override = build_semantic_model
     facade = SU_MCP::McpRuntimeFacade.new(

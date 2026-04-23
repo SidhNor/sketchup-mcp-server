@@ -417,8 +417,57 @@ class McpRuntimeLoaderTest < Minitest::Test
       metadata_requirement_item.fetch(:targetSelector).fetch(:properties).keys.map(&:to_s).sort
     )
     assert_equal(
-      %w[expectationId kind targetReference targetSelector],
+      %w[
+        anchorSelector constraints expectationId kind surfaceReference
+        targetReference targetSelector
+      ],
       geometry_requirement_item.keys.map(&:to_s).sort
+    )
+  end
+
+  def test_validate_scene_update_tool_schema_exposes_surface_offset_geometry_requirements
+    validation_tool = @loader.tool_catalog.find do |tool|
+      tool.fetch(:name) == 'validate_scene_update'
+    end
+    refute_nil(validation_tool)
+
+    geometry_requirement_item = validation_tool
+                                .fetch(:input_schema)
+                                .fetch(:properties)
+                                .fetch(:expectations)
+                                .fetch(:properties)
+                                .fetch(:geometryRequirements)
+                                .fetch(:items)
+                                .fetch(:properties)
+
+    assert_equal(
+      %w[mustBeValidSolid mustHaveGeometry mustNotBeNonManifold surfaceOffset].sort,
+      geometry_requirement_item.fetch(:kind).fetch(:enum).map(&:to_s).sort
+    )
+    assert_equal(
+      %w[entityId persistentId sourceElementId],
+      geometry_requirement_item.fetch(:surfaceReference).fetch(:properties).keys.map(&:to_s).sort
+    )
+    assert_equal(
+      ['anchor'],
+      geometry_requirement_item.fetch(:anchorSelector).fetch(:properties).keys.map(&:to_s)
+    )
+    assert_equal(
+      %w[
+        approximate_bottom_bounds_center
+        approximate_bottom_bounds_corners
+        approximate_top_bounds_center
+        approximate_top_bounds_corners
+      ],
+      geometry_requirement_item
+        .fetch(:anchorSelector)
+        .fetch(:properties)
+        .fetch(:anchor)
+        .fetch(:enum)
+    )
+    assert_equal(
+      %w[expectedOffset tolerance],
+      geometry_requirement_item.fetch(:constraints).fetch(:properties).keys.map(&:to_s).sort
     )
   end
 
