@@ -17,9 +17,9 @@ class RepositoryCleanupPostureTest < Minitest::Test
     assert_path_exists('releaserc.toml')
     assert_includes(workflow, '--config releaserc.toml')
     assert_includes(workflow, 'echo "tag=$(git describe --tags --abbrev=0)" >> "$GITHUB_OUTPUT"')
-    assert_includes(workflow, 'workflow_run:')
-    assert_includes(workflow, '- CI')
-    assert_includes(workflow, "github.event.workflow_run.conclusion == 'success'")
+    assert_includes(workflow, 'workflow_call:')
+    assert_includes(workflow, 'workflow_dispatch:')
+    refute_includes(workflow, 'workflow_run:')
     refute_includes(workflow, 'bundle exec rake ci')
     refute_includes(workflow, 'ruby/setup-ruby')
     assert_includes(releaserc, 'assets = ["VERSION"]')
@@ -41,6 +41,10 @@ class RepositoryCleanupPostureTest < Minitest::Test
     )
     assert_includes(workflow, 'SonarSource/sonarqube-scan-action@v7')
     assert_includes(workflow, 'SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}')
+    assert_includes(workflow, 'needs: verify')
+    assert_includes(workflow, "github.event_name == 'push' && github.ref == 'refs/heads/main'")
+    assert_includes(workflow, 'uses: ./.github/workflows/release.yml')
+    assert_includes(workflow, 'secrets: inherit')
   end
 
   def test_ci_rake_task_excludes_python_and_bridge_contract_checks

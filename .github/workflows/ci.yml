@@ -11,7 +11,7 @@ permissions:
   contents: read
 
 jobs:
-  ruby:
+  verify:
     runs-on: ubuntu-latest
     env:
       SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
@@ -33,3 +33,11 @@ jobs:
       - name: SonarQube Cloud scan
         if: env.SONAR_TOKEN != ''
         uses: SonarSource/sonarqube-scan-action@v7
+
+  release:
+    needs: verify
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    permissions:
+      contents: write
+    uses: ./.github/workflows/release.yml
+    secrets: inherit
