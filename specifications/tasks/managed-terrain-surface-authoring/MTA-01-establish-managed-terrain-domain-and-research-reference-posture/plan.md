@@ -80,7 +80,7 @@ No runtime API or public MCP interface changes are planned.
 Documentation interface decisions:
 
 - Create `specifications/research/managed-terrain/ue-reference-phase1.md` as the curated UE research note.
-- Remove the active root-level `sketchup-terrain-phase1-ue-reference-v3.md` after useful research content is curated.
+- Remove the active root-level UE terrain guide after useful research content is curated.
 - Update HLD/task links to point at the curated research note.
 - Keep PRD links light; PRD should remain product-focused and should not depend on UE implementation details.
 
@@ -217,8 +217,8 @@ Use documentation-first checks before and after edits:
 - Negative checks:
   - source-of-truth docs do not promote `terrain.create_surface`, `terrain.flatten`, `terrain.smooth`, or `terrain.ramp` as public tool commitments.
   - curated research note does not contain active repo-layout or public MCP tool recommendations.
-  - root-level `sketchup-terrain-phase1-ue-reference-v3.md` no longer remains as an active source file.
-  - no source-of-truth docs under `specifications/` still reference `sketchup-terrain-phase1-ue-reference-v3.md` after the curated note lands.
+  - the former root-level UE terrain guide no longer remains as an active source file.
+  - no source-of-truth docs under `specifications/` still reference the former root-level UE terrain guide after the curated note lands.
 - General checks:
   - `git diff --check -- specifications/domain-analysis.md specifications/hlds/hld-managed-terrain-surface-authoring.md specifications/prds/prd-managed-terrain-surface-authoring.md specifications/tasks/managed-terrain-surface-authoring specifications/research/managed-terrain`
 
@@ -292,7 +292,7 @@ Use documentation-first checks before and after edits:
   - Likely cognitive bias: spot-check bias.
   - Classification: can be validated before implementation.
   - Mitigation now: required validation includes repo-wide searches for the old root filename and checks that HLD/task README point to the curated research note.
-  - Required validation: repo-wide `rg` for `sketchup-terrain-phase1-ue-reference-v3.md` under `specifications/`, positive checks for `specifications/research/managed-terrain/ue-reference-phase1.md`, plus `git diff --check`.
+  - Required validation: repo-wide stale-reference search under `specifications/`, positive checks for `specifications/research/managed-terrain/ue-reference-phase1.md`, plus `git diff --check`.
 
 - **What must be true for the task to succeed**
   - Business-plan mismatch: the task must not change public MCP contracts, but UE-style operation names are tempting shorthand.

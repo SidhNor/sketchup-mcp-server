@@ -2,13 +2,13 @@
 
 **Task ID**: `MTA-01`  
 **Title**: Establish Managed Terrain Domain And Research Reference Posture  
-**Status**: `challenged`  
+**Status**: `calibrated`
 **Created**: 2026-04-24  
-**Last Updated**: 2026-04-24  
+**Last Updated**: 2026-04-25
 
 **Related Task**: [task.md](./task.md)  
 **Related Plan**: [plan.md](./plan.md)
-**Related Summary**: none yet  
+**Related Summary**: [summary.md](./summary.md)
 
 ---
 
@@ -143,7 +143,22 @@ No material drift recorded yet.
 
 > Filled at the end of implementation. Do not overwrite predicted values.
 
-Not filled yet.
+| Dimension | Score (0-4) | Notes |
+|---|---:|---|
+| Functional Scope | 2 | Shipped the planned domain vocabulary and research-posture change without adding runtime behavior. |
+| Technical Change Surface | 2 | Touched domain analysis, HLD, PRD, task README, plan metadata, task status, summary, size calibration, and a new curated research note. |
+| Actual Implementation Friction | 1 | Work stayed straightforward once the user confirmed docs checks should remain shell-based rather than Ruby unit tests. |
+| Actual Validation Burden | 1 | Validation was focused docs-posture `rg`/`test` checks plus `git diff --check` and Grok codereview; no runtime, package, or hosted SketchUp validation was needed. |
+| Actual Dependency Drag | 2 | Required alignment across PRD, HLD, domain analysis, task README, task metadata, and the research note. |
+| Actual Discovery Encountered | 1 | Discovery confirmed the planned stale-link and missing-domain shape; no new architecture or runtime questions appeared. |
+| Actual Scope Volatility | 1 | Scope stayed docs-only; the only process change was replacing proposed permanent docs tests with recorded shell checks. |
+| Actual Rework | 1 | Minor closeout rewording was needed to keep the old guide filename out of final source docs; no implementation rework was required. |
+| Final Confidence in Completeness | 4 | Validation and codereview confirmed the docs-only posture, source-of-truth hierarchy, and no-public-contract boundary. |
+
+### Actual Notes
+- The implementation matched the predicted documentation/specification-only scope.
+- The only process adjustment was using shell validation commands for documentation posture instead of permanent Ruby unit tests, per user direction.
+- No material estimate drift required a drift-log entry.
 <!-- SIZE:ACTUAL:END -->
 
 ---
@@ -151,7 +166,21 @@ Not filled yet.
 <!-- SIZE:VALIDATION-EVIDENCE:START -->
 ## Validation Evidence Summary
 
-Not filled yet.
+- Baseline checks before edits confirmed:
+  - `Managed Terrain Surface` was absent from `specifications/domain-analysis.md`.
+  - `specifications/research/managed-terrain/ue-reference-phase1.md` did not exist.
+  - the HLD still linked to the former root-level UE guide.
+  - PRD/HLD language still said the domain term was missing.
+- Post-implementation docs checks passed:
+  - `rg -n "Managed Terrain Surface" specifications/domain-analysis.md`
+  - `rg -n "non-normative|research-only|UE Inspection Cadence|MTA-04|MTA-05|MTA-06" specifications/research/managed-terrain/ue-reference-phase1.md`
+  - the former root-level UE terrain guide was absent.
+  - repo-wide stale-reference search under `specifications/` returned no matches for the former root-level UE terrain guide.
+  - `rg -n "not yet listed|currently lacks Managed Terrain Surface|Should the domain analysis add Managed Terrain Surface" specifications/prds/prd-managed-terrain-surface-authoring.md specifications/hlds/hld-managed-terrain-surface-authoring.md` returned no matches.
+  - `rg -n "terrain\.create_surface|terrain\.flatten|terrain\.smooth|terrain\.ramp|src/su_mcp/terrain|TerrainRepository|TerrainEngine|TerrainGeometryAdapter|TerrainCommand" specifications/domain-analysis.md specifications/hlds/hld-managed-terrain-surface-authoring.md specifications/prds/prd-managed-terrain-surface-authoring.md specifications/tasks/managed-terrain-surface-authoring/README.md specifications/research/managed-terrain/ue-reference-phase1.md` returned no matches.
+  - `git diff --check` passed.
+- Grok 4.20 codereview found no critical, high, medium, or low issues.
+- Ruby runtime tests, lint, package verification, and live SketchUp verification were not run because no Ruby runtime, public MCP contract, package, or SketchUp-hosted behavior changed.
 <!-- SIZE:VALIDATION-EVIDENCE:END -->
 
 ---
@@ -159,7 +188,10 @@ Not filled yet.
 <!-- SIZE:DELTA:START -->
 ## Estimation Delta Review
 
-Not filled yet.
+- Prediction was accurate: the task remained a bounded documentation/specification implementation with no runtime or public MCP contract surface.
+- Validation burden was slightly lower than the original plan implied after the user clarified that permanent Ruby documentation tests were not desired.
+- Coordination risk was correctly estimated: the main work was keeping domain analysis, HLD, PRD, task README, task metadata, and research note posture aligned.
+- Future similar tasks should prefer recorded shell-based docs-posture checks over permanent Ruby tests unless the repository establishes a formal documentation contract suite.
 <!-- SIZE:DELTA:END -->
 
 ---

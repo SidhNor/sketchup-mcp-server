@@ -2,7 +2,7 @@
 doc_type: hld
 title: Managed Terrain Surface Authoring
 status: draft
-last_updated: 2026-04-24
+last_updated: 2026-04-25
 ---
 
 # HLD: Managed Terrain Surface Authoring
@@ -13,11 +13,12 @@ This is a capability HLD for the Managed Terrain Surface Authoring product slice
 
 The capability introduces Managed Terrain Surface as a terrain-specific managed scene concept for adopting existing SketchUp terrain, storing a materialized terrain state, applying bounded terrain edits, regenerating owned terrain output geometry, and producing terrain-edit evidence for review and validation.
 
-This HLD is intentionally scoped to architecture. It does not define public MCP tool names, public request schemas, exact response payloads, iteration plans, or final Ruby class names. The terrain phase guide at [`sketchup-terrain-phase1-ue-reference-v3.md`](../../sketchup-terrain-phase1-ue-reference-v3.md) is treated as reference material, not source of truth for public tool shape or repo layering.
+This HLD is intentionally scoped to architecture. It does not define public MCP tool names, public request schemas, exact response payloads, iteration plans, or final Ruby class names. The UE research note at [`ue-reference-phase1.md`](../research/managed-terrain/ue-reference-phase1.md) is non-normative research input, not source of truth for public tool shape or repo layering.
 
 Source context:
 
-- [`domain-analysis.md`](../domain-analysis.md), which currently lacks Managed Terrain Surface and therefore needs a domain extension.
+- [`domain-analysis.md`](../domain-analysis.md), which defines Managed Terrain Surface as a terrain-specific Managed Scene Object concept.
+- [`ue-reference-phase1.md`](../research/managed-terrain/ue-reference-phase1.md), which preserves non-normative UE research pointers and inspection cadence for later MTA implementation tasks.
 - [`prd-scene-targeting-and-interrogation.md`](../prds/prd-scene-targeting-and-interrogation.md), which owns workflow targeting and explicit surface sampling.
 - [`prd-scene-validation-and-review.md`](../prds/prd-scene-validation-and-review.md), which owns validation acceptance semantics.
 - [`prd-semantic-scene-modeling.md`](../prds/prd-semantic-scene-modeling.md), which owns semantic hardscape and Managed Scene Object conventions.
@@ -532,7 +533,7 @@ Grade, ramp-like transitions, smoothing, and fairing may inform internal terrain
 
 **Reason**
 
-The referenced terrain guide starts from a blank-state tool design. This repository already has MCP authoring guidance, command boundaries, and domain ownership rules. Public tool shape should be designed through product and contract work, not imported from Unreal terminology.
+The curated UE research note preserves useful terrain-edit references, but this repository already has MCP authoring guidance, command boundaries, and domain ownership rules. Public tool shape should be designed through product and contract work, not imported from Unreal terminology.
 
 ### 10. Terrain State Uses Stable Owner-Local Coordinates
 
@@ -562,17 +563,16 @@ SketchUp groups and components can be transformed or scaled. Keeping state in a 
 
 ## Opened Questions
 
-1. What exact domain-analysis update should introduce Managed Terrain Surface, its lifecycle states, and its relationship to Managed Scene Object?
-2. What terrain-state payload format, compression, and chunking strategy should be used behind the repository seam?
-3. What minimum `su_mcp` metadata fields should identify a Managed Terrain Surface without storing terrain state there?
-4. What source surfaces are supported for adoption in the first implementation, and what source conditions produce structured refusals?
-5. Which hardscape managed object types can be read as terrain constraints in the first release?
-6. Which defect hints are terrain-owned evidence versus validation-owned findings: holes, loose edges, seam defects, slope spikes, humps, trenches, or abrupt transitions?
-7. Should adoption retain a durable source-surface reference for comparison after first release, or is SketchUp undo plus evidence enough initially?
-8. Should the first implementation regenerate the full owned terrain output or support dirty-region partial regeneration?
-9. What SketchUp-hosted smoke coverage is mandatory before calling adoption and bounded edits supported?
-10. What payload-size threshold should force refusal, alternate storage, or a future sidecar strategy?
-11. What recovery behavior should users see when terrain-state deserialization, migration, or integrity validation fails after model open?
-12. Does terrain evidence require its own versioning contract so validation and review can evolve independently?
-13. Should terrain evidence ever reference regenerated face or vertex identifiers, or should it remain coordinate, region, and sample-index based to avoid stale references after regeneration?
-14. How should commands detect and recover from manually deleted, exploded, or edited derived terrain output when the stable terrain owner and terrain-state payload still exist?
+1. What terrain-state payload format, compression, and chunking strategy should be used behind the repository seam?
+2. What minimum `su_mcp` metadata fields should identify a Managed Terrain Surface without storing terrain state there?
+3. What source surfaces are supported for adoption in the first implementation, and what source conditions produce structured refusals?
+4. Which hardscape managed object types can be read as terrain constraints in the first release?
+5. Which defect hints are terrain-owned evidence versus validation-owned findings: holes, loose edges, seam defects, slope spikes, humps, trenches, or abrupt transitions?
+6. Should adoption retain a durable source-surface reference for comparison after first release, or is SketchUp undo plus evidence enough initially?
+7. Should the first implementation regenerate the full owned terrain output or support dirty-region partial regeneration?
+8. What SketchUp-hosted smoke coverage is mandatory before calling adoption and bounded edits supported?
+9. What payload-size threshold should force refusal, alternate storage, or a future sidecar strategy?
+10. What recovery behavior should users see when terrain-state deserialization, migration, or integrity validation fails after model open?
+11. Does terrain evidence require its own versioning contract so validation and review can evolve independently?
+12. Should terrain evidence ever reference regenerated face or vertex identifiers, or should it remain coordinate, region, and sample-index based to avoid stale references after regeneration?
+13. How should commands detect and recover from manually deleted, exploded, or edited derived terrain output when the stable terrain owner and terrain-state payload still exist?

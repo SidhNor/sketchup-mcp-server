@@ -2,7 +2,7 @@
 doc_type: prd
 title: Managed Terrain Surface Authoring
 status: draft
-last_updated: 2026-04-24
+last_updated: 2026-04-25
 ---
 
 # PRD: Managed Terrain Surface Authoring
@@ -111,7 +111,7 @@ This product slice is separate from semantic hardscape creation. Existing `path`
 | Preserve undo-safe terrain edit behavior | As a SketchUp user, I want terrain edits to behave as coherent undoable actions so that failed or undesired edits do not require manual scene cleanup | Supported terrain-authoring mutations appear as one coherent SketchUp undo step where practical, and failures do not leave partial product-managed terrain state as the expected outcome | P0 |
 | Refuse unsupported or unsafe terrain requests clearly | As an agent, I want unsupported terrain edits to fail explicitly so that the workflow does not fall back to unsafe mesh mutation | Unsupported source surfaces, ambiguous targets, unsafe constraints, or out-of-scope edit intents return structured refusals with actionable reason data rather than silently proceeding | P0 |
 
-Conflict flag: Managed Terrain Surface is not yet listed as a formal entity in [`domain-analysis.md`](../domain-analysis.md), so this PRD introduces a domain-extension need. No functional requirements conflict with current hardscape rules as long as `path`, `pad`, and `retaining_edge` remain separate Managed Scene Objects and are not absorbed into terrain state.
+Domain alignment: Managed Terrain Surface is represented in [`domain-analysis.md`](../domain-analysis.md) as a terrain-specific Managed Scene Object concept. No functional requirements conflict with current hardscape rules as long as `path`, `pad`, and `retaining_edge` remain separate Managed Scene Objects and are not absorbed into terrain state.
 
 ## Non Functional Requirements
 
@@ -152,7 +152,6 @@ Conflict flag: Managed Terrain Surface is not yet listed as a formal entity in [
 - Which existing managed object types may be referenced as fixed controls or preserve constraints in the first release?
 - How should terrain edits report possible impacts on terrain-dependent hardscape without mutating that hardscape state?
 - What tolerance defaults should govern fixed controls, preserve zones, and before/after terrain evidence?
-- Should the domain analysis add Managed Terrain Surface as a new domain entity in this product slice?
 
 ## Risks and Mitigation
 
@@ -182,3 +181,4 @@ Conflict flag: Managed Terrain Surface is not yet listed as a formal entity in [
 | Date | Change |
 | --- | --- |
 | 2026-04-24 | Initial draft created for managed terrain adoption and bounded terrain authoring after reviewing the terrain guide, current terrain-adjacent product slices, and the April 24 terrain-authoring signal. |
+| 2026-04-25 | Updated domain-alignment language after Managed Terrain Surface was added to the shared domain analysis. |

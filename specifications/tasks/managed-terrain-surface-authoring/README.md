@@ -6,6 +6,7 @@ These tasks are derived from:
 
 - [Managed Terrain Surface Authoring HLD](../../hlds/hld-managed-terrain-surface-authoring.md)
 - [PRD: Managed Terrain Surface Authoring](../../prds/prd-managed-terrain-surface-authoring.md)
+- [Managed Terrain Phase 1 UE Research Reference](../../research/managed-terrain/ue-reference-phase1.md)
 
 ## Task Set Intent
 
@@ -43,5 +44,5 @@ Deferred work is not promoted into active task folders in this iteration:
 ## Notes
 
 - Each implementation task must carry its own TDD and live verification expectations. Recovery cases such as corrupt payloads, missing derived output, stale output, and unsupported versions belong in the task that introduces the relevant behavior.
-- The UE reference guide is research input only. It may inform internal terrain math and kernel design, but it does not define public MCP tool names or Ruby architecture names.
+- The UE research reference is non-normative research input only. It may inform internal terrain math and kernel design, but it does not define public MCP tool names or Ruby architecture names.
 - Existing `STI-*`, `SVR-*`, `SEM-*`, and `PLAT-*` tasks remain dependency history and should not be rewritten by this task set.

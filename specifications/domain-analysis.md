@@ -2,7 +2,7 @@
 doc_type: domain_analysis
 title: SketchUp MCP Domain Analysis
 status: draft
-last_updated: 2026-04-14
+last_updated: 2026-04-25
 ---
 
 # SketchUp MCP Domain Analysis
@@ -17,6 +17,7 @@ It is intended to feed the following PRDs:
 - [`prd-semantic-scene-modeling.md`](prds/prd-semantic-scene-modeling.md)
 - [`prd-staged-asset-reuse.md`](prds/prd-staged-asset-reuse.md)
 - [`prd-scene-validation-and-review.md`](prds/prd-scene-validation-and-review.md)
+- [`prd-managed-terrain-surface-authoring.md`](prds/prd-managed-terrain-surface-authoring.md)
 
 ## Domain Summary
 
@@ -38,12 +39,14 @@ The product slices align to those capabilities as follows:
 - semantic scene modeling owns semantic creation, managed-object identity, metadata, and core mutation/composition flows
 - staged asset reuse owns Asset Exemplars, Asset Instances, approval, instancing, replacement, and protection rules
 - scene validation and review owns structured measurement, validation, and review artifacts
+- managed terrain surface authoring owns adoption of supported terrain sources into Managed Terrain Surfaces, terrain-owned source state, bounded terrain edits, derived terrain output, and terrain-edit evidence
 
 ## Terminology Conventions
 
 The following conventions apply across this document and all PRDs in `specifications/prds/`:
 
 - **Managed Scene Object** is the canonical term for an MCP-controlled object in the editable design scene.
+- **Managed Terrain Surface** is a terrain-specific Managed Scene Object concept for adopted SketchUp terrain that has stable workflow identity, terrain-owned source state, and derived terrain output.
 - **Asset Exemplar** is the canonical term for a protected reusable object in the staging or library area.
 - **Asset Instance** is the canonical term for an editable design-scene object created from an Asset Exemplar.
 - **Collection** means a logical workflow bucket used for organization and lookup. It is not the same as a SketchUp Tag.
@@ -84,6 +87,8 @@ Representative examples:
 - concrete slab, terrace, deck, raised platform -> `pad`
 - house, shed, house extension -> `structure`
 
+Managed Terrain Surface Authoring does not change these semantic hardscape rules. Existing `path`, `pad`, and `retaining_edge` objects remain separate hardscape Managed Scene Objects. They may be referenced by terrain workflows as explicit controls or constraints where product rules allow, but they are not part of terrain source state and must not be silently absorbed or rewritten by terrain editing.
+
 ## Domain Categories
 
 ### 1. Scene Objects
@@ -93,6 +98,7 @@ These are objects that exist in the modeled scene and can be targeted, created, 
 | Entity | Description | Why It Matters |
 | --- | --- | --- |
 | Managed Scene Object | Any top-level MCP-managed object in the editable design scene | Primary unit of identity, mutation, validation, and reporting |
+| Managed Terrain Surface | Terrain-specific Managed Scene Object created by adopting a supported source surface into terrain-owned state with derived SketchUp output | Gives terrain authoring stable workflow identity without making the live SketchUp TIN or hardscape objects the terrain source of truth |
 | Site Element | A Managed Scene Object created through semantic tools such as `structure`, `pad`, `path`, `planting_mass`, or `tree_proxy` | Replaces primitive-first geometry creation with workflow-facing semantic objects |
 | Structure | Semantic built-form Managed Scene Object such as a house, shed, or extension, defined by a footprint and a controlled Structure Category | Keeps building context first-class instead of forcing built forms into ambiguous pad-like or primitive-only modeling |
 | Tree Proxy | Lightweight semantic representation of a tree | Supports early iteration and low-cost baseline modeling |
@@ -180,6 +186,7 @@ These represent workflow inputs or expectations defined outside SketchUp but app
 | Semantic scene modeling | Managed Scene Object, Site Element, Structure, Metadata Record, Structure Category, Collection | Footprint Definition, Material, Grouped Feature, Tag |
 | Staged asset reuse | Asset Exemplar, Asset Instance, Metadata Record, Collection | Material, Tag, Managed Scene Object |
 | Validation and review | Validation Rule, Validation Result, Measurement Request, Scene Snapshot | Managed Scene Object, Asset Exemplar, Topology Finding, Surface Sample Result |
+| Managed terrain surface authoring | Managed Terrain Surface, Metadata Record, Target Reference | Surface Sample Result, Topology Finding, Validation Result, Managed Scene Object |
 
 ## Entity Lifecycles
 
@@ -196,6 +203,19 @@ These represent workflow inputs or expectations defined outside SketchUp but app
 | Archived | Object retained for record or hidden from active workflow | archival or soft-delete policy | Deleted |
 | Deleted | Object no longer participates in the scene | delete action | None |
 | Cancelled | Planned object never created | planning change | None |
+
+### Managed Terrain Surface Lifecycle Mapping
+
+Managed Terrain Surface follows the Managed Scene Object identity conventions while adding terrain-specific ownership below that identity.
+
+| Conceptual phase | Managed Scene Object relationship | Terrain-specific meaning |
+| --- | --- | --- |
+| Source surface | Pre-managed adoption input | Existing SketchUp terrain or explicit surface geometry that may be sampled or inspected before adoption; it is not yet managed terrain state |
+| Adopted terrain | Created and Classified Managed Scene Object | A stable terrain owner exists with workflow identity metadata; terrain-owned source state and derived output are separate concepts refined by later MTA tasks |
+| Edited terrain | Revised Managed Scene Object | A bounded terrain edit changes terrain-owned state and regenerates derived terrain output while preserving stable terrain identity |
+| Stale or invalid derived output | Integrity condition on a Managed Scene Object | Terrain state may remain authoritative while derived output needs regeneration, repair, or refusal handling |
+
+This mapping is not a complete terrain state machine. Exact terrain lifecycle states, storage details, migration behavior, and recovery policy are deferred to the Managed Terrain Surface Authoring implementation tasks, especially `MTA-02`.
 
 ### Asset Exemplar Lifecycle
 
@@ -226,3 +246,4 @@ Key rule: Asset Exemplars never transition into editable scene objects. Asset In
 | 2026-04-11 | Updated the domain analysis to match the four-PRD split, added the standalone targeting and interrogation slice, aligned capability groups to the updated guide, and added lightweight front matter plus revision history. |
 | 2026-04-14 | Updated the semantic scene modeling domain to include `structure` as a first-wave semantic object, aligned create/action examples with the expanded semantic vocabulary, and reflected the PRD decision that raised platforms remain under `pad` via height or thickness semantics. |
 | 2026-04-14 | Added explicit semantic object classification rules for `pad` versus `structure`, introduced Footprint and Structure Category terminology, and aligned the domain model with the PRD's built-form metadata and polygon-footprint requirements. |
+| 2026-04-25 | Added Managed Terrain Surface as a terrain-specific Managed Scene Object concept, clarified hardscape separation for `path`, `pad`, and `retaining_edge`, and recorded lightweight lifecycle mapping for managed terrain authoring. |

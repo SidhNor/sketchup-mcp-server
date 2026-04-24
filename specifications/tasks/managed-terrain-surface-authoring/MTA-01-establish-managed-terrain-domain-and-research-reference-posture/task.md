@@ -1,7 +1,7 @@
 # Task: MTA-01 Establish Managed Terrain Domain And Research Reference Posture
 **Task ID**: `MTA-01`
 **Title**: `Establish Managed Terrain Domain And Research Reference Posture`
-**Status**: `planned`
+**Status**: `completed`
 **Priority**: `P0`
 **Date**: `2026-04-24`
 
@@ -81,6 +81,7 @@ Scenario: terrain source documents remain linked coherently
 ## Related Technical Plan
 
 - [Technical implementation plan](./plan.md)
+- [Implementation summary](./summary.md)
 
 ## Success Metrics
 
