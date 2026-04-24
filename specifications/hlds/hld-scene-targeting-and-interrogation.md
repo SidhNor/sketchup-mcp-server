@@ -181,57 +181,96 @@ V1 targeting and interrogation commands should share one JSON target-reference c
 
 ### 1. Targeting Flow
 
-```text
-Agent
--> MCP tool registration
--> Ruby targeting command
--> query and collection helpers
--> compact entity summaries
--> response
+```mermaid
+sequenceDiagram
+  participant Agent
+  participant Runtime as MCP runtime boundary
+  participant Command as Ruby targeting command
+  participant Helpers as Query and collection helpers
+  participant Summaries as Compact entity summaries
+  participant Response
+
+  Agent->>Runtime: Targeting request
+  Runtime->>Command: Dispatch command
+  Command->>Helpers: Resolve query and collections
+  Helpers->>Summaries: Build compact summaries
+  Summaries-->>Response: Normalize payload
+  Response-->>Agent: Return result
 ```
 
 ### 2. Bounds and Collection Flow
 
-```text
-Agent
--> get_bounds or get_named_collections
--> Ruby command
--> target resolution or collection discovery
--> bounds / membership summarization
--> response
+```mermaid
+sequenceDiagram
+  participant Agent
+  participant Tool as get_bounds or get_named_collections
+  participant Command as Ruby command
+  participant Resolution as Target resolution or collection discovery
+  participant Summary as Bounds / membership summarization
+  participant Response
+
+  Agent->>Tool: Request bounds or collections
+  Tool->>Command: Dispatch command
+  Command->>Resolution: Resolve target or discover collection
+  Resolution->>Summary: Summarize geometry or membership
+  Summary-->>Response: Normalize payload
+  Response-->>Agent: Return result
 ```
 
 ### 3. Surface Interrogation Flow
 
-```text
-Agent
--> sample_surface_z
--> Ruby command
--> explicit target resolution
--> surface interrogation component
--> hit / miss / ambiguity result
--> response
+```mermaid
+sequenceDiagram
+  participant Agent
+  participant Tool as sample_surface_z
+  participant Command as Ruby command
+  participant Targeting as Explicit target resolution
+  participant Surface as Surface interrogation component
+  participant Result as Hit / miss / ambiguity result
+  participant Response
+
+  Agent->>Tool: Request surface samples
+  Tool->>Command: Dispatch command
+  Command->>Targeting: Resolve host surface
+  Targeting->>Surface: Sample explicit geometry
+  Surface-->>Result: Return sample outcomes
+  Result-->>Response: Normalize payload
+  Response-->>Agent: Return result
 ```
 
 ### 4. Topology Analysis Flow
 
-```text
-Agent
--> analyze_edge_network
--> Ruby command
--> target resolution
--> edge-network analysis component
--> structured topology findings
--> response
+```mermaid
+sequenceDiagram
+  participant Agent
+  participant Tool as analyze_edge_network
+  participant Command as Ruby command
+  participant Targeting as Target resolution
+  participant Analysis as Edge-network analysis component
+  participant Findings as Structured topology findings
+  participant Response
+
+  Agent->>Tool: Request topology analysis
+  Tool->>Command: Dispatch command
+  Command->>Targeting: Resolve edge target
+  Targeting->>Analysis: Analyze connected network
+  Analysis-->>Findings: Build topology findings
+  Findings-->>Response: Normalize payload
+  Response-->>Agent: Return result
 ```
 
 ### 5. Downstream Integration Flow
 
-```text
-Semantic modeling or validation command
--> targeting / interrogation tool or shared helper call
--> structured targeting, bounds, sampling, or topology output
--> downstream workflow decision
+```mermaid
+sequenceDiagram
+  participant Downstream as Semantic modeling or validation command
+  participant Targeting as Targeting / interrogation seam
+  participant Output as Structured targeting, bounds, sampling, or topology output
+  participant Decision as Downstream workflow decision
+
+  Downstream->>Targeting: Request shared targeting or interrogation
+  Targeting-->>Output: Return structured output
+  Output-->>Decision: Inform workflow decision
 ```
 
 ### Public Tool Contracts (V1)
@@ -261,25 +300,29 @@ The capability should keep tool contracts compact and explicit.
 
 ### Architecture Diagram
 
-```text
-MCP Client
-   |
-   v
-[Native MCP Tool Registration]
-   |
-   v
-[Ruby Targeting & Interrogation Commands]
-   |
-   +--> [Query & Collection Helpers] ----------- Ruby behavior tests
-   |
-   +--> [Bounds & Placement Summary] ---------- Ruby behavior tests
-   |
-   +--> [Surface Interrogation] --------------- SketchUp-hosted integration tests
-   |
-   +--> [Edge-Network Analysis] --------------- SketchUp-hosted integration tests
-   |
-   v
-JSON-serializable result payloads
+```mermaid
+flowchart TD
+  client[MCP Client]
+  registration[Native MCP Tool Registration]
+  commands[Ruby Targeting and Interrogation Commands]
+  query[Query and Collection Helpers]
+  bounds[Bounds and Placement Summary]
+  surface[Surface Interrogation]
+  topology[Edge-Network Analysis]
+  results[JSON-serializable result payloads]
+
+  client --> registration
+  registration --> commands
+  commands --> query
+  commands --> bounds
+  commands --> surface
+  commands --> topology
+  commands --> results
+
+  query -. Ruby behavior tests .-> results
+  bounds -. Ruby behavior tests .-> results
+  surface -. SketchUp-hosted integration tests .-> results
+  topology -. SketchUp-hosted integration tests .-> results
 ```
 
 ### Verification Plan (MVP)

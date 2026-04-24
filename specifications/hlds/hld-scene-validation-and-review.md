@@ -302,110 +302,139 @@ Snapshot behavior and geometry-heavy checks should be called out explicitly when
 
 ### 1. Measurement Flow
 
-```text
-Agent
--> measure_scene
--> Ruby validation and review command
--> request normalization and target resolution
--> measurement service
--> structured measurement result
--> response
+```mermaid
+sequenceDiagram
+  participant Agent
+  participant Tool as measure_scene
+  participant Command as Ruby validation and review command
+  participant Request as Request normalization and target resolution
+  participant Measurement as Measurement service
+  participant Result as Structured measurement result
+  participant Response
+
+  Agent->>Tool: Request measurement
+  Tool->>Command: Dispatch command
+  Command->>Request: Normalize request and resolve target
+  Request->>Measurement: Measure scene
+  Measurement-->>Result: Build structured result
+  Result-->>Response: Normalize payload
+  Response-->>Agent: Return response
 ```
 
 ### 2. Validation Flow
 
-```text
-Agent
--> validate_scene_update
--> Ruby validation and review command
--> request normalization and resolution layer
--> validation orchestrator
--> selected check families
--> findings and summary serializer
--> response
+```mermaid
+sequenceDiagram
+  participant Agent
+  participant Tool as validate_scene_update
+  participant Command as Ruby validation and review command
+  participant Request as Request normalization and resolution layer
+  participant Orchestrator as Validation orchestrator
+  participant Checks as Selected check families
+  participant Serializer as Findings and summary serializer
+  participant Response
+
+  Agent->>Tool: Request validation
+  Tool->>Command: Dispatch command
+  Command->>Request: Normalize and resolve request
+  Request->>Orchestrator: Start validation
+  Orchestrator->>Checks: Run selected checks
+  Checks-->>Serializer: Return findings and summary
+  Serializer-->>Response: Normalize payload
+  Response-->>Agent: Return response
 ```
 
 ### 3. Geometry-Aware Validation Flow
 
-```text
-validate_scene_update geometry expectations
--> validation orchestrator
--> targeting/interrogation helpers
--> bounds, surface-sample, or topology evidence
--> geometry/topology findings
--> aggregated validation result
+```mermaid
+sequenceDiagram
+  participant Expectations as Geometry expectations
+  participant Orchestrator as Validation orchestrator
+  participant Helpers as Targeting / interrogation helpers
+  participant Evidence as Bounds / surface-sample / topology evidence
+  participant Findings as Geometry or topology findings
+  participant Result as Aggregated validation result
+
+  Expectations->>Orchestrator: Validate geometry expectations
+  Orchestrator->>Helpers: Request geometry evidence
+  Helpers-->>Evidence: Return measurements or samples
+  Evidence-->>Findings: Build findings
+  Findings-->>Result: Aggregate validation result
 ```
 
 ### 4. Asset-Integrity Validation Flow
 
-```text
-validate_scene_update asset expectations
--> validation orchestrator
--> semantic metadata and asset-lineage helpers
--> asset placement or exemplar-integrity checks
--> asset findings
--> aggregated validation result
+```mermaid
+sequenceDiagram
+  participant Expectations as Asset expectations
+  participant Orchestrator as Validation orchestrator
+  participant Helpers as Semantic metadata and asset-lineage helpers
+  participant Checks as Asset placement or exemplar-integrity checks
+  participant Findings as Asset findings
+  participant Result as Aggregated validation result
+
+  Expectations->>Orchestrator: Validate asset expectations
+  Orchestrator->>Helpers: Resolve metadata and lineage
+  Helpers->>Checks: Run asset checks
+  Checks-->>Findings: Build findings
+  Findings-->>Result: Aggregate validation result
 ```
 
 ### 5. Review Artifact Flow
 
-```text
-Validation failure or warning remains
--> capture_scene_snapshot
--> snapshot capture component
--> artifact metadata or reference
--> review workflow
+```mermaid
+sequenceDiagram
+  participant Finding as Validation failure or warning
+  participant Tool as capture_scene_snapshot
+  participant Capture as Snapshot capture component
+  participant Artifact as Artifact metadata or reference
+  participant Review as Review workflow
+
+  Finding->>Tool: Request review artifact
+  Tool->>Capture: Capture scene snapshot
+  Capture-->>Artifact: Produce artifact reference
+  Artifact-->>Review: Attach to review workflow
 ```
 
 ### 6. Post-Fallback Validation Flow
 
-```text
-Scoped fallback execution occurs
--> explicit validate_scene_update request
--> structured validation result
--> optional snapshot capture for review
+```mermaid
+sequenceDiagram
+  participant Fallback as Scoped fallback execution
+  participant Validation as Explicit validate_scene_update request
+  participant Result as Structured validation result
+  participant Snapshot as Optional snapshot capture
+
+  Fallback->>Validation: Request validation after fallback
+  Validation-->>Result: Return structured result
+  Result-->>Snapshot: Capture review artifact when needed
 ```
 
 ### Architecture Diagram
 
-```text
-                    +----------------------------------+
-                    |  Platform Runtime / MCP Boundary |
-                    | tool registration + envelopes    |
-                    +----------------+-----------------+
-                                     |
-                  +------------------+------------------+
-                  |                                     |
-         +--------v--------+                   +--------v--------+
-         | measure_scene   |                   | validate_scene  |
-         | command         |                   | command         |
-         +--------+--------+                   +--------+--------+
-                  |                                     |
-                  |                           +---------v----------+
-                  |                           | validation         |
-                  |                           | orchestrator       |
-                  |                           +----+----+----+-----+
-                  |                                |    |    |
-         +--------v--------+                       |    |    |
-         | measurement     |<----------------------+    |    |
-         | service         |                            |    |
-         +--------+--------+                            |    |
-                  |                                     |    |
-         +--------v------------------+          +-------v----v------------------+
-         | targeting/interrogation   |          | semantic metadata + asset     |
-         | resolution + geometry     |          | lineage / protection sources  |
-         +---------------------------+          +-------------------------------+
-                                     \                 /
-                                      \               /
-                                       +------v------+
-                                       | findings +  |
-                                       | summary     |
-                                       +------+------+
-                                              |
-                                   +----------v-----------+
-                                   | capture_scene_       |
-                                   | snapshot command     |
-                                   +----------------------+
+```mermaid
+flowchart TD
+  runtime[Platform Runtime / MCP Boundary<br/>tool registration + envelopes]
+  measure[measure_scene command]
+  validate[validate_scene command]
+  orchestrator[Validation orchestrator]
+  measurement[Measurement service]
+  targeting[Targeting / interrogation<br/>resolution + geometry]
+  semantic[Semantic metadata + asset<br/>lineage / protection sources]
+  findings[Findings + summary]
+  snapshot[capture_scene_snapshot command]
+
+  runtime --> measure
+  runtime --> validate
+  measure --> measurement
+  validate --> orchestrator
+  orchestrator --> measurement
+  measurement --> targeting
+  orchestrator --> targeting
+  orchestrator --> semantic
+  targeting --> findings
+  semantic --> findings
+  findings --> snapshot
 ```
 
 ## Key Architectural Decisions

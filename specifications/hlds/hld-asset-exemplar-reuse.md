@@ -109,44 +109,79 @@ This separation should be visible in:
 
 ### 1. Discovery Flow
 
-```text
-Agent -> list_staged_assets
--> filter normalization
--> Asset Exemplar query
--> approval-state filtering
--> summarized result response
+```mermaid
+sequenceDiagram
+  participant Agent
+  participant Tool as list_staged_assets
+  participant Filter as Filter normalization
+  participant Query as Asset Exemplar query
+  participant Approval as Approval-state filtering
+  participant Response as Summarized result response
+
+  Agent->>Tool: Request staged assets
+  Tool->>Filter: Normalize filters
+  Filter->>Query: Query exemplars
+  Query->>Approval: Apply approval-state filters
+  Approval-->>Response: Build summary
+  Response-->>Agent: Return result
 ```
 
 ### 2. Instantiation Flow
 
-```text
-Agent -> instantiate_staged_asset
--> resolve Asset Exemplar
--> verify approval and integrity
--> create Asset Instance
--> apply placement / scale / Collection / Tags
--> write lineage metadata
--> serialize result
+```mermaid
+sequenceDiagram
+  participant Agent
+  participant Tool as instantiate_staged_asset
+  participant Resolver as Exemplar resolver
+  participant Integrity as Approval and integrity checks
+  participant Instance as Asset Instance creation
+  participant Placement as Placement / scale / Collection / Tags
+  participant Metadata as Lineage metadata
+  participant Serializer as Result serializer
+
+  Agent->>Tool: Request instantiation
+  Tool->>Resolver: Resolve Asset Exemplar
+  Resolver->>Integrity: Verify approval and integrity
+  Integrity->>Instance: Create Asset Instance
+  Instance->>Placement: Apply placement and classification
+  Placement->>Metadata: Write lineage metadata
+  Metadata->>Serializer: Serialize result
+  Serializer-->>Agent: Return result
 ```
 
 ### 3. Replacement Flow
 
-```text
-Agent -> replace_with_staged_asset
--> resolve target object
--> resolve Asset Exemplar
--> create replacement Asset Instance
--> preserve sourceElementId and semantic role
--> archive or remove previous representation
--> serialize result
+```mermaid
+sequenceDiagram
+  participant Agent
+  participant Tool as replace_with_staged_asset
+  participant Target as Target resolver
+  participant Exemplar as Exemplar resolver
+  participant Replacement as Replacement Asset Instance
+  participant Identity as Identity handoff
+  participant Previous as Previous representation
+  participant Serializer as Result serializer
+
+  Agent->>Tool: Request replacement
+  Tool->>Target: Resolve target object
+  Tool->>Exemplar: Resolve Asset Exemplar
+  Exemplar->>Replacement: Create replacement Asset Instance
+  Target->>Identity: Preserve sourceElementId and semantic role
+  Identity->>Previous: Archive or remove previous representation
+  Previous->>Serializer: Serialize result
+  Serializer-->>Agent: Return result
 ```
 
 ### 4. Integrity Validation Flow
 
-```text
-Asset operation occurs
--> integrity checks evaluate Asset Exemplar invariants
--> violations surfaced to validation or command results
+```mermaid
+sequenceDiagram
+  participant Operation as Asset operation
+  participant Integrity as Integrity checks
+  participant Results as Validation or command results
+
+  Operation->>Integrity: Evaluate Asset Exemplar invariants
+  Integrity-->>Results: Surface violations
 ```
 
 ## Key Architectural Decisions

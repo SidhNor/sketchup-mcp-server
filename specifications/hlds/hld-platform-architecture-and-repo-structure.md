@@ -11,6 +11,7 @@ The repository now contains:
 - staged RBZ packaging and vendored runtime support under the packaging helpers
 - local validation and CI entrypoints
 - CI-owned release automation through standalone semantic-release configuration
+- capability-oriented Ruby support subtrees for scene query, scene validation, semantic modeling, editing, solid modeling, developer tools, adapters, and runtime support
 
 This HLD covers:
 
@@ -38,7 +39,7 @@ Current entrypoints:
 - Ruby extension registration: `src/su_mcp.rb`
 - Ruby extension metadata and registration support: `src/su_mcp/extension.rb`, `src/su_mcp/extension.json`
 - runtime bootstrap: `src/su_mcp/main.rb`
-- MCP runtime support: `src/su_mcp/runtime/native/*`
+- MCP runtime support: `src/su_mcp/runtime/*`, `src/su_mcp/runtime/native/*`
 - packaging and release wiring: `Rakefile`, `rakelib/`, `releaserc.toml`
 
 ### Recommended Direction
@@ -114,6 +115,7 @@ The main architectural goals are:
 
 - shared assembly via `src/su_mcp/runtime/runtime_command_factory.rb`
 - stable dispatch via `src/su_mcp/runtime/tool_dispatcher.rb`
+- capability command ownership under `src/su_mcp/scene_query/`, `src/su_mcp/scene_validation/`, `src/su_mcp/semantic/`, `src/su_mcp/editing/`, `src/su_mcp/modeling/`, and `src/su_mcp/developer/`
 
 ### 5. Shared Ruby Runtime Infrastructure
 
@@ -125,6 +127,10 @@ The main architectural goals are:
 - configuration handling
 - operation wrappers and serialization helpers used across commands
 
+**Current Baseline**
+
+- implemented through support objects such as `src/su_mcp/runtime/tool_response.rb`, `src/su_mcp/runtime/runtime_logger.rb`, native runtime configuration, request normalizers, serializers, validators, and capability-local services
+
 ### 6. Ruby SketchUp Adapter Layer
 
 **Responsibilities**
@@ -132,6 +138,11 @@ The main architectural goals are:
 - isolate direct SketchUp API interaction
 - provide reusable access to entities, bounds, materials, tags, components, export helpers, and model operations
 - normalize SketchUp state into simple Ruby hashes, arrays, strings, numbers, and booleans before returning across the MCP boundary
+
+**Current Baseline**
+
+- shared model access begins in `src/su_mcp/adapters/model_adapter.rb`
+- some capability-local SketchUp interaction still lives beside the owning commands and should be extracted only when reuse or boundary clarity justifies it
 
 ### 7. Packaging and Release Support
 
@@ -149,17 +160,24 @@ The main architectural goals are:
 
 ## Repository Structure Direction
 
-The platform should continue moving toward these conceptual layers:
+The platform now has explicit support subtrees for the major runtime and capability layers. It should continue refining those boundaries incrementally rather than forcing broad directory churn.
+
+Current source grouping:
 
 - extension registration and boot
-- runtime boundary
-- commands and use cases
-- shared runtime support
-- SketchUp adapters
-- packaging and release support
-- tests grouped by owning layer
+- runtime boundary and shared runtime support under `src/su_mcp/runtime/`
+- native MCP transport and catalog support under `src/su_mcp/runtime/native/`
+- scene query commands and support under `src/su_mcp/scene_query/`
+- scene validation and measurement commands under `src/su_mcp/scene_validation/`
+- semantic scene modeling under `src/su_mcp/semantic/`
+- generic editing and mutation support under `src/su_mcp/editing/`
+- solid modeling support under `src/su_mcp/modeling/`
+- developer-only tool support under `src/su_mcp/developer/`
+- shared SketchUp adapters under `src/su_mcp/adapters/`
+- packaging and release support under `rakelib/`
+- tests grouped by owning layer under `test/`
 
-This is not a required immediate directory rewrite. It is the direction for incremental refactoring.
+Further structure changes should be driven by concrete pressure such as large runtime hotspots, repeated SketchUp adapter logic, public tool contract changes, or packaging risk.
 
 ## Validation and Quality Gates
 
@@ -192,6 +210,6 @@ Manual SketchUp-hosted smoke validation remains required when:
 
 ## Open Questions
 
-1. How much of the remaining runtime support tree should be reorganized immediately versus left to follow-on structure work such as `PLAT-12`?
-2. What additional SketchUp-hosted smoke coverage should become mandatory once the packaged runtime stabilizes further?
+1. Should the native MCP tool catalog and schema definitions remain inside `McpRuntimeLoader`, or should they move into smaller catalog/registration support objects as the public surface grows?
+2. What additional SketchUp-hosted smoke coverage should become mandatory for packaged runtime startup, representative MCP requests, and high-risk mutating tools?
 3. Should release automation stay on `python-semantic-release` long term, or should a repo-owned release flow eventually replace it?

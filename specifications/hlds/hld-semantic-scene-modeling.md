@@ -336,102 +336,163 @@ This is a capability-level requirement, not an incidental implementation detail.
 
 ### 1. Semantic Creation Flow
 
-```text
-Agent
--> MCP tool registration
--> create_site_element
--> Ruby semantic command
--> SketchUp operation boundary
--> builder registry
--> selected element builder
--> Managed Scene Object metadata and invariant layer
--> serializer or decorator
--> response
+```mermaid
+sequenceDiagram
+  participant Agent
+  participant Runtime as MCP runtime boundary
+  participant Tool as create_site_element
+  participant Command as Ruby semantic command
+  participant Operation as SketchUp operation boundary
+  participant Registry as Builder registry
+  participant Builder as Selected element builder
+  participant Metadata as Managed Scene Object metadata and invariant layer
+  participant Serializer as Serializer or decorator
+  participant Response
+
+  Agent->>Runtime: Creation request
+  Runtime->>Tool: Route create_site_element
+  Tool->>Command: Dispatch semantic command
+  Command->>Operation: Start operation
+  Operation->>Registry: Select builder
+  Registry->>Builder: Build element
+  Builder->>Metadata: Apply metadata and invariants
+  Metadata->>Serializer: Serialize result
+  Serializer-->>Response: Normalize payload
+  Response-->>Agent: Return result
 ```
 
 ### 1A. Sectioned Contract Migration Flow
 
-```text
-Agent
--> MCP tool registration
--> create_site_element
--> Ruby semantic command
--> contract-version branch inside the semantic seam
--> request validation and normalization
--> target resolution for lifecycle, hosting, and parent context
--> transitional builder translation when needed
--> selected element builder
--> Managed Scene Object metadata and invariant layer
--> serializer or decorator
--> response
+```mermaid
+sequenceDiagram
+  participant Agent
+  participant Runtime as MCP runtime boundary
+  participant Tool as create_site_element
+  participant Command as Ruby semantic command
+  participant Versioning as Contract-version branch
+  participant Validation as Request validation and normalization
+  participant Targeting as Lifecycle / hosting / parent targeting
+  participant Translation as Transitional builder translation
+  participant Builder as Selected element builder
+  participant Metadata as Managed Scene Object metadata and invariant layer
+  participant Serializer as Serializer or decorator
+  participant Response
+
+  Agent->>Runtime: Sectioned creation request
+  Runtime->>Tool: Route create_site_element
+  Tool->>Command: Dispatch semantic command
+  Command->>Versioning: Choose contract branch
+  Versioning->>Validation: Validate and normalize request
+  Validation->>Targeting: Resolve lifecycle, hosting, and parent context
+  Targeting->>Translation: Translate when needed
+  Translation->>Builder: Build element
+  Builder->>Metadata: Apply metadata and invariants
+  Metadata->>Serializer: Serialize result
+  Serializer-->>Response: Normalize payload
+  Response-->>Agent: Return result
 ```
 
 ### 2. Metadata Update Flow
 
-```text
-Agent
--> MCP tool registration
--> set_entity_metadata
--> Ruby semantic command
--> explicit target resolution through the established targeting dependency
--> SketchUp operation boundary
--> Managed Scene Object metadata and invariant layer
--> serializer or decorator
--> response
+```mermaid
+sequenceDiagram
+  participant Agent
+  participant Runtime as MCP runtime boundary
+  participant Tool as set_entity_metadata
+  participant Command as Ruby semantic command
+  participant Targeting as Established targeting dependency
+  participant Operation as SketchUp operation boundary
+  participant Metadata as Managed Scene Object metadata and invariant layer
+  participant Serializer as Serializer or decorator
+  participant Response
+
+  Agent->>Runtime: Metadata update request
+  Runtime->>Tool: Route set_entity_metadata
+  Tool->>Command: Dispatch semantic command
+  Command->>Targeting: Resolve explicit target
+  Targeting->>Operation: Start operation
+  Operation->>Metadata: Apply metadata update and invariants
+  Metadata->>Serializer: Serialize result
+  Serializer-->>Response: Normalize payload
+  Response-->>Agent: Return result
 ```
 
 ### 3. Identity-Preserving Rebuild Flow
 
-```text
-Semantic revision path
--> target resolution
--> Ruby semantic command or internal revision helper
--> SketchUp operation boundary
--> replacement builder or rebuild logic
--> metadata handoff from old representation to new representation
--> old representation retirement
--> serializer or decorator
--> response
+```mermaid
+sequenceDiagram
+  participant Revision as Semantic revision path
+  participant Targeting as Target resolution
+  participant Command as Ruby semantic command or revision helper
+  participant Operation as SketchUp operation boundary
+  participant Builder as Replacement builder or rebuild logic
+  participant Handoff as Metadata handoff
+  participant Previous as Old representation retirement
+  participant Serializer as Serializer or decorator
+  participant Response
+
+  Revision->>Targeting: Resolve existing object
+  Targeting->>Command: Invoke revision behavior
+  Command->>Operation: Start operation
+  Operation->>Builder: Build replacement representation
+  Builder->>Handoff: Preserve identity metadata
+  Handoff->>Previous: Retire old representation
+  Previous->>Serializer: Serialize result
+  Serializer-->>Response: Return result
 ```
 
 ### 4. Managed-Object Mutation Through Generic Tools
 
-```text
-Agent
--> transform_entities or set_material
--> generic Ruby mutation command
--> Managed-object compatibility boundary
--> allowed mutation or structured refusal when hard invariants would break
--> response
+```mermaid
+sequenceDiagram
+  participant Agent
+  participant Tool as transform_entities or set_material
+  participant Command as Generic Ruby mutation command
+  participant Boundary as Managed-object compatibility boundary
+  participant Outcome as Allowed mutation or structured refusal
+  participant Response
+
+  Agent->>Tool: Request generic mutation
+  Tool->>Command: Dispatch mutation command
+  Command->>Boundary: Check managed-object invariants
+  Boundary-->>Outcome: Allow or refuse mutation
+  Outcome-->>Response: Return result
+  Response-->>Agent: Return response
 ```
 
 ### Architecture Diagram
 
-```text
-MCP Client
-   |
-   v
-[Native Semantic Tool Registration]
-   |
-   v
-[Ruby Semantic Commands]
-   |
-   +--> [SketchUp Operation Boundary] ---------------- semantic integration tests
-   |
-   +--> [Builder Registry] --------------------------- Ruby behavior tests
-   |         |
-   |         +--> [Structure / Pad / Path / Retaining Edge / Planting Mass / Tree Proxy Builders]
-   |
-   +--> [Managed Scene Object Metadata & Invariant Layer] --- Ruby behavior tests
-   |
-   +--> [Revision & Identity-Handoff Helper] --------- SketchUp-hosted integration tests
-   |
-   +--> [Managed Scene Object Serializer / Decorator] - Ruby behavior tests
-   |
-   +--> [Generic Mutation Compatibility Boundary] ---- integration tests
-   |
-   v
-JSON-serializable Managed Scene Object results
+```mermaid
+flowchart TD
+  client[MCP Client]
+  registration[Native Semantic Tool Registration]
+  commands[Ruby Semantic Commands]
+  operation[SketchUp Operation Boundary]
+  registry[Builder Registry]
+  builders[Structure / Pad / Path / Retaining Edge / Planting Mass / Tree Proxy Builders]
+  metadata[Managed Scene Object Metadata and Invariant Layer]
+  revision[Revision and Identity-Handoff Helper]
+  serializer[Managed Scene Object Serializer / Decorator]
+  compatibility[Generic Mutation Compatibility Boundary]
+  results[JSON-serializable Managed Scene Object results]
+
+  client --> registration
+  registration --> commands
+  commands --> operation
+  commands --> registry
+  registry --> builders
+  commands --> metadata
+  commands --> revision
+  commands --> serializer
+  commands --> compatibility
+  commands --> results
+
+  operation -. semantic integration tests .-> results
+  registry -. Ruby behavior tests .-> results
+  metadata -. Ruby behavior tests .-> results
+  revision -. SketchUp-hosted integration tests .-> results
+  serializer -. Ruby behavior tests .-> results
+  compatibility -. integration tests .-> results
 ```
 
 ### Verification Plan

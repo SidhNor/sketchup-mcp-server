@@ -2,9 +2,7 @@
 
 ## Project Summary
 
-This repository consists of one runtime layer:
-
-- a **Ruby SketchUp extension** under `src/` that owns MCP tool registration, SketchUp API usage, scene behavior, serialization, and the MCP server lifecycle
+This repository is a **Ruby SketchUp extension** under `src/` that owns MCP tool registration, SketchUp API usage, scene behavior, serialization, and the MCP server lifecycle
 
 Release automation may still use `python-semantic-release` in CI, but that does not make Python a project runtime.
 
