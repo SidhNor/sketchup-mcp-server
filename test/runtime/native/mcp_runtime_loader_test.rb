@@ -595,14 +595,17 @@ class McpRuntimeLoaderTest < Minitest::Test
     input_schema = tool.fetch(:input_schema)
 
     assert_equal(
-      %i[from kind mode outputOptions target to],
+      %i[from kind mode outputOptions sampling samplingPolicy target to],
       input_schema.fetch(:properties).keys.sort
     )
     assert_equal(%w[kind mode], input_schema.fetch(:required).sort)
-    assert_equal(%w[area bounds distance height],
+    assert_equal(%w[area bounds distance height terrain_profile],
                  input_schema.dig(:properties, :mode, :enum).sort)
     assert_equal(
-      %w[bounds_center_to_bounds_center bounds_z horizontal_bounds surface world_bounds],
+      %w[
+        bounds_center_to_bounds_center bounds_z elevation_summary horizontal_bounds surface
+        world_bounds
+      ],
       input_schema.dig(:properties, :kind, :enum).sort
     )
     assert_includes(
@@ -611,6 +614,26 @@ class McpRuntimeLoaderTest < Minitest::Test
     )
     assert_includes(input_schema.dig(:properties, :kind, :description), 'Runtime refuses')
     assert_equal(false, schema_includes_key?(input_schema, :targetSelector))
+  end
+
+  def test_measure_scene_tool_schema_exposes_terrain_profile_sampling_policy
+    tool = @loader.tool_catalog.find { |entry| entry.fetch(:name) == 'measure_scene' }
+    properties = tool.fetch(:input_schema).fetch(:properties)
+    assert_includes(properties.keys, :sampling)
+    assert_includes(properties.keys, :samplingPolicy)
+
+    sampling = properties.fetch(:sampling)
+    sampling_policy = properties.fetch(:samplingPolicy)
+
+    assert_equal(%w[profile], sampling.dig(:properties, :type, :enum))
+    assert_equal(%i[intervalMeters path sampleCount type], sampling.fetch(:properties).keys.sort)
+    assert_equal(%i[ignoreTargets visibleOnly], sampling_policy.fetch(:properties).keys.sort)
+    assert_equal('boolean',
+                 sampling_policy.dig(:properties, :visibleOnly, :type))
+    assert_equal(
+      %w[entityId persistentId sourceElementId],
+      sampling_policy.dig(:properties, :ignoreTargets, :items, :properties).keys.map(&:to_s).sort
+    )
   end
 
   def test_measure_scene_tool_schema_uses_compact_references_only
@@ -635,6 +658,8 @@ class McpRuntimeLoaderTest < Minitest::Test
       properties.fetch(:mode).fetch(:description),
       'distance/bounds_center_to_bounds_center'
     )
+    assert_includes(properties.fetch(:mode).fetch(:description),
+                    'terrain_profile/elevation_summary')
     assert_includes(properties.fetch(:kind).fetch(:description), 'unsupported mode/kind pairs')
   end
 
@@ -644,6 +669,7 @@ class McpRuntimeLoaderTest < Minitest::Test
 
     assert_includes(tool.fetch(:description), 'Use for direct measurements')
     assert_includes(tool.fetch(:description), 'Do not use for validation verdicts')
+    assert_includes(tool.fetch(:description), 'Do not use for slope, grade')
     assert_includes(properties.fetch(:mode).fetch(:description), 'Supported MVP combinations')
     assert_includes(properties.fetch(:kind).fetch(:description), 'Runtime refuses')
   end

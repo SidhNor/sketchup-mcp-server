@@ -334,8 +334,9 @@ module SU_MCP
           title: 'Measure Scene',
           description: 'Measure resolved scene targets and return structured quantities. ' \
                        'Use for direct measurements such as bounds, bounds-height, ' \
-                       'bounds-center distance, and area. Do not use for validation ' \
-                       'verdicts, terrain diagnostics, raw metadata inspection, or ' \
+                       'bounds-center distance, area, and terrain profile elevation ' \
+                       'summaries. Do not use for validation verdicts. Do not use for ' \
+                       'slope, grade, terrain diagnostics, raw metadata inspection, or ' \
                        'arbitrary Ruby probing.',
           handler_key: :measure_scene,
           annotations: { read_only_hint: true, destructive_hint: false },
@@ -1034,10 +1035,10 @@ module SU_MCP
         required: %w[mode kind],
         properties: {
           mode: described_schema(
-            enum_schema('bounds', 'height', 'distance', 'area'),
+            enum_schema('bounds', 'height', 'distance', 'area', 'terrain_profile'),
             'Measurement family. Supported MVP combinations are bounds/world_bounds, ' \
             'height/bounds_z, distance/bounds_center_to_bounds_center, area/surface, ' \
-            'and area/horizontal_bounds.'
+            'area/horizontal_bounds, and terrain_profile/elevation_summary.'
           ),
           kind: described_schema(
             enum_schema(
@@ -1045,7 +1046,8 @@ module SU_MCP
               'bounds_z',
               'bounds_center_to_bounds_center',
               'surface',
-              'horizontal_bounds'
+              'horizontal_bounds',
+              'elevation_summary'
             ),
             'Specific measurement meaning. Runtime refuses unsupported mode/kind pairs.'
           ),
@@ -1058,6 +1060,8 @@ module SU_MCP
           to: measure_scene_target_reference_schema(
             'Second target for distance/bounds_center_to_bounds_center.'
           ),
+          sampling: measure_scene_terrain_sampling_schema,
+          samplingPolicy: measure_scene_sampling_policy_schema,
           outputOptions: measure_scene_output_options_schema
         },
         additionalProperties: false
@@ -1083,6 +1087,45 @@ module SU_MCP
         },
         additionalProperties: false
       }
+    end
+
+    def measure_scene_terrain_sampling_schema # rubocop:disable Metrics/MethodLength
+      described_schema(
+        {
+          type: 'object',
+          required: ['type'],
+          properties: {
+            type: described_schema(
+              enum_schema('profile'),
+              'Only profile sampling is accepted for terrain_profile/elevation_summary.'
+            ),
+            path: sample_points_schema,
+            sampleCount: integer_schema,
+            intervalMeters: number_schema
+          },
+          additionalProperties: false
+        },
+        'Profile path and spacing for terrain_profile/elevation_summary. Runtime requires ' \
+        'sampling.type profile plus exactly one of sampleCount or intervalMeters.'
+      )
+    end
+
+    def measure_scene_sampling_policy_schema
+      described_schema(
+        {
+          type: 'object',
+          properties: {
+            visibleOnly: boolean_schema,
+            ignoreTargets: {
+              type: 'array',
+              items: target_reference_schema
+            }
+          },
+          additionalProperties: false
+        },
+        'Optional terrain profile visibility and ignore-target policy. Mirrors ' \
+        'sample_surface_z profile sampling without exposing broad discovery.'
+      )
     end
 
     def retaining_edge_payload_schema

@@ -2,8 +2,10 @@
 
 require_relative '../test_helper'
 require_relative '../support/scene_query_test_support'
+require_relative '../../src/su_mcp/scene_query/sample_surface_evidence'
 require_relative '../../src/su_mcp/scene_validation/measurement_service'
 
+# rubocop:disable Metrics/ClassLength
 class MeasurementServiceTest < Minitest::Test
   include SceneQueryTestSupport
 
@@ -137,6 +139,41 @@ class MeasurementServiceTest < Minitest::Test
     assert_equal('invalid_bounds', result.dig(:measurement, :reason))
   end
 
+  def test_dispatches_terrain_profile_elevation_summary_to_profile_reducer # rubocop:disable Metrics/MethodLength
+    samples = [
+      SU_MCP::SampleSurfaceEvidence::Sample.new(
+        index: 0,
+        x: 0.0,
+        y: 0.0,
+        z: 1.0,
+        distance_along_path_meters: 0.0,
+        path_progress: 0.0,
+        status: 'hit'
+      ),
+      SU_MCP::SampleSurfaceEvidence::Sample.new(
+        index: 1,
+        x: 5.0,
+        y: 0.0,
+        z: 2.0,
+        distance_along_path_meters: 5.0,
+        path_progress: 1.0,
+        status: 'hit'
+      )
+    ]
+
+    result = @service.measure(
+      mode: 'terrain_profile',
+      kind: 'elevation_summary',
+      profile_samples: samples
+    )
+
+    assert_equal('measured', result.fetch(:outcome))
+    assert_equal('terrain_profile', result.dig(:measurement, :mode))
+    assert_equal('elevation_summary', result.dig(:measurement, :kind))
+    assert_equal(1.0, result.dig(:measurement, :value, :minElevation))
+    assert_equal(2.0, result.dig(:measurement, :value, :maxElevation))
+  end
+
   private
 
   def measurement_group(source_element_id:, bounds: custom_bounds, entities: [])
@@ -225,3 +262,4 @@ class MeasurementServiceTest < Minitest::Test
     end
   end
 end
+# rubocop:enable Metrics/ClassLength

@@ -134,7 +134,7 @@ That means the capability should define one reusable measurement component that 
 
 Where measurement overlaps with targeting-owned behavior such as bounds or surface interrogation, the measurement layer should compose those existing helpers rather than duplicate their geometry logic.
 
-The first `measure_scene` implementation should stay bounded to generic direct measurements such as `bounds/world_bounds`, `height/bounds_z`, `distance/bounds_center_to_bounds_center`, `area/surface`, and `area/horizontal_bounds`. Terrain-shaped groups and components may be valid targets for those generic modes when they expose the required evidence, but terrain profile, slope, clearance-to-terrain, grade-break, trench/hump, and fairness measurements remain follow-ons. Those terrain-aware modes should build on explicit surface interrogation and the reusable measurement component rather than becoming terrain-editing behavior or validation verdicts.
+The first `measure_scene` implementation should stay bounded to generic direct measurements such as `bounds/world_bounds`, `height/bounds_z`, `distance/bounds_center_to_bounds_center`, `area/surface`, and `area/horizontal_bounds`. Terrain-shaped groups and components may be valid targets for those generic modes when they expose the required evidence. The first terrain-aware follow-on is `terrain_profile/elevation_summary`, which builds on explicit surface interrogation and reusable measurement internals without becoming terrain-editing behavior or a validation verdict. Slope, clearance-to-terrain, grade-break, trench/hump, and fairness measurements remain follow-ons.
 
 ### Findings and Severity Posture
 

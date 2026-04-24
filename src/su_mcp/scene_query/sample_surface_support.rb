@@ -2,6 +2,7 @@
 
 module SU_MCP
   # Extracted sample-surface traversal, visibility, and clustering mechanics.
+  # rubocop:disable Metrics/ClassLength
   class SampleSurfaceSupport
     def initialize(serializer:, cluster_tolerance_meters: 0.001)
       @serializer = serializer
@@ -48,9 +49,10 @@ module SU_MCP
     # rubocop:enable Metrics/MethodLength
     private :sampleable_faces_for_type
 
-    def blocking_faces_for(scene_entities, target_entity:, ignore_entities:)
+    def blocking_faces_for(scene_entities, target_entity:, ignore_entities:, xy_bounds: nil)
       scene_entities.flat_map do |entity|
         next [] if entity.equal?(target_entity)
+        next [] unless entity_overlaps_xy_bounds?(entity, xy_bounds)
 
         sampleable_faces_for(entity, visible_only: true, transform_chain: [])
           .reject { |face_entry| ignored_face_entry?(face_entry, ignore_entities) }
@@ -178,5 +180,22 @@ module SU_MCP
         entity_chain.any? { |entry_entity| entry_entity.equal?(ignore_entity) }
       end
     end
+
+    # rubocop:disable Metrics/AbcSize, Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity
+    def entity_overlaps_xy_bounds?(entity, xy_bounds)
+      return true if xy_bounds.nil?
+
+      bounds = entity.respond_to?(:bounds) ? entity.bounds : nil
+      return true unless bounds&.valid?
+
+      bounds.max.x.to_f >= xy_bounds.fetch(:min_x) &&
+        bounds.min.x.to_f <= xy_bounds.fetch(:max_x) &&
+        bounds.max.y.to_f >= xy_bounds.fetch(:min_y) &&
+        bounds.min.y.to_f <= xy_bounds.fetch(:max_y)
+    rescue StandardError
+      true
+    end
+    # rubocop:enable Metrics/AbcSize, Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity
   end
+  # rubocop:enable Metrics/ClassLength
 end

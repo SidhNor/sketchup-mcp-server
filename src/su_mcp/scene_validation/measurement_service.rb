@@ -1,13 +1,19 @@
 # frozen_string_literal: true
 
 require_relative 'measurement_result_builder'
+require_relative 'terrain_profile_elevation_summary'
 
 module SU_MCP
   # Performs low-level geometry measurements for measure_scene.
+  # rubocop:disable Metrics/ClassLength
   class MeasurementService
-    def initialize(serializer: nil, result_builder: nil)
+    def initialize(serializer: nil, result_builder: nil, terrain_profile_summary: nil)
       @serializer = serializer
       @result_builder = result_builder || MeasurementResultBuilder.new
+      @terrain_profile_summary = terrain_profile_summary || TerrainProfileElevationSummary.new(
+        result_builder: @result_builder,
+        serializer: serializer
+      )
     end
 
     def measure(mode:, kind:, **targets)
@@ -20,8 +26,8 @@ module SU_MCP
         measure_distance(mode, kind, targets[:from], targets[:to])
       when %w[area horizontal_bounds]
         measure_horizontal_bounds_area(mode, kind, targets[:target])
-      when %w[area surface]
-        measure_surface_area(mode, kind, targets[:target])
+      when %w[area surface] then measure_surface_area(mode, kind, targets[:target])
+      when %w[terrain_profile elevation_summary] then measure_terrain_profile(targets)
       else
         unavailable(mode, kind, 'unsupported_geometry')
       end
@@ -29,7 +35,7 @@ module SU_MCP
 
     private
 
-    attr_reader :serializer, :result_builder
+    attr_reader :serializer, :result_builder, :terrain_profile_summary
 
     def measure_bounds(mode, kind, target)
       bounds = valid_bounds_for(target)
@@ -101,6 +107,10 @@ module SU_MCP
         unit: 'm2',
         evidence: { faceCount: faces.length }
       )
+    end
+
+    def measure_terrain_profile(targets)
+      terrain_profile_summary.measure(targets[:profile_samples])
     end
 
     def descendant_faces(entity, transformation = entity_transformation(entity))
@@ -184,4 +194,5 @@ module SU_MCP
       result_builder.square_meters(value)
     end
   end
+  # rubocop:enable Metrics/ClassLength
 end

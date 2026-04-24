@@ -3,6 +3,7 @@
 require_relative '../adapters/model_adapter'
 require_relative '../runtime/tool_response'
 require_relative '../scene_query/scene_query_serializer'
+require_relative '../scene_query/sample_surface_query'
 require_relative '../scene_query/target_reference_resolver'
 require_relative '../scene_query/targeting_query'
 require_relative 'measure_scene_request'
@@ -11,7 +12,8 @@ require_relative 'measurement_service'
 module SU_MCP
   # Command surface for direct structured scene measurements.
   class MeasureSceneCommands
-    def initialize(adapter: nil, target_reference_resolver: nil, measurement_service: nil)
+    def initialize(adapter: nil, target_reference_resolver: nil, measurement_service: nil,
+                   sample_surface_query: nil)
       @adapter = adapter || Adapters::ModelAdapter.new
       serializer = SceneQuerySerializer.new
       targeting_query = TargetingQuery.new(serializer: serializer)
@@ -21,6 +23,7 @@ module SU_MCP
         targeting_query: targeting_query
       )
       @measurement_service = measurement_service || MeasurementService.new(serializer: serializer)
+      @sample_surface_query = sample_surface_query || SampleSurfaceQuery.new(serializer: serializer)
     end
 
     def measure_scene(params)
@@ -35,10 +38,11 @@ module SU_MCP
 
     private
 
-    attr_reader :adapter, :target_reference_resolver, :measurement_service
+    attr_reader :adapter, :target_reference_resolver, :measurement_service, :sample_surface_query
 
     def dispatch_measurement(request)
       return measure_distance(request) if request.distance?
+      return measure_terrain_profile(request) if request.terrain_profile?
 
       measure_target(request)
     end
@@ -69,6 +73,23 @@ module SU_MCP
         mode: request.mode,
         kind: request.kind,
         target: target.fetch(:entity)
+      )
+      shape_result(raw_result, request, references: { target: request.compact_reference('target') })
+    end
+
+    def measure_terrain_profile(request)
+      evidence_result = sample_surface_query.profile_evidence(
+        entities: adapter.all_entities_recursive,
+        entity_entries: adapter.all_entity_paths_recursive,
+        scene_entities: adapter.queryable_entities,
+        params: request.sample_surface_params
+      )
+      return evidence_result if refusal?(evidence_result)
+
+      raw_result = measurement_service.measure(
+        mode: request.mode,
+        kind: request.kind,
+        profile_samples: evidence_result.fetch(:evidence)
       )
       shape_result(raw_result, request, references: { target: request.compact_reference('target') })
     end

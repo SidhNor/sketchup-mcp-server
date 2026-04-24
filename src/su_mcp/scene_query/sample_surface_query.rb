@@ -67,6 +67,44 @@ module SU_MCP
       end
     end
 
+    def profile_evidence(entities:, params:, scene_entities: nil, entity_entries: nil)
+      request = normalized_request(params)
+      return ToolResponse.refusal_result(request.fetch(:refusal)) if request.key?(:refusal)
+
+      sample_spec = request.fetch(:sampling)
+      unless sample_spec.fetch(:mode) == :profile
+        return ToolResponse.refusal_result(
+          unsupported_sampling_type_refusal(params.dig('sampling', 'type'))
+        )
+      end
+
+      resolution_entries = normalized_entity_entries(entity_entries, entities)
+      blocking_entities = scene_entities || entities
+      ignore = resolved_ignore_entities_or_refusal(resolution_entries, params['ignoreTargets'])
+      return ToolResponse.refusal_result(ignore.fetch(:refusal)) if ignore.key?(:refusal)
+
+      ignore_entities = ignore.fetch(:entities)
+      target = resolved_target_or_refusal(
+        resolution_entries,
+        request.fetch(:target),
+        visible_only: visible_only?(params),
+        ignore_entities: ignore_entities
+      )
+      return ToolResponse.refusal_result(target.fetch(:refusal)) if target.key?(:refusal)
+
+      {
+        success: true,
+        evidence: build_profile_evidence(
+          sample_spec: sample_spec,
+          target_face_entries: target.fetch(:face_entries),
+          scene_entities: blocking_entities,
+          target_entity: target.fetch(:entity),
+          ignore_entities: ignore_entities,
+          visible_only: visible_only?(params)
+        )
+      }
+    end
+
     private
 
     attr_reader :serializer, :support, :profile_generator
@@ -370,44 +408,73 @@ module SU_MCP
 
     def points_result(sample_points:, target_face_entries:, scene_entities:, target_entity:,
                       ignore_entities:, visible_only:)
-      {
-        success: true,
-        results: sample_points.map do |sample_point|
-          sample_point_result(
-            sample_point: sample_point,
-            target_face_entries: target_face_entries,
-            scene_entities: scene_entities,
-            target_entity: target_entity,
-            ignore_entities: ignore_entities,
-            visible_only: visible_only
-          )
-        end
-      }
+      with_active_sample_xy_bounds(sample_points) do
+        prepared_target_faces = prepare_face_entries(target_face_entries)
+        blocking_faces = blocking_faces_for(
+          scene_entities,
+          target_entity: target_entity,
+          ignore_entities: ignore_entities,
+          visible_only: visible_only
+        )
+        prepared_blocking_faces = prepare_face_entries(blocking_faces)
+        {
+          success: true,
+          results: sample_points.map do |sample_point|
+            sample_point_result(
+              sample_point: sample_point,
+              target_face_entries: prepared_target_faces,
+              visible_only: visible_only,
+              blocking_faces: prepared_blocking_faces
+            )
+          end
+        }
+      end
     end
 
     def profile_result(sample_spec:, target_face_entries:, scene_entities:, target_entity:,
                        ignore_entities:, visible_only:)
-      evidence = sample_spec.fetch(:profile_samples).map do |profile_sample|
-        profile_sample_evidence(
-          profile_sample,
-          sample_point_result(
-            sample_point: {
-              x: profile_sample.fetch(:x),
-              y: profile_sample.fetch(:y)
-            },
-            target_face_entries: target_face_entries,
-            scene_entities: scene_entities,
-            target_entity: target_entity,
-            ignore_entities: ignore_entities,
-            visible_only: visible_only
-          )
-        )
-      end
+      evidence = build_profile_evidence(
+        sample_spec: sample_spec,
+        target_face_entries: target_face_entries,
+        scene_entities: scene_entities,
+        target_entity: target_entity,
+        ignore_entities: ignore_entities,
+        visible_only: visible_only
+      )
       {
         success: true,
         results: evidence.map { |sample| serializer.serialize_sampling_evidence(sample) },
         summary: profile_summary(evidence)
       }
+    end
+
+    def build_profile_evidence(sample_spec:, target_face_entries:, scene_entities:, target_entity:,
+                               ignore_entities:, visible_only:)
+      profile_samples = sample_spec.fetch(:profile_samples)
+      with_active_sample_xy_bounds(profile_samples) do
+        prepared_target_faces = prepare_face_entries(target_face_entries)
+        blocking_faces = blocking_faces_for(
+          scene_entities,
+          target_entity: target_entity,
+          ignore_entities: ignore_entities,
+          visible_only: visible_only
+        )
+        prepared_blocking_faces = prepare_face_entries(blocking_faces)
+        profile_samples.map do |profile_sample|
+          profile_sample_evidence(
+            profile_sample,
+            sample_point_result(
+              sample_point: {
+                x: profile_sample.fetch(:x),
+                y: profile_sample.fetch(:y)
+              },
+              target_face_entries: prepared_target_faces,
+              visible_only: visible_only,
+              blocking_faces: prepared_blocking_faces
+            )
+          )
+        end
+      end
     end
 
     def profile_sample_evidence(profile_sample, result)
@@ -439,17 +506,12 @@ module SU_MCP
       summary
     end
 
-    def sample_point_result(sample_point:, target_face_entries:, scene_entities:, target_entity:,
-                            ignore_entities:, visible_only:)
+    def sample_point_result(sample_point:, target_face_entries:, visible_only:,
+                            blocking_faces: nil)
       target_hits = candidate_hits(target_face_entries, sample_point)
       if visible_only
-        blocking_faces = support.blocking_faces_for(
-          scene_entities,
-          target_entity: target_entity,
-          ignore_entities: ignore_entities
-        )
         target_hits.reject! do |hit|
-          blocked_by_visible_geometry?(sample_point, hit[:z], blocking_faces)
+          blocked_by_visible_geometry?(sample_point, hit[:z], Array(blocking_faces))
         end
       end
 
@@ -470,13 +532,75 @@ module SU_MCP
       end
     end
 
-    def sampled_z_for_face(face_entry, sample_point)
+    def blocking_faces_for(scene_entities, target_entity:, ignore_entities:, visible_only:)
+      return [] unless visible_only
+
+      support.blocking_faces_for(
+        scene_entities,
+        target_entity: target_entity,
+        ignore_entities: ignore_entities,
+        xy_bounds: @active_sample_xy_bounds
+      )
+    end
+
+    def prepare_face_entries(face_entries)
+      face_entries.map { |face_entry| prepare_face_entry(face_entry) }
+    end
+
+    def prepare_face_entry(face_entry)
       face = face_entry[:face]
       transform_chain = face_entry[:transform_chain]
       surface = fake_surface_definition(face)
+      return face_entry.merge(surface: surface) if surface
+
+      world_points = transformed_face_points(face, transform_chain)
+      face_entry.merge(
+        world_plane: prepared_world_plane(face, transform_chain, world_points),
+        world_xy_bounds: xy_bounds(world_points)
+      )
+    end
+
+    def with_active_sample_xy_bounds(sample_points)
+      previous_bounds = @active_sample_xy_bounds
+      @active_sample_xy_bounds = sample_xy_bounds(sample_points)
+      yield
+    ensure
+      @active_sample_xy_bounds = previous_bounds
+    end
+
+    def sample_xy_bounds(sample_points)
+      return nil if sample_points.empty?
+
+      xs = sample_points.filter_map do |sample|
+        sample_bound_coordinate(sample[:x] || sample.fetch(:x))
+      end
+      ys = sample_points.filter_map do |sample|
+        sample_bound_coordinate(sample[:y] || sample.fetch(:y))
+      end
+      return nil if xs.empty? || ys.empty?
+
+      {
+        min_x: xs.min - SAMPLE_Z_CLUSTER_TOLERANCE_METERS,
+        max_x: xs.max + SAMPLE_Z_CLUSTER_TOLERANCE_METERS,
+        min_y: ys.min - SAMPLE_Z_CLUSTER_TOLERANCE_METERS,
+        max_y: ys.max + SAMPLE_Z_CLUSTER_TOLERANCE_METERS
+      }
+    end
+
+    def sample_bound_coordinate(value)
+      converted = meters_to_internal(value)
+      converted.nil? ? value.to_f : converted.to_f
+    rescue StandardError
+      nil
+    end
+
+    def sampled_z_for_face(face_entry, sample_point)
+      face = face_entry[:face]
+      transform_chain = face_entry[:transform_chain]
+      surface = face_entry[:surface] || fake_surface_definition(face)
       return sampled_fake_surface_z(surface, sample_point, transform_chain) if surface
 
-      sampled_runtime_face_z(face, sample_point, transform_chain)
+      sampled_runtime_face_z(face_entry, sample_point)
     end
 
     def fake_surface_definition(face)
@@ -572,16 +696,19 @@ module SU_MCP
       end
     end
 
-    def sampled_runtime_face_z(face, sample_point, transform_chain)
-      world_hit_point = runtime_hit_point(face, sample_point, transform_chain)
+    def sampled_runtime_face_z(face_entry, sample_point)
+      world_hit_point = runtime_hit_point(face_entry, sample_point)
       return nil if world_hit_point.nil?
 
       safe_to_meters(world_hit_point.z)
     end
 
-    def runtime_hit_point(face, sample_point, transform_chain)
-      world_plane = transformed_face_plane(face, transform_chain)
+    def runtime_hit_point(face_entry, sample_point)
+      face = face_entry[:face]
+      transform_chain = face_entry[:transform_chain]
+      world_plane = face_entry[:world_plane]
       return nil if world_plane.nil?
+      return nil unless point_within_bounds?(sample_point, face_entry[:world_xy_bounds])
 
       world_hit_point = Geom.intersect_line_plane(world_vertical_line(sample_point), world_plane)
       return nil if world_hit_point.nil?
@@ -590,6 +717,15 @@ module SU_MCP
       return nil unless point_on_face?(face, local_hit_point)
 
       world_hit_point
+    rescue StandardError
+      nil
+    end
+
+    def prepared_world_plane(face, transform_chain, world_points)
+      return Geom.fit_plane_to_points(world_points) if world_points.length >= 3
+      return face.plane if transform_chain.empty? && face.respond_to?(:plane)
+
+      nil
     rescue StandardError
       nil
     end
@@ -612,6 +748,30 @@ module SU_MCP
 
         local_point_to_world(vertex.position, transform_chain)
       end
+    end
+
+    def xy_bounds(points)
+      return nil if points.empty?
+
+      xs = points.map(&:x)
+      ys = points.map(&:y)
+      {
+        min_x: xs.min.to_f,
+        max_x: xs.max.to_f,
+        min_y: ys.min.to_f,
+        max_y: ys.max.to_f
+      }
+    end
+
+    def point_within_bounds?(sample_point, bounds)
+      return true if bounds.nil?
+
+      x_value = meters_to_internal(sample_point[:x])
+      y_value = meters_to_internal(sample_point[:y])
+      return true if x_value.nil? || y_value.nil?
+
+      x_value.to_f.between?(bounds[:min_x], bounds[:max_x]) &&
+        y_value.to_f.between?(bounds[:min_y], bounds[:max_y])
     end
 
     def world_vertical_line(sample_point)
@@ -665,7 +825,10 @@ module SU_MCP
     end
 
     def meters_to_internal(value)
-      return value.m if value.respond_to?(:m)
+      if value.respond_to?(:m)
+        converted = value.m
+        return converted unless converted.nil?
+      end
 
       value
     end

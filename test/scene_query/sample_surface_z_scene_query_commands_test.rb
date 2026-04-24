@@ -2,19 +2,146 @@
 
 require_relative '../test_helper'
 require_relative '../support/scene_query_test_support'
+require_relative '../../src/su_mcp/adapters/model_adapter'
+require_relative '../../src/su_mcp/scene_query/sample_surface_evidence'
+require_relative '../../src/su_mcp/scene_query/sample_surface_query'
 require_relative '../../src/su_mcp/scene_query/scene_query_commands'
 
 # rubocop:disable Metrics/ClassLength
 class SampleSurfaceZSceneQueryCommandsTest < Minitest::Test
   include SceneQueryTestSupport
 
+  class CountingSampleSurfaceSupport < SU_MCP::SampleSurfaceSupport
+    attr_reader :blocking_faces_calls, :sampleable_entities
+
+    def initialize(serializer:)
+      super
+      @blocking_faces_calls = 0
+      @sampleable_entities = []
+    end
+
+    def blocking_faces_for(...)
+      @blocking_faces_calls += 1
+      super
+    end
+
+    def sampleable_faces_for(entity, **kwargs)
+      @sampleable_entities << entity
+      super
+    end
+  end
+
+  class CountingRuntimeFace < Sketchup::Face
+    attr_reader :entity_id, :bounds, :layer, :material, :name, :persistent_id, :details,
+                :vertices_calls, :classify_point_calls
+
+    # rubocop:disable Metrics/AbcSize, Metrics/MethodLength, Metrics/ParameterLists
+    def initialize(entity_id:, persistent_id:, x_range:, y_range:, z_value:, layer:, material:)
+      super()
+      @entity_id = entity_id
+      @persistent_id = persistent_id
+      @name = 'Counting Runtime Face'
+      @x_range = x_range
+      @y_range = y_range
+      @z_value = z_value
+      @layer = layer
+      @material = material
+      @details = {
+        name: 'Counting Runtime Face',
+        persistent_id: persistent_id,
+        attributes: { 'su_mcp' => { 'sourceElementId' => 'counting-runtime-face' } }
+      }
+      @bounds = SceneQueryTestSupport::FakeBounds.new(
+        min: SceneQueryTestSupport::FakePoint.new(x_range.first, y_range.first, z_value),
+        max: SceneQueryTestSupport::FakePoint.new(x_range.last, y_range.last, z_value),
+        center: SceneQueryTestSupport::FakePoint.new(
+          (x_range.first + x_range.last) / 2.0,
+          (y_range.first + y_range.last) / 2.0,
+          z_value
+        ),
+        size: [x_range.last - x_range.first, y_range.last - y_range.first, 0.0]
+      )
+      @vertices_calls = 0
+      @classify_point_calls = 0
+    end
+    # rubocop:enable Metrics/AbcSize, Metrics/MethodLength, Metrics/ParameterLists
+
+    # rubocop:disable Naming/MethodName
+    define_method(:entityID) { entity_id }
+    # rubocop:enable Naming/MethodName
+
+    def hidden?
+      false
+    end
+
+    def get_attribute(dictionary_name, key, default = nil)
+      dictionary = details.fetch(:attributes, {})[dictionary_name]
+      return default unless dictionary.is_a?(Hash)
+
+      dictionary.fetch(key, default)
+    end
+
+    def vertices
+      @vertices_calls += 1
+      rectangle_vertices
+    end
+
+    def classify_point(point)
+      @classify_point_calls += 1
+      if point.x.to_f.between?(@x_range.first, @x_range.last) &&
+         point.y.to_f.between?(@y_range.first, @y_range.last)
+        :inside
+      else
+        :outside
+      end
+    end
+
+    private
+
+    def rectangle_vertices
+      [
+        vertex(@x_range.first, @y_range.first),
+        vertex(@x_range.last, @y_range.first),
+        vertex(@x_range.last, @y_range.last),
+        vertex(@x_range.first, @y_range.last)
+      ]
+    end
+
+    def vertex(x_value, y_value)
+      Struct.new(:position).new(SceneQueryTestSupport::FakePoint.new(x_value, y_value, @z_value))
+    end
+  end
+
+  class MeterIdentitySampleSurfaceQuery < SU_MCP::SampleSurfaceQuery
+    private
+
+    def meters_to_internal(value)
+      value.to_f
+    end
+
+    def world_vertical_line(sample_point)
+      [
+        SceneQueryTestSupport::FakePoint.new(sample_point[:x].to_f, sample_point[:y].to_f, 0.0),
+        SceneQueryTestSupport::FakeVector.new(0.0, 0.0, 1.0)
+      ]
+    end
+
+    def point_on_face?(face, point)
+      return super unless face.is_a?(CountingRuntimeFace)
+
+      face.classify_point(point) == :inside
+    end
+  end
+
   def setup
+    install_runtime_geometry_stubs
     @commands = SU_MCP::SceneQueryCommands.new
     Sketchup.active_model_override = build_sample_surface_z_model
   end
 
   def teardown
     Sketchup.active_model_override = nil
+    restore_runtime_geometry_stubs
   end
 
   def test_requires_a_target_reference_with_at_least_one_identifier
@@ -466,7 +593,228 @@ class SampleSurfaceZSceneQueryCommandsTest < Minitest::Test
     assert_equal(1, result.dig(:summary, :missCount))
   end
 
+  def test_profile_evidence_returns_internal_sample_rows_without_public_serialization
+    adapter = SU_MCP::Adapters::ModelAdapter.new
+    query = MeterIdentitySampleSurfaceQuery.new(serializer: SU_MCP::SceneQuerySerializer.new)
+
+    result = query.profile_evidence(
+      entities: adapter.all_entities_recursive,
+      entity_entries: adapter.all_entity_paths_recursive,
+      scene_entities: adapter.queryable_entities,
+      params: profile_request(
+        target: { 'persistentId' => '4001' },
+        path: [{ 'x' => 0.0, 'y' => 0.0 }, { 'x' => 10.0, 'y' => 0.0 }],
+        sample_count: 3
+      )
+    )
+
+    assert_equal(true, result.fetch(:success))
+    evidence = result.fetch(:evidence)
+    assert_equal(3, evidence.length)
+    assert_instance_of(SU_MCP::SampleSurfaceEvidence::Sample, evidence.first)
+    assert_equal('hit', evidence.first.status)
+    refute(result.key?(:results))
+  end
+
+  def test_profile_evidence_reuses_visible_blocking_faces_across_samples
+    adapter = SU_MCP::Adapters::ModelAdapter.new
+    serializer = SU_MCP::SceneQuerySerializer.new
+    support = CountingSampleSurfaceSupport.new(serializer: serializer)
+    query = SU_MCP::SampleSurfaceQuery.new(serializer: serializer, support: support)
+
+    result = query.profile_evidence(
+      entities: adapter.all_entities_recursive,
+      entity_entries: adapter.all_entity_paths_recursive,
+      scene_entities: adapter.queryable_entities,
+      params: profile_request(
+        target: { 'persistentId' => '4001' },
+        path: [{ 'x' => 0.0, 'y' => 0.0 }, { 'x' => 10.0, 'y' => 0.0 }],
+        sample_count: 3
+      )
+    )
+
+    assert_equal(true, result.fetch(:success))
+    assert_equal(3, result.fetch(:evidence).length)
+    assert_equal(1, support.blocking_faces_calls)
+  end
+
+  def test_profile_evidence_does_not_build_visible_blockers_when_visibility_is_disabled
+    adapter = SU_MCP::Adapters::ModelAdapter.new
+    serializer = SU_MCP::SceneQuerySerializer.new
+    support = CountingSampleSurfaceSupport.new(serializer: serializer)
+    query = SU_MCP::SampleSurfaceQuery.new(serializer: serializer, support: support)
+
+    result = query.profile_evidence(
+      entities: adapter.all_entities_recursive,
+      entity_entries: adapter.all_entity_paths_recursive,
+      scene_entities: adapter.queryable_entities,
+      params: profile_request(
+        target: { 'persistentId' => '4001' },
+        path: [{ 'x' => 0.0, 'y' => 0.0 }, { 'x' => 10.0, 'y' => 0.0 }],
+        sample_count: 3,
+        extra: { 'visibleOnly' => false }
+      )
+    )
+
+    assert_equal(true, result.fetch(:success))
+    assert_equal(3, result.fetch(:evidence).length)
+    assert_equal(0, support.blocking_faces_calls)
+  end
+
+  def test_profile_evidence_prepares_runtime_face_geometry_once_per_profile
+    face = counting_runtime_face
+    query = MeterIdentitySampleSurfaceQuery.new(serializer: SU_MCP::SceneQuerySerializer.new)
+
+    result = query.profile_evidence(
+      entities: [face],
+      entity_entries: [{ entity: face, ancestors: [] }],
+      scene_entities: [face],
+      params: profile_request(
+        target: { 'persistentId' => '4901' },
+        path: [{ 'x' => 0.0, 'y' => 5.0 }, { 'x' => 10.0, 'y' => 5.0 }],
+        sample_count: 3,
+        extra: { 'visibleOnly' => false }
+      )
+    )
+
+    assert_equal(true, result.fetch(:success))
+    assert_equal(%w[hit hit hit], result.fetch(:evidence).map(&:status))
+    assert_equal(1, face.vertices_calls)
+    assert_equal(3, face.classify_point_calls)
+  end
+
+  def test_profile_evidence_uses_runtime_face_xy_bounds_before_classification
+    face = counting_runtime_face
+    query = MeterIdentitySampleSurfaceQuery.new(serializer: SU_MCP::SceneQuerySerializer.new)
+
+    result = query.profile_evidence(
+      entities: [face],
+      entity_entries: [{ entity: face, ancestors: [] }],
+      scene_entities: [face],
+      params: profile_request(
+        target: { 'persistentId' => '4901' },
+        path: [{ 'x' => 20.0, 'y' => 5.0 }, { 'x' => 30.0, 'y' => 5.0 }],
+        sample_count: 3,
+        extra: { 'visibleOnly' => false }
+      )
+    )
+
+    assert_equal(true, result.fetch(:success))
+    assert_equal(%w[miss miss miss], result.fetch(:evidence).map(&:status))
+    assert_equal(1, face.vertices_calls)
+    assert_equal(0, face.classify_point_calls)
+  end
+
+  def test_profile_evidence_prunes_visible_blockers_outside_profile_corridor # rubocop:disable Metrics/MethodLength
+    terrain, off_corridor_blocker, on_corridor_blocker = corridor_pruning_entities
+    serializer = SU_MCP::SceneQuerySerializer.new
+    support = CountingSampleSurfaceSupport.new(serializer: serializer)
+    query = SU_MCP::SampleSurfaceQuery.new(serializer: serializer, support: support)
+
+    result = query.profile_evidence(
+      entities: [terrain, off_corridor_blocker, on_corridor_blocker],
+      entity_entries: [
+        { entity: terrain, ancestors: [] },
+        { entity: off_corridor_blocker, ancestors: [] },
+        { entity: on_corridor_blocker, ancestors: [] }
+      ],
+      scene_entities: [terrain, off_corridor_blocker, on_corridor_blocker],
+      params: profile_request(
+        target: { 'persistentId' => '5001' },
+        path: [{ 'x' => 0.0, 'y' => 5.0 }, { 'x' => 10.0, 'y' => 5.0 }],
+        sample_count: 3
+      )
+    )
+
+    assert_equal(true, result.fetch(:success))
+    assert_equal(%w[miss miss miss], result.fetch(:evidence).map(&:status))
+    sampleable_entity_ids = support.sampleable_entities.map(&:entityID)
+    refute_includes(sampleable_entity_ids, off_corridor_blocker.entityID)
+    assert_includes(sampleable_entity_ids, on_corridor_blocker.entityID)
+  end
+
   private
+
+  def corridor_pruning_entities # rubocop:disable Metrics/MethodLength
+    terrain = build_sample_surface_face(
+      entity_id: 501,
+      persistent_id: 5001,
+      source_element_id: 'corridor-terrain',
+      name: 'Corridor Terrain',
+      layer: FakeLayer.new('Terrain'),
+      material: FakeMaterial.new('Soil'),
+      x_range: [0.0, 10.0],
+      y_range: [0.0, 10.0],
+      z_value: 1.0
+    )
+    off_corridor_blocker = build_sample_surface_face(
+      entity_id: 502,
+      persistent_id: 5002,
+      source_element_id: 'off-corridor-blocker',
+      name: 'Off Corridor Blocker',
+      layer: FakeLayer.new('Structures'),
+      material: FakeMaterial.new('Steel'),
+      x_range: [100.0, 110.0],
+      y_range: [100.0, 110.0],
+      z_value: 20.0
+    )
+    on_corridor_blocker = build_sample_surface_face(
+      entity_id: 503,
+      persistent_id: 5003,
+      source_element_id: 'on-corridor-blocker',
+      name: 'On Corridor Blocker',
+      layer: FakeLayer.new('Structures'),
+      material: FakeMaterial.new('Steel'),
+      x_range: [0.0, 10.0],
+      y_range: [0.0, 10.0],
+      z_value: 20.0
+    )
+    [terrain, off_corridor_blocker, on_corridor_blocker]
+  end
+
+  def install_runtime_geometry_stubs # rubocop:disable Metrics/AbcSize
+    @original_fit_plane_to_points = Geom.method(:fit_plane_to_points)
+    @original_intersect_line_plane = Geom.method(:intersect_line_plane)
+    Geom.define_singleton_method(:fit_plane_to_points) do |points|
+      first = Array(points).first
+      first ? [0.0, 0.0, 1.0, -first.z.to_f] : nil
+    end
+    Geom.define_singleton_method(:intersect_line_plane) do |line, plane|
+      point, vector = line
+      a_value, b_value, c_value, d_value = plane
+      denominator = (a_value * vector.x) + (b_value * vector.y) + (c_value * vector.z)
+      next nil if denominator.zero?
+
+      scale = -(((a_value * point.x) + (b_value * point.y) + (c_value * point.z) + d_value) /
+                denominator)
+      SceneQueryTestSupport::FakePoint.new(
+        point.x + (vector.x * scale),
+        point.y + (vector.y * scale),
+        point.z + (vector.z * scale)
+      )
+    end
+  end
+
+  def restore_runtime_geometry_stubs
+    return unless @original_fit_plane_to_points && @original_intersect_line_plane
+
+    fit = @original_fit_plane_to_points
+    intersect = @original_intersect_line_plane
+    Geom.define_singleton_method(:fit_plane_to_points) { |*args| fit.call(*args) }
+    Geom.define_singleton_method(:intersect_line_plane) { |*args| intersect.call(*args) }
+  end
+
+  def counting_runtime_face
+    CountingRuntimeFace.new(
+      entity_id: 490,
+      persistent_id: 4901,
+      x_range: [0.0, 10.0],
+      y_range: [0.0, 10.0],
+      z_value: 2.0,
+      layer: FakeLayer.new('Runtime Terrain'),
+      material: FakeMaterial.new('Soil')
+    )
+  end
 
   def points_request(points:, target: nil, extra: {})
     request = {

@@ -937,6 +937,152 @@
           }
         }
       }
+    },
+    {
+      "case_id": "measure_scene_terrain_profile_measured",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "params": {
+          "name": "measure_scene",
+          "arguments": {
+            "mode": "terrain_profile",
+            "kind": "elevation_summary",
+            "target": {
+              "sourceElementId": "terrain-main"
+            },
+            "sampling": {
+              "type": "profile",
+              "path": [
+                { "x": 0.0, "y": 0.0 },
+                { "x": 10.0, "y": 0.0 }
+              ],
+              "sampleCount": 3
+            },
+            "samplingPolicy": {
+              "visibleOnly": true,
+              "ignoreTargets": [
+                { "sourceElementId": "tree-006" }
+              ]
+            }
+          }
+        },
+        "id": "measure-scene-terrain-profile-measured"
+      },
+      "response": {
+        "jsonrpc": "2.0",
+        "id": "measure-scene-terrain-profile-measured",
+        "result": {
+          "success": true,
+          "outcome": "measured",
+          "measurement": {
+            "mode": "terrain_profile",
+            "kind": "elevation_summary",
+            "value": {
+              "minElevation": 1.0,
+              "maxElevation": 2.0,
+              "elevationRange": 1.0,
+              "sampledLengthMeters": 10.0,
+              "totalSamples": 3,
+              "hitCount": 3,
+              "missCount": 0,
+              "ambiguousCount": 0,
+              "startElevation": 1.0,
+              "endElevation": 2.0,
+              "netElevationDelta": 1.0,
+              "totalRise": 1.0,
+              "totalFall": 0.0
+            },
+            "unit": "m",
+            "target": {
+              "sourceElementId": "terrain-main"
+            }
+          }
+        }
+      }
+    },
+    {
+      "case_id": "measure_scene_terrain_profile_unavailable",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "params": {
+          "name": "measure_scene",
+          "arguments": {
+            "mode": "terrain_profile",
+            "kind": "elevation_summary",
+            "target": {
+              "sourceElementId": "terrain-main"
+            },
+            "sampling": {
+              "type": "profile",
+              "path": [
+                { "x": 20.0, "y": 0.0 },
+                { "x": 30.0, "y": 0.0 }
+              ],
+              "sampleCount": 2
+            }
+          }
+        },
+        "id": "measure-scene-terrain-profile-unavailable"
+      },
+      "response": {
+        "jsonrpc": "2.0",
+        "id": "measure-scene-terrain-profile-unavailable",
+        "result": {
+          "success": true,
+          "outcome": "unavailable",
+          "measurement": {
+            "mode": "terrain_profile",
+            "kind": "elevation_summary",
+            "reason": "no_profile_hits",
+            "target": {
+              "sourceElementId": "terrain-main"
+            }
+          }
+        }
+      }
+    },
+    {
+      "case_id": "measure_scene_terrain_profile_points_refused",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "params": {
+          "name": "measure_scene",
+          "arguments": {
+            "mode": "terrain_profile",
+            "kind": "elevation_summary",
+            "target": {
+              "sourceElementId": "terrain-main"
+            },
+            "sampling": {
+              "type": "points",
+              "points": [
+                { "x": 0.0, "y": 0.0 }
+              ]
+            }
+          }
+        },
+        "id": "measure-scene-terrain-profile-points-refused"
+      },
+      "response": {
+        "jsonrpc": "2.0",
+        "id": "measure-scene-terrain-profile-points-refused",
+        "result": {
+          "success": true,
+          "outcome": "refused",
+          "refusal": {
+            "code": "unsupported_sampling_type",
+            "message": "Terrain profile measurements support profile sampling only.",
+            "details": {
+              "field": "sampling.type",
+              "value": "points",
+              "allowedValues": ["profile"]
+            }
+          }
+        }
+      }
     }
   ]
 }

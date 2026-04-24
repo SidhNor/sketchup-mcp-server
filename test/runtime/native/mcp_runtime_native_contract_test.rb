@@ -390,6 +390,31 @@ class McpRuntimeNativeContractTest < Minitest::Test
     )
   end
 
+  def test_native_transport_preserves_terrain_profile_measure_scene_shapes
+    skip_unless_staged_vendor_runtime!
+
+    %w[
+      measure_scene_terrain_profile_measured
+      measure_scene_terrain_profile_unavailable
+      measure_scene_terrain_profile_points_refused
+    ].each do |case_id|
+      contract_case = contract_case(case_id)
+      transport = @loader.build_transport(
+        handlers: {
+          measure_scene: ->(_arguments) { contract_case.fetch('response').fetch('result') }
+        }
+      )
+
+      response = perform_raw_json_request(transport, contract_case.fetch('request'))
+
+      assert_equal(200, response[:status])
+      assert_equal(
+        contract_case.dig('response', 'result'),
+        response[:body].dig('result', 'structuredContent')
+      )
+    end
+  end
+
   private
 
   def contract_case(case_id)

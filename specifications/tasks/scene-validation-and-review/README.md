@@ -57,7 +57,7 @@ The deferred follow-ons remain blocked or under-defined in these areas:
 - The first task must provide value beyond `find_entities` and `get_entity_info`, so it includes one initial generic geometry-aware check family rather than stopping at metadata-only validation.
 - Follow-on broadening should continue to deepen `validate_scene_update` where the missing capability is still part of structured validation, while keeping direct measurement questions on the separate `measure_scene` boundary.
 - `SVR-03` now owns the public `measure_scene` MVP so direct structured measurement does not have to hide inside `validate_scene_update`.
-- `SVR-03` is terrain-compatible but not terrain-diagnostic: terrain-shaped targets may be measured by the shipped generic modes, while terrain profile, slope, clearance-to-terrain, grade-break, trench/hump, and fairness measurements remain follow-ons.
-- `SVR-04` is dependency-gated on `SVR-03` and `STI-03`; exact terrain-aware `mode`/`kind` names should be chosen only after those contracts settle.
+- `SVR-03` is terrain-compatible but not terrain-diagnostic: terrain-shaped targets may be measured by the shipped generic modes.
+- `SVR-04` adds the bounded terrain-aware `measure_scene` branch `terrain_profile/elevation_summary`, built on `SVR-03` and `STI-03` internals. Slope, clearance-to-terrain, grade-break, trench/hump, and fairness measurements remain follow-ons.
 - `SVR-02` follows with richer interrogation-backed geometry relationships that can be supported today through explicit surface-interrogation reuse; topology-backed validation remains deferred until the targeting/interrogation slice exposes that seam.
 - Semantic stored-value validation remains acknowledged as a real consumer signal, but it is deferred so direct measurement and validation stay distinct from stored semantic-property inspection.

@@ -1,7 +1,7 @@
 # Task: SVR-04 Add Terrain-Aware Measurement Evidence
 **Task ID**: `SVR-04`
 **Title**: `Add Terrain-Aware Measurement Evidence`
-**Status**: `planned`
+**Status**: `completed`
 **Priority**: `P2`
 **Date**: `2026-04-24`
 

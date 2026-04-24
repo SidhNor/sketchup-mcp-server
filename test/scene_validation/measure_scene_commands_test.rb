@@ -2,8 +2,10 @@
 
 require_relative '../test_helper'
 require_relative '../support/scene_query_test_support'
+require_relative '../../src/su_mcp/scene_query/sample_surface_evidence'
 require_relative '../../src/su_mcp/scene_validation/measure_scene_commands'
 
+# rubocop:disable Metrics/ClassLength
 class MeasureSceneCommandsTest < Minitest::Test
   include SceneQueryTestSupport
 
@@ -20,6 +22,18 @@ class MeasureSceneCommandsTest < Minitest::Test
       true
     end
     # rubocop:enable Naming/PredicateMethod
+
+    def all_entities_recursive
+      []
+    end
+
+    def all_entity_paths_recursive
+      []
+    end
+
+    def queryable_entities
+      []
+    end
   end
 
   class FakeTargetReferenceResolver
@@ -45,6 +59,20 @@ class MeasureSceneCommandsTest < Minitest::Test
     end
 
     def measure(**kwargs)
+      @calls << kwargs
+      @result
+    end
+  end
+
+  class FakeProfileEvidenceQuery
+    attr_reader :calls
+
+    def initialize(result)
+      @result = result
+      @calls = []
+    end
+
+    def profile_evidence(**kwargs)
       @calls << kwargs
       @result
     end
@@ -191,9 +219,87 @@ class MeasureSceneCommandsTest < Minitest::Test
     assert_equal('no_faces', result.dig(:measurement, :reason))
   end
 
+  def test_measures_terrain_profile_from_internal_profile_evidence
+    profile_query = FakeProfileEvidenceQuery.new(success: true, evidence: profile_samples)
+    service = FakeMeasurementService.new(
+      outcome: 'measured',
+      measurement: {
+        mode: 'terrain_profile',
+        kind: 'elevation_summary',
+        value: { minElevation: 1.0, maxElevation: 2.0 },
+        unit: 'm',
+        evidence: { summary: { totalSamples: 2 } }
+      }
+    )
+    commands = build_commands(service: service, sample_surface_query: profile_query)
+
+    result = commands.measure_scene(terrain_profile_request)
+
+    assert_equal('measured', result.fetch(:outcome))
+    assert_equal({ sourceElementId: 'terrain-001' }, result.dig(:measurement, :target))
+    assert_equal(1, profile_query.calls.length)
+    assert_equal(profile_samples, service.calls.first.fetch(:profile_samples))
+    assert_equal('terrain_profile', service.calls.first.fetch(:mode))
+  end
+
+  def test_terrain_profile_omits_evidence_by_default
+    profile_query = FakeProfileEvidenceQuery.new(success: true, evidence: profile_samples)
+    service = FakeMeasurementService.new(
+      outcome: 'measured',
+      measurement: {
+        mode: 'terrain_profile',
+        kind: 'elevation_summary',
+        value: { minElevation: 1.0, maxElevation: 2.0 },
+        unit: 'm',
+        evidence: { summary: { totalSamples: 2 } }
+      }
+    )
+    result = build_commands(service: service, sample_surface_query: profile_query)
+             .measure_scene(terrain_profile_request)
+
+    assert_equal('measured', result.fetch(:outcome))
+    refute(result.fetch(:measurement).key?(:evidence))
+  end
+
+  def test_terrain_profile_includes_evidence_when_requested
+    profile_query = FakeProfileEvidenceQuery.new(success: true, evidence: profile_samples)
+    service = FakeMeasurementService.new(
+      outcome: 'measured',
+      measurement: {
+        mode: 'terrain_profile',
+        kind: 'elevation_summary',
+        value: { minElevation: 1.0, maxElevation: 2.0 },
+        unit: 'm',
+        evidence: { summary: { totalSamples: 2 } }
+      }
+    )
+    request = terrain_profile_request.merge('outputOptions' => { 'includeEvidence' => true })
+
+    result = build_commands(service: service, sample_surface_query: profile_query)
+             .measure_scene(request)
+
+    assert_equal({ summary: { totalSamples: 2 } }, result.dig(:measurement, :evidence))
+  end
+
+  def test_refuses_terrain_only_fields_on_generic_measurements
+    result = build_commands.measure_scene(
+      'mode' => 'height',
+      'kind' => 'bounds_z',
+      'target' => { 'entityId' => '101' },
+      'sampling' => {
+        'type' => 'profile',
+        'path' => [{ 'x' => 0.0, 'y' => 0.0 }, { 'x' => 1.0, 'y' => 0.0 }],
+        'sampleCount' => 2
+      }
+    )
+
+    assert_refusal(result, 'unsupported_request_field')
+    assert_equal('sampling', result.dig(:refusal, :details, :field))
+  end
+
   private
 
-  def build_commands(resolver: nil, service: nil)
+  def build_commands(resolver: nil, service: nil, sample_surface_query: nil)
     resolver ||= FakeTargetReferenceResolver.new([{ resolution: 'unique', entity: @target }])
     service ||= FakeMeasurementService.new(
       outcome: 'measured',
@@ -207,7 +313,8 @@ class MeasureSceneCommandsTest < Minitest::Test
     SU_MCP::MeasureSceneCommands.new(
       adapter: FakeAdapter.new,
       target_reference_resolver: resolver,
-      measurement_service: service
+      measurement_service: service,
+      sample_surface_query: sample_surface_query
     )
   end
 
@@ -239,6 +346,46 @@ class MeasureSceneCommandsTest < Minitest::Test
     }
   end
 
+  def terrain_profile_request
+    {
+      'mode' => 'terrain_profile',
+      'kind' => 'elevation_summary',
+      'target' => { 'sourceElementId' => 'terrain-001' },
+      'sampling' => {
+        'type' => 'profile',
+        'path' => [{ 'x' => 0.0, 'y' => 0.0 }, { 'x' => 5.0, 'y' => 0.0 }],
+        'sampleCount' => 2
+      },
+      'samplingPolicy' => {
+        'visibleOnly' => true,
+        'ignoreTargets' => [{ 'sourceElementId' => 'tree-001' }]
+      }
+    }
+  end
+
+  def profile_samples
+    [
+      SU_MCP::SampleSurfaceEvidence::Sample.new(
+        index: 0,
+        x: 0.0,
+        y: 0.0,
+        z: 1.0,
+        distance_along_path_meters: 0.0,
+        path_progress: 0.0,
+        status: 'hit'
+      ),
+      SU_MCP::SampleSurfaceEvidence::Sample.new(
+        index: 1,
+        x: 5.0,
+        y: 0.0,
+        z: 2.0,
+        distance_along_path_meters: 5.0,
+        path_progress: 1.0,
+        status: 'hit'
+      )
+    ]
+  end
+
   def distance_measurement
     {
       outcome: 'measured',
@@ -257,3 +404,4 @@ class MeasureSceneCommandsTest < Minitest::Test
     assert_equal(code, result.dig(:refusal, :code))
   end
 end
+# rubocop:enable Metrics/ClassLength
