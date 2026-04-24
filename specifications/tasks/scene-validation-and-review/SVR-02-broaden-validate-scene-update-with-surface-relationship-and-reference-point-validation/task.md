@@ -103,9 +103,9 @@ Scenario: the richer geometry-aware checks are covered by focused verification
 
 ## Relationships
 
-- follows `SVR-03` in the current iteration so measured dimension and tolerance checks land before richer interrogation-backed geometry relationships
+- follows `SVR-03` in the current iteration so the public measurement contract is established before richer interrogation-backed geometry relationships depend on measurement evidence
 - informs the deferred topology-backed validation expansion for `validate_scene_update`
-- informs the deferred public `measure_scene` follow-on by clarifying which geometry relationships belong in validation versus direct measurement
+- remains distinct from the public `measure_scene` surface by clarifying which geometry relationships belong in validation versus direct measurement
 - informs the deferred terrain-relationship validation follow-on by establishing a first object-anchor-to-surface-offset expectation shape without claiming broader terrain diagnostics
 
 ## Related Technical Plan

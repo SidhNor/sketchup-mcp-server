@@ -29,6 +29,7 @@ The following follow-ons were explicitly deferred during iteration planning:
 
 - expand `find_entities` beyond MVP to add metadata-aware and collection-aware filtering once those conventions exist
 - implement `analyze_edge_network`
+- add bounded terrain profile or section interrogation as a follow-on to explicit host-target sampling when repeated terrain workflows need sampled evidence beyond point batches
 - add `get_bounds`
 - add `get_named_collections`
 
@@ -36,4 +37,5 @@ The following follow-ons were explicitly deferred during iteration planning:
 
 - This iteration does not claim full delivery of the current PRD wording for `find_entities`; it defines a narrowed MVP that excludes metadata and collection filtering.
 - `STI-01` establishes the shared targeting contract that `STI-02` depends on.
+- Terrain profile or section interrogation should remain evidence-producing and host-targeted; terrain patch replacement, grading, and fairing remain outside this task set unless a later bounded mutation capability is explicitly defined.
 - Deferred work remains explicit here so it is visible without being treated as active iteration backlog.

@@ -484,6 +484,46 @@ class McpRuntimeLoaderTest < Minitest::Test
     )
   end
 
+  def test_validate_scene_update_descriptions_expose_metadata_vs_geometry_boundary
+    tool = @loader.tool_catalog.find { |entry| entry.fetch(:name) == 'validate_scene_update' }
+    input_schema = tool.fetch(:input_schema)
+    expectations_schema = input_schema.fetch(:properties).fetch(:expectations)
+    expectation_properties = expectations_schema.fetch(:properties)
+    metadata_requirement_item = expectation_properties
+                                .fetch(:metadataRequirements)
+                                .fetch(:items)
+                                .fetch(:properties)
+    geometry_requirement_item = expectation_properties
+                                .fetch(:geometryRequirements)
+                                .fetch(:items)
+                                .fetch(:properties)
+
+    assert_includes(
+      tool.fetch(:description),
+      'not broad discovery or raw semantic property inspection'
+    )
+    assert_includes(
+      expectations_schema.fetch(:description),
+      'exactly one of targetReference or targetSelector'
+    )
+    assert_includes(
+      expectation_properties.fetch(:metadataRequirements).fetch(:description),
+      'Not the public path for width, height, thickness'
+    )
+    assert_includes(
+      metadata_requirement_item.fetch(:requiredKeys).fetch(:description),
+      'do not use for width, height, thickness'
+    )
+    assert_includes(
+      expectation_properties.fetch(:geometryRequirements).fetch(:description),
+      'Use this family for geometry evidence'
+    )
+    assert_includes(
+      geometry_requirement_item.fetch(:kind).fetch(:description),
+      'Measured dimension or tolerance checks are a later follow-on'
+    )
+  end
+
   def test_create_group_tool_schema_supports_managed_container_metadata_and_scene_properties
     create_group_tool = @loader.tool_catalog.find do |tool|
       tool.fetch(:name) == 'create_group'

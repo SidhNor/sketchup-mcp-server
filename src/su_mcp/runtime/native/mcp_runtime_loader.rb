@@ -319,7 +319,11 @@ module SU_MCP
           name: 'validate_scene_update',
           title: 'Validate Scene Update',
           description: 'Validate explicit scene-update expectations against resolved scene ' \
-                       'targets and return structured acceptance findings.',
+                       'targets and return structured acceptance findings. Use for ' \
+                       'post-update acceptance checks, not broad discovery or raw semantic ' \
+                       'property inspection. Metadata requirements currently verify ' \
+                       'supported managed-object keys only; geometry-facing checks belong ' \
+                       'under geometryRequirements.',
           handler_key: :validate_scene_update,
           annotations: { read_only_hint: true, destructive_hint: false },
           classification: 'first_class',
@@ -618,6 +622,45 @@ module SU_MCP
       schema.merge(description: description)
     end
 
+    def described_array_schema(items_schema, description)
+      described_schema(
+        {
+          type: 'array',
+          items: items_schema
+        },
+        description
+      )
+    end
+
+    def metadata_required_keys_description
+      'Managed-object metadata keys that must be present. This is a ' \
+        'presence-style check for supported keys such as sourceElementId, ' \
+        'semanticType, status, state, or structureCategory; do not use for ' \
+        'width, height, thickness, or other geometry-facing values.'
+    end
+
+    def geometry_requirement_kind_description
+      'Geometry-facing validation mode. Use this family for actual modeled ' \
+        'geometry checks. Measured dimension or tolerance checks are a later ' \
+        'follow-on and are not currently shipped through metadataRequirements.'
+    end
+
+    def metadata_requirements_description
+      'Presence-style checks for supported managed-object metadata keys. Not ' \
+        'the public path for width, height, thickness, or other geometry-facing values.'
+    end
+
+    def geometry_requirements_description
+      'Geometry-facing checks for resolved targets, including the shipped ' \
+        'surfaceOffset mode. Use this family for geometry evidence rather than ' \
+        'metadata key presence.'
+    end
+
+    def validation_expectations_description
+      'Expectation families for scene-update acceptance. Each expectation uses ' \
+        'exactly one of targetReference or targetSelector.'
+    end
+
     def scope_selector_schema
       {
         type: 'object',
@@ -806,7 +849,7 @@ module SU_MCP
           targetReference: target_reference_schema,
           targetSelector: target_selector_schema,
           expectationId: string_schema,
-          requiredKeys: string_array_schema
+          requiredKeys: described_schema(string_array_schema, metadata_required_keys_description)
         },
         additionalProperties: false
       }
@@ -875,11 +918,14 @@ module SU_MCP
           surfaceReference: target_reference_schema,
           anchorSelector: anchor_selector_schema,
           constraints: surface_offset_constraints_schema,
-          kind: enum_schema(
-            'mustHaveGeometry',
-            'mustNotBeNonManifold',
-            'mustBeValidSolid',
-            'surfaceOffset'
+          kind: described_schema(
+            enum_schema(
+              'mustHaveGeometry',
+              'mustNotBeNonManifold',
+              'mustBeValidSolid',
+              'surfaceOffset'
+            ),
+            geometry_requirement_kind_description
           )
         },
         additionalProperties: false
@@ -889,46 +935,49 @@ module SU_MCP
 
     def validation_core_expectations_schema
       {
-        mustExist: {
-          type: 'array',
-          items: expectation_target_schema
-        },
-        mustPreserve: {
-          type: 'array',
-          items: expectation_target_schema
-        },
-        metadataRequirements: {
-          type: 'array',
-          items: metadata_requirement_schema
-        }
+        mustExist: described_array_schema(
+          expectation_target_schema,
+          'Targets that must still resolve after the scene update.'
+        ),
+        mustPreserve: described_array_schema(
+          expectation_target_schema,
+          'Targets that must still resolve uniquely and remain preserved as scene objects.'
+        ),
+        metadataRequirements: described_array_schema(
+          metadata_requirement_schema,
+          metadata_requirements_description
+        )
       }
     end
 
     def validation_geometry_expectations_schema
       {
-        tagRequirements: {
-          type: 'array',
-          items: tag_requirement_schema
-        },
-        materialRequirements: {
-          type: 'array',
-          items: material_requirement_schema
-        },
-        geometryRequirements: {
-          type: 'array',
-          items: geometry_requirement_schema
-        }
+        tagRequirements: described_array_schema(
+          tag_requirement_schema,
+          'Checks that resolved targets have the expected tag.'
+        ),
+        materialRequirements: described_array_schema(
+          material_requirement_schema,
+          'Checks that resolved targets have the expected material.'
+        ),
+        geometryRequirements: described_array_schema(
+          geometry_requirement_schema,
+          geometry_requirements_description
+        )
       }
     end
 
     def validation_expectations_schema
-      {
-        type: 'object',
-        properties: validation_core_expectations_schema.merge(
-          validation_geometry_expectations_schema
-        ),
-        additionalProperties: false
-      }
+      described_schema(
+        {
+          type: 'object',
+          properties: validation_core_expectations_schema.merge(
+            validation_geometry_expectations_schema
+          ),
+          additionalProperties: false
+        },
+        validation_expectations_description
+      )
     end
 
     def validate_scene_update_schema
