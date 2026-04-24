@@ -21,10 +21,10 @@ This task extends the existing explicit surface-interrogation slice from point b
 
 ## Goals
 
-- extend the explicit host-target sampling surface to ordered profile and section sampling
+- extend the explicit host-target sampling surface from point batches to ordered profile and section sampling
 - preserve deterministic host-target disambiguation so vegetation and overlapping scene objects do not pollute terrain samples
 - return compact ordered sample evidence that downstream measurement and validation tasks can consume
-- keep `sample_surface_z` backward-compatible for point sampling unless implementation discovery proves a separate public tool is cleaner
+- keep `sample_surface_z` as the owning public evidence-collection tool without adding terrain validation or editing responsibilities
 
 ## Acceptance Criteria
 
@@ -36,17 +36,17 @@ Scenario: profile sampling uses an explicit resolved host
   And the tool does not silently fall back to generic nearest-scene probing
 
 Scenario: ordered profile output stays deterministic and compact
-  Given a caller provides an ordered polyline, edge-chain, or ordered XY path with an interval or sample count
+  Given a caller provides an ordered profile or section path with a supported spacing strategy
   When the profile is sampled
   Then the response returns an ordered array of JSON-serializable sample results
   And each sample includes input position, sample distance or progress, status, and sampled XYZ coordinates when hit
   And the response includes a compact summary with hit count, miss count, sampled length, and min/max sampled Z where available
 
-Scenario: point sampling remains compatible
-  Given existing callers use `sample_surface_z` for XY point batches
+Scenario: point and profile sampling share one public tool
+  Given callers need either point samples or profile samples against an explicit host
   When this task extends the public sampling surface
-  Then existing point-sampling request and response behavior remains stable
-  And any new discriminator or fields preserve the current point-sampling contract
+  Then `sample_surface_z` remains the owning public evidence-collection tool
+  And the final request contract is documented consistently in the loader schema, runtime validation, tests, and examples
 
 Scenario: occlusion and miss handling are explicit
   Given vegetation or overlapping geometry exists above the intended terrain host
@@ -82,7 +82,6 @@ Scenario: terrain diagnostics remain out of scope
 - profile sampling must accept only explicit host references; broad discovery remains owned by targeting tools such as `find_entities`
 - public geometry values must remain world-space and unit-explicit at the MCP boundary
 - any public schema change must keep the tool-parameter root provider-compatible as a top-level object without root `oneOf`, `anyOf`, `allOf`, `not`, or `enum`
-- if extending `sample_surface_z` makes the schema materially confusing, implementation planning may choose a separate profile-sampling tool while preserving this task's bounded product intent
 
 ## Dependencies
 
