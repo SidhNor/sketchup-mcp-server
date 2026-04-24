@@ -76,7 +76,10 @@ class ToolDispatcherTest < Minitest::Test
 
     def sample_surface_z(args)
       @calls << [:sample_surface_z, args]
-      { success: true, results: [{ samplePoint: args.fetch('samplePoints').first, status: 'hit' }] }
+      {
+        success: true,
+        results: [{ samplePoint: args.fetch('sampling').fetch('points').first, status: 'hit' }]
+      }
     end
 
     def create_site_element(args)
@@ -417,7 +420,10 @@ class ToolDispatcherTest < Minitest::Test
       'sample_surface_z',
       {
         'target' => { 'persistentId' => '4001' },
-        'samplePoints' => [{ 'x' => 5.0, 'y' => 5.0 }]
+        'sampling' => {
+          'type' => 'points',
+          'points' => [{ 'x' => 5.0, 'y' => 5.0 }]
+        }
       }
     )
 
@@ -430,7 +436,10 @@ class ToolDispatcherTest < Minitest::Test
         :sample_surface_z,
         {
           'target' => { 'persistentId' => '4001' },
-          'samplePoints' => [{ 'x' => 5.0, 'y' => 5.0 }]
+          'sampling' => {
+            'type' => 'points',
+            'points' => [{ 'x' => 5.0, 'y' => 5.0 }]
+          }
         }
       ]],
       @target.calls

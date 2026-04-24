@@ -83,8 +83,13 @@ module SceneQueryTestSupport
   class FakeLayer
     attr_reader :name
 
-    def initialize(name)
+    def initialize(name, visible: true)
       @name = name
+      @visible = visible
+    end
+
+    def visible?
+      @visible
     end
   end
 
@@ -561,6 +566,7 @@ module SceneQueryTestSupport
   # face/group/component sampling or ambiguity scenarios credibly.
   def build_sample_surface_z_model
     terrain = FakeLayer.new('Terrain')
+    hidden_terrain = FakeLayer.new('Hidden Terrain', visible: false)
     structures = FakeLayer.new('Structures')
     soil = FakeMaterial.new('Soil')
     concrete = FakeMaterial.new('Concrete')
@@ -750,6 +756,107 @@ module SceneQueryTestSupport
       slope_x: 0.5
     )
 
+    hidden_layer_target = build_sample_surface_face(
+      entity_id: 411,
+      persistent_id: 4011,
+      source_element_id: 'surface-hidden-layer-001',
+      name: 'Hidden Layer Surface Target',
+      layer: hidden_terrain,
+      material: soil,
+      x_range: [180.0, 190.0],
+      y_range: [0.0, 10.0],
+      z_value: 12.0
+    )
+
+    nested_face_target = build_sample_surface_face(
+      entity_id: 412,
+      persistent_id: 4012,
+      source_element_id: 'surface-nested-face-001',
+      name: 'Nested Surface Target',
+      layer: terrain,
+      material: soil,
+      x_range: [160.0, 170.0],
+      y_range: [0.0, 10.0],
+      z_value: 6.0
+    )
+
+    nested_container = build_sample_surface_group(
+      entity_id: 413,
+      persistent_id: 4013,
+      source_element_id: 'surface-nested-container-001',
+      name: 'Nested Surface Container',
+      layer: terrain,
+      material: soil,
+      child_faces: [nested_face_target]
+    )
+
+    hidden_parent_face = build_sample_surface_face(
+      entity_id: 414,
+      persistent_id: 4014,
+      source_element_id: 'surface-hidden-parent-face-001',
+      name: 'Hidden Parent Surface Target',
+      layer: terrain,
+      material: soil,
+      x_range: [200.0, 210.0],
+      y_range: [0.0, 10.0],
+      z_value: 13.0
+    )
+
+    hidden_parent_container = build_sample_surface_group(
+      entity_id: 415,
+      persistent_id: 4015,
+      source_element_id: 'surface-hidden-parent-container-001',
+      name: 'Hidden Parent Container',
+      layer: terrain,
+      material: soil,
+      child_faces: [hidden_parent_face],
+      hidden: true
+    )
+
+    combined_terrain_face = build_sample_surface_face(
+      entity_id: 416,
+      persistent_id: 4016,
+      source_element_id: 'surface-combined-terrain-001',
+      name: 'Combined Terrain',
+      layer: terrain,
+      material: soil,
+      x_range: [220.0, 230.0],
+      y_range: [0.0, 10.0],
+      z_value: 1.4
+    )
+
+    combined_occluder_face = build_sample_surface_face(
+      entity_id: 417,
+      persistent_id: 4017,
+      source_element_id: 'surface-combined-occluder-face-001',
+      name: 'Combined Occluder Face',
+      layer: structures,
+      material: steel,
+      x_range: [220.0, 230.0],
+      y_range: [0.0, 10.0],
+      z_value: 8.0
+    )
+
+    combined_occluder = build_sample_surface_group(
+      entity_id: 418,
+      persistent_id: 4018,
+      source_element_id: 'surface-combined-occluder-001',
+      name: 'Combined Occluder',
+      layer: structures,
+      material: steel,
+      child_faces: [combined_occluder_face]
+    )
+
+    combined_target = build_sample_surface_group(
+      entity_id: 419,
+      persistent_id: 4019,
+      source_element_id: 'surface-combined-target-001',
+      name: 'Combined Terrain And Occluder',
+      layer: terrain,
+      material: soil,
+      child_faces: [combined_terrain_face, combined_occluder]
+    )
+
     FakeModel.new(
       state: {
         entities: [
@@ -762,12 +869,16 @@ module SceneQueryTestSupport
           occluder,
           empty_group_target,
           unsupported_edge_target,
-          sloped_face_target
+          sloped_face_target,
+          hidden_layer_target,
+          nested_container,
+          hidden_parent_container,
+          combined_target
         ],
         active_entities: [],
         selection: [],
         materials: [soil, concrete, steel],
-        layers: [terrain, structures],
+        layers: [terrain, hidden_terrain, structures],
         bounds: build_bounds(origin_x: -10)
       },
       details: { options: default_options }
@@ -845,14 +956,16 @@ module SceneQueryTestSupport
   end
   # rubocop:enable Metrics/ParameterLists
 
+  # rubocop:disable Metrics/ParameterLists
   def build_sample_surface_group(entity_id:, persistent_id:, name:, layer:, material:, child_faces:,
-                                 source_element_id: nil, transformation: nil)
+                                 source_element_id: nil, transformation: nil, hidden: false)
     FakeGroup.new(
       entity_id: entity_id,
       bounds: build_bounds(origin_x: child_faces.empty? ? 0 : child_faces.first.bounds.min.x),
       layer: layer,
       material: material,
       details: {
+        hidden: hidden,
         name: name,
         persistent_id: persistent_id,
         attributes: sample_surface_attributes(source_element_id),
@@ -861,6 +974,7 @@ module SceneQueryTestSupport
       }
     )
   end
+  # rubocop:enable Metrics/ParameterLists
 
   # rubocop:disable Metrics/ParameterLists
   def build_sample_surface_component(

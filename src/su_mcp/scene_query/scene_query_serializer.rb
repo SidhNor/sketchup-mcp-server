@@ -80,6 +80,20 @@ module SU_MCP
       serialize_xy_sample_point(x_value, y_value).merge(z: public_meter_value(z_value))
     end
 
+    def serialize_sampling_evidence(evidence)
+      serialized = {
+        index: evidence.index,
+        samplePoint: serialize_xy_sample_point(evidence.x, evidence.y),
+        distanceAlongPathMeters: public_meter_value(evidence.distance_along_path_meters),
+        pathProgress: public_meter_value(evidence.path_progress),
+        status: evidence.status
+      }
+      if evidence.status == 'hit'
+        serialized[:hitPoint] = serialize_xyz_sample_point(evidence.x, evidence.y, evidence.z)
+      end
+      serialized
+    end
+
     def entity_type_key(entity)
       SCENE_QUERY_TYPE_KEYS.each do |klass, key|
         return key if entity.is_a?(klass)

@@ -41,11 +41,11 @@ Scenario: terrain evidence remains measurement, not verdict
   Then the response includes unit-bearing quantities and compact evidence
   And it does not return pass/fail, grade-compliance, trench, hump, drainage, or fairness verdicts
 
-Scenario: mode and kind names wait for the evidence contract
-  Given `STI-03` may settle the profile output shape during implementation
+Scenario: mode and kind names are finalized from the settled evidence contract
+  Given `SVR-03` and `STI-03` have established the generic measurement and profile evidence seams
   When this task is planned in detail
-  Then exact `measure_scene` mode and kind names are finalized from the stable upstream evidence contract
-  And this task does not pre-commit public enum names before the dependencies ship
+  Then exact `measure_scene` mode and kind names are finalized from those upstream contracts
+  And the chosen public enum set remains small, explicit, and evidence-oriented
 ```
 
 ## Non-Goals
@@ -54,7 +54,7 @@ Scenario: mode and kind names wait for the evidence contract
 - adding clearance, path length, or slope hints to the `SVR-03` MVP
 - creating terrain editing, patch replacement, smoothing, fairing, or working-copy lifecycle behavior
 - routing validation through the public `measure_scene` MCP tool instead of shared internal measurement helpers
-- finalizing exact public mode/kind names before `SVR-03` and `STI-03` have stable contracts
+- adding broad terrain-aware mode/kind names beyond the finite evidence set selected during technical planning
 
 ## Business Constraints
 
@@ -67,7 +67,7 @@ Scenario: mode and kind names wait for the evidence contract
 - Ruby must own measurement execution, profile evidence consumption, and JSON-safe serialization
 - `validate_scene_update` must not call the public `measure_scene` tool
 - public outputs must keep units and derivation evidence explicit
-- exact mode/kind names must be chosen only after `STI-03` settles its profile/section output shape
+- exact mode/kind names must be chosen from the settled `SVR-03` measurement posture and `STI-03` profile evidence shape
 - terrain-shaped targets must still use explicit host references where profile or section evidence is required
 
 ## Dependencies

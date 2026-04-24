@@ -153,7 +153,7 @@ flowchart TD
 
 - The Python MCP surface exposes explicit `title`, `description`, and behavior annotations for `find_entities`, `sample_surface_z`, and `create_site_element` through live FastMCP tool definitions.
 - The exposed `find_entities` metadata stays bounded to the delivered MVP targeting scope and does not claim metadata-aware or collection-aware filtering.
-- The exposed `sample_surface_z` metadata states that callers provide an explicit target plus world-space XY sample points and does not present broad scene probing as the normal path.
+- The exposed `sample_surface_z` metadata states that callers provide an explicit target plus canonical points or profile sampling and does not present broad scene probing as the normal path.
 - The exposed behavior annotations mark `find_entities` and `sample_surface_z` as read-only and non-destructive in a way that is visible on registered FastMCP tool definitions.
 - The exposed `create_site_element` metadata advertises only the `SEM-01` semantic slice of `structure` and `pad`, and marks the tool as mutating but non-destructive.
 - Existing tool names, argument schemas, request shaping, registration order, and Ruby bridge behavior for the targeted tools remain unchanged.

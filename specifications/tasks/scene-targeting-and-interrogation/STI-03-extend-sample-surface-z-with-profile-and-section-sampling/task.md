@@ -1,7 +1,7 @@
 # Task: STI-03 Extend `sample_surface_z` With Profile and Section Sampling
 **Task ID**: `STI-03`
 **Title**: `Extend sample_surface_z With Profile and Section Sampling`
-**Status**: `planned`
+**Status**: `completed`
 **Priority**: `P1`
 **Date**: `2026-04-24`
 

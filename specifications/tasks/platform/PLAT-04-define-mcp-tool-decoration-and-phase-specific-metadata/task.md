@@ -54,7 +54,7 @@ Scenario: Current-phase decoration for targeted tools reflects their actual cont
   Given the current capability tasks define specific public boundaries for `find_entities`, `sample_surface_z`, and `create_site_element`
   When the current-phase decoration entries are inspected against their owning task definitions
   Then `find_entities` does not advertise metadata-aware or collection-aware filtering before those behaviors are delivered
-  And `sample_surface_z` states that callers provide an explicit target and world-space XY sample points rather than broad scene discovery
+  And `sample_surface_z` states that callers provide an explicit target and canonical points or profile sampling rather than broad scene discovery
   And `create_site_element` only advertises the semantic element types delivered in `SEM-01`
   And the later-phase `create_site_element` expansion guidance remains embedded in the owning semantic tasks rather than guessed during later implementation
 

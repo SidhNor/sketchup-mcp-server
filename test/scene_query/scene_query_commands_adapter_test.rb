@@ -10,13 +10,15 @@ class SceneQueryCommandsAdapterTest < Minitest::Test
   class RecordingAdapter
     attr_reader :calls
 
+    # rubocop:disable Metrics/ParameterLists
     def initialize(
       model:,
       top_level_entities:,
       selected_entities:,
       entity:,
       queryable_entities:,
-      all_entities_recursive:
+      all_entities_recursive:,
+      all_entity_paths_recursive:
     )
       @model = model
       @top_level_entities = top_level_entities
@@ -24,8 +26,10 @@ class SceneQueryCommandsAdapterTest < Minitest::Test
       @entity = entity
       @queryable_entities = queryable_entities
       @all_entities_recursive = all_entities_recursive
+      @all_entity_paths_recursive = all_entity_paths_recursive
       @calls = []
     end
+    # rubocop:enable Metrics/ParameterLists
 
     def active_model!
       @calls << :active_model!
@@ -56,6 +60,11 @@ class SceneQueryCommandsAdapterTest < Minitest::Test
       @calls << :all_entities_recursive
       @all_entities_recursive
     end
+
+    def all_entity_paths_recursive
+      @calls << :all_entity_paths_recursive
+      @all_entity_paths_recursive
+    end
   end
 
   def setup
@@ -67,7 +76,10 @@ class SceneQueryCommandsAdapterTest < Minitest::Test
       selected_entities: @model.selection,
       entity: @group,
       queryable_entities: @model.entities,
-      all_entities_recursive: @model.entities + @group.entities
+      all_entities_recursive: @model.entities + @group.entities,
+      all_entity_paths_recursive: (@model.entities + @group.entities).map do |entity|
+        { entity: entity, ancestors: [] }
+      end
     )
   end
 
@@ -117,5 +129,21 @@ class SceneQueryCommandsAdapterTest < Minitest::Test
     commands.find_entities('targetSelector' => { 'identity' => { 'entityId' => '101' } })
 
     assert_includes(@adapter.calls, :all_entities_recursive)
+  end
+
+  def test_sample_surface_z_uses_recursive_entities_for_nested_targets
+    commands = SU_MCP::SceneQueryCommands.new(adapter: @adapter)
+
+    commands.sample_surface_z(
+      'target' => { 'entityId' => '101' },
+      'sampling' => {
+        'type' => 'points',
+        'points' => [{ 'x' => 0.0, 'y' => 0.0 }]
+      }
+    )
+
+    assert_includes(@adapter.calls, :all_entities_recursive)
+    assert_includes(@adapter.calls, :all_entity_paths_recursive)
+    assert_includes(@adapter.calls, :queryable_entities)
   end
 end

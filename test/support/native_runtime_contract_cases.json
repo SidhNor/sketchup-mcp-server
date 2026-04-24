@@ -11,12 +11,15 @@
             "target": {
               "persistentId": "4001"
             },
-            "samplePoints": [
-              {
-                "x": 5.0,
-                "y": 5.0
-              }
-            ]
+            "sampling": {
+              "type": "points",
+              "points": [
+                {
+                  "x": 5.0,
+                  "y": 5.0
+                }
+              ]
+            }
           }
         },
         "id": "sample-hit"
@@ -40,6 +43,240 @@
               }
             }
           ]
+        }
+      }
+    },
+    {
+      "case_id": "sample_surface_z_profile",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "params": {
+          "name": "sample_surface_z",
+          "arguments": {
+            "target": {
+              "persistentId": "4001"
+            },
+            "sampling": {
+              "type": "profile",
+              "path": [
+                {
+                  "x": 0.0,
+                  "y": 0.0
+                },
+                {
+                  "x": 10.0,
+                  "y": 0.0
+                }
+              ],
+              "sampleCount": 3
+            }
+          }
+        },
+        "id": "sample-profile"
+      },
+      "response": {
+        "jsonrpc": "2.0",
+        "id": "sample-profile",
+        "result": {
+          "success": true,
+          "results": [
+            {
+              "index": 0,
+              "samplePoint": {
+                "x": 0.0,
+                "y": 0.0
+              },
+              "distanceAlongPathMeters": 0.0,
+              "pathProgress": 0.0,
+              "status": "hit",
+              "hitPoint": {
+                "x": 0.0,
+                "y": 0.0,
+                "z": 2.5
+              }
+            },
+            {
+              "index": 1,
+              "samplePoint": {
+                "x": 5.0,
+                "y": 0.0
+              },
+              "distanceAlongPathMeters": 5.0,
+              "pathProgress": 0.5,
+              "status": "hit",
+              "hitPoint": {
+                "x": 5.0,
+                "y": 0.0,
+                "z": 2.5
+              }
+            },
+            {
+              "index": 2,
+              "samplePoint": {
+                "x": 10.0,
+                "y": 0.0
+              },
+              "distanceAlongPathMeters": 10.0,
+              "pathProgress": 1.0,
+              "status": "hit",
+              "hitPoint": {
+                "x": 10.0,
+                "y": 0.0,
+                "z": 2.5
+              }
+            }
+          ],
+          "summary": {
+            "totalSamples": 3,
+            "hitCount": 3,
+            "missCount": 0,
+            "ambiguousCount": 0,
+            "sampledLengthMeters": 10.0,
+            "minZ": 2.5,
+            "maxZ": 2.5
+          }
+        }
+      }
+    },
+    {
+      "case_id": "sample_surface_z_profile_cap_refused",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "params": {
+          "name": "sample_surface_z",
+          "arguments": {
+            "target": {
+              "persistentId": "4001"
+            },
+            "sampling": {
+              "type": "profile",
+              "path": [
+                {
+                  "x": 0.0,
+                  "y": 0.0
+                },
+                {
+                  "x": 10.0,
+                  "y": 0.0
+                }
+              ],
+              "sampleCount": 201
+            }
+          }
+        },
+        "id": "sample-profile-cap-refused"
+      },
+      "response": {
+        "jsonrpc": "2.0",
+        "id": "sample-profile-cap-refused",
+        "result": {
+          "success": true,
+          "outcome": "refused",
+          "refusal": {
+            "code": "sample_cap_exceeded",
+            "message": "Profile sampling would generate 201 samples; allowed cap is 200",
+            "details": {
+              "field": "sampling",
+              "generatedCount": 201,
+              "allowedCap": 200
+            }
+          }
+        }
+      }
+    },
+    {
+      "case_id": "sample_surface_z_profile_spacing_refused",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "params": {
+          "name": "sample_surface_z",
+          "arguments": {
+            "target": {
+              "persistentId": "4001"
+            },
+            "sampling": {
+              "type": "profile",
+              "path": [
+                {
+                  "x": 0.0,
+                  "y": 0.0
+                },
+                {
+                  "x": 10.0,
+                  "y": 0.0
+                }
+              ],
+              "sampleCount": 2,
+              "intervalMeters": 0.5
+            }
+          }
+        },
+        "id": "sample-profile-spacing-refused"
+      },
+      "response": {
+        "jsonrpc": "2.0",
+        "id": "sample-profile-spacing-refused",
+        "result": {
+          "success": true,
+          "outcome": "refused",
+          "refusal": {
+            "code": "mutually_exclusive_fields",
+            "message": "Provide either sampleCount or intervalMeters, not both.",
+            "details": {
+              "fields": [
+                "sampling.sampleCount",
+                "sampling.intervalMeters"
+              ]
+            }
+          }
+        }
+      }
+    },
+    {
+      "case_id": "sample_surface_z_profile_invalid_geometry_refused",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "params": {
+          "name": "sample_surface_z",
+          "arguments": {
+            "target": {
+              "persistentId": "4001"
+            },
+            "sampling": {
+              "type": "profile",
+              "path": [
+                {
+                  "x": 1.0,
+                  "y": 1.0
+                },
+                {
+                  "x": 1.0,
+                  "y": 1.0
+                }
+              ],
+              "sampleCount": 2
+            }
+          }
+        },
+        "id": "sample-profile-invalid-geometry-refused"
+      },
+      "response": {
+        "jsonrpc": "2.0",
+        "id": "sample-profile-invalid-geometry-refused",
+        "result": {
+          "success": true,
+          "outcome": "refused",
+          "refusal": {
+            "code": "invalid_geometry",
+            "message": "Profile path must contain at least two distinct XY positions",
+            "details": {
+              "field": "sampling.path"
+            }
+          }
         }
       }
     },

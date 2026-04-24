@@ -350,18 +350,19 @@ module SU_MCP
         tool_entry(
           name: 'sample_surface_z',
           title: 'Sample Target Surface Elevation',
-          description: 'Sample world-space surface elevation from an explicit target at ' \
-                       'one or more XY points in meters. Callers must provide the target ' \
-                       'and sample points; this is not broad scene discovery.',
+          description: 'Sample world-space surface elevation from an explicit target using ' \
+                       'a canonical sampling object. Use sampling.type points for explicit ' \
+                       'XY points or profile for ordered path samples. This is not broad ' \
+                       'scene discovery and does not return terrain validation verdicts.',
           handler_key: :sample_surface_z,
           annotations: { read_only_hint: true, destructive_hint: false },
           classification: 'first_class',
           input_schema: {
             type: 'object',
-            required: %w[target samplePoints],
+            required: %w[target sampling],
             properties: {
               target: target_reference_schema,
-              samplePoints: sample_points_schema,
+              sampling: sample_surface_sampling_schema,
               ignoreTargets: {
                 type: 'array',
                 items: target_reference_schema
@@ -821,6 +822,28 @@ module SU_MCP
         }
       }
     end
+
+    # rubocop:disable Metrics/MethodLength
+    def sample_surface_sampling_schema
+      {
+        type: 'object',
+        required: ['type'],
+        properties: {
+          type: described_schema(
+            enum_schema('points', 'profile'),
+            'Use points with sampling.points, or profile with sampling.path plus exactly one ' \
+            'of sampleCount or intervalMeters. Profile generation is capped at 200 samples; ' \
+            'refusals include sample_cap_exceeded and mutually_exclusive_fields.'
+          ),
+          points: sample_points_schema,
+          path: sample_points_schema,
+          sampleCount: integer_schema,
+          intervalMeters: number_schema
+        },
+        additionalProperties: false
+      }
+    end
+    # rubocop:enable Metrics/MethodLength
 
     def xy_point_array_schema
       {

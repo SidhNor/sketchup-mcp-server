@@ -30,6 +30,50 @@ class McpRuntimeNativeContractTest < Minitest::Test
     )
   end
 
+  def test_native_transport_preserves_sample_surface_profile_shape_from_shared_contract
+    skip_unless_staged_vendor_runtime!
+
+    contract_case = contract_case('sample_surface_z_profile')
+    transport = @loader.build_transport(
+      handlers: {
+        sample_surface_z: ->(_arguments) { contract_case.fetch('response').fetch('result') }
+      }
+    )
+
+    response = perform_raw_json_request(transport, contract_case.fetch('request'))
+
+    assert_equal(200, response[:status])
+    assert_equal(
+      contract_case.dig('response', 'result'),
+      response[:body].dig('result', 'structuredContent')
+    )
+  end
+
+  def test_native_transport_preserves_sample_surface_profile_refusal_shapes
+    skip_unless_staged_vendor_runtime!
+
+    %w[
+      sample_surface_z_profile_cap_refused
+      sample_surface_z_profile_spacing_refused
+      sample_surface_z_profile_invalid_geometry_refused
+    ].each do |case_id|
+      contract_case = contract_case(case_id)
+      transport = @loader.build_transport(
+        handlers: {
+          sample_surface_z: ->(_arguments) { contract_case.fetch('response').fetch('result') }
+        }
+      )
+
+      response = perform_raw_json_request(transport, contract_case.fetch('request'))
+
+      assert_equal(200, response[:status])
+      assert_equal(
+        contract_case.dig('response', 'result'),
+        response[:body].dig('result', 'structuredContent')
+      )
+    end
+  end
+
   def test_native_transport_preserves_refusal_details_with_allowed_values
     skip_unless_staged_vendor_runtime!
 

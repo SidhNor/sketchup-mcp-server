@@ -511,15 +511,26 @@ module SU_MCP
     end
 
     def surface_offset_sample_results(expectation, entity, derived_anchors)
-      sample_surface_query.execute(
+      response = sample_surface_query.execute(
         entities: adapter.all_entities_recursive,
         params: {
           'target' => normalize_hash(expectation['surfaceReference']),
-          'samplePoints' => sample_points_for(derived_anchors),
+          'sampling' => {
+            'type' => 'points',
+            'points' => sample_points_for(derived_anchors)
+          },
           'ignoreTargets' => [entity_reference(entity)],
           'visibleOnly' => false
         }
-      ).fetch(:results)
+      )
+      raise surface_sampling_refusal_message(response) if response[:outcome] == 'refused'
+
+      response.fetch(:results)
+    end
+
+    def surface_sampling_refusal_message(response)
+      refusal = response[:refusal] || {}
+      refusal[:message] || 'Surface sampling was refused'
     end
 
     def sample_points_for(derived_anchors)

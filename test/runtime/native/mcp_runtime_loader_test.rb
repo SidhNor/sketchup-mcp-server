@@ -217,8 +217,43 @@ class McpRuntimeLoaderTest < Minitest::Test
 
     sample_surface_z_tool = tools.find { |tool| tool.fetch('name') == 'sample_surface_z' }
     assert_equal(
-      %w[target samplePoints],
+      %w[target sampling],
       sample_surface_z_tool.fetch('inputSchema').fetch('required')
+    )
+    assert_equal(
+      %w[ignoreTargets sampling target visibleOnly],
+      sample_surface_z_tool.fetch('inputSchema').fetch('properties').keys.sort
+    )
+    refute(sample_surface_z_tool.fetch('inputSchema').fetch('properties').key?('samplePoints'))
+    assert_equal(
+      %w[intervalMeters path points sampleCount type],
+      sample_surface_z_tool
+        .fetch('inputSchema')
+        .fetch('properties')
+        .fetch('sampling')
+        .fetch('properties')
+        .keys
+        .sort
+    )
+    assert_equal(
+      %w[points profile],
+      sample_surface_z_tool
+        .fetch('inputSchema')
+        .fetch('properties')
+        .fetch('sampling')
+        .fetch('properties')
+        .fetch('type')
+        .fetch('enum')
+    )
+    assert_includes(
+      sample_surface_z_tool
+        .fetch('inputSchema')
+        .fetch('properties')
+        .fetch('sampling')
+        .fetch('properties')
+        .fetch('type')
+        .fetch('description'),
+      'capped at 200 samples'
     )
     assert_equal(
       %w[entityId persistentId sourceElementId],
@@ -997,7 +1032,12 @@ class McpRuntimeLoaderTest < Minitest::Test
     assert_equal('targetReference', delete_entities.dig(:input_schema, :required)&.first)
 
     assert_equal('Sample Target Surface Elevation', sample_surface_z.dig(:metadata, :title))
-    assert_equal(%w[target samplePoints], sample_surface_z.dig(:input_schema, :required))
+    assert_equal(%w[target sampling], sample_surface_z.dig(:input_schema, :required))
+    refute(sample_surface_z.dig(:input_schema, :properties).key?(:samplePoints))
+    assert_equal(
+      %w[points profile],
+      sample_surface_z.dig(:input_schema, :properties, :sampling, :properties, :type, :enum)
+    )
     assert_equal(%i[entityId persistentId sourceElementId],
                  sample_surface_z.dig(:input_schema, :properties, :target, :properties).keys.sort)
     assert_equal('Get Entity Information', get_entity_info.dig(:metadata, :title))

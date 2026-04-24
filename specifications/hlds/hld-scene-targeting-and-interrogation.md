@@ -149,12 +149,12 @@ V1 targeting and interrogation commands should share one JSON target-reference c
 
 **Responsibilities**
 
-- accept explicit target references and XY sample points
+- accept explicit target references and a canonical sampling object for XY point batches or ordered profile paths
 - evaluate the intended surface in world space using SketchUp-owned geometry logic
 - return structured hit, miss, and ambiguity results
 - respect visible-only interrogation defaults and optional ignore-target references
 - optionally include compact hit-chain detail when the contract requests it
-- support later bounded profile or section sampling by composing explicit target sampling over caller-supplied paths or section definitions, without taking ownership of terrain editing or validation verdicts
+- support bounded profile or section sampling by composing explicit target sampling over caller-supplied paths or section definitions, without taking ownership of terrain editing or validation verdicts
 
 **Must Not Own**
 
@@ -401,4 +401,4 @@ This keeps behavior deterministic by default while allowing tighter or looser ch
 1. Should `get_named_collections` return only canonical workflow collections or also custom collections that satisfy product rules?
 2. How much optional detail should `sample_surface_z` expose beyond hit-chain data before payload size becomes counterproductive?
 3. Should topology findings ever become automatic gates for semantic creation, or should that remain a validation-layer decision?
-4. Which terrain profile or section sampling patterns are common enough to deserve a public interrogation helper rather than being composed by callers from repeated `sample_surface_z` calls?
+4. Which additional terrain profile or section sampling patterns are common enough to expand beyond the current points/profile `sample_surface_z` contract?

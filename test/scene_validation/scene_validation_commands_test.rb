@@ -983,8 +983,11 @@ class SceneValidationCommandsTest < Minitest::Test
     assert_equal(true, result[:success])
     assert_equal('passed', result[:outcome])
     assert_equal(
-      [{ 'x' => 83.5, 'y' => 82.5 }],
-      sample_surface_query.calls.first.dig(:params, 'samplePoints')
+      {
+        'type' => 'points',
+        'points' => [{ 'x' => 83.5, 'y' => 82.5 }]
+      },
+      sample_surface_query.calls.first.dig(:params, 'sampling')
     )
     assert_equal(false, sample_surface_query.calls.first.dig(:params, 'visibleOnly'))
   end

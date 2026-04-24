@@ -81,6 +81,17 @@ class ModelAdapterTest < Minitest::Test
     assert_includes(entity_ids, 431)
   end
 
+  def test_all_entity_paths_recursive_includes_ancestor_context_for_nested_entities
+    nested_model = build_sample_surface_z_model
+    Sketchup.active_model_override = nested_model
+
+    nested_face_entry = @adapter
+                        .all_entity_paths_recursive
+                        .find { |entry| entry.fetch(:entity).entityID == 414 }
+
+    assert_equal([415], nested_face_entry.fetch(:ancestors).map(&:entityID))
+  end
+
   def test_export_scene_saves_skp_exports_with_a_returned_path
     export = @adapter.export_scene(format: 'skp')
 

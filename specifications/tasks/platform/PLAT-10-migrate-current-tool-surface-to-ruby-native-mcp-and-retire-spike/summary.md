@@ -66,7 +66,7 @@
   - `boolean_operation`
 - Live contract notes confirmed during native-host validation:
   - `get_entity_info` works with `id`
-  - `sample_surface_z` works with `target` plus `samplePoints`
+  - `sample_surface_z` works with `target` plus canonical `sampling`
   - `create_component` works with numeric vectors and `type: "cube"`
   - `create_site_element` works with the live semantic contract using fields such as `sourceElementId`, `status`, `footprint`, `thickness`, and `tag`
   - `transform_component` worked with `position`

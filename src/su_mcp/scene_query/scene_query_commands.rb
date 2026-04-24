@@ -92,7 +92,12 @@ module SU_MCP
 
     def sample_surface_z(params)
       adapter.active_model!
-      sample_surface_query.execute(entities: adapter.queryable_entities, params: params)
+      sample_surface_query.execute(
+        entities: adapter.all_entities_recursive,
+        entity_entries: adapter.all_entity_paths_recursive,
+        scene_entities: adapter.queryable_entities,
+        params: params
+      )
     end
 
     def selection_info

@@ -16,6 +16,10 @@
 # Ignore Byebug command history file.
 .byebug_history
 
+
+# TLDR cache files:
+.tldr
+
 ## Specific to RubyMotion:
 .dat*
 .repl_history
