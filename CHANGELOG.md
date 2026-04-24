@@ -2,6 +2,39 @@
 
 <!-- version list -->
 
+## v0.19.0 (2026-04-24)
+
+### Bug Fixes
+
+- **PLAT-16**: Decorate public mcp schema
+  ([`dbdd415`](https://github.com/SidhNor/sketchup-mcp-server/commit/dbdd415ccd318867439b105b94ccdeb653ae48dc))
+
+- **semantic**: Looses semantic create element contract to allow for richer validations
+  ([`4bb585f`](https://github.com/SidhNor/sketchup-mcp-server/commit/4bb585f5347efae9239dd39cad386ffd81996927))
+
+### Documentation
+
+- **semantic,validation**: Task and prd updates
+  ([`935f36d`](https://github.com/SidhNor/sketchup-mcp-server/commit/935f36db62976c6fd68a82ca87cd670731796dc2))
+
+- **SVR-02**: Plan further scene validation
+  ([`868501a`](https://github.com/SidhNor/sketchup-mcp-server/commit/868501a9f9d41b5257d4dcf8e1171112983c1c43))
+
+- **SVR-03**: Planning measuring tool
+  ([`1141eee`](https://github.com/SidhNor/sketchup-mcp-server/commit/1141eeea3108f3173d13f531f5928cc4b313dc7e))
+
+- **tools**: Additional guidance on MCP tool usage
+  ([`1141eee`](https://github.com/SidhNor/sketchup-mcp-server/commit/1141eeea3108f3173d13f531f5928cc4b313dc7e))
+
+### Features
+
+- **SVR-02**: Additional scene validations on surfaceOffset
+  ([`90977c4`](https://github.com/SidhNor/sketchup-mcp-server/commit/90977c4a270505c2e52b4a58c2832fbd580c6665))
+
+- **SVR-03**: Measure_scene tool implementation
+  ([`84c77e8`](https://github.com/SidhNor/sketchup-mcp-server/commit/84c77e8e503a88e456f5df5aa25d8be6885e3946))
+
+
 ## v0.18.0 (2026-04-22)
 
 ### Features
