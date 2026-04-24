@@ -17,6 +17,11 @@ class RepositoryCleanupPostureTest < Minitest::Test
     assert_path_exists('releaserc.toml')
     assert_includes(workflow, '--config releaserc.toml')
     assert_includes(workflow, 'echo "tag=$(git describe --tags --abbrev=0)" >> "$GITHUB_OUTPUT"')
+    assert_includes(workflow, 'workflow_run:')
+    assert_includes(workflow, '- CI')
+    assert_includes(workflow, "github.event.workflow_run.conclusion == 'success'")
+    refute_includes(workflow, 'bundle exec rake ci')
+    refute_includes(workflow, 'ruby/setup-ruby')
     assert_includes(releaserc, 'assets = ["VERSION"]')
     refute_includes(workflow, 'uv sync --locked --dev')
   end
@@ -32,7 +37,7 @@ class RepositoryCleanupPostureTest < Minitest::Test
     refute_includes(workflow, 'contract:')
     assert_includes(
       workflow,
-      'COVERAGE=true bundle exec rake version:assert ruby:lint ruby:test package:verify'
+      'COVERAGE=true bundle exec rake ci'
     )
     assert_includes(workflow, 'SonarSource/sonarqube-scan-action@v7')
     assert_includes(workflow, 'SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}')
