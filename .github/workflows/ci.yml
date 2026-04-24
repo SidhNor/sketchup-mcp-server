@@ -1,6 +1,9 @@
 name: CI
 
 on:
+  push:
+    branches:
+      - main
   pull_request:
   workflow_dispatch:
 
@@ -10,9 +13,13 @@ permissions:
 jobs:
   ruby:
     runs-on: ubuntu-latest
+    env:
+      SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
     steps:
       - name: Checkout
         uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
 
       - name: Setup Ruby
         uses: ruby/setup-ruby@v1
@@ -21,4 +28,8 @@ jobs:
           bundler-cache: true
 
       - name: Run Ruby checks
-        run: bundle exec rake version:assert ruby:lint ruby:test package:verify
+        run: COVERAGE=true bundle exec rake version:assert ruby:lint ruby:test package:verify
+
+      - name: SonarQube Cloud scan
+        if: env.SONAR_TOKEN != ''
+        uses: SonarSource/sonarqube-scan-action@v7

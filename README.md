@@ -1,5 +1,8 @@
 # SketchUp MCP
 
+[![Quality Gate Status](https://sonarcloud.io/api/project_badges/measure?project=SidhNor_sketchup-mcp-server&metric=alert_status)](https://sonarcloud.io/summary/new_code?id=SidhNor_sketchup-mcp-server)
+
+
 This repository ships an MCP server inside a SketchUp extension.
 
 - The extension code lives under `src/`.

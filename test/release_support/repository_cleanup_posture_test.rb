@@ -30,7 +30,12 @@ class RepositoryCleanupPostureTest < Minitest::Test
     refute_includes(workflow, 'bundle exec rake ruby:contract python:contract')
     refute_includes(workflow, 'python:')
     refute_includes(workflow, 'contract:')
-    assert_includes(workflow, 'bundle exec rake version:assert ruby:lint ruby:test package:verify')
+    assert_includes(
+      workflow,
+      'COVERAGE=true bundle exec rake version:assert ruby:lint ruby:test package:verify'
+    )
+    assert_includes(workflow, 'SonarSource/sonarqube-scan-action@v7')
+    assert_includes(workflow, 'SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}')
   end
 
   def test_ci_rake_task_excludes_python_and_bridge_contract_checks

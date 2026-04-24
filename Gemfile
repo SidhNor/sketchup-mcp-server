@@ -12,6 +12,11 @@ group :development do
   gem 'solargraph'               # VSCode Ruby IDE support
 end
 
+group :test do
+  gem 'simplecov', require: false
+  gem 'simplecov_json_formatter', require: false
+end
+
 group :documentation do
   gem 'commonmarker', '~> 0.23'  # Allows YARD to use Markdown for code comments.
   gem 'yard', '~> 0.9'           # Generates Ruby documentation.

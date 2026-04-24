@@ -1,7 +1,6 @@
 # frozen_string_literal: true
 
-require 'json'
-require 'minitest/autorun'
+require_relative 'test_helper'
 require_relative '../src/su_mcp/version'
 
 class VersionTest < Minitest::Test
