@@ -137,7 +137,7 @@
   - existing dispatcher and runtime facade tests must prove the extended payload reaches the command unchanged
 - Docs and example updates:
   - [README.md](README.md)
-  - [sketchup_mcp_guide.md](sketchup_mcp_guide.md)
+  - current source-of-truth docs
 - Public contract note:
   - the docs and examples must explicitly say that MVP anchors are approximate bounds-derived anchors and are coarse for irregular footprints
 
@@ -291,7 +291,7 @@ flowchart LR
   - [test/runtime/native/mcp_runtime_facade_test.rb](test/runtime/native/mcp_runtime_facade_test.rb)
 - Public contract parity checks:
   - [README.md](README.md)
-  - [sketchup_mcp_guide.md](sketchup_mcp_guide.md)
+  - current source-of-truth docs
 - SketchUp-hosted validation:
   - transformed component or group on sloped sample terrain
   - terrain sampled beneath an occluding modeled object
@@ -361,7 +361,7 @@ flowchart LR
 - [test/runtime/tool_dispatcher_test.rb](test/runtime/tool_dispatcher_test.rb)
 - [test/runtime/native/mcp_runtime_facade_test.rb](test/runtime/native/mcp_runtime_facade_test.rb)
 - [README.md](README.md)
-- [sketchup_mcp_guide.md](sketchup_mcp_guide.md)
+- current source-of-truth docs
 
 ## Premortem
 

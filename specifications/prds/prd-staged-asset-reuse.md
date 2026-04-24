@@ -148,7 +148,7 @@ Conflict flag: no functional requirements currently conflict with the business r
 - Scene organization conventions for Asset Exemplar libraries and editable collections
 - Managed Scene Object metadata model
 - Validation rules that detect edits to Asset Exemplars
-- Guide-defined Asset Exemplar conventions from [`sketchup_mcp_guide.md`](../../sketchup_mcp_guide.md)
+- Asset Exemplar conventions from the domain analysis and asset-reuse HLD
 
 ## Revision History
 

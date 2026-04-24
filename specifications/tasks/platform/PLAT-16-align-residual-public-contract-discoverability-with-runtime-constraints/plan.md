@@ -272,7 +272,7 @@ Start with the bounded audit and add failing tests that pin the intended discove
    - Add contextual `allowedValues` to `unsupported_hosting_mode`.
 4. Finalize integration and docs.
    - Update native contract coverage for every touched refusal surface.
-   - Update [README.md](README.md) and [sketchup_mcp_guide.md](sketchup_mcp_guide.md) where touched guidance changed.
+   - Update [README.md](README.md) and current source-of-truth docs where touched guidance changed.
    - Run Ruby validation and record any remaining manual verification gaps.
 
 ## Rollout Approach

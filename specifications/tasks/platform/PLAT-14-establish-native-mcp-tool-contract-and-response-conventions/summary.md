@@ -31,7 +31,7 @@
 - Updated [task.md](./task.md) status and implementation notes to reflect shipped work.
 - Updated [plan.md](./plan.md) with implementation outcomes and the local validation posture.
 - Added this `summary.md`.
-- Updated [sketchup_mcp_guide.md](../../../../sketchup_mcp_guide.md) with the shared native response conventions and the `escape_hatch` posture for `eval_ruby`.
+- Updated current source-of-truth docs with the shared native response conventions and the `escape_hatch` posture for `eval_ruby`.
 
 ## Remaining Manual Verification
 

@@ -89,7 +89,7 @@ For these surfaces:
 - Normalize outputs into simple hashes, arrays, strings, numbers, and booleans before returning them.
 - Keep public tool names stable unless an intentional interface change is documented.
 - When changing packaged extension behavior, check whether `src/su_mcp.rb`, `src/su_mcp/extension.rb`, or `src/su_mcp/extension.json` also need updates.
-- Use `sketchup_mcp_guide.md` as product guidance for the MCP surface.
+- Use the PRDs, capability HLDs, `specifications/domain-analysis.md`, and `specifications/guidelines/mcp-tool-authoring-sketchup.md` as product and contract guidance for the MCP surface.
 
 ## Testing Guidance
 
@@ -131,7 +131,7 @@ When interface or setup behavior changes, review the relevant docs:
 - `README.md` for installation, usage, and exposed tools
 - `releaserc.toml`, `Rakefile`, and `rakelib/` when release or packaging behavior changes
 - `specifications/hlds/hld-platform-architecture-and-repo-structure.md` for platform direction when architecture or repo structure changes materially
-- `sketchup_mcp_guide.md` and capability HLDs when the tool surface changes materially
+- capability HLDs, PRDs, `specifications/domain-analysis.md`, and `specifications/guidelines/mcp-tool-authoring-sketchup.md` when the tool surface changes materially
 
 When architecture changes materially, update this file so it continues to describe the intended system rather than a stale snapshot.
 

@@ -117,7 +117,7 @@ Scenario: contract surfaces and guidance ship together
   - added structured `malformed_request_shape` refusals for ambiguous and wrong-family request shapes
   - introduced a shared `RequestShapeContract` source for canonical sections and family-owned `definition` fields
   - kept the native loader schema focused on the canonical sectioned contract while runtime recovery handles bounded compatibility cases
-  - updated `README.md`, `sketchup_mcp_guide.md`, loader descriptions, semantic tests, loader tests, and native contract fixtures together
+  - updated `README.md`, current source-of-truth docs, loader descriptions, semantic tests, loader tests, and native contract fixtures together
 - Local validation:
   - `bundle exec ruby -Itest test/semantic/request_shape_recovery_test.rb`
   - `bundle exec ruby -Itest test/semantic/semantic_request_validator_test.rb`

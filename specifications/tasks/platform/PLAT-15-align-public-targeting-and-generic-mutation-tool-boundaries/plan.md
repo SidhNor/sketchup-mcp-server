@@ -176,19 +176,19 @@ This task should correct those public boundaries without broadening into collect
   - Response delta: keep the existing serialized inventory-row shape; only the scope-selection contract changes.
   - Schema and registration updates: publish `scopeSelector.mode` as an enum covering `top_level`, `selection`, and `children_of_target`; keep `targetReference` required only for `children_of_target`.
   - Dispatcher and routing updates: keep command ownership in the scene-query slice; no new runtime command family is introduced.
-  - Contract tests and docs: update loader/catalog tests plus [README.md](README.md) and [sketchup_mcp_guide.md](sketchup_mcp_guide.md) together so inventory is described as scope-first rather than search-first.
+  - Contract tests and docs: update loader/catalog tests plus [README.md](README.md) and current source-of-truth docs together so inventory is described as scope-first rather than search-first.
 - `find_entities`
   - Request delta: replace the flat MVP `query` input with required `targetSelector` containing supported `identity`, `attributes`, and `metadata` sections.
   - Response delta: preserve `success`, `resolution`, and `matches`, while allowing compact metadata summary fields in match rows when present.
   - Schema and registration updates: publish the nested selector sections and supported field names from the loader so clients can discover the bounded predicate families from the schema.
   - Dispatcher and routing updates: keep command ownership in the scene-query slice and keep selector normalization in `targeting_query.rb`.
-  - Contract tests and docs: update loader/catalog tests, scene-query behavior tests, native contract fixtures, [README.md](README.md), and [sketchup_mcp_guide.md](sketchup_mcp_guide.md) in the same change.
+  - Contract tests and docs: update loader/catalog tests, scene-query behavior tests, native contract fixtures, [README.md](README.md), and current source-of-truth docs in the same change.
 - `delete_entities`
   - Request delta: replace `delete_component` with `delete_entities`, using required `targetReference`, optional `constraints`, and optional `outputOptions`.
   - Response delta: return structured mutation results with `operation` and `affectedEntities.deleted` instead of a thinner component-specific mutation shape.
   - Schema and registration updates: remove `delete_component` from the native catalog, publish `ambiguityPolicy` and `responseFormat` as bounded enums, and mark the tool as destructive in loader metadata.
   - Dispatcher and routing updates: route `delete_entities` through the editing slice while reusing targeting-owned direct-reference resolution.
-  - Contract tests and docs: update loader/catalog tests, dispatcher/facade tests, native contract fixtures, [README.md](README.md), and [sketchup_mcp_guide.md](sketchup_mcp_guide.md) together so the public mutation boundary converges on one tool name and one request shape.
+  - Contract tests and docs: update loader/catalog tests, dispatcher/facade tests, native contract fixtures, [README.md](README.md), and current source-of-truth docs together so the public mutation boundary converges on one tool name and one request shape.
 
 ### Error Handling
 
@@ -403,7 +403,7 @@ Start with failing catalog tests so the revised public names, titles, descriptio
    - Return structured mutation results and refusals.
 5. Finalize integration and docs.
    - Update facade/dispatcher/native contract fixtures.
-   - Update [README.md](README.md) and [sketchup_mcp_guide.md](sketchup_mcp_guide.md).
+   - Update [README.md](README.md) and current source-of-truth docs.
    - Run Ruby tests, lint, and the smallest practical SketchUp-hosted smoke checks.
 
 ## Rollout Approach
@@ -487,7 +487,7 @@ The finalized plan must make `list_entities`, `find_entities`, and generic delet
   - Likely cognitive bias: Change blindness.
   - Classification: Requires implementation-time instrumentation or acceptance testing
   - Mitigation now: Keep docs in the same implementation phase as dispatcher/runtime updates and treat guide alignment as a release-blocking quality check for this task.
-  - Required validation: Review the final diff for synchronized updates to loader metadata, [README.md](README.md), and [sketchup_mcp_guide.md](sketchup_mcp_guide.md).
+  - Required validation: Review the final diff for synchronized updates to loader metadata, [README.md](README.md), and current source-of-truth docs.
 
 ## Quality Checks
 

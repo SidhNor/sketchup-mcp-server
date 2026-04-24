@@ -38,7 +38,7 @@
 - [PLAT-09 Build Ruby-Native MCP Packaging And Runtime Foundations Task](specifications/tasks/platform/PLAT-09-build-ruby-native-mcp-packaging-and-runtime-foundations/task.md)
 - [PLAT-09 Build Ruby-Native MCP Packaging And Runtime Foundations Summary](specifications/tasks/platform/PLAT-09-build-ruby-native-mcp-packaging-and-runtime-foundations/summary.md)
 - [README](README.md)
-- [SketchUp MCP Guide](sketchup_mcp_guide.md)
+- current source-of-truth docs
 - Current native runtime seams:
   - [src/su_mcp/mcp_runtime_loader.rb](src/su_mcp/mcp_runtime_loader.rb)
   - [src/su_mcp/mcp_runtime_facade.rb](src/su_mcp/mcp_runtime_facade.rb)

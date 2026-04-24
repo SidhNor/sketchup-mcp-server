@@ -32,7 +32,7 @@
 ## Docs And Metadata
 
 - Updated [README.md](../../../../README.md) with the current scoped inventory, predicate targeting, and generic deletion boundaries.
-- Updated [sketchup_mcp_guide.md](../../../../sketchup_mcp_guide.md) so the guide no longer teaches `delete_component` or the old `find_entities.query` posture.
+- Updated current source-of-truth docs so they no longer teach `delete_component` or the old `find_entities.query` posture.
 - Updated [task.md](./task.md) status and implementation notes.
 - Updated [plan.md](./plan.md) with the shipped seams and validation results.
 - Added this `summary.md`.

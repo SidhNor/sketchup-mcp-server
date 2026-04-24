@@ -37,7 +37,7 @@
 - Updated [task.md](./task.md) status to `completed`.
 - Updated [plan.md](./plan.md) with shipped implementation outcome notes.
 - Updated [README.md](../README.md) so only `SEM-10` through `SEM-12` remain described as draft follow-on shells.
-- No public MCP schema or user-facing setup/workflow docs changed in this task, so `README.md` and `sketchup_mcp_guide.md` did not require behavioral documentation updates.
+- No public MCP schema or user-facing setup/workflow docs changed in this task, so `README.md` and current source-of-truth docs did not require behavioral documentation updates.
 
 ## Remaining Manual Verification
 

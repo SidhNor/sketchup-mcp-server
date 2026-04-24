@@ -25,7 +25,7 @@
   - a bounded wrapped-payload recovery branch
   - a bounded misnested-geometry recovery branch
   - tool text marking the compatibility path as recovery-only rather than a second supported contract
-- Updated public docs in [README.md](../../../../README.md) and [sketchup_mcp_guide.md](../../../../sketchup_mcp_guide.md) to keep the sectioned shape canonical and explain the bounded recovery path.
+- Updated public docs in [README.md](../../../../README.md) and current source-of-truth docs to keep the sectioned shape canonical and explain the bounded recovery path.
 - Added or updated tests for:
   - the new recovery seam
   - validator wrong-family ownership guidance

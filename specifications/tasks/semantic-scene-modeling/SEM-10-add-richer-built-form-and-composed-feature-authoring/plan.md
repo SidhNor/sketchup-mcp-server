@@ -236,7 +236,7 @@ flowchart TD
    - add reparent scenario coverage for existing supported children
    - verify the workflow preserves child identities and JSON-safe results
 3. **Docs and validation**
-   - update `README.md` and `sketchup_mcp_guide.md` with representative richer built-form workflows
+   - update `README.md` and current source-of-truth docs with representative richer built-form workflows
    - run Ruby tests, lint, and package verification
    - record remaining SketchUp-hosted validation gaps if full live verification is not available
 

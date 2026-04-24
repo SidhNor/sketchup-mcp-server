@@ -35,7 +35,7 @@
 - [PLAT-10 Migrate Current Tool Surface To Ruby-Native MCP And Retire Spike](specifications/tasks/platform/PLAT-10-migrate-current-tool-surface-to-ruby-native-mcp-and-retire-spike/task.md)
 - [README.md](README.md)
 - [AGENTS.md](AGENTS.md)
-- [sketchup_mcp_guide.md](sketchup_mcp_guide.md)
+- current source-of-truth docs
 - [src/su_mcp/main.rb](src/su_mcp/main.rb)
 - [src/su_mcp.rb](src/su_mcp.rb)
 - [src/su_mcp/extension.rb](src/su_mcp/extension.rb)
@@ -197,7 +197,7 @@ flowchart LR
 - CI and local validation intentionally diverge after cleanup: local validation stays on the repo validation surface, while the release workflow alone provisions PSR.
 - Bridge contract artifacts are removed entirely, but representative native transport-shape checks stay in Ruby tests so the remaining MCP surface still has end-to-end envelope coverage.
 - Current-facing docs must change in the same PR as the code and workflow removal so the repository does not enter a half-cleaned state.
-- Current-facing docs explicitly in scope are `README.md`, `AGENTS.md`, `sketchup_mcp_guide.md`, the platform HLD, and current task index or README surfaces that still describe the supported architecture.
+- Current-facing docs explicitly in scope are `README.md`, `AGENTS.md`, current source-of-truth docs, the platform HLD, and current task index or README surfaces that still describe the supported architecture.
 
 ## Acceptance Criteria
 
@@ -290,7 +290,7 @@ Start by changing Ruby tests around version sync, release support, and package t
 - Hidden release coupling to `pyproject.toml` or `PACKAGE_NAME`: move PSR to standalone config, remove `uv lock` from `release:prepare`, and dry-run release automation before merge.
 - Canonical package simplification could break artifact naming or staged layout: update package-task tests first, keep `package:verify` mandatory, and run SketchUp-hosted smoke validation on the produced RBZ.
 - Removing contract artifacts could accidentally drop useful transport coverage: rewrite representative native response-shape checks before deleting bridge fixtures.
-- Current docs could continue teaching the retired architecture: update `README.md`, `AGENTS.md`, `sketchup_mcp_guide.md`, the platform HLD, and related current-facing guidance in the same change and review them against a checklist.
+- Current docs could continue teaching the retired architecture: update `README.md`, `AGENTS.md`, current source-of-truth docs, the platform HLD, and related current-facing guidance in the same change and review them against a checklist.
 - The bridge could be removed in code but remain visible in SketchUp UX or extension metadata: update [src/su_mcp/main.rb](src/su_mcp/main.rb), [src/su_mcp/extension.json](src/su_mcp/extension.json), and related tests so UI and metadata no longer mention the socket bridge.
 - The bridge could be removed in code while stale requires still survive in the loader path: review [src/su_mcp.rb](src/su_mcp.rb), [src/su_mcp/extension.rb](src/su_mcp/extension.rb), and [src/su_mcp/main.rb](src/su_mcp/main.rb) together and verify extension load succeeds without deleted bridge files.
 - Cleanup could overreach into the native runtime because files currently sit near bridge-era seams: treat `mcp_runtime_*` files and native runtime menu/status behavior as protected surfaces and require their existing tests plus SketchUp smoke validation to stay green.
@@ -346,12 +346,12 @@ Leave the repository in a coherent post-transition state where the MCP server in
   - Required validation: `bundle exec rake ci` succeeds without Python setup, and `.github/workflows/ci.yml` contains no Python provisioning.
 - **What must be true for the task to succeed**
   - Business-plan mismatch: the business goal requires current-facing docs to teach the supported architecture correctly, but the plan initially under-specifies the doc set.
-  - Root-cause failure path: `README.md` is updated while `AGENTS.md`, `sketchup_mcp_guide.md`, or the platform HLD still describe Python and the bridge as current architecture.
+  - Root-cause failure path: `README.md` is updated while `AGENTS.md`, current source-of-truth docs, or the platform HLD still describe Python and the bridge as current architecture.
   - Why this misses the goal: new contributors still learn the obsolete system from live project guidance.
   - Likely cognitive bias: treating the root README as the only important current-facing artifact.
   - Classification: `can be validated before implementation`
   - Mitigation now: enumerate the required current-facing doc set directly in the plan and risk controls.
-  - Required validation: file-by-file review checklist covering `README.md`, `AGENTS.md`, `sketchup_mcp_guide.md`, and the platform HLD.
+  - Required validation: file-by-file review checklist covering `README.md`, `AGENTS.md`, current source-of-truth docs, and the platform HLD.
 - **Second-order and third-order effects**
   - Business-plan mismatch: the business goal requires a bounded cleanup, but deleting bridge artifacts could destabilize later work if future-facing docs still rely on those paths as if they were live.
   - Root-cause failure path: current-facing structure docs and task index surfaces are not updated together, so later platform work is planned against removed Python and bridge surfaces.

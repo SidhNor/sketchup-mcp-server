@@ -152,7 +152,7 @@ Conflict flag: no functional requirements currently conflict with the business r
 - [`prd-staged-asset-reuse.md`](./prd-staged-asset-reuse.md)
 - Managed Scene Object metadata and lookup model
 - Structured serialization of bounds, materials, metadata, and geometry-check outputs
-- Guide-defined validation direction from [`sketchup_mcp_guide.md`](../../sketchup_mcp_guide.md)
+- Validation direction from the domain analysis, capability HLD, and MCP tool-authoring guideline
 
 ## Revision History
 

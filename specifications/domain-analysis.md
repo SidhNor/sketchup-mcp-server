@@ -9,7 +9,7 @@ last_updated: 2026-04-14
 
 ## Purpose
 
-This document translates [`sketchup_mcp_guide.md`](../sketchup_mcp_guide.md) into a domain model that can drive both product decisions and implementation structure.
+This document defines the domain model that drives product decisions and implementation structure for the SketchUp MCP surface.
 
 It is intended to feed the following PRDs:
 

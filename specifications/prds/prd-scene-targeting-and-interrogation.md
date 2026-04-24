@@ -147,7 +147,7 @@ Conflict flag: no functional requirements currently conflict with the business r
 
 - [`domain-analysis.md`](../domain-analysis.md)
 - Scene identity and metadata conventions shared across Managed Scene Objects and Asset Exemplars
-- Workflow collection conventions and scene organization guidance from [`sketchup_mcp_guide.md`](../../sketchup_mcp_guide.md)
+- Workflow collection conventions and scene organization guidance from the domain analysis and capability HLDs
 - Downstream semantic modeling, asset reuse, and validation workflows that consume targeting and interrogation outputs
 
 ## Revision History

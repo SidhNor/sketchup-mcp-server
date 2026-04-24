@@ -29,7 +29,7 @@
 
 ## Docs And Metadata
 
-- Updated [sketchup_mcp_guide.md](../../../../sketchup_mcp_guide.md) to show the final `pad.definition.mode` example value.
+- Updated current source-of-truth docs to show the final `pad.definition.mode` example value.
 - Updated [task.md](./task.md) status to `completed`.
 - Updated [plan.md](./plan.md) with shipped implementation notes and final validation commands.
 

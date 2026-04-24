@@ -174,7 +174,7 @@ The repository has Ruby-native runtime seams, shared target-resolution helpers, 
   - new validation command tests in `test/scene_validation/` or equivalent owning layer
 - Docs and example updates:
   - update [README.md](README.md) if the public tool list or usage examples surface this tool
-  - update [sketchup_mcp_guide.md](sketchup_mcp_guide.md) if tool-surface guidance is documented there
+  - update current source-of-truth docs when tool-surface guidance changes
   - keep capability docs aligned where the exposed contract materially changes
 
 ### Error Handling

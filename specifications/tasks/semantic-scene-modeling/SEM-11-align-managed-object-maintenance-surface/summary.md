@@ -52,7 +52,7 @@
 ## Docs And Metadata
 
 - Updated [README.md](../../../../README.md) to describe the managed-aware mutation behavior accurately.
-- Updated [sketchup_mcp_guide.md](../../../../sketchup_mcp_guide.md) for the current `transform_entities`, `set_material`, and `set_entity_metadata` contracts.
+- Updated current source-of-truth docs for the current `transform_entities`, `set_material`, and `set_entity_metadata` contracts.
 - Updated [task.md](./task.md) status to `completed`.
 - Updated [plan.md](./plan.md) with the shipped implementation outcome and final validation record.
 

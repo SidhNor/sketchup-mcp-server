@@ -8,7 +8,7 @@
 - [Greenfield Semantic Authoring Is Viable But Lifecycle Gaps Remain](./2026-04-15-greenfield-semantic-authoring-is-viable-but-lifecycle-gaps-remain.md)
 **Related Artifacts**:
 - [Possible Direction Option](./possible-direction-option.md)
-- [SketchUp Ruby MCP Surface Guide For Site, Garden, And Landscape Modeling](../../sketchup_mcp_guide.md)
+- current source-of-truth docs
 - [PRD: Semantic Scene Modeling](../prds/prd-semantic-scene-modeling.md)
 - [HLD: Semantic Scene Modeling](../hlds/hld-semantic-scene-modeling.md)
 - [SEM-02 Technical Plan](../tasks/semantic-scene-modeling/SEM-02-complete-first-wave-semantic-creation-vocabulary/plan.md)

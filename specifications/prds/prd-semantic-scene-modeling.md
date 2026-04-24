@@ -187,7 +187,7 @@ Conflict flag: no functional requirements currently conflict with the business r
 - Metadata storage and retrieval
 - Managed Scene Object lifecycle and identity conventions
 - Collection and Tag conventions
-- Guide-defined semantic object vocabulary from [`sketchup_mcp_guide.md`](../../sketchup_mcp_guide.md)
+- Semantic object vocabulary from the domain analysis and semantic-scene-modeling HLD
 
 ## Revision History
 

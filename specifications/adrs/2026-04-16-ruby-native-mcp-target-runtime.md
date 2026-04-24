@@ -13,7 +13,7 @@ links:
   - ../../rakelib/package.rake
   - ../../rakelib/release_support.rb
   - ../../README.md
-  - ../../sketchup_mcp_guide.md
+  - ../guidelines/mcp-tool-authoring-sketchup.md
 ---
 
 # Prefer Ruby-Native MCP as the Target Runtime Architecture

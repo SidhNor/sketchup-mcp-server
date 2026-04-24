@@ -27,7 +27,7 @@
   - unsupported `anchorSelector.anchor` with `allowedValues`
 - Implemented MVP approximate bounds-derived anchor evaluation against an explicit surface target using shared `SampleSurfaceQuery` behavior and ignore-target sampling to avoid self-occlusion by the modeled object.
 - Added `failedAnchors` result evidence for `surfaceOffset` mismatches.
-- Updated runtime passthrough coverage, native contract coverage, `README.md`, and `sketchup_mcp_guide.md` for the changed public surface.
+- Updated runtime passthrough coverage, native contract coverage, `README.md`, and current source-of-truth docs for the changed public surface.
 
 ## Validation
 

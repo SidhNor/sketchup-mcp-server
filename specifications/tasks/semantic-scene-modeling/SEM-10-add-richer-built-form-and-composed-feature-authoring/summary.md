@@ -52,13 +52,13 @@
   - [mcp_runtime_loader.rb](../../../../src/su_mcp/runtime/native/mcp_runtime_loader.rb)
   - the changed test and contract files
   - [README.md](../../../../README.md)
-  - [sketchup_mcp_guide.md](../../../../sketchup_mcp_guide.md)
+  - current source-of-truth docs
 - Main confirmed outcome: the delivered workflow stays additive and keeps multipart composition outside `create_site_element`.
 
 ## Docs And Metadata
 
 - Updated [README.md](../../../../README.md) to describe `create_group` managed-container mode accurately.
-- Updated [sketchup_mcp_guide.md](../../../../sketchup_mcp_guide.md) with `create_group` and `reparent_entities` examples for the supported multi-call composed-feature workflow.
+- Updated current source-of-truth docs with `create_group` and `reparent_entities` examples for the supported multi-call composed-feature workflow.
 - Updated [task.md](./task.md) status to `completed`.
 - Updated [plan.md](./plan.md) with the shipped implementation outcome and final validation record.
 

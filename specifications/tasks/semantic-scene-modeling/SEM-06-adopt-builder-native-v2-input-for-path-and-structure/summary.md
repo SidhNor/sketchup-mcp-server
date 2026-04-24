@@ -24,7 +24,7 @@
 ## Docs Updated
 
 - `README.md`
-- `sketchup_mcp_guide.md`
+- current source-of-truth docs
 - `task.md`
 - `plan.md`
 

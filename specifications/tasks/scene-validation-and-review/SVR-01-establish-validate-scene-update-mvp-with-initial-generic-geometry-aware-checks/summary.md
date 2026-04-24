@@ -93,7 +93,7 @@
 - Updated [README.md](../../../../README.md) for the new public tool surface.
 - Updated [task.md](./task.md) status to `completed`.
 - Added this [summary.md](./summary.md).
-- No `sketchup_mcp_guide.md` update was needed in this session because it already described `validate_scene_update` directionally; the README now captures the shipped MVP surface explicitly.
+- No MCP surface guide update was needed in this session because it already described `validate_scene_update` directionally; the README now captures the shipped MVP surface explicitly.
 
 ## Remaining Gaps
 
