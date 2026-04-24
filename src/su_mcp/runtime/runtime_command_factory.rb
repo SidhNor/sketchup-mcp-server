@@ -5,6 +5,7 @@ require_relative '../developer/developer_commands'
 require_relative '../editing/editing_commands'
 require_relative '../modeling/modeling_support'
 require_relative '../scene_query/scene_query_commands'
+require_relative '../scene_validation/measure_scene_commands'
 require_relative '../scene_validation/scene_validation_commands'
 require_relative '../semantic/hierarchy_maintenance_commands'
 require_relative '../semantic/semantic_commands'
@@ -21,6 +22,7 @@ module SU_MCP
     def build_command_targets
       [
         scene_query_commands,
+        measure_scene_commands,
         scene_validation_commands,
         semantic_commands,
         hierarchy_maintenance_commands,
@@ -40,6 +42,10 @@ module SU_MCP
 
     def scene_validation_commands
       @scene_validation_commands ||= SceneValidationCommands.new
+    end
+
+    def measure_scene_commands
+      @measure_scene_commands ||= MeasureSceneCommands.new
     end
 
     def hierarchy_maintenance_commands

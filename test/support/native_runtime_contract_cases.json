@@ -595,6 +595,111 @@
           }
         }
       }
+    },
+    {
+      "case_id": "measure_scene_height_measured",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "params": {
+          "name": "measure_scene",
+          "arguments": {
+            "mode": "height",
+            "kind": "bounds_z",
+            "target": {
+              "sourceElementId": "tree-001"
+            }
+          }
+        },
+        "id": "measure-scene-height-measured"
+      },
+      "response": {
+        "jsonrpc": "2.0",
+        "id": "measure-scene-height-measured",
+        "result": {
+          "success": true,
+          "outcome": "measured",
+          "measurement": {
+            "mode": "height",
+            "kind": "bounds_z",
+            "value": 5.5,
+            "unit": "m",
+            "target": {
+              "sourceElementId": "tree-001"
+            }
+          }
+        }
+      }
+    },
+    {
+      "case_id": "measure_scene_surface_area_unavailable",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "params": {
+          "name": "measure_scene",
+          "arguments": {
+            "mode": "area",
+            "kind": "surface",
+            "target": {
+              "sourceElementId": "empty-group-001"
+            }
+          }
+        },
+        "id": "measure-scene-surface-area-unavailable"
+      },
+      "response": {
+        "jsonrpc": "2.0",
+        "id": "measure-scene-surface-area-unavailable",
+        "result": {
+          "success": true,
+          "outcome": "unavailable",
+          "measurement": {
+            "mode": "area",
+            "kind": "surface",
+            "reason": "no_faces",
+            "target": {
+              "sourceElementId": "empty-group-001"
+            }
+          }
+        }
+      }
+    },
+    {
+      "case_id": "measure_scene_unsupported_kind_refused",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "params": {
+          "name": "measure_scene",
+          "arguments": {
+            "mode": "area",
+            "kind": "footprint",
+            "target": {
+              "sourceElementId": "terrace-001"
+            }
+          }
+        },
+        "id": "measure-scene-unsupported-kind-refused"
+      },
+      "response": {
+        "jsonrpc": "2.0",
+        "id": "measure-scene-unsupported-kind-refused",
+        "result": {
+          "success": true,
+          "outcome": "refused",
+          "refusal": {
+            "code": "unsupported_kind",
+            "message": "Measurement kind is not supported for this mode.",
+            "details": {
+              "field": "kind",
+              "mode": "area",
+              "value": "footprint",
+              "allowedValues": ["surface", "horizontal_bounds"]
+            }
+          }
+        }
+      }
     }
   ]
 }

@@ -2,7 +2,7 @@
 doc_type: prd
 title: Scene Targeting and Interrogation
 status: draft
-last_updated: 2026-04-12
+last_updated: 2026-04-24
 ---
 
 # PRD: Scene Targeting and Interrogation
@@ -89,6 +89,7 @@ The product needs a compact, structured targeting and interrogation layer that m
 | Support workflow collection discovery through `get_named_collections` | As an agent, I want to discover workflow-relevant collections so that I can target the right scene area without scene-wide guessing | `get_named_collections` returns collection names or ids, member counts, metadata summaries, and child-structure summaries for workflow-relevant collections | P1 |
 | Prefer workflow-facing identity conventions in targeting flows | As a workflow orchestrator, I want queries to favor business identity so that targeting remains stable across revisions | Targeting flows prefer `sourceElementId`, support `persistentId` for runtime-safe lookup, and only rely on `entityId` as a compatibility path rather than the primary workflow identity | P0 |
 | Support explicit surface interrogation through `sample_surface_z` | As an agent, I want to sample explicitly targeted geometry so that terrain-aware placement and reprojection are reliable | `sample_surface_z` accepts one or more XY points plus an explicit target and optional ignore references, and returns structured sampled coordinates and hit-status data, including miss or ambiguity when the intended surface cannot be resolved confidently | P0 |
+| Support bounded terrain profile and section interrogation as a follow-on to explicit surface sampling | As a reviewer or agent, I want sampled terrain profiles and sections against a named host so that terrain-aware placement, grading review, and later validation evidence do not require arbitrary Ruby | Terrain profile and section requests build on explicit target surface sampling, return sampled evidence and uncertainty states, and do not modify terrain or imply broad terrain-authoring support | P1 |
 | Support topology analysis through `analyze_edge_network` | As a reviewer or agent, I want to know whether linework is structurally connected so that I can trust it for downstream modeling and validation | `analyze_edge_network` returns a structured summary including component count, loose ends, isolated segments, coincident-but-unmerged endpoints, and related topology findings for supported edge-network targets | P0 |
 | Support projection-aware interrogation results without requiring a dedicated workflow-specific public tool for each geometry pattern | As a workflow developer, I want targeting and interrogation outputs that can feed projected-boundary and named-reference verification flows so that reprojection checks stay compact and composable | The targeting and interrogation surface returns structured surface-sample and topology outputs that are sufficient inputs for higher-level validation or workflow logic covering projected boundaries, named anchors, and similar reference-driven checks | P1 |
 | Ensure interrogation results are compact by default but sufficient for downstream automation | As an MCP client, I want responses that are easy to consume programmatically without excess payload or free-form interpretation | Inspection, targeting, and interrogation responses remain structured, concise by default, and expandable only where documented | P1 |
@@ -115,6 +116,7 @@ Conflict flag: no functional requirements currently conflict with the business r
 ## Out of Scope
 
 - Full terrain editing or grading-authoring workflows
+- Terrain patch replacement, terrain sculpting, terrain fairing, or working-copy commit/discard workflows; those remain outside this interrogation slice unless a later bounded mutation capability is explicitly defined
 - General-purpose CAD diagnostics beyond the targeted interrogation and topology scope
 - Full scene-repair automation for broken linework
 - Specialized debugging micro-tools for every geometry investigation pattern, such as neighborhood probing or nearest-feature lookup, unless a broader recurring product need is demonstrated
@@ -129,6 +131,7 @@ Conflict flag: no functional requirements currently conflict with the business r
 - How much detail should `sample_surface_z` expose by default about hit chains before payload size becomes counterproductive?
 - Should topology analysis be allowed to gate downstream semantic creation automatically, or only return findings for higher-level workflows to decide on?
 - Should recurring projected-boundary or named-reference verification patterns remain composed from interrogation plus validation, or eventually justify a higher-level helper once repeated workflows stabilize?
+- Which terrain profile and section sampling patterns are broad enough to add as interrogation follow-ons without becoming terrain-editing or terrain-diagnostic validation tools?
 
 ## Risks and Mitigation
 
@@ -154,3 +157,4 @@ Conflict flag: no functional requirements currently conflict with the business r
 | 2026-04-11 | Initial PRD created to separate scene targeting and interrogation from the other PRD slices after the guide update. |
 | 2026-04-11 | Modestly refined the slice to make reprojection-oriented interrogation more explicit, clarified that projection-aware verification should stay compact and composable, and explicitly kept specialized debugging micro-tools out of current scope. |
 | 2026-04-12 | Rebalanced priorities to match the guide's Phase 1 focus, keeping `find_entities`, `sample_surface_z`, and `analyze_edge_network` in P0 while moving general inspection helpers to P1. |
+| 2026-04-24 | Clarified that bounded terrain profile and section interrogation are valid follow-ons to explicit surface sampling, while terrain editing, patch replacement, and fairing remain outside this capability. |

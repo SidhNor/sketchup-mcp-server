@@ -91,6 +91,7 @@ The current MCP surface includes scene inspection, semantic scene modeling, and 
 - `get_entity_info`
 - `find_entities`
 - `validate_scene_update`
+- `measure_scene`
 - `sample_surface_z`
 - `create_site_element`
 - `set_entity_metadata`
@@ -110,6 +111,7 @@ The hierarchy-maintenance surface is intentionally narrow: `create_group` create
 `list_entities` is an explicit inventory tool that now requires `scopeSelector` (`top_level`, `selection`, or `children_of_target`) plus optional `outputOptions`.
 `find_entities` is an exact-match targeting tool that now requires `targetSelector` with nested `identity`, `attributes`, and `metadata` sections.
 `validate_scene_update` is the first public validation surface. It accepts a top-level `expectations` object and currently supports `mustExist`, `mustPreserve`, `metadataRequirements`, `tagRequirements`, `materialRequirements`, and `geometryRequirements`, with each expectation using exactly one of `targetReference` or `targetSelector`. `metadataRequirements` is currently a presence-style check for managed object metadata keys such as `sourceElementId`, `semanticType`, `status`, `state`, and `structureCategory`; it is not the public dimension-validation path for values like `width`, `height`, or `thickness`. `geometryRequirements` now also supports `kind: "surfaceOffset"` for approximate bounds-derived anchor checks against an explicit `surfaceReference`, using `anchorSelector.anchor`, `constraints.expectedOffset`, and `constraints.tolerance`. The MVP anchor selectors are intentionally approximate and suitable only for simple rectangular or slab-like forms.
+`measure_scene` is the direct structured measurement surface. It supports only `bounds/world_bounds`, `height/bounds_z`, `distance/bounds_center_to_bounds_center`, `area/surface`, and `area/horizontal_bounds`, using compact references (`sourceElementId`, `persistentId`, or compatibility `entityId`). It returns meter or square-meter quantities with `outcome: "measured"`, returns `outcome: "unavailable"` when measurable evidence is absent, and refuses unsupported modes or kinds with `allowedValues`. It is not a validation verdict tool and does not expose terrain profile, slope, clearance-to-terrain, or raw dictionary inspection.
 Managed objects may persist additional semantic properties such as path width or planting height in the `su_mcp` dictionary, but those stored values are not yet a first-class public inspection or validation contract.
 `delete_entities` replaces `delete_component` and deletes one explicitly referenced supported group or component instance, returning structured `operation` and `affectedEntities.deleted` data.
 `transform_entities` and `set_material` now accept either legacy `id` or compact `targetReference` (`sourceElementId`, `persistentId`, `entityId`), refuse requests that provide both or neither, and return additive mutation envelopes with `outcome`, `id`, and `managedObject`.

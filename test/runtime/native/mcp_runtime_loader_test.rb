@@ -7,12 +7,15 @@ require_relative '../../../src/su_mcp/runtime/native/mcp_runtime_loader'
 
 # rubocop:disable Metrics/ClassLength
 class McpRuntimeLoaderTest < Minitest::Test
+  FORBIDDEN_TOP_LEVEL_SCHEMA_KEYS = %i[oneOf anyOf allOf enum not].freeze
+
   CANONICAL_NATIVE_TOOL_NAMES = %w[
     ping
     get_scene_info
     list_entities
     find_entities
     validate_scene_update
+    measure_scene
     sample_surface_z
     get_entity_info
     create_site_element
@@ -30,6 +33,25 @@ class McpRuntimeLoaderTest < Minitest::Test
   def setup
     @vendor_root = File.expand_path('../vendor/ruby', __dir__)
     @loader = SU_MCP::McpRuntimeLoader.new(vendor_root: @vendor_root)
+  end
+
+  def test_public_tool_schemas_are_provider_compatible_at_the_top_level
+    @loader.tool_catalog.each do |tool|
+      input_schema = tool.fetch(:input_schema)
+
+      assert_equal(
+        'object',
+        input_schema.fetch(:type),
+        "#{tool.fetch(:name)} schema must be object"
+      )
+      FORBIDDEN_TOP_LEVEL_SCHEMA_KEYS.each do |key|
+        assert_equal(
+          false,
+          input_schema.key?(key),
+          "#{tool.fetch(:name)} must not use top-level #{key}"
+        )
+      end
+    end
   end
 
   def test_available_is_false_when_staged_vendor_tree_is_absent
@@ -179,6 +201,18 @@ class McpRuntimeLoaderTest < Minitest::Test
         .fetch('properties')
         .keys
         .sort
+    )
+
+    measure_scene_tool = tools.find { |tool| tool.fetch('name') == 'measure_scene' }
+    assert_equal('Measure Scene', measure_scene_tool.fetch('title'))
+    assert_equal(true, measure_scene_tool.fetch('annotations').fetch('readOnlyHint'))
+    assert_equal(
+      %w[mode kind],
+      measure_scene_tool.fetch('inputSchema').fetch('required')
+    )
+    assert_equal(
+      %w[from kind mode outputOptions target to],
+      measure_scene_tool.fetch('inputSchema').fetch('properties').keys.sort
     )
 
     sample_surface_z_tool = tools.find { |tool| tool.fetch('name') == 'sample_surface_z' }
@@ -335,19 +369,14 @@ class McpRuntimeLoaderTest < Minitest::Test
       tool.fetch(:name) == 'create_site_element'
     end
     input_schema = create_site_element_tool.fetch(:input_schema)
-    canonical_branch = input_schema.fetch(:anyOf).find do |branch|
-      branch.fetch(:required, nil) == %w[
-        elementType metadata definition hosting placement representation lifecycle
-      ]
-    end
 
-    refute_nil(canonical_branch)
+    assert_equal(
+      %w[elementType metadata definition hosting placement representation lifecycle],
+      input_schema.fetch(:required)
+    )
     assert_equal(
       %w[
-        averageHeight boundary canopyDiameterX canopyDiameterY centerline definition elementType
-        elevation footprint height hosting lifecycle metadata mode placement plantingCategory
-        polyline position representation sceneProperties speciesHint structureCategory thickness
-        trunkDiameter width
+        definition elementType hosting lifecycle metadata placement representation sceneProperties
       ],
       input_schema.fetch(:properties).keys.map(&:to_s).sort
     )
@@ -524,6 +553,74 @@ class McpRuntimeLoaderTest < Minitest::Test
     )
   end
 
+  def test_measure_scene_tool_schema_exposes_supported_modes_and_kinds
+    tool = @loader.tool_catalog.find { |entry| entry.fetch(:name) == 'measure_scene' }
+    refute_nil(tool)
+
+    input_schema = tool.fetch(:input_schema)
+
+    assert_equal(
+      %i[from kind mode outputOptions target to],
+      input_schema.fetch(:properties).keys.sort
+    )
+    assert_equal(%w[kind mode], input_schema.fetch(:required).sort)
+    assert_equal(%w[area bounds distance height],
+                 input_schema.dig(:properties, :mode, :enum).sort)
+    assert_equal(
+      %w[bounds_center_to_bounds_center bounds_z horizontal_bounds surface world_bounds],
+      input_schema.dig(:properties, :kind, :enum).sort
+    )
+    assert_includes(
+      input_schema.dig(:properties, :mode, :description),
+      'Supported MVP combinations'
+    )
+    assert_includes(input_schema.dig(:properties, :kind, :description), 'Runtime refuses')
+    assert_equal(false, schema_includes_key?(input_schema, :targetSelector))
+  end
+
+  def test_measure_scene_tool_schema_uses_compact_references_only
+    tool = @loader.tool_catalog.find { |entry| entry.fetch(:name) == 'measure_scene' }
+    properties = tool.fetch(:input_schema).fetch(:properties)
+
+    %i[target from to].each do |reference_key|
+      assert_equal(
+        %w[entityId persistentId sourceElementId],
+        properties.fetch(reference_key).fetch(:properties).keys.map(&:to_s).sort
+      )
+      assert_equal(false, properties.fetch(reference_key).key?(:targetSelector))
+    end
+  end
+
+  def test_measure_scene_tool_schema_documents_runtime_mode_kind_enforcement
+    tool = @loader.tool_catalog.find { |entry| entry.fetch(:name) == 'measure_scene' }
+    properties = tool.fetch(:input_schema).fetch(:properties)
+
+    assert_includes(properties.fetch(:mode).fetch(:description), 'bounds/world_bounds')
+    assert_includes(
+      properties.fetch(:mode).fetch(:description),
+      'distance/bounds_center_to_bounds_center'
+    )
+    assert_includes(properties.fetch(:kind).fetch(:description), 'unsupported mode/kind pairs')
+  end
+
+  def test_measure_scene_tool_descriptions_are_contrastive
+    tool = @loader.tool_catalog.find { |entry| entry.fetch(:name) == 'measure_scene' }
+    properties = tool.fetch(:input_schema).fetch(:properties)
+
+    assert_includes(tool.fetch(:description), 'Use for direct measurements')
+    assert_includes(tool.fetch(:description), 'Do not use for validation verdicts')
+    assert_includes(properties.fetch(:mode).fetch(:description), 'Supported MVP combinations')
+    assert_includes(properties.fetch(:kind).fetch(:description), 'Runtime refuses')
+  end
+
+  def test_measure_scene_tool_schema_exposes_output_options_without_widening_references
+    tool = @loader.tool_catalog.find { |entry| entry.fetch(:name) == 'measure_scene' }
+    output_options = tool.fetch(:input_schema).fetch(:properties).fetch(:outputOptions)
+
+    assert_equal(['includeEvidence'], output_options.fetch(:properties).keys.map(&:to_s))
+    assert_equal('boolean', output_options.fetch(:properties).fetch(:includeEvidence).fetch(:type))
+  end
+
   def test_create_group_tool_schema_supports_managed_container_metadata_and_scene_properties
     create_group_tool = @loader.tool_catalog.find do |tool|
       tool.fetch(:name) == 'create_group'
@@ -622,28 +719,17 @@ class McpRuntimeLoaderTest < Minitest::Test
     )
   end
 
-  def test_create_site_element_schema_keeps_canonical_sections_and_bounded_recovery_variants
+  def test_create_site_element_schema_advertises_canonical_sections_only
     tool = @loader.tool_catalog.find { |entry| entry.fetch(:name) == 'create_site_element' }
     input_schema = tool.fetch(:input_schema)
 
-    assert(input_schema.key?(:anyOf), 'expected create_site_element schema to add bounded variants')
-
-    branches = input_schema.fetch(:anyOf)
-    canonical_branch = branches.find do |branch|
-      branch.fetch(:required, nil) == %w[
-        elementType metadata definition hosting placement representation lifecycle
-      ]
-    end
-    definition_wrapped_branch = branches.find do |branch|
-      branch.fetch(:required, nil) == ['definition']
-    end
-    misnested_geometry_branch = branches.find do |branch|
-      branch.fetch(:properties, {}).key?(:mode)
-    end
-
-    refute_nil(canonical_branch)
-    refute_nil(definition_wrapped_branch)
-    refute_nil(misnested_geometry_branch)
+    assert_equal(
+      %w[elementType metadata definition hosting placement representation lifecycle],
+      input_schema.fetch(:required)
+    )
+    assert_equal(false, input_schema.key?(:anyOf))
+    assert_equal(false, input_schema.key?(:oneOf))
+    assert_equal(false, input_schema.fetch(:properties).key?(:mode))
   end
 
   def test_create_site_element_description_marks_recovery_variants_as_non_canonical
@@ -917,7 +1003,7 @@ class McpRuntimeLoaderTest < Minitest::Test
     assert_equal('Get Entity Information', get_entity_info.dig(:metadata, :title))
     assert_equal(['id'], get_entity_info.dig(:input_schema, :required))
     assert_equal('Create Semantic Site Element', create_site_element.dig(:metadata, :title))
-    assert(create_site_element[:input_schema].key?(:anyOf))
+    assert_equal(false, create_site_element[:input_schema].key?(:anyOf))
     assert_equal('Set Entity Metadata', set_entity_metadata.dig(:metadata, :title))
     assert_equal(['target'], set_entity_metadata.dig(:input_schema, :required))
     assert_equal('Transform Entities', transform_entities.dig(:metadata, :title))
@@ -1249,6 +1335,17 @@ class McpRuntimeLoaderTest < Minitest::Test
     return if @loader.available?
 
     skip('staged experimental vendor runtime not present in repo checkout')
+  end
+
+  def schema_includes_key?(schema, key)
+    case schema
+    when Hash
+      schema.key?(key) || schema.any? { |_nested_key, value| schema_includes_key?(value, key) }
+    when Array
+      schema.any? { |value| schema_includes_key?(value, key) }
+    else
+      false
+    end
   end
 
   # rubocop:disable Metrics/MethodLength

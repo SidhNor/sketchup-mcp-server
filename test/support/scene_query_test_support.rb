@@ -139,27 +139,32 @@ module SceneQueryTestSupport
   end
 
   class FakeTransformation
-    attr_reader :origin
+    attr_reader :origin, :scale
 
-    def initialize(origin, translation: nil)
+    def initialize(origin, translation: nil, scale: 1.0)
       @origin = origin
       @translation = translation || [0.0, 0.0, 0.0]
+      @scale = scale
     end
 
     def apply(x_value, y_value, z_value)
       [
-        x_value + @translation[0],
-        y_value + @translation[1],
-        z_value + @translation[2]
+        (x_value * scale) + @translation[0],
+        (y_value * scale) + @translation[1],
+        (z_value * scale) + @translation[2]
       ]
     end
 
     def inverse_apply(x_value, y_value, z_value)
       [
-        x_value - @translation[0],
-        y_value - @translation[1],
-        z_value - @translation[2]
+        (x_value - @translation[0]) / scale,
+        (y_value - @translation[1]) / scale,
+        (z_value - @translation[2]) / scale
       ]
+    end
+
+    def area_scale
+      scale * scale
     end
   end
 
@@ -277,6 +282,18 @@ module SceneQueryTestSupport
 
   class FakeFace < Sketchup::Face
     include FakeEntityBehavior
+
+    def area(transformation = nil)
+      base_area = details.fetch(:area) do
+        surface = details.fetch(:sample_surface, {})
+        x_range = surface.fetch(:x_range, [bounds.min.x, bounds.max.x])
+        y_range = surface.fetch(:y_range, [bounds.min.y, bounds.max.y])
+        (x_range.last - x_range.first).abs * (y_range.last - y_range.first).abs
+      end
+      return base_area unless transformation.respond_to?(:area_scale)
+
+      base_area * transformation.area_scale
+    end
   end
 
   class FakeEdge < Sketchup::Edge

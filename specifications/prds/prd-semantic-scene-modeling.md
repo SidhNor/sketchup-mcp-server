@@ -2,7 +2,7 @@
 doc_type: prd
 title: Semantic Scene Modeling
 status: draft
-last_updated: 2026-04-17
+last_updated: 2026-04-24
 ---
 
 # PRD: Semantic Scene Modeling
@@ -129,11 +129,12 @@ Conflict flag: no functional requirements currently conflict with the business r
 - The tool surface should stay small and parameterized rather than expanding into many overlapping constructors.
 - Existing primitive tools may need to coexist during migration but should not remain the primary product surface.
 - Composite feature assembly should remain a separate workflow layer rather than being forced into one oversized atomic-creation contract.
-- Terrain authoring should remain `eval_ruby`-first until repeated workflows justify a stable first-class terrain-modification contract.
+- Terrain authoring should remain `eval_ruby`-first until repeated workflows justify a stable first-class terrain-modification contract. Near-term terrain follow-ons should first deepen explicit terrain interrogation, measurement evidence, validation, and reconciliation rather than adding a broad terrain-authoring surface to semantic scene modeling.
 
 ## Terrain Relationship Boundary
 
 - Terrain relationships for managed objects are in scope before broad terrain authoring is in scope.
+- Bounded terrain patch helpers may become a later mutation or terrain-specific follow-on if interrogation, measurement, and validation still leave repeated high-friction fallback workflows, but they should not be treated as part of the current semantic creation surface.
 - The product should distinguish between:
 - `terrain_following`: geometry follows sampled terrain directly
 - `fixed_datum_with_uniform_thickness`: top elevation is authoritative and body depth is uniform
@@ -203,3 +204,4 @@ Conflict flag: no functional requirements currently conflict with the business r
 | 2026-04-16 | Clarified that the primary semantic creation surface must support contract evolution for create, adopt, and identity-preserving replace workflows without fragmenting into many overlapping tools, and made composition a separate product layer from atomic semantic creation. |
 | 2026-04-17 | Added a limited first-class hierarchy-maintenance surface for managed-object workflows, centered on explicit target-based group creation and explicit reparenting while keeping broader hierarchy orchestration out of scope. |
 | 2026-04-22 | Clarified that terrain authoring remains `eval_ruby`-first for now, while terrain relationships for managed objects are product scope and should distinguish terrain-following, fixed-datum, extend-to-terrain, and rigid-on-terrain cases. |
+| 2026-04-24 | Clarified that near-term terrain work should deepen interrogation, measurement evidence, validation, and reconciliation before any bounded terrain patch helper is promoted, and that broad terrain authoring remains outside semantic scene modeling. |

@@ -8,6 +8,7 @@ module SU_MCP
       'list_entities' => :list_entities,
       'find_entities' => :find_entities,
       'validate_scene_update' => :validate_scene_update,
+      'measure_scene' => :measure_scene,
       'sample_surface_z' => :sample_surface_z,
       'get_entity_info' => :get_entity_info,
       'create_site_element' => :create_site_element,

@@ -285,6 +285,67 @@ class McpRuntimeNativeContractTest < Minitest::Test
     )
   end
 
+  def test_native_transport_preserves_measure_scene_measured_shape
+    skip_unless_staged_vendor_runtime!
+
+    contract_case = contract_case('measure_scene_height_measured')
+    transport = @loader.build_transport(
+      handlers: {
+        measure_scene: ->(_arguments) { contract_case.fetch('response').fetch('result') }
+      }
+    )
+
+    response = perform_raw_json_request(transport, contract_case.fetch('request'))
+
+    assert_equal(200, response[:status])
+    assert_equal(
+      contract_case.dig('response', 'result'),
+      response[:body].dig('result', 'structuredContent')
+    )
+  end
+
+  def test_native_transport_preserves_measure_scene_unavailable_shape
+    skip_unless_staged_vendor_runtime!
+
+    contract_case = contract_case('measure_scene_surface_area_unavailable')
+    transport = @loader.build_transport(
+      handlers: {
+        measure_scene: ->(_arguments) { contract_case.fetch('response').fetch('result') }
+      }
+    )
+
+    response = perform_raw_json_request(transport, contract_case.fetch('request'))
+
+    assert_equal(200, response[:status])
+    assert_equal(
+      contract_case.dig('response', 'result'),
+      response[:body].dig('result', 'structuredContent')
+    )
+  end
+
+  def test_native_transport_preserves_measure_scene_refusal_allowed_values
+    skip_unless_staged_vendor_runtime!
+
+    contract_case = contract_case('measure_scene_unsupported_kind_refused')
+    transport = @loader.build_transport(
+      handlers: {
+        measure_scene: ->(_arguments) { contract_case.fetch('response').fetch('result') }
+      }
+    )
+
+    response = perform_raw_json_request(transport, contract_case.fetch('request'))
+
+    assert_equal(200, response[:status])
+    assert_equal(
+      contract_case.dig('response', 'result', 'refusal', 'details', 'allowedValues'),
+      response[:body].dig('result', 'structuredContent', 'refusal', 'details', 'allowedValues')
+    )
+    assert_equal(
+      contract_case.dig('response', 'result'),
+      response[:body].dig('result', 'structuredContent')
+    )
+  end
+
   private
 
   def contract_case(case_id)

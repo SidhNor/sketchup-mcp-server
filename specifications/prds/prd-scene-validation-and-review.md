@@ -2,7 +2,7 @@
 doc_type: prd
 title: Scene Validation and Review
 status: draft
-last_updated: 2026-04-12
+last_updated: 2026-04-24
 ---
 
 # PRD: Scene Validation and Review
@@ -83,7 +83,8 @@ Without a strong validation and review slice:
 | Requirement | User Story | Acceptance Criteria | Priority |
 | --- | --- | --- | --- |
 | Support structured measurement through `measure_scene` | As an agent, I want to measure scene properties without arbitrary Ruby so that I can reason about fit and constraints programmatically | `measure_scene` accepts documented measurement modes and returns structured, JSON-serializable outputs | P1 |
-| Support at minimum `distance`, `area`, `height`, `path_length`, `clearance`, `bounds`, and `slope_hint` measurement modes | As a designer or agent, I want an MVP measurement surface that covers common site checks | Each listed mode accepts a defined payload and returns a valid result or a structured error if inputs are insufficient | P1 |
+| Support a bounded `measure_scene` MVP with `distance`, `area`, `height`, and `bounds` modes before broader measurement modes | As a designer or agent, I want the first public measurement surface to answer common size and fit questions without ambiguous measurement semantics | The MVP supports explicit `mode` and `kind` combinations for `bounds/world_bounds`, `height/bounds_z`, `distance/bounds_center_to_bounds_center`, `area/surface`, and `area/horizontal_bounds`, returns unit-bearing quantities and evidence, and refuses unsupported combinations explicitly | P1 |
+| Support later terrain-aware measurement evidence without turning direct measurement into terrain editing | As a reviewer or agent, I want terrain-shaped objects and terrain-dependent checks to produce structured measurement evidence while keeping editing and validation verdicts separate | Terrain-shaped groups and components can be measured through generic supported modes where generic evidence exists, while terrain profile, slope, clearance-to-terrain, grade-break, trench/hump, and fairness measurements remain documented follow-ons that build on explicit surface interrogation and reusable measurement internals | P1 |
 | Prefer workflow-facing identity conventions in measurement and validation references | As a workflow orchestrator, I want checks to reference the same identity model as upstream workflows so that validation stays stable across revisions | Measurement and validation contracts prefer `sourceElementId`, support `persistentId` where runtime-safe lookup is needed, and reserve `entityId` for compatibility-only use | P0 |
 | Support structured scene validation through `validate_scene_update` | As a workflow orchestrator, I want a single primary validation endpoint for scene updates | Given a valid expectation payload, `validate_scene_update` returns structured pass or fail state with findings and summary data | P0 |
 | Validate required entity existence, preserved entity presence, required metadata keys, tags when specified, material presence when specified, and dimension or tolerance checks | As an agent, I want to catch common scene-update failures before acceptance | Validation supports each listed check type and returns structured findings that map to the failing expectation | P0 |
@@ -120,12 +121,14 @@ Conflict flag: no functional requirements currently conflict with the business r
 - Photoreal review pipelines
 - General-purpose reporting dashboards
 - Making `eval_ruby` a primary validation mechanism
+- Terrain editing, terrain patch replacement, terrain sculpting, or terrain fairing as validation or measurement behavior
 
 ## Open Questions
 
 - Which validation failures should be blocking versus warning-level by default?
 - How much geometry-derived inference should validation perform versus relying on metadata and explicit expectations?
 - Which terrain-relationship failures after terrain edits should be blocking by default versus warning-only for different object classes such as paths, pads, retaining edges, trees, and rigid structures?
+- Which terrain-aware measurement modes should follow the generic `measure_scene` MVP, and which should remain validation-only checks rather than direct measurement outputs?
 - What snapshot formats should be supported in the MVP?
 - Should post-`eval_ruby` validation become mandatory once scoped fallback execution exists?
 - Which overlap checks, if any, should be part of the MVP versus deferred to later validation phases?
@@ -160,3 +163,4 @@ Conflict flag: no functional requirements currently conflict with the business r
 | 2026-04-11 | Modestly clarified that geometry-aware validation includes projection-oriented checks such as named reference points and projected linework verification, while deferring any decision on a dedicated higher-level helper. |
 | 2026-04-12 | Rebalanced priorities to align with the guide's first-wave focus on `validate_scene_update`, moving `measure_scene`, richer geometry checks, and asset-protection validation work to P1. |
 | 2026-04-22 | Added a narrow terrain-relationship validation requirement so post-terrain-edit failures such as hanging, unsupported, or unexpectedly intersecting managed objects can be checked through structured validation without promoting broad terrain authoring into this slice. |
+| 2026-04-24 | Aligned the measurement posture with the bounded `SVR-03` `measure_scene` MVP, keeping terrain-shaped targets compatible with generic modes while deferring profile, slope, clearance-to-terrain, grade-break, trench/hump, and fairness diagnostics. |

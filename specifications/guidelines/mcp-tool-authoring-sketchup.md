@@ -144,7 +144,22 @@ If ownership drifts, the schema may remain technically valid while becoming conc
 
 ---
 
-## 7. Separate selectors, actions, constraints, and output options
+## 7. Keep MCP parameter roots provider-compatible
+
+Every public tool declaration must use a simple top-level parameter schema:
+
+- top-level `type: "object"`
+- top-level `properties`
+- optional top-level `required`
+- no top-level `anyOf`, `oneOf`, `allOf`, `not`, or root `enum`
+
+Provider function/tool validators may reject top-level schema composition even when the MCP server can render it. Conditional usage should be communicated through small enums, field descriptions, examples, and runtime structured refusals with `allowedValues`, not root schema branches.
+
+Recovery-only request shapes must not be advertised as alternate public schema branches. Keep the canonical public contract in the tool schema and handle recognizable mistakes inside runtime validation or recovery seams.
+
+---
+
+## 8. Separate selectors, actions, constraints, and output options
 
 These are different kinds of information and should not be blended.
 
@@ -184,7 +199,7 @@ When these roles are separated, tool definitions are easier to understand and ea
 
 ---
 
-## 8. Reuse shared shapes across tools
+## 9. Reuse shared shapes across tools
 
 Consistency across tools is more valuable than local cleverness.
 
@@ -203,7 +218,7 @@ Shared shapes reduce cognitive load, improve consistency, and make the contract 
 
 ---
 
-## 9. Use explicit, domain-meaningful field names
+## 10. Use explicit, domain-meaningful field names
 
 Field names should communicate business or modeling intent rather than transport or implementation detail.
 
@@ -231,7 +246,7 @@ Longer but clearer names are usually better than shorter ambiguous names.
 
 ---
 
-## 10. Prefer explicit objects over overloaded strings
+## 11. Prefer explicit objects over overloaded strings
 
 Do not compress multiple decisions into a single string field when those decisions have structure.
 
@@ -264,7 +279,7 @@ Structured objects clarify meaning, improve extensibility, and reduce ambiguity.
 
 ---
 
-## 11. Use enums aggressively, but keep them small and clean
+## 12. Use enums aggressively, but keep them small and clean
 
 Enums are one of the best ways to make a schema explicit.
 
@@ -288,7 +303,7 @@ Bad enums usually hide unclear ownership or mixed concerns.
 
 ---
 
-## 12. Use booleans only for truly binary meaning
+## 13. Use booleans only for truly binary meaning
 
 Booleans are appropriate when the concept is genuinely binary and stable.
 
@@ -309,7 +324,7 @@ If the meaning of `true` requires explanation, the field may need to become an e
 
 ---
 
-## 13. Prefer discriminated shapes for meaningfully different modes
+## 14. Prefer discriminated shapes for meaningfully different modes
 
 When a request can take one of several meaningfully different forms, make that explicit in the shape.
 
@@ -330,7 +345,7 @@ The more different the modes are semantically, the more they should be visible i
 
 ---
 
-## 14. Descriptions should be precise, bounded, and contrastive
+## 15. Descriptions should be precise, bounded, and contrastive
 
 Each tool description should make the boundary of the tool clear.
 
@@ -349,7 +364,7 @@ Descriptions should reduce ambiguity between neighboring tools.
 
 ---
 
-## 15. Put subtle usage rules in field descriptions, not only external docs
+## 16. Put subtle usage rules in field descriptions, not only external docs
 
 If a field has a non-obvious ownership rule or a subtle boundary, document it at the field level.
 
@@ -363,7 +378,7 @@ Important constraints should be visible where the decision is made.
 
 ---
 
-## 16. Default outputs should be compact and chainable
+## 17. Default outputs should be compact and chainable
 
 Default outputs should contain enough information for the next reasoning step, but should not dump excessive data.
 
@@ -387,7 +402,7 @@ Support heavier results through explicit output options such as:
 
 ---
 
-## 17. Mutation tools should return structured result envelopes
+## 18. Mutation tools should return structured result envelopes
 
 Mutating tools should return more than success or failure.
 
@@ -426,7 +441,7 @@ This makes results more useful, more debuggable, and easier to build on.
 
 ---
 
-## 18. Make safety and ambiguity policies explicit
+## 19. Make safety and ambiguity policies explicit
 
 Do not rely on implicit safety behavior.
 
@@ -445,7 +460,7 @@ Destructive or safety-relevant tools should also be clearly marked in metadata a
 
 ---
 
-## 19. Prefer additive evolution and stable vocabulary
+## 20. Prefer additive evolution and stable vocabulary
 
 Stable public vocabulary is a major source of clarity.
 
@@ -471,7 +486,7 @@ A schema can grow safely when its vocabulary remains stable and well-owned.
 
 ---
 
-## 20. Avoid exposing raw internals as the public contract
+## 21. Avoid exposing raw internals as the public contract
 
 The public schema should reflect domain semantics, not the accident of how the backend happens to implement them.
 
@@ -486,7 +501,7 @@ The public tool surface should teach the domain, not the backend.
 
 ---
 
-## 21. Keep escape hatches visibly second-class
+## 22. Keep escape hatches visibly second-class
 
 If an escape hatch such as `eval_ruby` exists, it should remain clearly exceptional.
 
@@ -496,7 +511,7 @@ Escape hatches are useful for rare cases and debugging, but they should remain e
 
 ---
 
-## 22. Prefer examples for complex or highly nested tools
+## 23. Prefer examples for complex or highly nested tools
 
 Any tool with nested sections, conditional fields, or multiple semantic modes should have examples near the contract definition or in adjacent guidance.
 
@@ -511,7 +526,7 @@ Examples are especially important when the request shape is sectioned or when si
 
 ---
 
-## 23. Anti-patterns to avoid
+## 24. Anti-patterns to avoid
 
 Avoid the following recurring contract failures:
 
@@ -530,7 +545,7 @@ These patterns create drift, ambiguity, and long-term contract erosion.
 
 ---
 
-## 24. Preferred standard for authoring new or revised tools
+## 25. Preferred standard for authoring new or revised tools
 
 When shaping a new or revised tool, aim for the following qualities:
 
@@ -548,7 +563,7 @@ A good tool definition should feel unsurprising once the rest of the tool surfac
 
 ---
 
-## 25. Practical heuristics
+## 26. Practical heuristics
 
 Use these as strong defaults:
 

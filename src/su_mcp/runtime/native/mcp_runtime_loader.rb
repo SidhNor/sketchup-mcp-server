@@ -328,6 +328,19 @@ module SU_MCP
           annotations: { read_only_hint: true, destructive_hint: false },
           classification: 'first_class',
           input_schema: validate_scene_update_schema
+        ),
+        tool_entry(
+          name: 'measure_scene',
+          title: 'Measure Scene',
+          description: 'Measure resolved scene targets and return structured quantities. ' \
+                       'Use for direct measurements such as bounds, bounds-height, ' \
+                       'bounds-center distance, and area. Do not use for validation ' \
+                       'verdicts, terrain diagnostics, raw metadata inspection, or ' \
+                       'arbitrary Ruby probing.',
+          handler_key: :measure_scene,
+          annotations: { read_only_hint: true, destructive_hint: false },
+          classification: 'first_class',
+          input_schema: measure_scene_schema
         )
       ]
     end
@@ -991,6 +1004,64 @@ module SU_MCP
       }
     end
 
+    # rubocop:disable Metrics/MethodLength
+    def measure_scene_schema
+      {
+        type: 'object',
+        required: %w[mode kind],
+        properties: {
+          mode: described_schema(
+            enum_schema('bounds', 'height', 'distance', 'area'),
+            'Measurement family. Supported MVP combinations are bounds/world_bounds, ' \
+            'height/bounds_z, distance/bounds_center_to_bounds_center, area/surface, ' \
+            'and area/horizontal_bounds.'
+          ),
+          kind: described_schema(
+            enum_schema(
+              'world_bounds',
+              'bounds_z',
+              'bounds_center_to_bounds_center',
+              'surface',
+              'horizontal_bounds'
+            ),
+            'Specific measurement meaning. Runtime refuses unsupported mode/kind pairs.'
+          ),
+          target: measure_scene_target_reference_schema(
+            'Target for bounds, height, or area measurements.'
+          ),
+          from: measure_scene_target_reference_schema(
+            'First target for distance/bounds_center_to_bounds_center.'
+          ),
+          to: measure_scene_target_reference_schema(
+            'Second target for distance/bounds_center_to_bounds_center.'
+          ),
+          outputOptions: measure_scene_output_options_schema
+        },
+        additionalProperties: false
+      }
+    end
+    # rubocop:enable Metrics/MethodLength
+
+    def measure_scene_target_reference_schema(description)
+      described_schema(
+        target_reference_schema,
+        "#{description} Supports sourceElementId, persistentId, or compatibility entityId only."
+      )
+    end
+
+    def measure_scene_output_options_schema
+      {
+        type: 'object',
+        properties: {
+          includeEvidence: described_schema(
+            boolean_schema,
+            'When true, include compact derivation evidence. Do not request raw SketchUp objects.'
+          )
+        },
+        additionalProperties: false
+      }
+    end
+
     def retaining_edge_payload_schema
       {
         type: 'object',
@@ -1210,39 +1281,10 @@ module SU_MCP
     # rubocop:enable Metrics/AbcSize
 
     def create_site_element_schema
-      canonical_properties = create_site_element_canonical_properties
-      recovery_properties = canonical_properties.merge(create_site_element_definition_properties)
-
       {
         type: 'object',
-        properties: recovery_properties,
-        anyOf: [
-          {
-            type: 'object',
-            required: create_site_element_required_sections,
-            properties: canonical_properties,
-            additionalProperties: false
-          },
-          {
-            type: 'object',
-            required: ['definition'],
-            properties: {
-              definition: {
-                type: 'object',
-                required: create_site_element_required_sections,
-                properties: canonical_properties,
-                additionalProperties: false
-              }
-            },
-            additionalProperties: false
-          },
-          {
-            type: 'object',
-            required: %w[elementType metadata hosting placement representation lifecycle mode],
-            properties: recovery_properties,
-            additionalProperties: false
-          }
-        ],
+        required: create_site_element_required_sections,
+        properties: create_site_element_canonical_properties,
         additionalProperties: false
       }
     end

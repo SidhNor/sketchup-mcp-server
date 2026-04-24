@@ -128,9 +128,10 @@ Request deltas:
   - `from`
   - `to`
 - Add optional `outputOptions.includeEvidence`.
-- Expose the legal `mode`/`kind` combinations through loader schema branches.
-- Use explicit `oneOf` schema branches, one per shipped `mode`/`kind` pair. Each branch must require the correct reference fields and must not present unrelated reference fields as normal usage.
-- Add branch-level and field-level descriptions with short contrastive guidance: use when, do not use for, units, and direct-measurement ownership.
+- Expose the legal `mode` and `kind` values through small enums and field-level descriptions.
+- Keep the tool-parameter root provider-compatible: top-level `type: "object"` with no top-level `oneOf`, `anyOf`, `allOf`, `not`, or root `enum`.
+- Enforce exact legal `mode`/`kind`/reference combinations in runtime validation and structured refusals rather than root schema branches.
+- Add field-level descriptions with short contrastive guidance: use when, do not use for, units, and direct-measurement ownership.
 
 Response deltas:
 
@@ -169,7 +170,7 @@ Schema and registration updates:
 
 - Register `measure_scene` in [src/su_mcp/runtime/native/mcp_runtime_loader.rb](src/su_mcp/runtime/native/mcp_runtime_loader.rb).
 - Add read-only annotations and precise use/not-use descriptions.
-- Use exact schema branches so illegal `mode`/`kind`/field combinations are not presented as normal usage.
+- Use provider-compatible top-level schema fields and runtime refusals so illegal `mode`/`kind`/field combinations are corrected without root schema composition.
 - Add field descriptions that distinguish direct measurement from validation verdicts and terrain diagnostics.
 - Add one compact misuse/correction example in the tool description only if it materially improves client behavior without bloating the definition.
 
@@ -295,9 +296,8 @@ Start with contract and routing skeletons, then command behavior, then measureme
   - tool registration
   - read-only annotations
   - `mode` and `kind` enum discoverability
-  - branch-specific required fields
-  - exact or golden rendered schema for the five legal `oneOf` branches
-  - refusal or schema rejection for selector-shaped references and wrong-branch fields
+  - provider-compatible top-level tool schema without root schema composition keywords
+  - runtime refusals for selector-shaped references and wrong-reference fields for the requested mode/kind
   - use/not-use field descriptions
 - Dispatcher and facade tests:
   - `measure_scene` dispatch
@@ -320,7 +320,7 @@ Start with contract and routing skeletons, then command behavior, then measureme
   - identical public values across representative model display units where the runtime can simulate or host those settings
   - transformed and nested group/component geometry behavior where isolation is practical
 - Native contract tests:
-  - rendered tool schema branch snapshot
+  - provider-compatible rendered tool schema snapshot
   - one measured success
   - one unavailable result
   - one structured refusal
@@ -345,7 +345,7 @@ Start with contract and routing skeletons, then command behavior, then measureme
 
 ## Implementation Phases
 
-1. Add failing loader/schema, dispatcher/facade, and native-contract skeletons for `measure_scene`, including exact client-visible schema branch coverage.
+1. Add failing loader/schema, dispatcher/facade, and native-contract skeletons for `measure_scene`, including provider-compatible schema coverage and runtime refusal coverage for illegal combinations.
 2. Add failing command tests for the public mode/kind matrix, refusal cases, and unavailable outcomes.
 3. Add failing helper tests for numeric measurement behavior, transforms, and unit conversion.
 4. Implement the measurement helper and command path.
@@ -379,14 +379,14 @@ Start with contract and routing skeletons, then command behavior, then measureme
 
 ### Failure Paths and Mitigations
 
-- **Schema branches are described in prose but not actually client-discoverable**
+- **Mode/kind combinations are described in prose but not enforced clearly**
   - Business-plan mismatch: The business needs clients to know the legal request shapes before execution; a loose schema would optimize only for server-side recovery/refusal.
-  - Root-cause failure path: The rendered MCP schema exposes independent `mode` and `kind` enums without exact branch-specific required fields, so `{ "mode": "height", "kind": "bounds_z", "from": {...} }` appears plausible to clients.
+  - Root-cause failure path: The rendered MCP schema exposes independent `mode` and `kind` enums, so `{ "mode": "height", "kind": "bounds_z", "from": {...} }` appears plausible to clients.
   - Why this misses the goal: Clients guess, misfire, or fall back to `eval_ruby`, repeating the finite-option discoverability failure this task is meant to prevent.
-  - Likely cognitive bias: Illusion of transparency from the planning phrase "schema branches".
+  - Likely cognitive bias: Illusion of transparency from compact enum fields.
   - Classification: can be validated before implementation.
-  - Mitigation now: Require exact rendered schema branch coverage, ideally `oneOf`, with one branch per legal `mode`/`kind` pair and branch-specific required fields.
-  - Required validation: Golden or exact native-contract test over the real loader output plus negative coverage for wrong-branch fields and selector-shaped references.
+  - Mitigation now: Keep provider-compatible tool parameters, add strong field descriptions listing supported pairs, and make runtime refusals return correction details and `allowedValues`.
+  - Required validation: Native loader test for provider-compatible schema plus runtime command tests for wrong-reference fields, illegal mode/kind pairs, and selector-shaped references.
 - **Enum names remain technically finite but semantically under-described**
   - Business-plan mismatch: The business needs clients to choose the right direct measurement; generic descriptions would optimize for compactness while leaving measurement meaning ambiguous.
   - Root-cause failure path: The tool card says "height" or "area" without contrastive "not for" guidance, causing clients to use `height/bounds_z` for semantic design height, `distance/bounds_center_to_bounds_center` for clearance, or `area/horizontal_bounds` for terrain footprint.

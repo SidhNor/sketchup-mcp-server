@@ -30,7 +30,7 @@
   - the new recovery seam
   - validator wrong-family ownership guidance
   - command recovery/refusal behavior before builder execution
-  - loader schema branches and recovery-only description
+  - canonical loader schema and recovery-only description
   - native transport fixture coverage for the new malformed-shape refusal
 
 ## Validation
@@ -57,7 +57,7 @@
   - native contract fixtures
   - user-facing docs
 - Discoverability now exists both before and after a bad call for the changed surface:
-  - before a bad call: the loader schema exposes the canonical branch and bounded recovery branches, and the tool/docs now explain that the compatibility path is recovery-only
+  - before a bad call: the loader schema exposes the canonical sectioned contract, and the tool/docs explain that the compatibility path is recovery-only
   - after a bad call: malformed and wrong-family requests return structured refusal details instead of opaque raw MCP param failures
 
 ## Remaining Gap

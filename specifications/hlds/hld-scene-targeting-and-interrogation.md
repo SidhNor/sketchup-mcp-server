@@ -154,12 +154,14 @@ V1 targeting and interrogation commands should share one JSON target-reference c
 - return structured hit, miss, and ambiguity results
 - respect visible-only interrogation defaults and optional ignore-target references
 - optionally include compact hit-chain detail when the contract requests it
+- support later bounded profile or section sampling by composing explicit target sampling over caller-supplied paths or section definitions, without taking ownership of terrain editing or validation verdicts
 
 **Must Not Own**
 
 - generic unconstrained scene probing
 - downstream placement policy
 - review or validation decisions about how sampling results should be acted on
+- terrain patch creation, terrain fairing, or terrain working-copy lifecycle
 
 ### 6. Edge-Network Analysis Component
 
@@ -251,6 +253,7 @@ The capability should keep tool contracts compact and explicit.
   - accepts explicit target geometry, XY points in world coordinates, optional ignore-target references, and a visible-only default
   - returns one structured result per point with `hit`, `miss`, or `ambiguous` status and sampled XYZ when a hit is resolved
   - omits hit-chain detail by default and exposes it only through an explicit detail flag
+  - may later be complemented by compact profile or section sampling that still resolves one explicit host surface and returns sampled evidence rather than terrain modifications
 - `analyze_edge_network`
   - accepts an explicit target edge set or target reference plus a topology tolerance
   - returns component counts, loose ends, isolated segments, coincident-but-unmerged endpoints, and compact summary data
@@ -398,3 +401,4 @@ This keeps behavior deterministic by default while allowing tighter or looser ch
 1. Should `get_named_collections` return only canonical workflow collections or also custom collections that satisfy product rules?
 2. How much optional detail should `sample_surface_z` expose beyond hit-chain data before payload size becomes counterproductive?
 3. Should topology findings ever become automatic gates for semantic creation, or should that remain a validation-layer decision?
+4. Which terrain profile or section sampling patterns are common enough to deserve a public interrogation helper rather than being composed by callers from repeated `sample_surface_z` calls?

@@ -42,6 +42,11 @@ class ToolDispatcherTest < Minitest::Test
       { success: true, outcome: 'passed', errors: [], warnings: [], summary: {} }
     end
 
+    def measure_scene(args)
+      @calls << [:measure_scene, args]
+      { success: true, outcome: 'measured', measurement: args }
+    end
+
     def delete_entities(args)
       @calls << [:delete_entities, args]
       {
@@ -105,7 +110,7 @@ class ToolDispatcherTest < Minitest::Test
     # rubocop:enable Naming/AccessorMethodName
 
     private :get_scene_info, :transform_entities, :selection_info, :find_entities,
-            :validate_scene_update,
+            :validate_scene_update, :measure_scene,
             :delete_entities,
             :sample_surface_z,
             :create_group, :reparent_entities, :create_site_element, :set_entity_metadata,
@@ -250,6 +255,22 @@ class ToolDispatcherTest < Minitest::Test
     )
   end
   # rubocop:enable Metrics/MethodLength
+
+  def test_dispatches_measure_scene_to_the_measurement_command
+    payload = {
+      'mode' => 'height',
+      'kind' => 'bounds_z',
+      'target' => { 'sourceElementId' => 'tree-001' }
+    }
+
+    result = @dispatcher.call('measure_scene', payload)
+
+    assert_equal(
+      { success: true, outcome: 'measured', measurement: payload },
+      result
+    )
+    assert_equal([[:measure_scene, payload]], @target.calls.last(1))
+  end
 
   def test_dispatches_delete_entities_to_the_editing_command
     result = @dispatcher.call(

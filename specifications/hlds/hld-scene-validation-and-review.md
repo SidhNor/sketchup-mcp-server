@@ -18,7 +18,7 @@ This is a capability HLD, not a platform HLD. Shared runtime structure, transpor
 
 The architecture and contracts for generic scene targeting, target-reference resolution, surface interrogation, and edge-network analysis remain in [`hld-scene-targeting-and-interrogation.md`](./hld-scene-targeting-and-interrogation.md). This HLD consumes those capabilities where validation needs them, but it does not redefine their internal design.
 
-The current repository does not yet implement `measure_scene`, `validate_scene_update`, or `capture_scene_snapshot`. This document therefore defines the target architecture for adding that capability through the current Ruby-native runtime seams rather than describing an already-complete implementation.
+The current repository implements an initial `validate_scene_update` surface, while `measure_scene` and `capture_scene_snapshot` remain planned capability surfaces. This document defines the target architecture for completing that capability through the current Ruby-native runtime seams while preserving the boundary between shipped validation behavior and deferred measurement or review work.
 
 ### Capability Intent
 
@@ -133,6 +133,8 @@ That means the capability should define one reusable measurement component that 
 - `slope_hint`
 
 Where measurement overlaps with targeting-owned behavior such as bounds or surface interrogation, the measurement layer should compose those existing helpers rather than duplicate their geometry logic.
+
+The first `measure_scene` implementation should stay bounded to generic direct measurements such as `bounds/world_bounds`, `height/bounds_z`, `distance/bounds_center_to_bounds_center`, `area/surface`, and `area/horizontal_bounds`. Terrain-shaped groups and components may be valid targets for those generic modes when they expose the required evidence, but terrain profile, slope, clearance-to-terrain, grade-break, trench/hump, and fairness measurements remain follow-ons. Those terrain-aware modes should build on explicit surface interrogation and the reusable measurement component rather than becoming terrain-editing behavior or validation verdicts.
 
 ### Findings and Severity Posture
 

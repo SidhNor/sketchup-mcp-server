@@ -1,7 +1,7 @@
 # Task: SVR-03 Establish `measure_scene` MVP With Structured Measurement Modes
 **Task ID**: `SVR-03`
 **Title**: `Establish measure_scene MVP With Structured Measurement Modes`
-**Status**: `planned`
+**Status**: `completed`
 **Priority**: `P1`
 **Date**: `2026-04-24`
 

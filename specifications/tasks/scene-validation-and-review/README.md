@@ -15,6 +15,7 @@ The current iteration intentionally persists a compact set of follow-on tasks ar
 
 - `validate_scene_update` MVP with initial generic geometry-aware checks
 - public structured measurement through `measure_scene`
+- terrain-aware measurement evidence after generic measurement and explicit profile sampling settle
 - targeted interrogation-backed follow-ons that broaden `validate_scene_update` while measurement and validation remain distinct workflow surfaces
 
 The wider capability remains acknowledged, but deferred work is not promoted into active task folders for this iteration.
@@ -23,7 +24,8 @@ The wider capability remains acknowledged, but deferred work is not promoted int
 
 1. [SVR-01 Establish `validate_scene_update` MVP With Initial Generic Geometry-Aware Checks](SVR-01-establish-validate-scene-update-mvp-with-initial-generic-geometry-aware-checks/task.md)
 2. [SVR-03 Establish `measure_scene` MVP With Structured Measurement Modes](SVR-03-measure-scene-mvp-with-structured-measurement-modes/task.md)
-3. [SVR-02 Broaden `validate_scene_update` With Surface-Relationship And Reference-Point Validation](SVR-02-broaden-validate-scene-update-with-surface-relationship-and-reference-point-validation/task.md)
+3. [SVR-04 Add Terrain-Aware Measurement Evidence](SVR-04-add-terrain-aware-measurement-evidence/task.md)
+4. [SVR-02 Broaden `validate_scene_update` With Surface-Relationship And Reference-Point Validation](SVR-02-broaden-validate-scene-update-with-surface-relationship-and-reference-point-validation/task.md)
 
 ## Deferred Follow-Ons
 
@@ -34,7 +36,7 @@ The following follow-ons were explicitly deferred during iteration planning:
 - add asset-integrity and asset-placement validation once asset-reuse lineage, protection, and placement-outcome semantics are mature enough to validate against as a product capability rather than ad hoc runtime detail
 - add `capture_scene_snapshot` once the review-artifact contract, returned artifact-reference shape, and host-side snapshot behavior are stable enough to support a first-class review surface
 - broaden `validate_scene_update` further with topology-backed geometry validation once reusable edge-network analysis and related topology evidence are available for validation consumers
-- add terrain-aware measurement and diagnostic evidence after the generic `measure_scene` MVP, including profile, slope, clearance-to-terrain, grade-break, trench/hump, or fairness checks where the contract can stay evidence-producing rather than terrain-editing or verdict-only
+- add terrain-aware validation diagnostics after terrain-aware measurement evidence is stable, including slope, clearance-to-terrain, grade-break, trench/hump, or fairness checks where the contract can stay evidence-producing rather than terrain-editing
 
 ## Deferred Capability Dependencies
 
@@ -56,5 +58,6 @@ The deferred follow-ons remain blocked or under-defined in these areas:
 - Follow-on broadening should continue to deepen `validate_scene_update` where the missing capability is still part of structured validation, while keeping direct measurement questions on the separate `measure_scene` boundary.
 - `SVR-03` now owns the public `measure_scene` MVP so direct structured measurement does not have to hide inside `validate_scene_update`.
 - `SVR-03` is terrain-compatible but not terrain-diagnostic: terrain-shaped targets may be measured by the shipped generic modes, while terrain profile, slope, clearance-to-terrain, grade-break, trench/hump, and fairness measurements remain follow-ons.
+- `SVR-04` is dependency-gated on `SVR-03` and `STI-03`; exact terrain-aware `mode`/`kind` names should be chosen only after those contracts settle.
 - `SVR-02` follows with richer interrogation-backed geometry relationships that can be supported today through explicit surface-interrogation reuse; topology-backed validation remains deferred until the targeting/interrogation slice exposes that seam.
 - Semantic stored-value validation remains acknowledged as a real consumer signal, but it is deferred so direct measurement and validation stay distinct from stored semantic-property inspection.
