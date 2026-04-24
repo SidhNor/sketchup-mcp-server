@@ -2,6 +2,22 @@
 
 <!-- version list -->
 
+## v0.20.0 (2026-04-24)
+
+### Documentation
+
+- **STI-03**: Plan task
+  ([`4cd40b5`](https://github.com/SidhNor/sketchup-mcp-server/commit/4cd40b5215987119236d4efa63d281d262b5bf19))
+
+### Features
+
+- **STI-03**: Extend sample_surface_z with profiles and sections
+  ([`48e220c`](https://github.com/SidhNor/sketchup-mcp-server/commit/48e220c90015665207e0d31c7f17c84eddcc9f06))
+
+- **SVR-04**: Extend measure_scene with terrain profile measurement
+  ([`19b3f67`](https://github.com/SidhNor/sketchup-mcp-server/commit/19b3f6767e4c44fe5d84fc73f820bd7294dfdd3b))
+
+
 ## v0.19.0 (2026-04-24)
 
 ### Bug Fixes
