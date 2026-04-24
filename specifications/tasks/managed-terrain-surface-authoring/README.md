@@ -1,0 +1,47 @@
+# Managed Terrain Surface Authoring Tasks
+
+## Source Specifications
+
+These tasks are derived from:
+
+- [Managed Terrain Surface Authoring HLD](../../hlds/hld-managed-terrain-surface-authoring.md)
+- [PRD: Managed Terrain Surface Authoring](../../prds/prd-managed-terrain-surface-authoring.md)
+
+## Task Set Intent
+
+This task set covers the first managed terrain authoring iteration. It is intentionally separate from semantic hardscape creation: `path`, `pad`, and `retaining_edge` remain Managed Scene Objects outside terrain state.
+
+The current task order proves terrain authoring through concrete, testable increments:
+
+- domain and research reference grounding
+- terrain state and storage foundation
+- adoption of a supported existing surface as Managed Terrain Surface
+- bounded grade edit MVP
+- corridor transition kernel
+- local terrain fairing kernel
+
+## Current Task Order
+
+1. [MTA-01 Establish Managed Terrain Domain And Research Reference Posture](MTA-01-establish-managed-terrain-domain-and-research-reference-posture/task.md)
+2. [MTA-02 Build Terrain State And Storage Foundation](MTA-02-build-terrain-state-and-storage-foundation/task.md)
+3. [MTA-03 Adopt Supported Surface As Managed Terrain](MTA-03-adopt-supported-surface-as-managed-terrain/task.md)
+4. [MTA-04 Implement Bounded Grade Edit MVP](MTA-04-implement-bounded-grade-edit-mvp/task.md)
+5. [MTA-05 Implement Corridor Transition Terrain Kernel](MTA-05-implement-corridor-transition-terrain-kernel/task.md)
+6. [MTA-06 Implement Local Terrain Fairing Kernel](MTA-06-implement-local-terrain-fairing-kernel/task.md)
+
+## Deferred Follow-Ons
+
+Deferred work is not promoted into active task folders in this iteration:
+
+- broad terrain source compatibility beyond the supported adoption path
+- sidecar terrain-state storage
+- broad mesh repair or unrestricted TIN surgery
+- interactive sculpt or brush UI
+- erosion, weathering, or procedural terrain generation
+- public Unreal-style terrain tools such as flatten, smooth, or ramp
+
+## Notes
+
+- Each implementation task must carry its own TDD and live verification expectations. Recovery cases such as corrupt payloads, missing derived output, stale output, and unsupported versions belong in the task that introduces the relevant behavior.
+- The UE reference guide is research input only. It may inform internal terrain math and kernel design, but it does not define public MCP tool names or Ruby architecture names.
+- Existing `STI-*`, `SVR-*`, `SEM-*`, and `PLAT-*` tasks remain dependency history and should not be rewritten by this task set.
