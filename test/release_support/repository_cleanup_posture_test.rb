@@ -21,8 +21,9 @@ class RepositoryCleanupPostureTest < Minitest::Test
     assert_includes(workflow, 'workflow_dispatch:')
     refute_includes(workflow, 'workflow_run:')
     refute_includes(workflow, 'bundle exec rake ci')
-    refute_includes(workflow, 'ruby/setup-ruby')
+    assert_includes(workflow, 'ruby/setup-ruby')
     assert_includes(releaserc, 'assets = ["VERSION"]')
+    assert_includes(releaserc, 'build_command = "bundle exec rake release:prepare"')
     refute_includes(workflow, 'uv sync --locked --dev')
   end
 
