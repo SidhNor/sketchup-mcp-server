@@ -17,6 +17,7 @@ class McpRuntimeLoaderTest < Minitest::Test
     validate_scene_update
     measure_scene
     sample_surface_z
+    create_terrain_surface
     get_entity_info
     create_site_element
     set_entity_metadata
@@ -219,6 +220,57 @@ class McpRuntimeLoaderTest < Minitest::Test
     assert_equal(
       %w[target sampling],
       sample_surface_z_tool.fetch('inputSchema').fetch('required')
+    )
+
+    create_terrain_surface_tool = tools.find do |tool|
+      tool.fetch('name') == 'create_terrain_surface'
+    end
+    assert_equal('Create Managed Terrain Surface', create_terrain_surface_tool.fetch('title'))
+    assert_equal(false, create_terrain_surface_tool.fetch('annotations').fetch('readOnlyHint'))
+    assert_includes(create_terrain_surface_tool.fetch('description'), 'Managed Terrain Surface')
+    assert_includes(create_terrain_surface_tool.fetch('description'), 'not semantic hardscape')
+    assert_equal(
+      %w[metadata lifecycle],
+      create_terrain_surface_tool.fetch('inputSchema').fetch('required')
+    )
+    assert_equal(
+      %w[definition lifecycle metadata placement sceneProperties],
+      create_terrain_surface_tool.fetch('inputSchema').fetch('properties').keys.sort
+    )
+    assert_equal(
+      %w[adopt create],
+      create_terrain_surface_tool
+        .fetch('inputSchema')
+        .fetch('properties')
+        .fetch('lifecycle')
+        .fetch('properties')
+        .fetch('mode')
+        .fetch('enum')
+        .sort
+    )
+    assert_equal(
+      %w[heightmap_grid],
+      create_terrain_surface_tool
+        .fetch('inputSchema')
+        .fetch('properties')
+        .fetch('definition')
+        .fetch('properties')
+        .fetch('kind')
+        .fetch('enum')
+    )
+    create_terrain_schema = create_terrain_surface_tool.fetch('inputSchema')
+    assert_includes(
+      create_terrain_schema
+        .fetch('properties')
+        .fetch('definition')
+        .fetch('properties')
+        .fetch('grid')
+        .fetch('description'),
+      'public meters'
+    )
+    assert_includes(
+      create_terrain_schema.fetch('properties').fetch('placement').fetch('description'),
+      'public meters'
     )
     assert_equal(
       %w[ignoreTargets sampling target visibleOnly],

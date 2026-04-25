@@ -96,6 +96,7 @@ The current MCP surface includes scene inspection, semantic scene modeling, and 
 - `validate_scene_update`
 - `measure_scene`
 - `sample_surface_z`
+- `create_terrain_surface`
 - `create_site_element`
 - `set_entity_metadata`
 - `create_group`
@@ -114,6 +115,40 @@ The hierarchy-maintenance surface is intentionally narrow: `create_group` create
 `list_entities` is an explicit inventory tool that now requires `scopeSelector` (`top_level`, `selection`, or `children_of_target`) plus optional `outputOptions`.
 `find_entities` is an exact-match targeting tool that now requires `targetSelector` with nested `identity`, `attributes`, and `metadata` sections.
 `sample_surface_z` is an explicit-host surface interrogation tool. It requires `target` plus a canonical `sampling` object: use `sampling.type: "points"` with `sampling.points` for XY point batches, or `sampling.type: "profile"` with `sampling.path` plus exactly one of `sampleCount` or `intervalMeters` for ordered profile evidence. It returns structured hit, miss, or ambiguous sample results; overlapping host surfaces with multiple surviving z-clusters are reported as `ambiguous`. It does not perform broad scene probing or terrain validation.
+`create_terrain_surface` creates or adopts a repository-backed Managed Terrain Surface. Use it for managed terrain state and owned derived terrain mesh output, not for semantic hardscape or general site-element creation. Create mode requires `lifecycle.mode: "create"` plus `definition.kind: "heightmap_grid"` and a simple `definition.grid`; adopt mode requires `lifecycle.mode: "adopt"` plus `lifecycle.target` using the compact target-reference shape. Runtime refusals echo finite choices such as `lifecycle.mode` and `definition.kind` through `allowedValues`, and adoption refuses caller `definition` or `placement` in this slice.
+All public terrain coordinates and elevations are meters. In create mode, `placement.origin` is a world-space meter point, while `definition.grid.origin`, `definition.grid.spacing`, and `definition.grid.baseElevation` are owner-local meter values used to build the persisted terrain state and derived mesh.
+
+```json
+{
+  "metadata": { "sourceElementId": "terrain-main", "status": "existing" },
+  "lifecycle": { "mode": "create" },
+  "placement": { "origin": { "x": 120.0, "y": 80.0, "z": 0.0 } },
+  "sceneProperties": { "name": "Managed Terrain", "tag": "Terrain" },
+  "definition": {
+    "kind": "heightmap_grid",
+    "grid": {
+      "origin": { "x": 0.0, "y": 0.0, "z": 0.0 },
+      "spacing": { "x": 1.0, "y": 1.0 },
+      "dimensions": { "columns": 10, "rows": 10 },
+      "baseElevation": 0.0
+    }
+  }
+}
+```
+
+```json
+{
+  "metadata": { "sourceElementId": "terrain-main", "status": "existing" },
+  "lifecycle": {
+    "mode": "adopt",
+    "target": { "sourceElementId": "existing-terrain" }
+  },
+  "sceneProperties": { "name": "Managed Terrain", "tag": "Terrain" }
+}
+```
+
+Successful terrain creation and adoption return `success: true`, `outcome`, `operation`, `managedTerrain`, `terrainState`, `output.derivedMesh`, and `evidence`. The response includes terrain-state digest and mesh-count evidence, and adoption includes source replacement and sampling summaries. It does not expose raw SketchUp objects or durable generated face or vertex identifiers.
+If adoption cannot sample every derived grid point, the `source_sampling_incomplete` refusal includes public diagnostics such as sample count, hit/miss/ambiguous counts, extent, dimensions, spacing, and the first incomplete sample points.
 `validate_scene_update` is the first public validation surface. It accepts a top-level `expectations` object and currently supports `mustExist`, `mustPreserve`, `metadataRequirements`, `tagRequirements`, `materialRequirements`, and `geometryRequirements`, with each expectation using exactly one of `targetReference` or `targetSelector`. `metadataRequirements` is currently a presence-style check for managed object metadata keys such as `sourceElementId`, `semanticType`, `status`, `state`, and `structureCategory`; it is not the public dimension-validation path for values like `width`, `height`, or `thickness`. `geometryRequirements` now also supports `kind: "surfaceOffset"` for approximate bounds-derived anchor checks against an explicit `surfaceReference`, using `anchorSelector.anchor`, `constraints.expectedOffset`, and `constraints.tolerance`. The MVP anchor selectors are intentionally approximate and suitable only for simple rectangular or slab-like forms.
 `measure_scene` is the direct structured measurement surface. It supports `bounds/world_bounds`, `height/bounds_z`, `distance/bounds_center_to_bounds_center`, `area/surface`, `area/horizontal_bounds`, and `terrain_profile/elevation_summary`, using compact references (`sourceElementId`, `persistentId`, or compatibility `entityId`). Terrain profile measurements require `sampling.type: "profile"` with `sampling.path` plus exactly one of `sampleCount` or `intervalMeters`; `samplingPolicy.visibleOnly` and `samplingPolicy.ignoreTargets` mirror explicit surface sampling policy. It returns meter or square-meter quantities with `outcome: "measured"`, returns `outcome: "unavailable"` when measurable evidence is absent, and uses `no_unambiguous_profile_hits` when profile samples encountered only ambiguous surface stacks. It refuses unsupported modes, kinds, or sampling types with `allowedValues`. It is not a validation verdict tool and does not expose slope, grade, clearance-to-terrain, trench/hump, fairness, terrain editing, or raw dictionary inspection.
 Managed objects may persist additional semantic properties such as path width or planting height in the `su_mcp` dictionary, but those stored values are not yet a first-class public inspection or validation contract.

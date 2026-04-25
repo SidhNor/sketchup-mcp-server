@@ -90,9 +90,9 @@ class SampleSurfaceZSceneQueryCommandsTest < Minitest::Test
       @classify_point_calls += 1
       if point.x.to_f.between?(@x_range.first, @x_range.last) &&
          point.y.to_f.between?(@y_range.first, @y_range.last)
-        :inside
+        Sketchup::Face::PointInside
       else
-        :outside
+        Sketchup::Face::PointOutside
       end
     end
 
@@ -112,6 +112,24 @@ class SampleSurfaceZSceneQueryCommandsTest < Minitest::Test
     end
   end
 
+  class BoundaryFragileRuntimeFace < CountingRuntimeFace
+    def classify_point(point)
+      if max_boundary_point?(point)
+        @classify_point_calls += 1
+        return Sketchup::Face::PointOutside
+      end
+
+      super
+    end
+
+    private
+
+    def max_boundary_point?(point)
+      point.x.to_f.round(6) == bounds.max.x.to_f.round(6) ||
+        point.y.to_f.round(6) == bounds.max.y.to_f.round(6)
+    end
+  end
+
   class MeterIdentitySampleSurfaceQuery < SU_MCP::SampleSurfaceQuery
     private
 
@@ -124,12 +142,6 @@ class SampleSurfaceZSceneQueryCommandsTest < Minitest::Test
         SceneQueryTestSupport::FakePoint.new(sample_point[:x].to_f, sample_point[:y].to_f, 0.0),
         SceneQueryTestSupport::FakeVector.new(0.0, 0.0, 1.0)
       ]
-    end
-
-    def point_on_face?(face, point)
-      return super unless face.is_a?(CountingRuntimeFace)
-
-      face.classify_point(point) == :inside
     end
   end
 
@@ -705,6 +717,46 @@ class SampleSurfaceZSceneQueryCommandsTest < Minitest::Test
     assert_equal(0, face.classify_point_calls)
   end
 
+  def test_points_sampling_accepts_exact_runtime_face_max_boundary_when_classifier_is_brittle
+    face = boundary_fragile_runtime_face
+    query = MeterIdentitySampleSurfaceQuery.new(serializer: SU_MCP::SceneQuerySerializer.new)
+
+    result = query.execute(
+      entities: [face],
+      entity_entries: [{ entity: face, ancestors: [] }],
+      scene_entities: [face],
+      params: points_request(
+        target: { 'persistentId' => '4902' },
+        points: [
+          { 'x' => 10.0, 'y' => 5.0 },
+          { 'x' => 5.0, 'y' => 10.0 }
+        ],
+        extra: { 'visibleOnly' => false }
+      )
+    )
+
+    assert_equal(%w[hit hit], result.fetch(:results).map { |sample| sample.fetch(:status) })
+    assert(result.dig(:results, 0).key?(:hitPoint))
+  end
+
+  def test_points_sampling_indexes_prepared_target_faces_by_xy_bounds
+    faces = indexed_runtime_faces
+    query = MeterIdentitySampleSurfaceQuery.new(serializer: SU_MCP::SceneQuerySerializer.new)
+    entries = faces.map { |face| prepared_runtime_face_entry(face) }
+
+    hits = query.send(
+      :candidate_hits,
+      query.send(:prepared_face_index, entries),
+      { x: 5.0, y: 5.0 }
+    )
+
+    assert_equal(1, hits.length)
+    assert_equal(faces.first, hits.first.fetch(:face))
+    assert_equal(1, faces.first.classify_point_calls)
+    assert_operator(faces.sum(&:classify_point_calls), :<, 10)
+    assert_equal(0, faces.last.classify_point_calls)
+  end
+
   def test_profile_evidence_prunes_visible_blockers_outside_profile_corridor # rubocop:disable Metrics/MethodLength
     terrain, off_corridor_blocker, on_corridor_blocker = corridor_pruning_entities
     serializer = SU_MCP::SceneQuerySerializer.new
@@ -814,6 +866,47 @@ class SampleSurfaceZSceneQueryCommandsTest < Minitest::Test
       layer: FakeLayer.new('Runtime Terrain'),
       material: FakeMaterial.new('Soil')
     )
+  end
+
+  def boundary_fragile_runtime_face
+    BoundaryFragileRuntimeFace.new(
+      entity_id: 491,
+      persistent_id: 4902,
+      x_range: [0.0, 10.0],
+      y_range: [0.0, 10.0],
+      z_value: 2.0,
+      layer: FakeLayer.new('Runtime Terrain'),
+      material: FakeMaterial.new('Soil')
+    )
+  end
+
+  def indexed_runtime_faces
+    (0...80).map do |index|
+      offset = index * 20.0
+      CountingRuntimeFace.new(
+        entity_id: 10_000 + index,
+        persistent_id: 20_000 + index,
+        x_range: [offset, offset + 10.0],
+        y_range: [0.0, 10.0],
+        z_value: 2.0,
+        layer: FakeLayer.new('Runtime Terrain'),
+        material: FakeMaterial.new('Soil')
+      )
+    end
+  end
+
+  def prepared_runtime_face_entry(face)
+    {
+      face: face,
+      transform_chain: [],
+      world_plane: [0.0, 0.0, 1.0, -2.0],
+      world_xy_bounds: {
+        min_x: face.bounds.min.x.to_f,
+        max_x: face.bounds.max.x.to_f,
+        min_y: face.bounds.min.y.to_f,
+        max_y: face.bounds.max.y.to_f
+      }
+    }
   end
 
   def points_request(points:, target: nil, extra: {})

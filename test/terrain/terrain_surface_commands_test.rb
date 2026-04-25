@@ -1,0 +1,269 @@
+# frozen_string_literal: true
+
+require_relative '../test_helper'
+require_relative '../support/semantic_test_support'
+require_relative '../../src/su_mcp/terrain/heightmap_state'
+require_relative '../../src/su_mcp/terrain/terrain_surface_commands'
+
+class TerrainSurfaceCommandsTest < Minitest::Test
+  include SemanticTestSupport
+
+  def test_create_mode_commits_owner_metadata_state_output_and_json_safe_evidence
+    model = build_semantic_model
+    commands = build_commands(model: model)
+
+    result = commands.create_terrain_surface(create_request)
+
+    owner = model.active_entities.groups.first
+    assert_equal([[:start_operation, 'Create Terrain Surface', true], [:commit_operation]],
+                 model.operations)
+    assert_equal('terrain-main', owner.get_attribute('su_mcp', 'sourceElementId'))
+    assert_equal('managed_terrain_surface', owner.get_attribute('su_mcp', 'semanticType'))
+    assert(owner.get_attribute('su_mcp_terrain', 'statePayload'))
+    assert_equal('created', result.fetch(:outcome))
+    refute_includes(JSON.generate(result), 'Sketchup::')
+  end
+
+  def test_create_mode_applies_optional_owner_placement_origin
+    model = build_semantic_model
+    length_converter = RecordingLengthConverter.new(multiplier: 10.0)
+    commands = build_commands(model: model, length_converter: length_converter)
+
+    commands.create_terrain_surface(create_request.merge(
+                                      'placement' => {
+                                        'origin' => { 'x' => 10.0, 'y' => 20.0, 'z' => 1.5 }
+                                      }
+                                    ))
+
+    owner = model.active_entities.groups.first
+    refute_nil(owner.transformation)
+    assert_equal([10.0, 20.0, 1.5], length_converter.public_meter_values)
+  end
+
+  def test_adopt_mode_erases_source_only_after_managed_output_succeeds
+    model = build_semantic_model
+    source = model.active_entities.add_group
+    sampler = RecordingAdoptionSampler.new(source: source)
+    mesh_generator = RecordingMeshGenerator.new
+    commands = build_commands(
+      model: model,
+      adoption_sampler: sampler,
+      mesh_generator: mesh_generator
+    )
+
+    result = commands.create_terrain_surface(adopt_request)
+
+    assert_equal('adopted', result.fetch(:outcome))
+    assert_equal([:generate], mesh_generator.calls)
+    assert(source.erased?)
+    assert_equal([:derive], sampler.calls)
+  end
+
+  def test_adoption_refusal_returns_before_opening_a_model_operation
+    model = build_semantic_model
+    commands = build_commands(
+      model: model,
+      adoption_sampler: RefusingAdoptionSampler.new
+    )
+
+    result = commands.create_terrain_surface(adopt_request)
+
+    assert_equal('refused', result.fetch(:outcome))
+    assert_empty(model.operations)
+  end
+
+  def test_repository_refusal_aborts_operation_and_does_not_return_success
+    model = build_semantic_model
+    commands = build_commands(model: model, repository: RefusingRepository.new)
+
+    result = commands.create_terrain_surface(create_request)
+
+    assert_equal('refused', result.fetch(:outcome))
+    assert_equal('terrain_state_save_failed', result.dig(:refusal, :code))
+    assert_equal([[:start_operation, 'Create Terrain Surface', true], [:abort_operation]],
+                 model.operations)
+  end
+
+  def test_output_generation_failure_aborts_operation
+    model = build_semantic_model
+    commands = build_commands(model: model, mesh_generator: FailingMeshGenerator.new)
+
+    assert_raises(RuntimeError) { commands.create_terrain_surface(create_request) }
+    assert_includes(model.operations, [:abort_operation])
+  end
+
+  private
+
+  def build_commands(model:, repository: RecordingRepository.new,
+                     mesh_generator: RecordingMeshGenerator.new,
+                     adoption_sampler: RecordingAdoptionSampler.new,
+                     length_converter: ScalingLengthConverter.new(multiplier: 10.0))
+    SU_MCP::Terrain::TerrainSurfaceCommands.new(
+      model: model,
+      validator: AcceptingValidator.new,
+      state_builder: StateBuilder.new,
+      repository: repository,
+      mesh_generator: mesh_generator,
+      evidence_builder: EvidenceBuilder.new,
+      adoption_sampler: adoption_sampler,
+      length_converter: length_converter
+    )
+  end
+
+  def create_request
+    { 'metadata' => { 'sourceElementId' => 'terrain-main', 'status' => 'existing' },
+      'lifecycle' => { 'mode' => 'create' } }
+  end
+
+  def adopt_request
+    { 'metadata' => { 'sourceElementId' => 'terrain-main', 'status' => 'existing' },
+      'lifecycle' => { 'mode' => 'adopt', 'target' => { 'sourceElementId' => 'source' } } }
+  end
+
+  def state
+    SU_MCP::Terrain::HeightmapState.new(
+      basis: {
+        'xAxis' => [1.0, 0.0, 0.0],
+        'yAxis' => [0.0, 1.0, 0.0],
+        'zAxis' => [0.0, 0.0, 1.0],
+        'vertical' => 'z_up'
+      },
+      origin: { 'x' => 0.0, 'y' => 0.0, 'z' => 0.0 },
+      spacing: { 'x' => 1.0, 'y' => 1.0 },
+      dimensions: { 'columns' => 2, 'rows' => 2 },
+      elevations: [1.0, 1.0, 1.0, 1.0],
+      revision: 1,
+      state_id: 'state-1'
+    )
+  end
+
+  class AcceptingValidator
+    def validate(params)
+      { outcome: 'ready', lifecycle_mode: params.dig('lifecycle', 'mode'), params: params }
+    end
+  end
+
+  class StateBuilder
+    def build_create_state(...)
+      build_state
+    end
+
+    def build_adopted_state(...)
+      build_state
+    end
+
+    private
+
+    def build_state
+      SU_MCP::Terrain::HeightmapState.new(
+        basis: {
+          'xAxis' => [1.0, 0.0, 0.0],
+          'yAxis' => [0.0, 1.0, 0.0],
+          'zAxis' => [0.0, 0.0, 1.0],
+          'vertical' => 'z_up'
+        },
+        origin: { 'x' => 0.0, 'y' => 0.0, 'z' => 0.0 },
+        spacing: { 'x' => 1.0, 'y' => 1.0 },
+        dimensions: { 'columns' => 2, 'rows' => 2 },
+        elevations: [1.0, 1.0, 1.0, 1.0],
+        revision: 1,
+        state_id: 'state-1'
+      )
+    end
+  end
+
+  class RecordingRepository
+    def save(owner, state)
+      owner.set_attribute('su_mcp_terrain', 'statePayload', '{"payloadKind":"heightmap_grid"}')
+      { outcome: 'saved', state: state, summary: { digest: 'digest-1', serializedBytes: 120 } }
+    end
+  end
+
+  class RefusingRepository
+    def save(_owner, _state)
+      {
+        outcome: 'refused',
+        refusal: { code: 'write_failed', message: 'no write' }
+      }
+    end
+  end
+
+  class RecordingMeshGenerator
+    attr_reader :calls
+
+    def initialize
+      @calls = []
+    end
+
+    def generate(...)
+      @calls << :generate
+      { outcome: 'generated', summary: { derivedMesh: { derivedFromStateDigest: 'digest-1' } } }
+    end
+  end
+
+  class FailingMeshGenerator
+    def generate(...)
+      raise 'mesh failed'
+    end
+  end
+
+  class EvidenceBuilder
+    def build_success(outcome:, **_attributes)
+      { success: true, outcome: outcome }
+    end
+  end
+
+  class RecordingAdoptionSampler
+    attr_reader :calls
+
+    def initialize(source: nil)
+      @source = source
+      @calls = []
+    end
+
+    def derive(_target)
+      @calls << :derive
+      {
+        outcome: 'sampled',
+        source_entity: @source,
+        state_input: {},
+        source_summary: { sourceAction: 'replaced' },
+        sampling_summary: { sampleCount: 4 }
+      }
+    end
+  end
+
+  class RefusingAdoptionSampler
+    def derive(_target)
+      {
+        success: true,
+        outcome: 'refused',
+        refusal: { code: 'source_not_sampleable', message: 'nope' }
+      }
+    end
+  end
+
+  class ScalingLengthConverter
+    def initialize(multiplier:)
+      @multiplier = multiplier
+    end
+
+    def public_meters_to_internal(value)
+      value.to_f * @multiplier
+    end
+  end
+
+  class RecordingLengthConverter < ScalingLengthConverter
+    attr_reader :public_meter_values
+
+    def initialize(multiplier:)
+      super
+      @public_meter_values = []
+    end
+
+    def public_meters_to_internal(value)
+      @public_meter_values << value
+      super
+    end
+  end
+end

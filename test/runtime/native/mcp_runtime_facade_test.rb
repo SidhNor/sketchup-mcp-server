@@ -73,6 +73,20 @@ class McpRuntimeFacadeTest < Minitest::Test
     end
   end
 
+  class RecordingTerrainCommands
+    attr_reader :calls
+
+    def initialize(result:)
+      @result = result
+      @calls = []
+    end
+
+    def create_terrain_surface(params)
+      @calls << params
+      @result
+    end
+  end
+
   class RecordingRuntimeCommandFactory
     attr_reader :calls
 
@@ -206,6 +220,28 @@ class McpRuntimeFacadeTest < Minitest::Test
         'expectations' => { 'mustExist' => [{ 'targetReference' => { 'entityId' => '101' } }] }
       }],
       validation_commands.calls
+    )
+    assert_equal(expected, result)
+  end
+
+  def test_create_terrain_surface_dispatches_through_the_shared_runtime_command_factory
+    expected = { success: true, outcome: 'created', managedTerrain: {} }
+    terrain_commands = RecordingTerrainCommands.new(result: expected)
+    factory = RecordingRuntimeCommandFactory.new(targets: [terrain_commands])
+    facade = SU_MCP::McpRuntimeFacade.new(runtime_command_factory: factory)
+
+    result = facade.create_terrain_surface(
+      'metadata' => { 'sourceElementId' => 'terrain-main' },
+      'lifecycle' => { 'mode' => 'create' }
+    )
+
+    assert_equal(1, factory.calls)
+    assert_equal(
+      [{
+        'metadata' => { 'sourceElementId' => 'terrain-main' },
+        'lifecycle' => { 'mode' => 'create' }
+      }],
+      terrain_commands.calls
     )
     assert_equal(expected, result)
   end

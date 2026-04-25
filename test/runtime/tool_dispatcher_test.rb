@@ -91,6 +91,17 @@ class ToolDispatcherTest < Minitest::Test
       }
     end
 
+    def create_terrain_surface(args)
+      @calls << [:create_terrain_surface, args]
+      {
+        success: true,
+        outcome: 'created',
+        managedTerrain: {
+          ownerReference: { sourceElementId: args.dig('metadata', 'sourceElementId') }
+        }
+      }
+    end
+
     # rubocop:disable Naming/AccessorMethodName
     def set_entity_metadata(args)
       @calls << [:set_entity_metadata, args]
@@ -116,8 +127,8 @@ class ToolDispatcherTest < Minitest::Test
             :validate_scene_update, :measure_scene,
             :delete_entities,
             :sample_surface_z,
-            :create_group, :reparent_entities, :create_site_element, :set_entity_metadata,
-            :apply_material
+            :create_group, :reparent_entities, :create_site_element, :create_terrain_surface,
+            :set_entity_metadata, :apply_material
   end
 
   def setup
@@ -254,6 +265,26 @@ class ToolDispatcherTest < Minitest::Test
           }
         }
       ]],
+      @target.calls.last(1)
+    )
+  end
+
+  def test_dispatches_create_terrain_surface_to_the_terrain_command
+    result = @dispatcher.call(
+      'create_terrain_surface',
+      { 'metadata' => { 'sourceElementId' => 'terrain-main' } }
+    )
+
+    assert_equal(
+      {
+        success: true,
+        outcome: 'created',
+        managedTerrain: { ownerReference: { sourceElementId: 'terrain-main' } }
+      },
+      result
+    )
+    assert_equal(
+      [[:create_terrain_surface, { 'metadata' => { 'sourceElementId' => 'terrain-main' } }]],
       @target.calls.last(1)
     )
   end

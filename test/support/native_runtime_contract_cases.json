@@ -1083,6 +1083,198 @@
           }
         }
       }
+    },
+    {
+      "case_id": "create_terrain_surface_created",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "params": {
+          "name": "create_terrain_surface",
+          "arguments": {
+            "metadata": {
+              "sourceElementId": "terrain-main",
+              "status": "existing"
+            },
+            "lifecycle": {
+              "mode": "create"
+            },
+            "definition": {
+              "kind": "heightmap_grid",
+              "grid": {
+                "origin": { "x": 0.0, "y": 0.0, "z": 0.0 },
+                "spacing": { "x": 1.0, "y": 1.0 },
+                "dimensions": { "columns": 2, "rows": 2 },
+                "baseElevation": 0.0
+              }
+            }
+          }
+        },
+        "id": "create-terrain-surface-created"
+      },
+      "response": {
+        "jsonrpc": "2.0",
+        "id": "create-terrain-surface-created",
+        "result": {
+          "success": true,
+          "outcome": "created",
+          "operation": {
+            "name": "create_terrain_surface",
+            "lifecycleMode": "create"
+          },
+          "managedTerrain": {
+            "ownerReference": {
+              "sourceElementId": "terrain-main",
+              "persistentId": "5001"
+            },
+            "semanticType": "managed_terrain_surface",
+            "status": "existing",
+            "state": "Created"
+          },
+          "terrainState": {
+            "stateId": "state-1",
+            "payloadKind": "heightmap_grid",
+            "schemaVersion": 1,
+            "revision": 1,
+            "origin": { "x": 0.0, "y": 0.0, "z": 0.0 },
+            "spacing": { "x": 1.0, "y": 1.0 },
+            "dimensions": { "columns": 2, "rows": 2 },
+            "digestAlgorithm": "sha256",
+            "digest": "digest-1",
+            "serializedBytes": 123
+          },
+          "output": {
+            "derivedMesh": {
+              "meshType": "regular_grid",
+              "vertexCount": 4,
+              "faceCount": 2,
+              "derivedFromStateDigest": "digest-1"
+            }
+          },
+          "evidence": {
+            "requestSummary": {
+              "definitionKind": "heightmap_grid"
+            },
+            "sourceSummary": null,
+            "samplingSummary": null
+          }
+        }
+      }
+    },
+    {
+      "case_id": "create_terrain_surface_adopted",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "params": {
+          "name": "create_terrain_surface",
+          "arguments": {
+            "metadata": {
+              "sourceElementId": "terrain-main",
+              "status": "existing"
+            },
+            "lifecycle": {
+              "mode": "adopt",
+              "target": {
+                "sourceElementId": "source-terrain"
+              }
+            }
+          }
+        },
+        "id": "create-terrain-surface-adopted"
+      },
+      "response": {
+        "jsonrpc": "2.0",
+        "id": "create-terrain-surface-adopted",
+        "result": {
+          "success": true,
+          "outcome": "adopted",
+          "operation": {
+            "name": "create_terrain_surface",
+            "lifecycleMode": "adopt"
+          },
+          "managedTerrain": {
+            "ownerReference": {
+              "sourceElementId": "terrain-main",
+              "persistentId": "5001"
+            },
+            "semanticType": "managed_terrain_surface",
+            "status": "existing",
+            "state": "Adopted"
+          },
+          "terrainState": {
+            "stateId": "state-1",
+            "payloadKind": "heightmap_grid",
+            "schemaVersion": 1,
+            "revision": 1,
+            "origin": { "x": 0.0, "y": 0.0, "z": 0.0 },
+            "spacing": { "x": 0.55, "y": 0.55 },
+            "dimensions": { "columns": 74, "rows": 128 },
+            "digestAlgorithm": "sha256",
+            "digest": "digest-1",
+            "serializedBytes": 456
+          },
+          "output": {
+            "derivedMesh": {
+              "meshType": "regular_grid",
+              "vertexCount": 9472,
+              "faceCount": 18542,
+              "derivedFromStateDigest": "digest-1"
+            }
+          },
+          "evidence": {
+            "requestSummary": {
+              "lifecycleMode": "adopt"
+            },
+            "sourceSummary": {
+              "sourceElementId": "source-terrain",
+              "sourceAction": "replaced"
+            },
+            "samplingSummary": {
+              "sampleCount": 9472,
+              "maxSamples": 10000,
+              "dimensions": { "columns": 74, "rows": 128 }
+            }
+          }
+        }
+      }
+    },
+    {
+      "case_id": "create_terrain_surface_invalid_lifecycle_refused",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "params": {
+          "name": "create_terrain_surface",
+          "arguments": {
+            "metadata": {
+              "sourceElementId": "terrain-main",
+              "status": "existing"
+            },
+            "lifecycle": {
+              "mode": "replace"
+            }
+          }
+        },
+        "id": "create-terrain-surface-invalid-lifecycle"
+      },
+      "response": {
+        "jsonrpc": "2.0",
+        "id": "create-terrain-surface-invalid-lifecycle",
+        "result": {
+          "success": true,
+          "outcome": "refused",
+          "refusal": {
+            "code": "unsupported_option",
+            "message": "Lifecycle mode is not supported for create_terrain_surface.",
+            "details": {
+              "field": "lifecycle.mode",
+              "value": "replace",
+              "allowedValues": ["create", "adopt"]
+            }
+          }
+        }
+      }
     }
   ]
 }

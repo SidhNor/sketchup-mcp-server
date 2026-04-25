@@ -16,7 +16,7 @@ The current task order proves terrain authoring through concrete, testable incre
 
 - domain and research reference grounding
 - terrain state and storage foundation
-- adoption of a supported existing surface as Managed Terrain Surface
+- creation of a simple Managed Terrain Surface and adoption of a supported existing surface
 - bounded grade edit MVP
 - corridor transition kernel
 - local terrain fairing kernel
@@ -25,7 +25,7 @@ The current task order proves terrain authoring through concrete, testable incre
 
 1. [MTA-01 Establish Managed Terrain Domain And Research Reference Posture](MTA-01-establish-managed-terrain-domain-and-research-reference-posture/task.md)
 2. [MTA-02 Build Terrain State And Storage Foundation](MTA-02-build-terrain-state-and-storage-foundation/task.md)
-3. [MTA-03 Adopt Supported Surface As Managed Terrain](MTA-03-adopt-supported-surface-as-managed-terrain/task.md)
+3. [MTA-03 Create Or Adopt Managed Terrain Surface](MTA-03-adopt-supported-surface-as-managed-terrain/task.md)
 4. [MTA-04 Implement Bounded Grade Edit MVP](MTA-04-implement-bounded-grade-edit-mvp/task.md)
 5. [MTA-05 Implement Corridor Transition Terrain Kernel](MTA-05-implement-corridor-transition-terrain-kernel/task.md)
 6. [MTA-06 Implement Local Terrain Fairing Kernel](MTA-06-implement-local-terrain-fairing-kernel/task.md)

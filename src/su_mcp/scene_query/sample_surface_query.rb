@@ -3,6 +3,7 @@
 require_relative 'sample_surface_support'
 require_relative 'sample_surface_evidence'
 require_relative 'sample_surface_profile_generator'
+require_relative 'prepared_face_index'
 require_relative '../runtime/tool_response'
 
 module SU_MCP
@@ -409,14 +410,14 @@ module SU_MCP
     def points_result(sample_points:, target_face_entries:, scene_entities:, target_entity:,
                       ignore_entities:, visible_only:)
       with_active_sample_xy_bounds(sample_points) do
-        prepared_target_faces = prepare_face_entries(target_face_entries)
+        prepared_target_faces = prepared_face_index(prepare_face_entries(target_face_entries))
         blocking_faces = blocking_faces_for(
           scene_entities,
           target_entity: target_entity,
           ignore_entities: ignore_entities,
           visible_only: visible_only
         )
-        prepared_blocking_faces = prepare_face_entries(blocking_faces)
+        prepared_blocking_faces = prepared_face_index(prepare_face_entries(blocking_faces))
         {
           success: true,
           results: sample_points.map do |sample_point|
@@ -452,14 +453,14 @@ module SU_MCP
                                ignore_entities:, visible_only:)
       profile_samples = sample_spec.fetch(:profile_samples)
       with_active_sample_xy_bounds(profile_samples) do
-        prepared_target_faces = prepare_face_entries(target_face_entries)
+        prepared_target_faces = prepared_face_index(prepare_face_entries(target_face_entries))
         blocking_faces = blocking_faces_for(
           scene_entities,
           target_entity: target_entity,
           ignore_entities: ignore_entities,
           visible_only: visible_only
         )
-        prepared_blocking_faces = prepare_face_entries(blocking_faces)
+        prepared_blocking_faces = prepared_face_index(prepare_face_entries(blocking_faces))
         profile_samples.map do |profile_sample|
           profile_sample_evidence(
             profile_sample,
@@ -511,7 +512,7 @@ module SU_MCP
       target_hits = candidate_hits(target_face_entries, sample_point)
       if visible_only
         target_hits.reject! do |hit|
-          blocked_by_visible_geometry?(sample_point, hit[:z], Array(blocking_faces))
+          blocked_by_visible_geometry?(sample_point, hit[:z], blocking_faces)
         end
       end
 
@@ -524,7 +525,7 @@ module SU_MCP
     end
 
     def candidate_hits(face_entries, sample_point)
-      face_entries.filter_map do |face_entry|
+      face_entries_for_sample(face_entries, sample_point).filter_map do |face_entry|
         sample_z = sampled_z_for_face(face_entry, sample_point)
         next if sample_z.nil?
 
@@ -545,6 +546,20 @@ module SU_MCP
 
     def prepare_face_entries(face_entries)
       face_entries.map { |face_entry| prepare_face_entry(face_entry) }
+    end
+
+    def prepared_face_index(face_entries)
+      PreparedFaceIndex.new(
+        face_entries,
+        coordinate_converter: method(:meters_to_internal),
+        tolerance: internal_sample_tolerance
+      )
+    end
+
+    def face_entries_for_sample(face_entries, sample_point)
+      return face_entries.candidates_for(sample_point) if face_entries.respond_to?(:candidates_for)
+
+      face_entries
     end
 
     def prepare_face_entry(face_entry)
@@ -633,7 +648,7 @@ module SU_MCP
     end
 
     def blocked_by_visible_geometry?(sample_point, sampled_z, blocking_faces)
-      blocking_faces.any? do |face|
+      face_entries_for_sample(blocking_faces, sample_point).any? do |face|
         blocking_z = sampled_z_for_face(face, sample_point)
         next false if blocking_z.nil?
 
@@ -770,8 +785,8 @@ module SU_MCP
       y_value = meters_to_internal(sample_point[:y])
       return true if x_value.nil? || y_value.nil?
 
-      x_value.to_f.between?(bounds[:min_x], bounds[:max_x]) &&
-        y_value.to_f.between?(bounds[:min_y], bounds[:max_y])
+      value_between_with_tolerance?(x_value.to_f, bounds[:min_x], bounds[:max_x]) &&
+        value_between_with_tolerance?(y_value.to_f, bounds[:min_y], bounds[:max_y])
     end
 
     def world_vertical_line(sample_point)
@@ -815,13 +830,69 @@ module SU_MCP
       return true unless face.respond_to?(:classify_point)
 
       classification = face.classify_point(point)
-      [
+      return true if [
         Sketchup::Face::PointInside,
         Sketchup::Face::PointOnEdge,
         Sketchup::Face::PointOnVertex
       ].include?(classification)
+
+      point_near_face_boundary?(face, point)
     rescue StandardError
       false
+    end
+
+    def point_near_face_boundary?(face, point)
+      points = face_vertices(face)
+      return false if points.length < 2
+
+      closed_points = points + [points.first]
+      closed_points.each_cons(2).any? do |start_point, end_point|
+        point_near_segment_xy?(point, start_point, end_point)
+      end
+    end
+
+    def face_vertices(face)
+      return [] unless face.respond_to?(:vertices)
+
+      Array(face.vertices).filter_map do |vertex|
+        vertex.position if vertex.respond_to?(:position)
+      end
+    end
+
+    def point_near_segment_xy?(point, start_point, end_point)
+      px = point.x.to_f
+      py = point.y.to_f
+      x1 = start_point.x.to_f
+      y1 = start_point.y.to_f
+      x2 = end_point.x.to_f
+      y2 = end_point.y.to_f
+
+      dx = x2 - x1
+      dy = y2 - y1
+      length_squared = (dx * dx) + (dy * dy)
+      return distance_xy(px, py, x1, y1) <= internal_sample_tolerance if length_squared.zero?
+
+      projection = (((px - x1) * dx) + ((py - y1) * dy)) / length_squared
+      clamped_projection = projection.clamp(0.0, 1.0)
+      closest_x = x1 + (clamped_projection * dx)
+      closest_y = y1 + (clamped_projection * dy)
+      distance_xy(px, py, closest_x, closest_y) <= internal_sample_tolerance
+    end
+
+    def distance_xy(first_x, first_y, second_x, second_y)
+      Math.sqrt(((first_x - second_x)**2) + ((first_y - second_y)**2))
+    end
+
+    def value_between_with_tolerance?(value, minimum, maximum)
+      tolerance = internal_sample_tolerance
+      value.between?(minimum - tolerance, maximum + tolerance)
+    end
+
+    def internal_sample_tolerance
+      converted = meters_to_internal(SAMPLE_Z_CLUSTER_TOLERANCE_METERS)
+      converted.respond_to?(:to_f) ? converted.to_f : SAMPLE_Z_CLUSTER_TOLERANCE_METERS
+    rescue StandardError
+      SAMPLE_Z_CLUSTER_TOLERANCE_METERS
     end
 
     def meters_to_internal(value)

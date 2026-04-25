@@ -7,6 +7,7 @@ require_relative 'tool_definition'
 require_relative '../../semantic/managed_object_metadata'
 require_relative '../../semantic/request_shape_contract'
 require_relative '../../semantic/request_validator'
+require_relative '../../terrain/create_terrain_surface_request'
 
 module SU_MCP
   # Loader for the staged Ruby-native MCP runtime.
@@ -372,6 +373,17 @@ module SU_MCP
             },
             additionalProperties: false
           }
+        ),
+        tool_entry(
+          name: 'create_terrain_surface',
+          title: 'Create Managed Terrain Surface',
+          description: 'Create or adopt a repository-backed Managed Terrain Surface with ' \
+                       'owned terrain state and derived mesh output. Use for managed ' \
+                       'terrain state/output, not semantic hardscape or site-element creation.',
+          handler_key: :create_terrain_surface,
+          annotations: { read_only_hint: false, destructive_hint: false },
+          classification: 'first_class',
+          input_schema: create_terrain_surface_schema
         ),
         tool_entry(
           name: 'get_entity_info',
@@ -1126,6 +1138,143 @@ module SU_MCP
         'Optional terrain profile visibility and ignore-target policy. Mirrors ' \
         'sample_surface_z profile sampling without exposing broad discovery.'
       )
+    end
+
+    def create_terrain_surface_schema
+      {
+        type: 'object',
+        required: %w[metadata lifecycle],
+        properties: {
+          metadata: create_terrain_metadata_schema,
+          lifecycle: create_terrain_lifecycle_schema,
+          definition: create_terrain_definition_schema,
+          placement: create_terrain_placement_schema,
+          sceneProperties: create_terrain_scene_properties_schema
+        },
+        additionalProperties: false
+      }
+    end
+
+    def create_terrain_metadata_schema
+      {
+        type: 'object',
+        required: %w[sourceElementId status],
+        properties: {
+          sourceElementId: string_schema,
+          status: string_schema
+        },
+        additionalProperties: false
+      }
+    end
+
+    def create_terrain_lifecycle_schema
+      {
+        type: 'object',
+        required: ['mode'],
+        properties: {
+          mode: described_schema(
+            enum_schema(SU_MCP::Terrain::CreateTerrainSurfaceRequest::SUPPORTED_LIFECYCLE_MODES),
+            'Lifecycle mode. create requires definition.kind and grid; adopt requires ' \
+            'lifecycle.target and refuses definition or placement in MTA-03.'
+          ),
+          target: target_reference_schema
+        },
+        additionalProperties: false
+      }
+    end
+
+    def create_terrain_definition_schema
+      {
+        type: 'object',
+        required: %w[kind grid],
+        properties: {
+          kind: described_schema(
+            enum_schema(SU_MCP::Terrain::CreateTerrainSurfaceRequest::SUPPORTED_DEFINITION_KINDS),
+            'Terrain definition kind. MTA-03 supports heightmap_grid only; runtime refusals ' \
+            'echo allowedValues for unsupported kinds.'
+          ),
+          grid: create_terrain_grid_schema
+        },
+        additionalProperties: false
+      }
+    end
+
+    def create_terrain_grid_schema
+      {
+        type: 'object',
+        description: 'Heightmap grid values use public meters: origin and spacing are ' \
+                     'owner-local meters, and baseElevation is meters on the z axis.',
+        required: %w[origin spacing dimensions baseElevation],
+        properties: {
+          origin: xyz_point_schema,
+          spacing: xy_spacing_schema,
+          dimensions: create_terrain_dimensions_schema,
+          baseElevation: described_schema(number_schema, 'Base elevation in public meters.')
+        },
+        additionalProperties: false
+      }
+    end
+
+    def xyz_point_schema
+      {
+        type: 'object',
+        description: 'XYZ point in public meters.',
+        required: %w[x y z],
+        properties: {
+          x: number_schema,
+          y: number_schema,
+          z: number_schema
+        },
+        additionalProperties: false
+      }
+    end
+
+    def xy_spacing_schema
+      {
+        type: 'object',
+        description: 'XY spacing in public meters.',
+        required: %w[x y],
+        properties: {
+          x: number_schema,
+          y: number_schema
+        },
+        additionalProperties: false
+      }
+    end
+
+    def create_terrain_dimensions_schema
+      {
+        type: 'object',
+        required: %w[columns rows],
+        properties: {
+          columns: integer_schema,
+          rows: integer_schema
+        },
+        additionalProperties: false
+      }
+    end
+
+    def create_terrain_placement_schema
+      {
+        type: 'object',
+        description: 'Create-mode placement. origin is a world-space point in public meters; ' \
+                     'adopt mode refuses placement in MTA-03.',
+        properties: {
+          origin: xyz_point_schema
+        },
+        additionalProperties: false
+      }
+    end
+
+    def create_terrain_scene_properties_schema
+      {
+        type: 'object',
+        properties: {
+          name: string_schema,
+          tag: string_schema
+        },
+        additionalProperties: false
+      }
     end
 
     def retaining_edge_payload_schema
