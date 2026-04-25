@@ -2,6 +2,37 @@
 
 <!-- version list -->
 
+## v0.21.0 (2026-04-25)
+
+### Documentation
+
+- **estimates**: Retrospective task sizings
+  ([`7116cd2`](https://github.com/SidhNor/sketchup-mcp-server/commit/7116cd261d70d41ba3695d2b7d4ea40f11f26109))
+
+- **staged-resue**: Task planning for staged asset reuse
+  ([`9fd8b03`](https://github.com/SidhNor/sketchup-mcp-server/commit/9fd8b03fbeb7e5729f22850fa485afe72aa19218))
+
+- **terrain**: New hld and prd for terrain authoring
+  ([`c76a93a`](https://github.com/SidhNor/sketchup-mcp-server/commit/c76a93a0144ecb5b0304279a7bc21bef377d322d))
+
+- **terrain**: Task breakdown
+  ([`57ac2c7`](https://github.com/SidhNor/sketchup-mcp-server/commit/57ac2c788e328a4fc503a4c228c37dffc5dc1ae8))
+
+### Features
+
+- **MTA-01**: Initial terrain research and domain updates
+  ([`089f939`](https://github.com/SidhNor/sketchup-mcp-server/commit/089f939c9133578a7b2d579fccc3c8034a73e27d))
+
+- **MTA-02**: Heightmat storage foundations
+  ([`c18c2a7`](https://github.com/SidhNor/sketchup-mcp-server/commit/c18c2a7ad295514e5ca1ac2076ad343ef92e9267))
+
+- **MTA-03**: Managed terrain adoption
+  ([`1090dbd`](https://github.com/SidhNor/sketchup-mcp-server/commit/1090dbd50cca0978db38004c262489c667f2a5be))
+
+- **SEM-15**: Terrain hosting for tree and structures
+  ([`0ede8fb`](https://github.com/SidhNor/sketchup-mcp-server/commit/0ede8fbb6775987ca382e0900da1be01c69b420d))
+
+
 ## v0.20.0 (2026-04-24)
 
 ### Documentation
