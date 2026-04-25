@@ -691,6 +691,123 @@ class SemanticCommandsTest < Minitest::Test
     assert_equal('hosting', result.dig(:refusal, :details, :section))
   end
 
+  def test_create_site_element_builds_terrain_anchored_tree_with_resolved_hosting_context
+    created_group = @model.active_entities.add_group
+    captured_params = nil
+    host_target = FakeManagedEntity.new(parent: Object.new)
+    builder = Object.new
+    builder.define_singleton_method(:build) do |**kwargs|
+      captured_params = kwargs.fetch(:params)
+      created_group
+    end
+    commands = SU_MCP::SemanticCommands.new(
+      model: @model,
+      registry: FakeRegistry.new(builder),
+      metadata_writer: FakeMetadataWriter.new,
+      serializer: FakeSerializer.new(sourceElementId: 'tree-001', semanticType: 'tree_proxy'),
+      target_resolver: FakeTargetResolver.new(resolution: 'unique', entity: host_target)
+    )
+
+    result = commands.create_site_element(sectioned_tree_proxy_request(
+                                            'hosting' => {
+                                              'mode' => 'terrain_anchored',
+                                              'target' => { 'sourceElementId' => 'terrain-main' }
+                                            }
+                                          ))
+
+    assert_equal(true, result[:success])
+    assert_equal('created', result[:outcome])
+    assert_same(host_target, captured_params.dig('hosting', 'resolved_target'))
+    assert_equal('terrain_anchored', captured_params.dig('hosting', 'mode'))
+  end
+
+  def test_create_site_element_builds_terrain_anchored_structure_with_resolved_hosting_context
+    created_group = @model.active_entities.add_group
+    captured_params = nil
+    host_target = FakeManagedEntity.new(parent: Object.new)
+    builder = Object.new
+    builder.define_singleton_method(:build) do |**kwargs|
+      captured_params = kwargs.fetch(:params)
+      created_group
+    end
+    commands = SU_MCP::SemanticCommands.new(
+      model: @model,
+      registry: FakeRegistry.new(builder),
+      metadata_writer: FakeMetadataWriter.new,
+      serializer: FakeSerializer.new(sourceElementId: 'shed-001', semanticType: 'structure'),
+      target_resolver: FakeTargetResolver.new(resolution: 'unique', entity: host_target)
+    )
+
+    result = commands.create_site_element(sectioned_structure_request(
+                                            'hosting' => {
+                                              'mode' => 'terrain_anchored',
+                                              'target' => { 'sourceElementId' => 'terrain-main' }
+                                            }
+                                          ))
+
+    assert_equal(true, result[:success])
+    assert_equal('created', result[:outcome])
+    assert_same(host_target, captured_params.dig('hosting', 'resolved_target'))
+    assert_equal('terrain_anchored', captured_params.dig('hosting', 'mode'))
+  end
+
+  def test_create_site_element_replace_preserve_identity_resolves_terrain_hosting_context
+    previous_entity = FakeManagedEntity.new(
+      parent: Object.new,
+      attributes: {
+        'su_mcp' => {
+          'sourceElementId' => 'house-extension-001',
+          'semanticType' => 'structure',
+          'status' => 'existing',
+          'state' => 'Created',
+          'schemaVersion' => 1,
+          'structureCategory' => 'extension'
+        }
+      }
+    )
+    host_target = FakeManagedEntity.new(parent: Object.new)
+    parent_group = @model.active_entities.add_group
+    replacement_entity = FakeManagedEntity.new(parent: parent_group)
+    captured_params = nil
+    builder = Object.new
+    builder.define_singleton_method(:build) do |**kwargs|
+      captured_params = kwargs.fetch(:params)
+      replacement_entity
+    end
+    target_resolver = FakeSequentialTargetResolver.new(
+      { resolution: 'unique', entity: previous_entity },
+      { resolution: 'unique', entity: host_target },
+      { resolution: 'unique', entity: parent_group }
+    )
+    commands = SU_MCP::SemanticCommands.new(
+      model: @model,
+      registry: FakeRegistry.new(builder),
+      metadata_writer: FakeMetadataWriter.new,
+      serializer: FakeSerializer.new(sourceElementId: 'house-extension-001', semanticType: 'structure'),
+      target_resolver: target_resolver
+    )
+
+    result = commands.create_site_element(v2_replace_request.merge(
+                                            'hosting' => {
+                                              'mode' => 'terrain_anchored',
+                                              'target' => { 'sourceElementId' => 'terrain-main' }
+                                            }
+                                          ))
+
+    assert_equal(true, result[:success])
+    assert_equal('replaced', result[:outcome])
+    assert_equal(
+      [
+        { 'entityId' => 'existing-structure-77' },
+        { 'sourceElementId' => 'terrain-main' },
+        { 'entityId' => 'parent-group-22' }
+      ],
+      target_resolver.calls
+    )
+    assert_same(host_target, captured_params.dig('hosting', 'resolved_target'))
+    assert_equal('terrain_anchored', captured_params.dig('hosting', 'mode'))
+  end
+
   def test_create_site_element_replaces_managed_object_while_preserving_identity_and_parent_context
     old_parent = @model.active_entities.add_group
     target_entity = FakeManagedEntity.new(
@@ -1027,6 +1144,40 @@ class SemanticCommandsTest < Minitest::Test
     assert_equal('refused', result[:outcome])
     assert_equal('hosting', result.dig(:refusal, :details, :section))
     assert_equal(false, build_called)
+  end
+
+  def test_create_site_element_unsupported_hosting_mode_allowed_values_reflect_contextual_matrix
+    commands = SU_MCP::SemanticCommands.new(
+      model: @model,
+      target_resolver: FakeTargetResolver.new(
+        resolution: 'unique',
+        entity: @model.active_entities.add_group
+      )
+    )
+
+    pad_result = commands.create_site_element(sectioned_pad_request(
+                                                'hosting' => {
+                                                  'mode' => 'terrain_anchored',
+                                                  'target' => { 'sourceElementId' => 'terrain-main' }
+                                                }
+                                              ))
+    tree_result = commands.create_site_element(sectioned_tree_proxy_request(
+                                                 'hosting' => {
+                                                   'mode' => 'surface_snap',
+                                                   'target' => { 'sourceElementId' => 'terrain-main' }
+                                                 }
+                                               ))
+    structure_result = commands.create_site_element(sectioned_structure_request(
+                                                      'hosting' => {
+                                                        'mode' => 'surface_snap',
+                                                        'target' => { 'sourceElementId' => 'terrain-main' }
+                                                      }
+                                                    ))
+
+    assert_equal('unsupported_hosting_mode', pad_result.dig(:refusal, :code))
+    assert_equal(['surface_snap'], pad_result.dig(:refusal, :details, :allowedValues))
+    assert_equal(['terrain_anchored'], tree_result.dig(:refusal, :details, :allowedValues))
+    assert_equal(['terrain_anchored'], structure_result.dig(:refusal, :details, :allowedValues))
   end
 
   def test_create_site_element_aborts_and_cleans_up_replacement_when_old_entity_erase_fails

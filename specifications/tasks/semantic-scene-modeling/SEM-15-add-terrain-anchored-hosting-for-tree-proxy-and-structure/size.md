@@ -2,13 +2,13 @@
 
 **Task ID**: SEM-15  
 **Title**: Add Terrain-Anchored Hosting for Tree Proxy and Structure  
-**Status**: challenged  
+**Status**: calibrated
 **Created**: 2026-04-24  
-**Last Updated**: 2026-04-24  
+**Last Updated**: 2026-04-25
 
 **Related Task**: [task.md](./task.md)  
 **Related Plan**: [plan.md](./plan.md)  
-**Related Summary**: none yet  
+**Related Summary**: [summary.md](./summary.md)
 
 ---
 
@@ -140,9 +140,10 @@
 
 | Date | Phase / Checkpoint | Event Type | Severity (1-3) | Dimension Affected | Predictable Earlier? | Notes |
 |---|---|---|---:|---|---|---|
+| 2026-04-25 | Pre-implementation Grok review | validation-scope refinement | 1 | Technical Change Surface / Validation Burden | Yes | Added explicit hosted `replace_preserve_identity` coverage and no-wrapper-created failure assertions before implementation. This refined the queue but did not materially change predicted scores. |
 
 ### Drift Notes
-- No material drift recorded yet.
+- No material score drift recorded; the implementation stayed within the predicted shape.
 <!-- SIZE:DRIFT:END -->
 
 ---
@@ -154,21 +155,23 @@
 
 | Dimension | Score (0-4) | Notes |
 |---|---:|---|
-| Functional Scope | <0-4> | <short note> |
-| Technical Change Surface | <0-4> | <short note> |
-| Actual Implementation Friction | <0-4> | <short note> |
-| Actual Validation Burden | <0-4> | <short note> |
-| Actual Dependency Drag | <0-4> | <short note> |
-| Actual Discovery Encountered | <0-4> | <short note> |
-| Actual Scope Volatility | <0-4> | <short note> |
-| Actual Rework | <0-4> | <short note> |
-| Final Confidence in Completeness | <0-4> | <short note> |
+| Functional Scope | 2 | Delivered one existing hosting mode for two existing families plus hosted replacement parity. |
+| Technical Change Surface | 3 | Touched resolver support, two builders, command matrix/replace context, loader guidance, README, and tests. |
+| Actual Implementation Friction | 2 | Existing sampler/refusal patterns fit well; main friction was tightening no-partial-wrapper ordering and lint shape. |
+| Actual Validation Burden | 3 | Focused unit/command/native/lint checks and live SketchUp verification passed. |
+| Actual Dependency Drag | 1 | No upstream dependency blocked implementation; live SketchUp evidence was supplied at closeout. |
+| Actual Discovery Encountered | 2 | Grok review identified hosted replacement and no-wrapper-created assertions before code changes. |
+| Actual Scope Volatility | 1 | Scope stayed bounded to tree_proxy and structure; no additional terrain families were added. |
+| Actual Rework | 1 | Minor refactoring for lint and clearer resolver keyword naming. |
+| Final Confidence in Completeness | 4 | Automated coverage, review, package verification, and live SketchUp checks all passed. |
 
 ### Actual Signals
-- Not filled yet.
+- Shared single-point resolver worked without adding a new public tool or schema enum.
+- Builder-level sampling before wrapper creation is the cleanest way to satisfy no-partial-geometry behavior in automated tests.
+- Hosted replacement needed explicit command-context parity once terrain anchoring became supported.
 
 ### Actual Notes
-- Not filled yet.
+- Implementation is complete through automated validation, post-implementation review, and live SketchUp checks.
 <!-- SIZE:ACTUAL:END -->
 
 ---
@@ -179,22 +182,35 @@
 > Fill only the sections that are relevant. Say `not applicable` where needed.
 
 ### Automated Validation
-- Not filled yet.
+- Focused semantic/native suite passed:
+  - `bundle exec ruby -Itest -e 'ARGV.each { |path| load path }' test/semantic/terrain_anchor_resolver_test.rb test/semantic/tree_proxy_builder_test.rb test/semantic/structure_builder_test.rb test/semantic/semantic_commands_test.rb test/runtime/native/mcp_runtime_loader_test.rb`
+- Focused RuboCop passed with repo-local cache:
+  - `RUBOCOP_CACHE_ROOT=tmp/.rubocop_cache bundle exec rubocop src/su_mcp/semantic/terrain_anchor_resolver.rb src/su_mcp/semantic/tree_proxy_builder.rb src/su_mcp/semantic/structure_builder.rb src/su_mcp/semantic/semantic_commands.rb src/su_mcp/runtime/native/mcp_runtime_loader.rb test/semantic/terrain_anchor_resolver_test.rb test/semantic/tree_proxy_builder_test.rb test/semantic/structure_builder_test.rb test/semantic/semantic_commands_test.rb test/runtime/native/mcp_runtime_loader_test.rb`
 
 ### Manual Validation
-- Not filled yet.
+- Live SketchUp checks passed:
+  - P1 tree anchored on sloped terrain: lower Z 3.54m matched host sample at (56,76).
+  - P2 structure centroid anchored: lower Z 3.94m matched centroid sample at (57.5,76.5).
+  - N1 unsampleable host refusal: `invalid_hosting_target`.
+  - N2 sample-miss refusal: `terrain_sample_miss`.
+  - N3 unsupported-family refusal: `unsupported_hosting_mode`.
+  - E1 partial footprint with centroid inside: lower Z 4.04m matched centroid sample at (58,76.5).
+  - E2 explicit conflicting tree z: input z=50 was ignored; final lower Z 4.14m matched hosted sample.
+  - E3 host target by `sourceElementId`: source-id host resolved and tree lower Z 3.74m matched sample.
+  - Additional matrix checks passed for persistentId host targeting, missing/stale/ambiguous host refusals, hidden and locked explicit hosts, invalid tree and structure dimensions, invalid structure geometry, missing tree position, and refusal atomicity.
+  - Minor API consistency observation: missing tree `definition.position` refused as `invalid_numeric_value` rather than `missing_required_field`.
 
 ### Performance Validation
-- Not filled yet.
+- No dedicated performance benchmark. Resolver tests verify one prepared sampling context per single terrain anchor resolve.
 
 ### Migration / Compatibility Validation
-- Not filled yet.
+- Public request and response shapes are unchanged. Schema enum is unchanged; contextual hosting matrix and guidance were updated.
 
 ### Operational / Rollout Validation
-- Not filled yet.
+- Package verification passed. Live SketchUp checks passed.
 
 ### Validation Notes
-- Not filled yet.
+- Automated validation, post-implementation Grok-4.20 review, and live SketchUp verification are complete for the changed Ruby surface.
 <!-- SIZE:VALIDATION-EVIDENCE:END -->
 
 ---
@@ -204,14 +220,14 @@
 
 > Filled during final calibration. Compare prediction to actual behavior.
 
-- **Most Underestimated Dimension**: <dimension + why>
-- **Most Overestimated Dimension**: <dimension + why>
-- **Signal Present Early But Underweighted**: <note>
-- **Genuinely Unknowable Factor**: <note or `none identified`>
-- **Future Similar Tasks Should Assume**: <note>
+- **Most Underestimated Dimension**: Hosted lifecycle parity; `replace_preserve_identity` needed explicit hosting-context handling once the matrix expanded.
+- **Most Overestimated Dimension**: Implementation friction; existing sampler/refusal seams kept the code path small.
+- **Signal Present Early But Underweighted**: The public `create_site_element` surface includes lifecycle and hosting together, so hosted replace needed to be considered with hosted create.
+- **Genuinely Unknowable Factor**: Real SketchUp terrain sampling and abort behavior on live terrain was the main unknowable factor; supplied live checks passed representative success, refusal, host-state, target-resolution, geometry, and atomicity cases.
+- **Future Similar Tasks Should Assume**: Any hosting-matrix expansion should include create, replace, unsupported-family, no-partial-wrapper, docs, and loader discoverability checks in the first skeleton pass.
 
 ### Calibration Notes
-- <short note>
+- Actual profile matched the predicted moderate feature / high validation shape. Live SketchUp evidence is now recorded.
 <!-- SIZE:DELTA:END -->
 
 ---
@@ -229,5 +245,5 @@
 - `volatility:medium`
 - `friction:medium`
 - `rework:unknown`
-- `confidence:medium`
+- `confidence:high-pending-live`
 <!-- SIZE:TAGS:END -->

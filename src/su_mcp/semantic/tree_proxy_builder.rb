@@ -2,6 +2,7 @@
 
 require_relative 'planar_geometry_helper'
 require_relative 'scene_properties'
+require_relative 'terrain_anchor_resolver'
 
 module SU_MCP
   module Semantic
@@ -47,12 +48,15 @@ module SU_MCP
         }
       ].freeze
 
-      def initialize(scene_properties: SceneProperties.new)
+      def initialize(scene_properties: SceneProperties.new,
+                     terrain_anchor_resolver: TerrainAnchorResolver.new)
         @scene_properties = scene_properties
+        @terrain_anchor_resolver = terrain_anchor_resolver
       end
 
       def build(model:, params:, destination: nil)
         payload = normalized_payload(params)
+        payload = apply_terrain_anchor(payload, params)
         target_collection = destination || model.active_entities
         wrapper_group = target_collection.add_group
         scene_properties.apply!(model: model, group: wrapper_group, params: params)
@@ -66,7 +70,7 @@ module SU_MCP
 
       private
 
-      attr_reader :scene_properties
+      attr_reader :scene_properties, :terrain_anchor_resolver
 
       def normalized_payload(params)
         payload = params.fetch('definition').dup
@@ -74,6 +78,21 @@ module SU_MCP
         payload['canopyDiameterY'] = canopy_diameter_x unless payload.key?('canopyDiameterY')
         payload['canopyDiameterY'] = canopy_diameter_x if payload['canopyDiameterY'].nil?
         payload
+      end
+
+      def apply_terrain_anchor(payload, params)
+        return payload unless params.dig('hosting', 'mode') == 'terrain_anchored'
+
+        position = payload.fetch('position')
+        # Hosted trees replace caller z with terrain height; caller z is not an offset.
+        sampled_z = terrain_anchor_resolver.resolve(
+          host_target: params.dig('hosting', 'resolved_target'),
+          anchor_xy: [position.fetch('x').to_f, position.fetch('y').to_f],
+          role: 'tree_base'
+        )
+        payload.merge(
+          'position' => position.merge('z' => sampled_z)
+        )
       end
 
       def build_trunk(group:, payload:)

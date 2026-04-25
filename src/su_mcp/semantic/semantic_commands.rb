@@ -23,7 +23,9 @@ module SU_MCP
     SUPPORTED_HOSTING_MODES = {
       'path' => ['surface_drape'],
       'pad' => ['surface_snap'],
-      'retaining_edge' => ['edge_clamp']
+      'retaining_edge' => ['edge_clamp'],
+      'structure' => ['terrain_anchored'],
+      'tree_proxy' => ['terrain_anchored']
     }.freeze
 
     # rubocop:disable Metrics/ParameterLists
@@ -346,6 +348,7 @@ module SU_MCP
       run_v2_operation do
         entity = build_v2_entity(
           params,
+          hosting_entity: replacement_context[:hosting_entity],
           lifecycle_target: previous_entity,
           parent_entity: replacement_context[:parent_entity],
           destination: replacement_context.fetch(:destination)
@@ -358,6 +361,9 @@ module SU_MCP
       replace_target_refusal = replacement_target_refusal(previous_entity)
       return replace_target_refusal if replace_target_refusal
 
+      hosting_entity = resolve_v2_replace_hosting_entity(params)
+      return hosting_entity if refusal_response?(hosting_entity)
+
       parent_entity = resolve_v2_explicit_parent_entity(params)
       return parent_entity if refusal_response?(parent_entity)
 
@@ -367,7 +373,22 @@ module SU_MCP
       )
       return destination if refusal_response?(destination)
 
+      v2_replace_context(hosting_entity, parent_entity, destination)
+    end
+
+    def resolve_v2_replace_hosting_entity(params)
+      hosting_entity = resolve_v2_hosting_entity(params)
+      return hosting_entity if refusal_response?(hosting_entity)
+
+      hosting_refusal = unsupported_hosting_refusal(params)
+      return hosting_refusal if hosting_refusal
+
+      hosting_entity
+    end
+
+    def v2_replace_context(hosting_entity, parent_entity, destination)
       {
+        hosting_entity: hosting_entity,
         parent_entity: parent_entity,
         destination: destination.fetch(:destination)
       }
@@ -384,6 +405,7 @@ module SU_MCP
       )
     end
 
+    # Shared by create and replace so contextual hosting restrictions stay consistent.
     def unsupported_hosting_refusal(params)
       hosting_mode = params.dig('hosting', 'mode').to_s
       return nil if hosting_mode.empty? || hosting_mode == 'none'

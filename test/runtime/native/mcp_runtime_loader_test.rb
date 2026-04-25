@@ -778,6 +778,16 @@ class McpRuntimeLoaderTest < Minitest::Test
                   .fetch(:description),
       'Contextual by elementType'
     )
+    assert_includes(
+      input_schema.fetch(:properties).fetch(:hosting).fetch(:properties).fetch(:mode)
+                  .fetch(:description),
+      'tree_proxy -> terrain_anchored'
+    )
+    assert_includes(
+      input_schema.fetch(:properties).fetch(:hosting).fetch(:properties).fetch(:mode)
+                  .fetch(:description),
+      'structure -> terrain_anchored'
+    )
   end
 
   def test_create_site_element_schema_advertises_canonical_sections_only

@@ -1283,7 +1283,10 @@ module SU_MCP
                   'edge_clamp'
                 ),
                 'Terrain or edge conformity mode. Contextual by elementType; unsupported ' \
-                'requests refuse with allowedValues for the requested element type.'
+                'requests refuse with allowedValues for the requested element type. ' \
+                'Supported hosted pairs include path -> surface_drape, pad -> surface_snap, ' \
+                'retaining_edge -> edge_clamp, tree_proxy -> terrain_anchored, and ' \
+                'structure -> terrain_anchored.'
               ),
               target: target_reference_schema
             },

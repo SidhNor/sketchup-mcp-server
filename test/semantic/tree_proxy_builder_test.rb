@@ -4,10 +4,28 @@
 
 require_relative '../test_helper'
 require_relative '../support/semantic_test_support'
+require_relative '../../src/su_mcp/semantic/builder_refusal'
 require_relative '../../src/su_mcp/semantic/tree_proxy_builder'
 
 class TreeProxyBuilderTest < Minitest::Test
   include SemanticTestSupport
+
+  class FakeTerrainAnchorResolver
+    attr_reader :calls
+
+    def initialize(sample_z: 10.0, refusal: nil)
+      @sample_z = sample_z
+      @refusal = refusal
+      @calls = []
+    end
+
+    def resolve(host_target:, anchor_xy:, role:)
+      @calls << { host_target: host_target, anchor_xy: anchor_xy, role: role }
+      raise @refusal if @refusal
+
+      @sample_z
+    end
+  end
 
   def setup
     @model = build_semantic_model
@@ -141,6 +159,71 @@ class TreeProxyBuilderTest < Minitest::Test
 
     assert_same(group, parent_group.entities.groups.last)
     assert_equal(1, @model.active_entities.groups.length)
+  end
+
+  def test_build_terrain_anchored_tree_uses_sampled_z_without_caller_offset
+    host_target = Object.new
+    anchor_resolver = FakeTerrainAnchorResolver.new(sample_z: 12.25)
+    builder = SU_MCP::Semantic::TreeProxyBuilder.new(terrain_anchor_resolver: anchor_resolver)
+
+    group = builder.build(
+      model: @model,
+      params: {
+        'elementType' => 'tree_proxy',
+        'definition' => {
+          'mode' => 'generated_proxy',
+          'position' => { 'x' => 14.0, 'y' => 37.7, 'z' => 99.0 },
+          'canopyDiameterX' => 6.0,
+          'height' => 5.5,
+          'trunkDiameter' => 0.45
+        },
+        'hosting' => {
+          'mode' => 'terrain_anchored',
+          'resolved_target' => host_target
+        }
+      }
+    )
+
+    proxy_mesh = group.entities.groups.first
+    z_levels = proxy_mesh.entities.faces.flat_map { |face| face.points.map { |point| point[2] } }
+
+    assert_equal([{ host_target: host_target, anchor_xy: [14.0, 37.7], role: 'tree_base' }],
+                 anchor_resolver.calls)
+    assert_in_delta(12.25, z_levels.min, 1e-9)
+    assert_in_delta(17.75, z_levels.max, 1e-9)
+  end
+
+  def test_build_terrain_anchored_tree_refusal_creates_no_wrapper_group
+    refusal = SU_MCP::Semantic::BuilderRefusal.new(
+      code: 'terrain_sample_miss',
+      message: 'Terrain sampling missed.',
+      details: { section: 'hosting', role: 'tree_base' }
+    )
+    builder = SU_MCP::Semantic::TreeProxyBuilder.new(
+      terrain_anchor_resolver: FakeTerrainAnchorResolver.new(refusal: refusal)
+    )
+
+    assert_raises(SU_MCP::Semantic::BuilderRefusal) do
+      builder.build(
+        model: @model,
+        params: {
+          'elementType' => 'tree_proxy',
+          'definition' => {
+            'mode' => 'generated_proxy',
+            'position' => { 'x' => 14.0, 'y' => 37.7, 'z' => 99.0 },
+            'canopyDiameterX' => 6.0,
+            'height' => 5.5,
+            'trunkDiameter' => 0.45
+          },
+          'hosting' => {
+            'mode' => 'terrain_anchored',
+            'resolved_target' => Object.new
+          }
+        }
+      )
+    end
+
+    assert_equal(0, @model.active_entities.groups.length)
   end
 
   private

@@ -2,10 +2,28 @@
 
 require_relative '../test_helper'
 require_relative '../support/semantic_test_support'
+require_relative '../../src/su_mcp/semantic/builder_refusal'
 require_relative '../../src/su_mcp/semantic/structure_builder'
 
 class StructureBuilderTest < Minitest::Test
   include SemanticTestSupport
+
+  class FakeTerrainAnchorResolver
+    attr_reader :calls
+
+    def initialize(sample_z: 8.5, refusal: nil)
+      @sample_z = sample_z
+      @refusal = refusal
+      @calls = []
+    end
+
+    def resolve(host_target:, anchor_xy:, role:)
+      @calls << { host_target: host_target, anchor_xy: anchor_xy, role: role }
+      raise @refusal if @refusal
+
+      @sample_z
+    end
+  end
 
   def setup
     @model = build_semantic_model
@@ -112,4 +130,59 @@ class StructureBuilderTest < Minitest::Test
     assert_equal('Wood', group.material.name)
   end
   # rubocop:enable Metrics/MethodLength
+
+  def test_build_terrain_anchored_structure_uses_centroid_sampled_planar_base
+    host_target = Object.new
+    anchor_resolver = FakeTerrainAnchorResolver.new(sample_z: 8.5)
+    builder = SU_MCP::Semantic::StructureBuilder.new(terrain_anchor_resolver: anchor_resolver)
+
+    group = builder.build(model: @model, params: terrain_anchored_structure_params(host_target))
+
+    assert_equal([{ host_target: host_target, anchor_xy: [2.0, 1.0], role: 'structure_centroid' }],
+                 anchor_resolver.calls)
+    assert_equal([8.5], group.entities.faces.first.points.map { |point| point[2] }.uniq)
+    assert_equal([2.4], group.entities.faces.first.pushpull_calls)
+  end
+
+  def test_build_terrain_anchored_structure_refusal_creates_no_wrapper_group
+    parent_group = @model.active_entities.add_group
+    refusal = SU_MCP::Semantic::BuilderRefusal.new(
+      code: 'invalid_hosting_target',
+      message: 'Hosting target is not sampleable.',
+      details: { section: 'hosting', role: 'structure_centroid' }
+    )
+    builder = SU_MCP::Semantic::StructureBuilder.new(
+      terrain_anchor_resolver: FakeTerrainAnchorResolver.new(refusal: refusal)
+    )
+
+    assert_raises(SU_MCP::Semantic::BuilderRefusal) do
+      builder.build(
+        model: @model,
+        destination: parent_group.entities,
+        params: terrain_anchored_structure_params(Object.new)
+      )
+    end
+
+    assert_equal(1, @model.active_entities.groups.length)
+    assert_empty(parent_group.entities.groups)
+  end
+
+  private
+
+  def terrain_anchored_structure_params(host_target)
+    {
+      'elementType' => 'structure',
+      'definition' => {
+        'mode' => 'footprint_mass',
+        'footprint' => [[0.0, 0.0], [4.0, 0.0], [4.0, 2.0], [0.0, 2.0]],
+        'elevation' => 99.0,
+        'height' => 2.4,
+        'structureCategory' => 'outbuilding'
+      },
+      'hosting' => {
+        'mode' => 'terrain_anchored',
+        'resolved_target' => host_target
+      }
+    }
+  end
 end

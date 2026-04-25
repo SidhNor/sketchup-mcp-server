@@ -1,7 +1,7 @@
 # Task: SEM-15 Add Terrain-Anchored Hosting for Tree Proxy and Structure
 **Task ID**: `SEM-15`
 **Title**: `Add Terrain-Anchored Hosting for Tree Proxy and Structure`
-**Status**: `planned`
+**Status**: `completed`
 **Priority**: `P1`
 **Date**: `2026-04-24`
 

@@ -1,7 +1,7 @@
 # Technical Plan: SEM-15 Add Terrain-Anchored Hosting for Tree Proxy and Structure
 **Task ID**: `SEM-15`
 **Title**: `Add Terrain-Anchored Hosting for Tree Proxy and Structure`
-**Status**: `finalized`
+**Status**: `implemented_pending_live_verification`
 **Date**: `2026-04-24`
 
 ## Source Task
@@ -68,10 +68,10 @@ For `structure`, terrain anchoring replaces `definition.elevation` with one samp
 
 The public API remains `create_site_element`.
 
-Add a small internal semantic helper, tentatively `SU_MCP::Semantic::TerrainAnchorResolver`, with a public entrypoint shaped like:
+Add a small internal semantic helper, `SU_MCP::Semantic::TerrainAnchorResolver`, with a public entrypoint shaped like:
 
 ```ruby
-resolve(host_target:, xy:, role:)
+resolve(host_target:, anchor_xy:, role:)
 ```
 
 The helper should:
@@ -97,6 +97,7 @@ Behavioral contract updates:
   - `tree_proxy => ["terrain_anchored"]`
   - `structure => ["terrain_anchored"]`
 - unsupported-hosting `allowedValues` changes for `tree_proxy` and `structure`
+- `replace_preserve_identity` requests that include supported terrain anchoring resolve and pass the hosting target consistently with `create_new`
 - loader descriptions or examples should make the contextual hosting matrix discoverable
 - README hosting guidance must list the two new supported pairs
 - native contract fixtures and tests should be updated where they assert supported hosting pairs or refusal detail preservation
@@ -197,6 +198,7 @@ Start with command-level failing tests for the supported-hosting matrix and reso
 - Command tests for:
   - `tree_proxy + terrain_anchored` accepted and passed to the builder with `hosting.resolved_target`
   - `structure + terrain_anchored` accepted and passed to the builder with `hosting.resolved_target`
+  - `replace_preserve_identity + terrain_anchored` resolves and passes `hosting.resolved_target`
   - unsupported families still refused with narrowed `allowedValues`
   - missing/unresolved/ambiguous hosting targets still refuse from the existing layers
   - terrain-anchored creation still respects parent destination context
@@ -208,13 +210,13 @@ Start with command-level failing tests for the supported-hosting matrix and reso
 - `TreeProxyBuilder` tests for:
   - hosted mode uses sampled z at tree XY
   - caller `position.z` is not applied as offset
-  - unsampleable/miss failures do not create tree geometry
+  - unsampleable/miss failures do not create wrapper groups or tree geometry
   - unhosted behavior remains unchanged
 - `StructureBuilder` tests for:
   - hosted mode samples the arithmetic-mean footprint centroid
   - all footprint vertices use one sampled base z
   - caller `elevation` is not used after hosted sampling succeeds
-  - unsampleable/miss failures do not create structure geometry
+  - unsampleable/miss failures do not create wrapper groups or structure geometry
   - unhosted behavior remains unchanged
 - Native loader and contract tests for:
   - public guidance around contextual hosting support
@@ -239,6 +241,12 @@ Start with command-level failing tests for the supported-hosting matrix and reso
 7. Run full Ruby test, lint, and package verification.
 8. Run required Grok-backed review, address findings, rerun focused checks.
 9. Run live or hosted SketchUp verification and record outcomes.
+
+### Implementation Notes
+
+- Grok-4.20 pre-implementation review added explicit hosted-replace coverage and stronger no-wrapper-created failure assertions to the queue.
+- The delivered resolver uses `anchor_xy` for clarity and prepares the surface sampling context once per terrain-anchor resolve.
+- Terrain anchoring is performed before wrapper group creation in both builders, so builder-owned sampling refusals do not leave partial wrapper groups in the fake test harness.
 
 ## Rollout Approach
 
