@@ -1,7 +1,7 @@
 # Task: MTA-02 Build Terrain State And Storage Foundation
 **Task ID**: `MTA-02`
 **Title**: `Build Terrain State And Storage Foundation`
-**Status**: `draft`
+**Status**: `completed`
 **Priority**: `P0`
 **Date**: `2026-04-24`
 
@@ -13,11 +13,11 @@
 
 Managed terrain authoring depends on a materialized terrain state that can be loaded, edited, validated, and regenerated without treating live SketchUp TIN geometry as the source of truth. The current runtime has Managed Scene Object metadata in the `su_mcp` dictionary and terrain sampling capabilities, but it has no terrain-specific state model or storage seam.
 
-This task creates the terrain state and storage foundation without adding adoption, edit tools, or generated mesh output. It should prove that terrain state can exist as SketchUp-free Ruby domain data, that payload storage is separate from lightweight `su_mcp` identity metadata, and that storage failures are explicit.
+This task creates the terrain state and storage foundation without adding adoption, edit tools, or generated mesh output. It should prove that heightmap-based terrain state can exist as SketchUp-free Ruby domain data, that payload storage is separate from lightweight `su_mcp` identity metadata, and that storage failures are explicit.
 
 ## Goals
 
-- define a SketchUp-free materialized terrain state suitable for later adoption and edit tasks
+- define a SketchUp-free heightmap/grid terrain state suitable for later adoption and edit tasks
 - establish owner-local coordinate semantics for terrain state
 - create a terrain repository seam and storage adapter contract
 - store terrain payloads in a terrain-specific namespace outside the existing `su_mcp` metadata dictionary
@@ -28,7 +28,7 @@ This task creates the terrain state and storage foundation without adding adopti
 ```gherkin
 Scenario: terrain state is independent of SketchUp entities
   Given a terrain state is created in isolated Ruby tests
-  When its extents, owner-local basis, grid or sample topology, elevations, and revision data are inspected
+  When its extents, owner-local basis, grid topology, elevations, and revision data are inspected
   Then the state can be represented without raw SketchUp objects
   And it can be serialized into JSON-safe or storage-safe primitives
 
@@ -36,7 +36,7 @@ Scenario: terrain payload storage is separate from su_mcp metadata
   Given a stable terrain owner test double or host-backed entity supports attributes
   When terrain state is saved through the terrain repository seam
   Then lightweight identity metadata remains in `su_mcp`
-  And the heightmap or equivalent terrain payload is stored in a terrain-specific namespace
+  And the heightmap terrain payload is stored in a terrain-specific namespace
   And raw terrain payload data is not written into the `su_mcp` dictionary
 
 Scenario: stored terrain state round trips through the repository
@@ -87,7 +87,7 @@ Scenario: unsupported or corrupt stored state refuses explicitly
 
 ## Related Technical Plan
 
-- none yet
+- [Technical implementation plan](./plan.md)
 
 ## Success Metrics
 
