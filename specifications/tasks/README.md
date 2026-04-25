@@ -20,6 +20,7 @@ Tasks are organized by scope area. Each task should:
 - [Scene Targeting and Interrogation Tasks](scene-targeting-and-interrogation/README.md)
 - [Semantic Scene Modeling Tasks](semantic-scene-modeling/README.md)
 - [Scene Validation and Review Tasks](scene-validation-and-review/README.md)
+- [Staged Asset Reuse Tasks](staged-asset-reuse/README.md)
 
 ## Relationship to Other Specifications
 
