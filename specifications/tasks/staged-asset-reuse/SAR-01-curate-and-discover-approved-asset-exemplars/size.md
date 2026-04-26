@@ -2,13 +2,13 @@
 
 **Task ID**: `SAR-01`  
 **Title**: `Curate And Discover Approved Asset Exemplars`  
-**Status**: `challenged`  
+**Status**: `calibrated`  
 **Created**: `2026-04-25`  
 **Last Updated**: `2026-04-26`  
 
 **Related Task**: [task.md](./task.md)  
 **Related Plan**: [plan.md](./plan.md)  
-**Related Summary**: none yet  
+**Related Summary**: [summary.md](./summary.md)  
 
 ---
 
@@ -166,7 +166,28 @@ No material drift recorded yet.
 
 > Filled at the end of implementation. Do not overwrite predicted values.
 
-Not filled yet.
+| Dimension | Score (0-4) | Notes |
+|---|---:|---|
+| Functional Scope | 3 | Delivered the planned first staged-asset workflow: public curation, approved-only discovery, metadata-only staging, finite option refusals, and exemplar predicate support for later guardrails. Instantiation, replacement, locking, import, ranking, and versioning stayed out of scope. |
+| Technical Change Surface | 3 | Touched new staged-asset metadata/query/serializer/command classes, scene-query managed-object classification, runtime dispatcher/factory/loader catalog, native contract fixtures, README, task docs, and focused test support. |
+| Actual Implementation Friction | 3 | Implementation followed the planned layered route, but live SketchUp exposed a real hidden storage mismatch: Ruby hash `assetAttributes` did not survive entity-attribute persistence and broke discovery until JSON-backed storage/read normalization was added. |
+| Actual Validation Burden | 4 | Required focused TDD skeletons, full Ruby tests, lint, package verification, public schema/fixture checks, Grok-4.20 review, initial live MCP smoke, live defect diagnosis, post-fix CI, and post-fix live rerun for curation/list/filter/side-effect behavior. |
+| Actual Dependency Drag | 2 | Work depended on existing target resolution, model traversal, serializer, runtime catalog, response envelopes, and external live SketchUp verification, but no upstream code dependency blocked completion. |
+| Actual Discovery Encountered | 3 | The main discovery was host-specific attribute persistence: local doubles accepted hash attributes, while live SketchUp did not. Component-instance verification and simplified user-led smoke guidance also refined the final validation posture. |
+| Actual Scope Volatility | 1 | Scope stayed within SAR-01. The live fix changed storage representation for asset attributes but did not add tags/layers, physical staging, unapproved listing, locking, instantiation, or guardrail enforcement. |
+| Actual Rework | 2 | Rework was targeted but real: the metadata storage/read path and regression tests were changed after live smoke, then focused tests, lint, full Ruby tests, CI, and live rerun were repeated. No broad public contract or architecture redesign was needed. |
+| Final Confidence in Completeness | 4 | Confidence is high after automated validation, Grok-4.20 review, live MCP smoke finding, targeted fix, full CI, and post-fix live pass for group and component curation, listing, filters, refusals, managed-object isolation, and no side effects. |
+
+### Actual Signals
+
+- `curate_staged_asset` and `list_staged_assets` shipped together through runtime command, dispatcher, factory, loader schema, native fixture, README, and tests.
+- `SceneQuerySerializer` now keeps Asset Exemplars with `sourceElementId` out of Managed Scene Object classification while preserving targetability.
+- Live smoke found that curation metadata was written but discovery skipped curated assets because `assetAttributes` was not SketchUp-safe when stored as a Ruby hash.
+- Post-fix live smoke proved approved-only listing, category/tag filters, attribute filters, uncurated exclusion, group and component handling, and no geometry side effects.
+
+### Actual Notes
+
+- The prediction was accurate that validation would dominate. The implementation friction was not geometry-related; it came from host persistence semantics for metadata.
 <!-- SIZE:ACTUAL:END -->
 
 ---
@@ -174,7 +195,35 @@ Not filled yet.
 <!-- SIZE:VALIDATION-EVIDENCE:START -->
 ## Validation Evidence Summary
 
-Not filled yet.
+> Fill only the sections that are relevant. Say `not applicable` where needed.
+
+### Automated Validation
+- Focused staged-asset regression set after the live fix: `23 runs, 61 assertions, 0 failures, 0 errors, 0 skips`.
+- `bundle exec rake ruby:test`: `692 runs, 3205 assertions, 0 failures, 0 errors, 35 skips`.
+- `bundle exec rake ruby:lint`: `185 files inspected, no offenses`.
+- `bundle exec rake ci`: passed, including lint, Ruby tests, and package verification; package output `dist/su_mcp-0.22.0.rbz`.
+- Runtime and contract tests cover staged-asset command behavior, metadata predicates, serializer output, query filtering, dispatcher/factory wiring, loader catalog/schema annotations, native contract fixtures, and scene-query managed-object isolation.
+- `mcp__pal__.codereview` with `grok-4.20`: completed. Final review reported no required fixes; earlier sequencing concerns were incorporated before closeout.
+
+### Manual Validation
+- Live MCP smoke ran against `TestGround.skp`.
+- Initial live pass confirmed tool discovery, target lookup, group/component curation success, refusal handling, managed-object isolation, and no geometry side effects, but found `list_staged_assets` returning zero after curation.
+- Post-fix live rerun passed on the same existing assets: group and component curation preserved attributes, approved-only listing returned `count: 2`, category/tag filters returned the intended single asset, attribute filters returned the intended single asset, and an uncurated tag filter returned zero.
+- Side-effect checks stayed clean: same persistent IDs, same bounds, same `Layer0`, unlocked, visible, model-root parent, and no move/reparent/tag/layer/lock/delete/duplicate behavior.
+
+### Performance Validation
+- Not applicable; SAR-01 discovery uses capped scene traversal and no performance benchmark was required or recorded.
+
+### Migration / Compatibility Validation
+- Package verification passed after the staged-asset classes were arranged so native loader package load does not require SketchUp-only query/serializer classes.
+- `assetAttributes` storage changed to JSON text for SketchUp attribute compatibility while public responses still expose decoded JSON-safe hashes.
+
+### Operational / Rollout Validation
+- Public docs and live guide were updated for metadata-only staging, finite option sets, user-named asset workflow, and the compact live verification matrix.
+- SAR-02/SAR-03 consumers can rely on the approved-exemplar predicate and metadata contract; SAR-03 should reuse the predicate rather than duplicate it.
+
+### Validation Notes
+- The host validation gap was closed after the live discovery blocker was fixed and retested.
 <!-- SIZE:VALIDATION-EVIDENCE:END -->
 
 ---
@@ -182,7 +231,18 @@ Not filled yet.
 <!-- SIZE:DELTA:START -->
 ## Estimation Delta Review
 
-Not filled yet.
+- **Most Underestimated Dimension**: Discovery / ambiguity. The plan anticipated host-sensitive behavior, but the specific SketchUp attribute-persistence mismatch for Ruby hashes was only exposed by live MCP smoke after local tests and review were green.
+- **Most Overestimated Dimension**: Scope volatility. The task did not expand into physical staging, locking, unapproved discovery, definition-level policy, import, or instantiation despite live issues and guide simplification.
+- **Signal Present Early But Underweighted**: Metadata-backed staging depends on SketchUp attribute dictionary semantics, not only Ruby-side JSON safety. Future metadata-backed tasks should test live persistence of every non-scalar stored value early.
+- **Genuinely Unknowable Factor**: Whether live SketchUp would preserve `Hash` values in entity attributes as local doubles did was not proven until hosted validation. The consequence was severe for discovery because completeness checks depended on the stored field.
+- **Dominant Actual Failure Mode**: Local doubles were too permissive around SketchUp attribute storage, allowing the query/listing path to look complete while live persisted metadata made every curated asset undiscoverable.
+- **Future Similar Tasks Should Assume**: Public metadata-backed tool slices need one live round trip that writes metadata, reads it through the normal query path, filters on it, and confirms no side effects before final closeout. Store structured metadata in SketchUp-safe scalar form, usually JSON text, unless live evidence proves otherwise.
+
+### Calibration Notes
+
+- Prediction was accurate on functional scope, technical surface, dependency drag, and high validation burden.
+- Actual implementation friction and rework were driven by host persistence, not target resolution or component definition semantics.
+- The final confidence is higher than the challenged estimate because the live blocker was reproduced, fixed, covered by regression tests, and validated through post-fix live smoke.
 <!-- SIZE:DELTA:END -->
 
 ---

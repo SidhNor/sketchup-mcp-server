@@ -1,7 +1,7 @@
 # Technical Plan: SAR-01 Curate And Discover Approved Asset Exemplars
 **Task ID**: `SAR-01`
 **Title**: `Curate And Discover Approved Asset Exemplars`
-**Status**: `finalized`
+**Status**: `implemented`
 **Date**: `2026-04-26`
 
 ## Source Task
@@ -501,3 +501,11 @@ Status: PASS
 - [x] Small reversible phases defined
 - [x] Premortem completed with falsifiable failure paths and mitigations
 - [x] Planning-stage size estimate considered before premortem finalization
+
+## Implementation Closeout
+
+- Implemented `curate_staged_asset` and `list_staged_assets` as the SAR-01 public MCP surface.
+- Kept staging metadata-only: no move, wrap, reparent, tag, layer, lock, duplicate, delete, or source-geometry mutation.
+- Stored structured `assetAttributes` as JSON text in the SketchUp attribute dictionary and decoded it on read so live SketchUp persistence supports discovery and filtering.
+- Validated through focused staged-asset tests, full Ruby tests, lint, package verification, Grok-4.20 review, and post-fix live MCP smoke in `TestGround.skp`.
+- Recorded final evidence in [summary.md](./summary.md) and calibrated actual size in [size.md](./size.md).

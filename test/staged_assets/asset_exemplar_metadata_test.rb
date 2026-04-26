@@ -68,6 +68,39 @@ class AssetExemplarMetadataTest < Minitest::Test
     )
   end
 
+  def test_apply_curation_stores_asset_attributes_as_json_and_reads_them_as_hash
+    entity = build_asset_group(attributes: {})
+    prepared = @metadata.prepare_curation(
+      entity,
+      metadata: {
+        'sourceElementId' => 'asset-tree-oak-001',
+        'category' => 'tree',
+        'displayName' => 'Oak Tree Exemplar',
+        'attributes' => { 'species' => 'oak' }
+      },
+      approval: { 'state' => 'approved' },
+      staging: { 'mode' => 'metadata_only' }
+    )
+
+    @metadata.apply_prepared_curation(entity, prepared)
+
+    assert_equal('{"species":"oak"}', entity.get_attribute('su_mcp', 'assetAttributes'))
+    assert_equal({ 'species' => 'oak' }, @metadata.attributes_for(entity)['assetAttributes'])
+    assert_equal(true, @metadata.approved_exemplar?(entity))
+  end
+
+  def test_approves_exemplar_with_empty_tags_and_asset_attributes
+    entity = build_asset_group(
+      attributes: approved_exemplar_attributes(
+        'assetTags' => [],
+        'assetAttributes' => '{}'
+      )
+    )
+
+    assert_equal(true, @metadata.approved_exemplar?(entity))
+    assert_equal({}, @metadata.attributes_for(entity)['assetAttributes'])
+  end
+
   def test_unsupported_finite_options_return_field_value_and_allowed_values
     entity = build_asset_group(attributes: {})
 

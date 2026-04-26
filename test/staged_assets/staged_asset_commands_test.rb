@@ -36,6 +36,25 @@ class StagedAssetCommandsTest < Minitest::Test
     assert_equal(['asset-tree-oak-001'], source_element_ids(listed))
   end
 
+  def test_curates_and_lists_asset_without_optional_tags_or_attributes
+    result = @commands.curate_staged_asset(
+      curation_request.merge(
+        'metadata' => {
+          'sourceElementId' => 'asset-minimal-001',
+          'category' => 'fixture',
+          'displayName' => 'Minimal Exemplar'
+        }
+      )
+    )
+
+    assert_equal(true, result.fetch(:success))
+    assert_equal('curated', result.fetch(:outcome))
+
+    listed = @commands.list_staged_assets('filters' => { 'category' => 'fixture' })
+    assert_equal(['asset-minimal-001'], source_element_ids(listed))
+    assert_equal({}, listed.fetch(:assets).first.dig(:metadata, :attributes))
+  end
+
   def test_refused_curation_with_missing_metadata_writes_no_partial_exemplar_attributes
     result = @commands.curate_staged_asset(
       curation_request.merge('metadata' => { 'sourceElementId' => 'asset-tree-oak-001' })

@@ -51,6 +51,21 @@ class AssetExemplarQueryTest < Minitest::Test
     assert_equal(['asset-tree-oak-001'], source_element_ids(result))
   end
 
+  def test_filters_against_json_encoded_asset_attributes_from_sketchup_storage
+    oak = build_asset_group(
+      attributes: approved_exemplar_attributes(
+        'assetAttributes' => '{"species":"oak","detailLevel":"high"}'
+      )
+    )
+    Sketchup.active_model_override = staged_asset_model(oak)
+
+    result = SU_MCP::StagedAssets::AssetExemplarQuery.new.list(
+      'filters' => { 'attributes' => { 'species' => 'oak' } }
+    )
+
+    assert_equal(['asset-tree-oak-001'], source_element_ids(result))
+  end
+
   def test_component_instance_metadata_is_instance_level_and_definition_children_are_not_returned
     definition_child = build_asset_group(
       entity_id: 812,

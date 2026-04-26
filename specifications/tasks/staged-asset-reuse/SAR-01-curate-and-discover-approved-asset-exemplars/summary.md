@@ -51,21 +51,40 @@
 
 ## Live SketchUp Validation
 
-- Live or hosted SketchUp smoke validation was not run in this terminal environment because no SketchUp host was available.
-- Automated coverage uses SketchUp API doubles and package/load verification, so the remaining gap is an end-to-end host check that curates a real group/component instance through the public MCP runtime and lists it back with the expected summary.
+- Live smoke was run externally against `TestGround.skp`.
+- Passing live areas:
+  - runtime reachable and `ping` passed
+  - `tools/list` exposed `curate_staged_asset` and `list_staged_assets`
+  - a controlled group fixture resolved uniquely by name
+  - group and component curation returned `outcome: "curated"`
+  - unsupported approval state refused with `unsupported_approval_state`
+  - unsupported staging mode refused with `unsupported_staging_mode`
+  - missing required metadata refused with `missing_required_metadata`
+  - curation did not visibly move, reparent, tag, layer, lock, delete, duplicate, or otherwise mutate source geometry
+  - curated exemplars were findable with `metadata.managedSceneObject: false`
+- Live blocker found: `list_staged_assets` returned `count: 0` after successful curation for both group and component cases.
+- Root cause: `assetAttributes` was written as a Ruby hash, which live SketchUp entity attributes did not preserve as a hash. Because `assetAttributes` is part of the complete exemplar predicate, live curated assets were treated as incomplete and skipped by discovery.
+- Fix applied: `assetAttributes` is now stored as JSON text in the SketchUp attribute dictionary, decoded back to a hash on read, and an empty attributes object is accepted as complete metadata.
+- Post-fix live rerun passed against the same existing assets:
+  - `SAR Tree Oak Group Fixture` group curated with `outcome: "curated"`, `stagingMode: "metadata_only"`, and preserved attributes
+  - `SAR Bench Wood` component instance curated with `outcome: "curated"`, `stagingMode: "metadata_only"`, and preserved attributes
+  - approved-only `list_staged_assets` returned `count: 2`
+  - `category: vegetation` with tags `sar01` / `oak` returned only the group
+  - `category: furniture` with tags `sar01` / `bench` returned only the component instance
+  - attribute filter `species: oak`, `fixture: group` returned only the group
+  - attribute filter `material: wood`, `fixture: component` returned only the component instance
+  - uncurated tag filter returned `count: 0`
+  - side-effect check stayed clean: same persistent IDs, same bounds, same `Layer0`, unlocked, visible, still parented at model root, with no move/reparent/tag/layer/lock/delete/duplicate effect observed
+- Added [live-mcp-verification.md](./live-mcp-verification.md) with the live MCP client matrix, request examples, human SketchUp checklist, pass/fail rules, and evidence template for that remaining host check.
 
 ## Remaining Follow-Up
 
-- Run a live SketchUp public-client smoke when a host is available:
-  - curate a representative group
-  - curate a representative component instance
-  - list approved exemplars through MCP
-  - confirm no partial metadata after a refused curation
-  - confirm scene inspection does not classify the exemplar as a Managed Scene Object
 - SAR-02 can consume the approved exemplar metadata contract for editable instance placement.
 - SAR-03 should reuse `AssetExemplarMetadata.approved_exemplar?` for mutation guardrails rather than duplicating the predicate.
 
 ## Task Metadata Updates
 
-- This summary records the shipped SAR-01 implementation, public contract changes, validation evidence, Grok review disposition, and remaining hosted verification gap.
-- `task.md`, `plan.md`, and `size.md` still need closeout/status calibration after this summary-first step.
+- Updated [task.md](./task.md) status to `completed`.
+- Updated [plan.md](./plan.md) status to `implemented` and recorded implementation closeout notes.
+- Updated [size.md](./size.md) status to `calibrated` with actual profile, validation evidence, and estimation delta.
+- This summary records the shipped SAR-01 implementation, public contract changes, validation evidence, Grok review disposition, live smoke defect/fix, and post-fix live pass.

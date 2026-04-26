@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require 'json'
+
 module SU_MCP
   module StagedAssets
     # Owns the Asset Exemplar metadata contract for staged-asset reuse.
@@ -24,7 +26,9 @@ module SU_MCP
 
       def approved_exemplar?(entity)
         attributes = attributes_for(entity)
-        return false unless REQUIRED_ATTRIBUTE_KEYS.all? { |key| present?(attributes[key]) }
+        return false unless REQUIRED_ATTRIBUTE_KEYS.all? do |key|
+          required_attribute_present?(attributes, key)
+        end
 
         attributes['assetExemplar'] == true &&
           attributes['assetExemplarSchemaVersion'] == SCHEMA_VERSION &&
@@ -34,6 +38,11 @@ module SU_MCP
       end
 
       def attributes_for(entity)
+        attributes = dictionary_attributes(entity)
+        normalize_stored_attributes(attributes)
+      end
+
+      def dictionary_attributes(entity)
         return entity.attributes.fetch(DICTIONARY, {}).dup if entity.respond_to?(:attributes)
 
         if entity.respond_to?(:attribute_dictionary)
@@ -70,7 +79,7 @@ module SU_MCP
 
       def apply_prepared_curation(entity, prepared_curation)
         prepared_curation.fetch(:attributes).each do |key, value|
-          entity.set_attribute(DICTIONARY, key, value)
+          entity.set_attribute(DICTIONARY, key, stored_attribute_value(key, value))
         end
 
         { outcome: 'curated' }
@@ -212,6 +221,31 @@ module SU_MCP
         values.filter_map { |value| normalize_json_value(value) }
       end
 
+      def normalize_stored_attributes(attributes)
+        attributes = attributes.dup
+        if attributes.key?('assetAttributes')
+          attributes['assetAttributes'] = parsed_asset_attributes(attributes['assetAttributes'])
+        end
+        attributes
+      end
+
+      def parsed_asset_attributes(value)
+        return value if value.is_a?(Hash)
+        return nil if value.nil?
+        return {} unless value.is_a?(String)
+
+        parsed = JSON.parse(value)
+        parsed.is_a?(Hash) ? parsed : {}
+      rescue JSON::ParserError
+        {}
+      end
+
+      def stored_attribute_value(key, value)
+        return JSON.generate(value) if key == 'assetAttributes'
+
+        value
+      end
+
       def scalar_json_value?(value)
         value.is_a?(String) ||
           value.is_a?(Numeric) ||
@@ -228,6 +262,13 @@ module SU_MCP
         return !value.empty? if value.respond_to?(:empty?)
 
         true
+      end
+
+      def required_attribute_present?(attributes, key)
+        return attributes.key?(key) && !attributes[key].nil? if key == 'assetAttributes'
+        return attributes.key?(key) && !attributes[key].nil? if key == 'assetTags'
+
+        present?(attributes[key])
       end
     end
     # rubocop:enable Metrics/ClassLength
