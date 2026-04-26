@@ -119,15 +119,15 @@ The hierarchy-maintenance surface is intentionally narrow: `create_group` create
 `find_entities` is an exact-match targeting tool that now requires `targetSelector` with nested `identity`, `attributes`, and `metadata` sections.
 `sample_surface_z` is an explicit-host surface interrogation tool. It requires `target` plus a canonical `sampling` object: use `sampling.type: "points"` with `sampling.points` for XY point batches, or `sampling.type: "profile"` with `sampling.path` plus exactly one of `sampleCount` or `intervalMeters` for ordered profile evidence. It returns structured hit, miss, or ambiguous sample results; overlapping host surfaces with multiple surviving z-clusters are reported as `ambiguous`. It does not perform broad scene probing or terrain validation.
 `create_terrain_surface` creates or adopts a repository-backed Managed Terrain Surface. Use it for managed terrain state and owned derived terrain mesh output, not for semantic hardscape or general site-element creation. Create mode requires `lifecycle.mode: "create"` plus `definition.kind: "heightmap_grid"` and a simple `definition.grid`; adopt mode requires `lifecycle.mode: "adopt"` plus `lifecycle.target` using the compact target-reference shape. Runtime refusals echo finite choices such as `lifecycle.mode` and `definition.kind` through `allowedValues`, and adoption refuses caller `definition` or `placement` in this slice.
-`edit_terrain_surface` applies bounded edits to an existing Managed Terrain Surface. It requires `targetReference`, `operation.mode`, and `region.type`. `operation.mode: "target_height"` pairs with `region.type: "rectangle"` and requires `operation.targetElevation`; rectangle bounds use terrain-state meter fields `minX`, `minY`, `maxX`, and `maxY`. `operation.mode: "corridor_transition"` pairs with `region.type: "corridor"` and requires `startControl`, `endControl`, `width`, and optional `sideBlend`. Corridor `width` is the full-weight center corridor width in meters, while `sideBlend.distance` is an additional lateral shoulder distance on each side in meters. `operation.mode: "local_fairing"` pairs with `region.type: "rectangle"` and requires `operation.strength` and `operation.neighborhoodRadiusSamples`, with optional `operation.iterations`. Local fairing applies bounded neighborhood-average terrain fairing over stored heightmap state and reports `mean_absolute_neighborhood_residual` before/after evidence. Optional rectangle `region.blend.falloff` supports `none`, `linear`, and `smooth`; corridor `region.sideBlend.falloff` supports `none` and `cosine`, with positive side-blend distance requiring `cosine`. Optional `constraints.fixedControls` and rectangle `constraints.preserveZones` protect existing grades, and unsupported options refuse with `field`, `value`, and `allowedValues`. Edits mutate stored heightmap state, increment the terrain revision, and regenerate disposable derived mesh output; the runtime may replace only safely owned affected output faces and falls back to full derived-mesh regeneration when ownership cannot be proven. Unexpected child content under the terrain owner refuses before deletion.
+`edit_terrain_surface` applies bounded edits to an existing Managed Terrain Surface. It requires `targetReference`, `operation.mode`, and `region.type`. `operation.mode: "target_height"` pairs with `region.type: "rectangle"` or `"circle"` and requires `operation.targetElevation`; rectangle bounds use terrain-state meter fields `minX`, `minY`, `maxX`, and `maxY`, while circles use `center.x`, `center.y`, and `radius`. `operation.mode: "corridor_transition"` pairs with `region.type: "corridor"` and requires `startControl`, `endControl`, `width`, and optional `sideBlend`. Corridor `width` is the full-weight center corridor width in meters, while `sideBlend.distance` is an additional lateral shoulder distance on each side in meters. `operation.mode: "local_fairing"` pairs with `region.type: "rectangle"` or `"circle"` and requires `operation.strength` and `operation.neighborhoodRadiusSamples`, with optional `operation.iterations`. Local fairing applies bounded neighborhood-average terrain fairing over stored heightmap state and reports `mean_absolute_neighborhood_residual` before/after evidence. Optional local-area `region.blend.falloff` supports `none`, `linear`, and `smooth`; corridor `region.sideBlend.falloff` supports `none` and `cosine`, with positive side-blend distance requiring `cosine`. Optional `constraints.fixedControls` and rectangle or circle `constraints.preserveZones` protect existing grades for `target_height` and `local_fairing`; `corridor_transition` supports rectangle preserve zones only. Unsupported options refuse with `field`, `value`, and `allowedValues`. Edits mutate stored heightmap state, increment the terrain revision, and regenerate disposable derived mesh output; the runtime may replace only safely owned affected output faces and falls back to full derived-mesh regeneration when ownership cannot be proven. Unexpected child content under the terrain owner refuses before deletion.
 `curate_staged_asset` marks an existing in-model group or component instance as an approved Asset Exemplar by writing metadata in the `su_mcp` dictionary. It uses compact `targetReference` resolution, requires `metadata.sourceElementId`, `metadata.category`, `metadata.displayName`, `approval.state: "approved"`, and `staging.mode: "metadata_only"`, and returns one JSON-safe `asset` summary. SAR-01 curation is metadata-only: it does not import, move, reparent, tag, layer, lock, duplicate, delete, or otherwise mutate source geometry.
 `list_staged_assets` discovers approved complete Asset Exemplars. It supports `filters.category`, `filters.tags`, `filters.attributes`, `filters.approvalState: "approved"`, and `outputOptions.limit` plus `outputOptions.includeBounds`. The default limit is 25 and the maximum returned count is capped at 100. SAR-01 refuses unapproved discovery overrides and returns finite-option refusals with `field`, `value`, and `allowedValues`.
 
 | `operation.mode` | Supported `region.type` | Required operation fields | Required region fields |
 | --- | --- | --- | --- |
-| `target_height` | `rectangle` | `targetElevation` | `bounds` |
+| `target_height` | `rectangle`, `circle` | `targetElevation` | `bounds` for rectangle; `center`, `radius` for circle |
 | `corridor_transition` | `corridor` | none beyond `mode` | `startControl`, `endControl`, `width` |
-| `local_fairing` | `rectangle` | `strength`, `neighborhoodRadiusSamples` | `bounds` |
+| `local_fairing` | `rectangle`, `circle` | `strength`, `neighborhoodRadiusSamples` | `bounds` for rectangle; `center`, `radius` for circle |
 All public terrain coordinates and elevations are meters. In create mode, `placement.origin` is a world-space meter point, while `definition.grid.origin`, `definition.grid.spacing`, and `definition.grid.baseElevation` are terrain-state meter values used to build the persisted terrain state and derived mesh. In adopt mode, terrain state origin is derived from the sampled source bounds, so edit regions and fixed-control points should be expressed in the stored terrain state's XY frame rather than assumed to start at zero.
 
 ```json
@@ -222,6 +222,34 @@ All public terrain coordinates and elevations are meters. In create mode, `place
     ]
   },
   "outputOptions": { "includeSampleEvidence": false, "sampleEvidenceLimit": 20 }
+}
+```
+
+```json
+{
+  "targetReference": { "sourceElementId": "terrain-main" },
+  "operation": {
+    "mode": "target_height",
+    "targetElevation": 1.1
+  },
+  "region": {
+    "type": "circle",
+    "center": { "x": 5.0, "y": 4.0 },
+    "radius": 2.0,
+    "blend": { "distance": 1.0, "falloff": "smooth" }
+  },
+  "constraints": {
+    "fixedControls": [],
+    "preserveZones": [
+      {
+        "id": "tree-root-zone",
+        "type": "circle",
+        "center": { "x": 5.0, "y": 4.0 },
+        "radius": 0.75
+      }
+    ]
+  },
+  "outputOptions": { "includeSampleEvidence": true, "sampleEvidenceLimit": 8 }
 }
 ```
 

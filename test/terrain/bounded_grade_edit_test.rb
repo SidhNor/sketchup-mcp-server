@@ -5,7 +5,7 @@ require_relative '../../src/su_mcp/terrain/bounded_grade_edit'
 require_relative '../../src/su_mcp/terrain/heightmap_state'
 require_relative '../../src/su_mcp/terrain/sample_window'
 
-class BoundedGradeEditTest < Minitest::Test
+class BoundedGradeEditTest < Minitest::Test # rubocop:disable Metrics/ClassLength
   def test_target_height_changes_only_samples_inside_hard_rectangle
     result = apply_edit(
       region: rectangle_region(min: [1.0, 1.0], max: [2.0, 2.0]),
@@ -53,6 +53,36 @@ class BoundedGradeEditTest < Minitest::Test
     smooth_weight = linear_weight * linear_weight * (3.0 - (2.0 * linear_weight))
     expected = 1.0 + ((9.0 - 1.0) * smooth_weight)
     assert_in_delta(expected, elevation_at(result.fetch(:state), 0, 1), 1e-9)
+  end
+
+  def test_rectangle_outer_blend_boundary_remains_zero_weight
+    # Locks the shared helper's exact outer-boundary behavior for rectangle parity.
+    result = apply_edit(
+      region: rectangle_region(
+        min: [1.0, 1.0],
+        max: [1.0, 1.0],
+        blend: { 'distance' => 1.0, 'falloff' => 'linear' }
+      ),
+      operation: target_height_operation(9.0)
+    )
+
+    assert_equal(1.0, elevation_at(result.fetch(:state), 0, 1))
+  end
+
+  def test_target_height_changes_samples_inside_circle_and_blend_only
+    result = apply_edit(
+      region: circle_region(
+        center: { 'x' => 1.0, 'y' => 1.0 },
+        radius: 0.5,
+        blend: { 'distance' => 1.0, 'falloff' => 'linear' }
+      ),
+      operation: target_height_operation(9.0)
+    )
+
+    assert_in_delta(9.0, elevation_at(result.fetch(:state), 1, 1), 1e-9)
+    assert_in_delta(5.0, elevation_at(result.fetch(:state), 2, 1), 1e-9)
+    assert_equal(1.0, elevation_at(result.fetch(:state), 3, 1))
+    assert_equal(1.0, elevation_at(result.fetch(:state), 3, 3))
   end
 
   def test_fixed_control_prediction_uses_edge_stencil_bilinear_interpolation
@@ -122,6 +152,21 @@ class BoundedGradeEditTest < Minitest::Test
     assert_operator(result.dig(:diagnostics, :preserveZones, :protectedSampleCount), :>=, 4)
   end
 
+  def test_circle_preserve_zone_protects_target_height_samples
+    result = apply_edit(
+      region: circle_region(center: { 'x' => 1.0, 'y' => 1.0 }, radius: 1.5),
+      operation: target_height_operation(9.0),
+      constraints: {
+        'preserveZones' => [
+          { 'type' => 'circle', 'center' => { 'x' => 1.0, 'y' => 1.0 }, 'radius' => 0.1 }
+        ]
+      }
+    )
+
+    assert_equal(1.0, elevation_at(result.fetch(:state), 1, 1))
+    assert_operator(result.dig(:diagnostics, :preserveZones, :protectedSampleCount), :>, 0)
+  end
+
   def test_changed_region_matches_shared_sample_window_summary
     result = apply_edit(
       region: rectangle_region(min: [1.0, 1.0], max: [2.0, 2.0]),
@@ -175,6 +220,15 @@ class BoundedGradeEditTest < Minitest::Test
     {
       'type' => 'rectangle',
       'bounds' => rectangle_bounds(min: min, max: max),
+      'blend' => blend
+    }
+  end
+
+  def circle_region(center:, radius:, blend: { 'distance' => 0.0, 'falloff' => 'none' })
+    {
+      'type' => 'circle',
+      'center' => center,
+      'radius' => radius,
       'blend' => blend
     }
   end

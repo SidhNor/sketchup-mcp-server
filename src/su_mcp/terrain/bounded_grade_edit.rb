@@ -2,12 +2,13 @@
 
 require_relative 'heightmap_state'
 require_relative 'fixed_control_evaluator'
+require_relative 'region_influence'
 require_relative 'sample_window'
 
 module SU_MCP
   module Terrain
     # SketchUp-free bounded target-height terrain edit kernel.
-    # rubocop:disable Metrics/AbcSize, Metrics/ClassLength, Metrics/MethodLength
+    # rubocop:disable Metrics/ClassLength, Metrics/MethodLength
     class BoundedGradeEdit
       DEFAULT_FIXED_CONTROL_TOLERANCE = 0.01
 
@@ -78,57 +79,14 @@ module SU_MCP
       end
 
       def edit_weight_for(coordinate, region)
-        bounds = region.fetch('bounds')
-        blend = region.fetch('blend', {})
-        distance = distance_to_rectangle(coordinate, bounds)
-        return 1.0 if distance.zero?
-
-        blend_distance = blend.fetch('distance', 0.0).to_f
-        falloff = blend.fetch('falloff', 'none')
-        return 0.0 if blend_distance <= 0.0 || falloff == 'none' || distance > blend_distance
-
-        linear_weight = 1.0 - (distance / blend_distance)
-        return linear_weight if falloff == 'linear'
-
-        linear_weight * linear_weight * (3.0 - (2.0 * linear_weight))
-      end
-
-      def distance_to_rectangle(coordinate, bounds)
-        dx = if coordinate.fetch(:x) < bounds.fetch('minX')
-               bounds.fetch('minX') - coordinate.fetch(:x)
-             elsif coordinate.fetch(:x) > bounds.fetch('maxX')
-               coordinate.fetch(:x) - bounds.fetch('maxX')
-             else
-               0.0
-             end
-        dy = if coordinate.fetch(:y) < bounds.fetch('minY')
-               bounds.fetch('minY') - coordinate.fetch(:y)
-             elsif coordinate.fetch(:y) > bounds.fetch('maxY')
-               coordinate.fetch(:y) - bounds.fetch('maxY')
-             else
-               0.0
-             end
-        Math.sqrt((dx * dx) + (dy * dy))
+        region_influence.weight_for(coordinate, region)
       end
 
       def preserve_sample?(state, column, row, request)
         coordinate = coordinate_for(state, column, row)
         preserve_zones(request).any? do |zone|
-          bounds = expanded_bounds(zone.fetch('bounds'), state)
-          coordinate.fetch(:x).between?(bounds.fetch('minX'), bounds.fetch('maxX')) &&
-            coordinate.fetch(:y).between?(bounds.fetch('minY'), bounds.fetch('maxY'))
+          region_influence.preserve_zone_contains?(coordinate, zone, state.spacing)
         end
-      end
-
-      def expanded_bounds(bounds, state)
-        half_x = state.spacing.fetch('x') / 2.0
-        half_y = state.spacing.fetch('y') / 2.0
-        {
-          'minX' => bounds.fetch('minX') - half_x,
-          'minY' => bounds.fetch('minY') - half_y,
-          'maxX' => bounds.fetch('maxX') + half_x,
-          'maxY' => bounds.fetch('maxY') + half_y
-        }
       end
 
       def coordinate_for(state, column, row)
@@ -212,6 +170,10 @@ module SU_MCP
         request.fetch('constraints', {}).fetch('preserveZones', [])
       end
 
+      def region_influence
+        @region_influence ||= RegionInfluence.new
+      end
+
       def no_affected_samples_refusal
         refusal(
           code: 'edit_region_has_no_affected_samples',
@@ -232,6 +194,6 @@ module SU_MCP
         }
       end
     end
-    # rubocop:enable Metrics/AbcSize, Metrics/ClassLength, Metrics/MethodLength
+    # rubocop:enable Metrics/ClassLength, Metrics/MethodLength
   end
 end

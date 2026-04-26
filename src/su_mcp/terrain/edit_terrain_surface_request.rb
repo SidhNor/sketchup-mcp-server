@@ -9,14 +9,19 @@ module SU_MCP
     # rubocop:disable Metrics/MethodLength, Metrics/PerceivedComplexity
     class EditTerrainSurfaceRequest
       SUPPORTED_OPERATION_MODES = %w[target_height corridor_transition local_fairing].freeze
-      SUPPORTED_REGION_TYPES = %w[rectangle corridor].freeze
+      SUPPORTED_REGION_TYPES = %w[rectangle corridor circle].freeze
       SUPPORTED_BLEND_FALLOFFS = %w[none linear smooth].freeze
       SUPPORTED_SIDE_BLEND_FALLOFFS = %w[none cosine].freeze
-      SUPPORTED_PRESERVE_ZONE_TYPES = %w[rectangle].freeze
+      SUPPORTED_PRESERVE_ZONE_TYPES = %w[rectangle circle].freeze
       SUPPORTED_REGION_TYPES_BY_MODE = {
-        'target_height' => %w[rectangle],
+        'target_height' => %w[rectangle circle],
         'corridor_transition' => %w[corridor],
-        'local_fairing' => %w[rectangle]
+        'local_fairing' => %w[rectangle circle]
+      }.freeze
+      SUPPORTED_PRESERVE_ZONE_TYPES_BY_MODE = {
+        'target_height' => %w[rectangle circle],
+        'corridor_transition' => %w[rectangle],
+        'local_fairing' => %w[rectangle circle]
       }.freeze
 
       LOCAL_FAIRING_RADIUS_RANGE = (1..31).freeze
@@ -180,6 +185,7 @@ module SU_MCP
         return compatibility_refusal if compatibility_refusal
 
         return corridor_region_refusal if operation['mode'] == 'corridor_transition'
+        return circle_refusal(region, 'region') if region['type'] == 'circle'
 
         bounds_refusal(region['bounds'], 'region.bounds') || blend_refusal
       end
@@ -287,6 +293,23 @@ module SU_MCP
         )
       end
 
+      def circle_refusal(circle, field)
+        return missing_field_refusal("#{field}.center") unless circle.key?('center')
+        return invalid_shape_refusal("#{field}.center") unless circle['center'].is_a?(Hash)
+
+        %w[x y].each do |axis|
+          return invalid_number_refusal("#{field}.center.#{axis}") unless finite_number?(
+            circle.dig('center', axis)
+          )
+        end
+
+        return missing_field_refusal("#{field}.radius") unless circle.key?('radius')
+        return invalid_number_refusal("#{field}.radius") unless finite_number?(circle['radius'])
+        return invalid_number_refusal("#{field}.radius") unless circle['radius'].to_f.positive?
+
+        nil
+      end
+
       def constraints_refusal
         return invalid_shape_refusal('constraints') unless constraints.is_a?(Hash)
 
@@ -308,13 +331,33 @@ module SU_MCP
               message: 'Preserve zone type is not supported for edit_terrain_surface.'
             )
           end
-          bounds_result = bounds_refusal(
-            zone['bounds'],
-            "constraints.preserveZones[#{index}].bounds"
-          )
-          return bounds_result if bounds_result
+          compatibility_result = preserve_zone_compatibility_refusal(zone, index)
+          return compatibility_result if compatibility_result
+
+          field = "constraints.preserveZones[#{index}]"
+          shape_result = if zone['type'] == 'circle'
+                           circle_refusal(zone, field)
+                         else
+                           bounds_refusal(zone['bounds'], "#{field}.bounds")
+                         end
+          return shape_result if shape_result
         end
         nil
+      end
+
+      def preserve_zone_compatibility_refusal(zone, index)
+        allowed = SUPPORTED_PRESERVE_ZONE_TYPES_BY_MODE.fetch(
+          operation['mode'],
+          SUPPORTED_PRESERVE_ZONE_TYPES
+        )
+        return nil if allowed.include?(zone['type'])
+
+        unsupported_option_refusal(
+          field: "constraints.preserveZones[#{index}].type",
+          value: zone['type'],
+          allowed_values: allowed,
+          message: 'Preserve zone type is not supported for this edit operation mode.'
+        )
       end
 
       def output_options_refusal

@@ -44,6 +44,43 @@ class EditTerrainSurfaceRequestTest < Minitest::Test # rubocop:disable Metrics/C
     assert_equal('none', result.dig(:params, 'region', 'blend', 'falloff'))
   end
 
+  def test_accepts_circle_regions_for_local_area_modes_with_blend_defaults
+    target_height = minimal_request
+    target_height['region'] = circle_region(blend: { 'distance' => 1.5 })
+
+    result = validate_request(target_height)
+
+    assert_equal('ready', result.fetch(:outcome))
+    assert_equal('circle', result.fetch(:region_type))
+    assert_equal('smooth', result.dig(:params, 'region', 'blend', 'falloff'))
+
+    local_fairing = local_fairing_request
+    local_fairing['region'] = circle_region
+
+    result = validate_request(local_fairing)
+
+    assert_equal('ready', result.fetch(:outcome))
+    assert_equal('circle', result.fetch(:region_type))
+    assert_equal(0.0, result.dig(:params, 'region', 'blend', 'distance'))
+    assert_equal('none', result.dig(:params, 'region', 'blend', 'falloff'))
+  end
+
+  def test_circle_positive_blend_defaults_match_rectangle_positive_blend_defaults
+    rectangle = minimal_request
+    rectangle['region']['blend'] = { 'distance' => 1.5 }
+    rectangle_result = validate_request(rectangle)
+
+    target_height = minimal_request
+    target_height['region'] = circle_region(blend: { 'distance' => 1.5 })
+
+    result = validate_request(target_height)
+
+    assert_equal(
+      rectangle_result.dig(:params, 'region', 'blend'),
+      result.dig(:params, 'region', 'blend')
+    )
+  end
+
   def test_enforces_operation_mode_and_region_type_compatibility
     rectangle_corridor = corridor_request
     rectangle_corridor['region']['type'] = 'rectangle'
@@ -65,7 +102,17 @@ class EditTerrainSurfaceRequestTest < Minitest::Test # rubocop:disable Metrics/C
     local_fairing_corridor['region'] = corridor_request.fetch('region')
     result = validate_request(local_fairing_corridor)
     assert_refusal(result, 'unsupported_option', 'region.type')
-    assert_equal(['rectangle'], result.dig(:refusal, :details, :allowedValues))
+    assert_equal(%w[rectangle circle], result.dig(:refusal, :details, :allowedValues))
+  end
+
+  def test_refuses_circle_region_for_corridor_transition_with_mode_specific_allowed_values
+    circle_corridor = corridor_request
+    circle_corridor['region'] = circle_region
+
+    result = validate_request(circle_corridor)
+
+    assert_refusal(result, 'unsupported_option', 'region.type')
+    assert_equal(['corridor'], result.dig(:refusal, :details, :allowedValues))
   end
 
   def test_mode_specific_required_fields_are_runtime_validated # rubocop:disable Metrics/MethodLength
@@ -166,7 +213,7 @@ class EditTerrainSurfaceRequestTest < Minitest::Test # rubocop:disable Metrics/C
 
   def test_refuses_unsupported_region_blend_and_preserve_zone_options
     region_request = minimal_request
-    region_request['region']['type'] = 'circle'
+    region_request['region']['type'] = 'polygon'
     assert_refusal(validate_request(region_request), 'unsupported_option', 'region.type')
 
     falloff_request = minimal_request
@@ -181,6 +228,72 @@ class EditTerrainSurfaceRequestTest < Minitest::Test # rubocop:disable Metrics/C
       validate_request(preserve_request),
       'unsupported_option',
       'constraints.preserveZones[0].type'
+    )
+  end
+
+  def test_validates_circle_required_fields
+    missing_center = minimal_request
+    missing_center['region'] = circle_region
+    missing_center['region'].delete('center')
+    assert_refusal(validate_request(missing_center), 'missing_required_field', 'region.center')
+
+    missing_radius = minimal_request
+    missing_radius['region'] = circle_region
+    missing_radius['region'].delete('radius')
+    assert_refusal(validate_request(missing_radius), 'missing_required_field', 'region.radius')
+  end
+
+  def test_validates_circle_numeric_fields
+    invalid_center = minimal_request
+    invalid_center['region'] = circle_region(center: { 'x' => 1.0 })
+    assert_refusal(validate_request(invalid_center), 'invalid_edit_request', 'region.center.y')
+
+    invalid_radius = minimal_request
+    invalid_radius['region'] = circle_region(radius: 0.0)
+    assert_refusal(validate_request(invalid_radius), 'invalid_edit_request', 'region.radius')
+  end
+
+  def test_validates_circle_preserve_zones_by_operation_mode
+    target_height = minimal_request
+    target_height['constraints'] = {
+      'preserveZones' => [circle_preserve_zone]
+    }
+    assert_equal('ready', validate_request(target_height).fetch(:outcome))
+
+    local_fairing = local_fairing_request
+    local_fairing['constraints'] = {
+      'preserveZones' => [circle_preserve_zone]
+    }
+    assert_equal('ready', validate_request(local_fairing).fetch(:outcome))
+
+    corridor = corridor_request
+    corridor['constraints'] = {
+      'preserveZones' => [circle_preserve_zone]
+    }
+    result = validate_request(corridor)
+    assert_refusal(result, 'unsupported_option', 'constraints.preserveZones[0].type')
+    assert_equal(['rectangle'], result.dig(:refusal, :details, :allowedValues))
+  end
+
+  def test_validates_circle_preserve_zone_required_fields
+    missing_center = minimal_request
+    missing_center['constraints'] = {
+      'preserveZones' => [circle_preserve_zone.tap { |zone| zone.delete('center') }]
+    }
+    assert_refusal(
+      validate_request(missing_center),
+      'missing_required_field',
+      'constraints.preserveZones[0].center'
+    )
+
+    invalid_radius = minimal_request
+    invalid_radius['constraints'] = {
+      'preserveZones' => [circle_preserve_zone(radius: -1.0)]
+    }
+    assert_refusal(
+      validate_request(invalid_radius),
+      'invalid_edit_request',
+      'constraints.preserveZones[0].radius'
     )
   end
 
@@ -211,6 +324,24 @@ class EditTerrainSurfaceRequestTest < Minitest::Test # rubocop:disable Metrics/C
       'minY' => 1.0,
       'maxX' => 3.0,
       'maxY' => 3.0
+    }
+  end
+
+  def circle_region(center: { 'x' => 2.0, 'y' => 2.0 }, radius: 1.5,
+                    blend: { 'distance' => 0.0, 'falloff' => 'none' })
+    {
+      'type' => 'circle',
+      'center' => center,
+      'radius' => radius,
+      'blend' => blend
+    }
+  end
+
+  def circle_preserve_zone(center: { 'x' => 2.0, 'y' => 2.0 }, radius: 0.75)
+    {
+      'type' => 'circle',
+      'center' => center,
+      'radius' => radius
     }
   end
 

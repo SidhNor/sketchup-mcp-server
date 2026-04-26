@@ -1563,6 +1563,270 @@
       }
     },
     {
+      "case_id": "edit_terrain_surface_circle_edited",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "params": {
+          "name": "edit_terrain_surface",
+          "arguments": {
+            "targetReference": { "sourceElementId": "terrain-main" },
+            "operation": {
+              "mode": "target_height",
+              "targetElevation": 12.5
+            },
+            "region": {
+              "type": "circle",
+              "center": { "x": 2.0, "y": 2.0 },
+              "radius": 1.5,
+              "blend": { "distance": 1.0, "falloff": "smooth" }
+            },
+            "outputOptions": {
+              "includeSampleEvidence": true,
+              "sampleEvidenceLimit": 4
+            }
+          }
+        },
+        "id": "edit-terrain-surface-circle-edited"
+      },
+      "response": {
+        "jsonrpc": "2.0",
+        "id": "edit-terrain-surface-circle-edited",
+        "result": {
+          "success": true,
+          "outcome": "edited",
+          "operation": {
+            "name": "edit_terrain_surface",
+            "mode": "target_height"
+          },
+          "managedTerrain": {
+            "ownerReference": {
+              "sourceElementId": "terrain-main",
+              "persistentId": "5001"
+            },
+            "semanticType": "managed_terrain_surface",
+            "status": "existing",
+            "state": "Adopted"
+          },
+          "terrainState": {
+            "stateId": "state-1",
+            "payloadKind": "heightmap_grid",
+            "schemaVersion": 1,
+            "revision": 2,
+            "digestAlgorithm": "sha256",
+            "digest": "digest-circle-1",
+            "serializedBytes": 236
+          },
+          "output": {
+            "derivedMesh": {
+              "meshType": "regular_grid",
+              "vertexCount": 16,
+              "faceCount": 18,
+              "derivedFromStateDigest": "digest-circle-1"
+            }
+          },
+          "evidence": {
+            "changedRegion": {
+              "min": { "column": 1, "row": 1 },
+              "max": { "column": 3, "row": 3 }
+            },
+            "sampleSummary": {
+              "totalSampleCount": 9,
+              "returnedSampleCount": 4
+            },
+            "fixedControls": [],
+            "preserveZones": {
+              "protectedSampleCount": 0
+            },
+            "warnings": []
+          }
+        }
+      }
+    },
+    {
+      "case_id": "edit_terrain_surface_circle_preserve_zone_edited",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "params": {
+          "name": "edit_terrain_surface",
+          "arguments": {
+            "targetReference": { "sourceElementId": "terrain-main" },
+            "operation": {
+              "mode": "target_height",
+              "targetElevation": 12.5
+            },
+            "region": {
+              "type": "circle",
+              "center": { "x": 2.0, "y": 2.0 },
+              "radius": 1.5
+            },
+            "constraints": {
+              "preserveZones": [
+                {
+                  "id": "tree-root-zone",
+                  "type": "circle",
+                  "center": { "x": 2.0, "y": 2.0 },
+                  "radius": 0.5
+                }
+              ]
+            },
+            "outputOptions": {
+              "includeSampleEvidence": true,
+              "sampleEvidenceLimit": 4
+            }
+          }
+        },
+        "id": "edit-terrain-surface-circle-preserve-zone"
+      },
+      "response": {
+        "jsonrpc": "2.0",
+        "id": "edit-terrain-surface-circle-preserve-zone",
+        "result": {
+          "success": true,
+          "outcome": "edited",
+          "operation": {
+            "name": "edit_terrain_surface",
+            "mode": "target_height"
+          },
+          "managedTerrain": {
+            "ownerReference": {
+              "sourceElementId": "terrain-main",
+              "persistentId": "5001"
+            },
+            "semanticType": "managed_terrain_surface",
+            "status": "existing",
+            "state": "Adopted"
+          },
+          "terrainState": {
+            "stateId": "state-1",
+            "payloadKind": "heightmap_grid",
+            "schemaVersion": 1,
+            "revision": 2,
+            "digestAlgorithm": "sha256",
+            "digest": "digest-circle-2",
+            "serializedBytes": 240
+          },
+          "output": {
+            "derivedMesh": {
+              "meshType": "regular_grid",
+              "vertexCount": 16,
+              "faceCount": 18,
+              "derivedFromStateDigest": "digest-circle-2"
+            }
+          },
+          "evidence": {
+            "changedRegion": {
+              "min": { "column": 1, "row": 1 },
+              "max": { "column": 3, "row": 3 }
+            },
+            "sampleSummary": {
+              "totalSampleCount": 8,
+              "returnedSampleCount": 4
+            },
+            "fixedControls": [],
+            "preserveZones": {
+              "protectedSampleCount": 1
+            },
+            "warnings": []
+          }
+        }
+      }
+    },
+    {
+      "case_id": "edit_terrain_surface_circle_region_invalid_refused",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "params": {
+          "name": "edit_terrain_surface",
+          "arguments": {
+            "targetReference": { "sourceElementId": "terrain-main" },
+            "operation": {
+              "mode": "target_height",
+              "targetElevation": 12.5
+            },
+            "region": {
+              "type": "circle",
+              "center": { "x": 2.0, "y": 2.0 },
+              "radius": 0.0
+            }
+          }
+        },
+        "id": "edit-terrain-surface-circle-invalid"
+      },
+      "response": {
+        "jsonrpc": "2.0",
+        "id": "edit-terrain-surface-circle-invalid",
+        "result": {
+          "success": true,
+          "outcome": "refused",
+          "refusal": {
+            "code": "invalid_edit_request",
+            "message": "edit_terrain_surface numeric field is invalid.",
+            "details": {
+              "field": "region.radius"
+            }
+          }
+        }
+      }
+    },
+    {
+      "case_id": "edit_terrain_surface_corridor_transition_circle_preserve_zone_refused",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "params": {
+          "name": "edit_terrain_surface",
+          "arguments": {
+            "targetReference": { "sourceElementId": "terrain-main" },
+            "operation": {
+              "mode": "corridor_transition"
+            },
+            "region": {
+              "type": "corridor",
+              "startControl": {
+                "point": { "x": 1.0, "y": 2.0 },
+                "elevation": 0.5
+              },
+              "endControl": {
+                "point": { "x": 8.0, "y": 2.0 },
+                "elevation": 1.5
+              },
+              "width": 3.0
+            },
+            "constraints": {
+              "preserveZones": [
+                {
+                  "type": "circle",
+                  "center": { "x": 2.0, "y": 2.0 },
+                  "radius": 0.5
+                }
+              ]
+            }
+          }
+        },
+        "id": "edit-terrain-surface-corridor-circle-preserve-zone"
+      },
+      "response": {
+        "jsonrpc": "2.0",
+        "id": "edit-terrain-surface-corridor-circle-preserve-zone",
+        "result": {
+          "success": true,
+          "outcome": "refused",
+          "refusal": {
+            "code": "unsupported_option",
+            "message": "Preserve zone type is not supported for this edit operation mode.",
+            "details": {
+              "field": "constraints.preserveZones[0].type",
+              "value": "circle",
+              "allowedValues": ["rectangle"]
+            }
+          }
+        }
+      }
+    },
+    {
       "case_id": "edit_terrain_surface_local_fairing_edited",
       "request": {
         "jsonrpc": "2.0",
@@ -1717,6 +1981,113 @@
               "field": "operation.mode",
               "tolerance": 0.000001
             }
+          }
+        }
+      }
+    },
+    {
+      "case_id": "edit_terrain_surface_local_fairing_circle_edited",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "params": {
+          "name": "edit_terrain_surface",
+          "arguments": {
+            "targetReference": { "sourceElementId": "terrain-main" },
+            "operation": {
+              "mode": "local_fairing",
+              "strength": 0.35,
+              "neighborhoodRadiusSamples": 2,
+              "iterations": 2
+            },
+            "region": {
+              "type": "circle",
+              "center": { "x": 2.0, "y": 2.0 },
+              "radius": 1.5,
+              "blend": {
+                "distance": 1.0,
+                "falloff": "smooth"
+              }
+            },
+            "constraints": {
+              "preserveZones": [
+                {
+                  "type": "circle",
+                  "center": { "x": 2.0, "y": 2.0 },
+                  "radius": 0.5
+                }
+              ]
+            },
+            "outputOptions": {
+              "includeSampleEvidence": true,
+              "sampleEvidenceLimit": 4
+            }
+          }
+        },
+        "id": "edit-terrain-surface-local-fairing-circle"
+      },
+      "response": {
+        "jsonrpc": "2.0",
+        "id": "edit-terrain-surface-local-fairing-circle",
+        "result": {
+          "success": true,
+          "outcome": "edited",
+          "operation": {
+            "name": "edit_terrain_surface",
+            "mode": "local_fairing"
+          },
+          "managedTerrain": {
+            "ownerReference": {
+              "sourceElementId": "terrain-main",
+              "persistentId": "5001"
+            },
+            "semanticType": "managed_terrain_surface",
+            "status": "existing",
+            "state": "Adopted"
+          },
+          "terrainState": {
+            "stateId": "state-1",
+            "payloadKind": "heightmap_grid",
+            "schemaVersion": 1,
+            "revision": 2,
+            "digestAlgorithm": "sha256",
+            "digest": "digest-circle-3",
+            "serializedBytes": 244
+          },
+          "output": {
+            "derivedMesh": {
+              "meshType": "regular_grid",
+              "vertexCount": 16,
+              "faceCount": 18,
+              "derivedFromStateDigest": "digest-circle-3"
+            }
+          },
+          "evidence": {
+            "changedRegion": {
+              "min": { "column": 1, "row": 1 },
+              "max": { "column": 3, "row": 3 }
+            },
+            "sampleSummary": {
+              "totalSampleCount": 8,
+              "returnedSampleCount": 4
+            },
+            "fixedControls": [],
+            "preserveZones": {
+              "protectedSampleCount": 1
+            },
+            "fairing": {
+              "metric": "mean_absolute_neighborhood_residual",
+              "beforeResidual": 1.2,
+              "afterResidual": 0.5,
+              "improved": true,
+              "strength": 0.35,
+              "neighborhoodRadiusSamples": 2,
+              "iterations": 2,
+              "actualIterations": 2,
+              "changedSampleCount": 8,
+              "warnings": []
+            },
+            "warnings": []
           }
         }
       }

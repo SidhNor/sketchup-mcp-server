@@ -1,7 +1,7 @@
 # Task: MTA-12 Add Circular Terrain Regions And Preserve Zones
 **Task ID**: `MTA-12`
 **Title**: `Add Circular Terrain Regions And Preserve Zones`
-**Status**: `draft`
+**Status**: `completed`
 **Priority**: `P0`
 **Date**: `2026-04-26`
 
@@ -91,7 +91,7 @@ Scenario: unsupported circular combinations refuse clearly
 
 ## Related Technical Plan
 
-- none yet
+- [Technical Plan](./plan.md)
 
 ## Success Metrics
 

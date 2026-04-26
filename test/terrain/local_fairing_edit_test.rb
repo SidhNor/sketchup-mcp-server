@@ -92,6 +92,40 @@ class LocalFairingEditTest < Minitest::Test # rubocop:disable Metrics/ClassLengt
     assert_in_delta(80.0 / 9.0, elevation_at(result.fetch(:state), 1, 1), 1e-9)
   end
 
+  def test_rectangle_outer_blend_boundary_remains_zero_weight
+    result = apply_edit(
+      state: terrain_state(elevations: [
+                             10.0, 10.0, 10.0,
+                             10.0, 0.0, 10.0,
+                             10.0, 10.0, 10.0
+                           ], columns: 3, rows: 3),
+      region: rectangle_region(
+        min: [1.0, 1.0],
+        max: [1.0, 1.0],
+        blend: { 'distance' => 1.0, 'falloff' => 'linear' }
+      ),
+      operation: fairing_operation(strength: 1.0, radius: 1)
+    )
+
+    assert_equal(10.0, elevation_at(result.fetch(:state), 0, 1))
+  end
+
+  def test_circle_region_bounds_fairing_candidates
+    result = apply_edit(
+      state: terrain_state(elevations: [
+                             10.0, 10.0, 10.0, 10.0,
+                             10.0, 0.0, 10.0, 10.0,
+                             10.0, 10.0, 10.0, 10.0,
+                             10.0, 10.0, 10.0, 10.0
+                           ], columns: 4, rows: 4),
+      region: circle_region(center: { 'x' => 1.0, 'y' => 1.0 }, radius: 1.0),
+      operation: fairing_operation(strength: 1.0, radius: 1)
+    )
+
+    assert_operator(result.dig(:diagnostics, :changedSampleCount), :>, 0)
+    assert_equal(10.0, elevation_at(result.fetch(:state), 3, 3))
+  end
+
   def test_preserve_zone_samples_remain_unchanged_but_can_inform_neighbors
     result = apply_edit(
       state: terrain_state(elevations: [
@@ -109,6 +143,24 @@ class LocalFairingEditTest < Minitest::Test # rubocop:disable Metrics/ClassLengt
     assert_equal(0.0, elevation_at(result.fetch(:state), 1, 1))
     assert_operator(result.dig(:diagnostics, :preserveZones, :protectedSampleCount), :>, 0)
     refute_includes(changed_sample_locations(result), { column: 1, row: 1 })
+  end
+
+  def test_circle_preserve_zone_protects_local_fairing_samples
+    result = apply_edit(
+      state: terrain_state(elevations: [
+                             10.0, 10.0, 10.0,
+                             10.0, 0.0, 10.0,
+                             10.0, 10.0, 10.0
+                           ], columns: 3, rows: 3),
+      constraints: {
+        'preserveZones' => [
+          { 'type' => 'circle', 'center' => { 'x' => 1.0, 'y' => 1.0 }, 'radius' => 0.1 }
+        ]
+      }
+    )
+
+    assert_equal(0.0, elevation_at(result.fetch(:state), 1, 1))
+    assert_operator(result.dig(:diagnostics, :preserveZones, :protectedSampleCount), :>, 0)
   end
 
   def test_refuses_fixed_control_conflict_after_candidate_fairing
@@ -213,6 +265,15 @@ class LocalFairingEditTest < Minitest::Test # rubocop:disable Metrics/ClassLengt
     {
       'type' => 'rectangle',
       'bounds' => rectangle_bounds(min: min, max: max),
+      'blend' => blend
+    }
+  end
+
+  def circle_region(center:, radius:, blend: { 'distance' => 0.0, 'falloff' => 'none' })
+    {
+      'type' => 'circle',
+      'center' => center,
+      'radius' => radius,
       'blend' => blend
     }
   end

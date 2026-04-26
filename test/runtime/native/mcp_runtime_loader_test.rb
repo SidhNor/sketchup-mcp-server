@@ -324,7 +324,7 @@ class McpRuntimeLoaderTest < Minitest::Test
                         .fetch('properties')
                         .fetch('region')
                         .fetch('properties')
-    %w[startControl endControl width sideBlend].each do |field|
+    %w[center radius startControl endControl width sideBlend].each do |field|
       assert_includes(region_properties.keys, field)
     end
 
@@ -683,8 +683,19 @@ class McpRuntimeLoaderTest < Minitest::Test
     end
 
     region_properties = input_schema.fetch(:properties).fetch(:region).fetch(:properties)
-    %i[startControl endControl width sideBlend].each do |field|
+    %i[center radius startControl endControl width sideBlend].each do |field|
       assert_includes(region_properties.keys, field)
+    end
+
+    preserve_zone_schema = input_schema
+                           .fetch(:properties)
+                           .fetch(:constraints)
+                           .fetch(:properties)
+                           .fetch(:preserveZones)
+                           .fetch(:items)
+    assert_equal(['type'], preserve_zone_schema.fetch(:required))
+    %i[bounds center radius].each do |field|
+      assert_includes(preserve_zone_schema.fetch(:properties).keys, field)
     end
 
     assert_equal(
