@@ -1,7 +1,7 @@
 # Task: SAR-01 Curate And Discover Approved Asset Exemplars
 **Task ID**: `SAR-01`
 **Title**: `Curate And Discover Approved Asset Exemplars`
-**Status**: `draft`
+**Status**: `planned`
 **Priority**: `P1`
 **Date**: `2026-04-25`
 
@@ -94,7 +94,7 @@ Scenario: unsupported curation requests refuse clearly
 
 ## Related Technical Plan
 
-- none yet
+- [plan.md](./plan.md)
 
 ## Success Metrics
 
