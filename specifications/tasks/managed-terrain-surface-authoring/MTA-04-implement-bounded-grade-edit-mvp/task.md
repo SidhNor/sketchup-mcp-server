@@ -1,7 +1,7 @@
 # Task: MTA-04 Implement Bounded Grade Edit MVP
 **Task ID**: `MTA-04`
 **Title**: `Implement Bounded Grade Edit MVP`
-**Status**: `draft`
+**Status**: `planned`
 **Priority**: `P0`
 **Date**: `2026-04-24`
 
@@ -89,7 +89,7 @@ Scenario: edit mutation is coherent in SketchUp
 
 ## Related Technical Plan
 
-- none yet
+- [Technical Plan](./plan.md)
 
 ## Success Metrics
 

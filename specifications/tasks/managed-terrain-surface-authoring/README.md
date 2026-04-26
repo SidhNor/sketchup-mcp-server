@@ -20,6 +20,7 @@ The current task order proves terrain authoring through concrete, testable incre
 - bounded grade edit MVP
 - corridor transition kernel
 - local terrain fairing kernel
+- scalable terrain representation strategy for localized detail and larger terrain extents
 
 ## Current Task Order
 
@@ -29,6 +30,7 @@ The current task order proves terrain authoring through concrete, testable incre
 4. [MTA-04 Implement Bounded Grade Edit MVP](MTA-04-implement-bounded-grade-edit-mvp/task.md)
 5. [MTA-05 Implement Corridor Transition Terrain Kernel](MTA-05-implement-corridor-transition-terrain-kernel/task.md)
 6. [MTA-06 Implement Local Terrain Fairing Kernel](MTA-06-implement-local-terrain-fairing-kernel/task.md)
+7. [MTA-07 Define Scalable Terrain Representation Strategy](MTA-07-define-scalable-terrain-representation-strategy/task.md)
 
 ## Deferred Follow-Ons
 
