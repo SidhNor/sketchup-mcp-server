@@ -1,7 +1,7 @@
 # Task: MTA-08 Adopt Bulk Full-Grid Terrain Output In Production
 **Task ID**: `MTA-08`
 **Title**: `Adopt Bulk Full-Grid Terrain Output In Production`
-**Status**: `draft`
+**Status**: `planned`
 **Priority**: `P1`
 **Date**: `2026-04-26`
 
@@ -92,7 +92,7 @@ Scenario: hosted validation covers representative terrain cases
 
 ## Related Technical Plan
 
-- none yet
+- [Technical plan](./plan.md)
 
 ## Success Metrics
 
