@@ -24,9 +24,7 @@ module SU_MCP
           terrain_state_summary: terrain_state_summary
         )
 
-        each_cell(columns, rows) do |column, row|
-          add_cell_triangles(owner.entities, vertices, column, row, columns)
-        end
+        emit_faces_via_builder(owner.entities, vertices, columns, rows)
 
         generated_result(output_plan)
       end
@@ -42,7 +40,7 @@ module SU_MCP
           terrain_state_summary: terrain_state_summary
         )
 
-        emit_candidate_faces(owner.entities, vertices, columns, rows)
+        emit_faces_via_builder(owner.entities, vertices, columns, rows)
         generated_result(output_plan).merge(validationOnly: true)
       end
 
@@ -95,7 +93,7 @@ module SU_MCP
         end
       end
 
-      def emit_candidate_faces(entities, vertices, columns, rows)
+      def emit_faces_via_builder(entities, vertices, columns, rows)
         return emit_faces(entities, vertices, columns, rows) unless entities.respond_to?(:build)
 
         entities.build do |builder|

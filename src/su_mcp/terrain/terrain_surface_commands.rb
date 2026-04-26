@@ -261,7 +261,7 @@ module SU_MCP
             edit_owner_reference_params(params)
           ),
           terrain_state_summary: edit_terrain_state_summary(context.fetch(:loaded), state, saved),
-          output_summary: output.fetch(:summary).merge(regeneration: { strategy: 'full' }),
+          output_summary: output.fetch(:summary),
           edit_summary: edit_summary(params, context.fetch(:edit_result).fetch(:diagnostics)),
           diagnostics: context.fetch(:edit_result).fetch(:diagnostics),
           metadata: existing_owner_metadata(context.fetch(:owner)),

@@ -115,6 +115,25 @@ class TerrainSurfaceCommandsTest < Minitest::Test # rubocop:disable Metrics/Clas
     )
   end
 
+  def test_edit_mode_does_not_leak_output_strategy_fields
+    model = build_semantic_model
+    managed_terrain_owner(model)
+    commands = build_edit_commands(
+      model: model,
+      repository: EditRepository.new(state),
+      edit_evidence_builder: SU_MCP::Terrain::TerrainEditEvidenceBuilder.new
+    )
+
+    result = commands.edit_terrain_surface(edit_request)
+    serialized = JSON.generate(result.fetch(:output))
+
+    assert_includes(result.fetch(:output).keys, :derivedMesh)
+    refute_includes(serialized, 'strategy')
+    refute_includes(serialized, 'regeneration')
+    refute_includes(serialized, 'bulk')
+    refute_includes(serialized, 'candidate')
+  end
+
   def test_target_height_edit_dispatches_to_grade_editor
     model = build_semantic_model
     managed_terrain_owner(model)

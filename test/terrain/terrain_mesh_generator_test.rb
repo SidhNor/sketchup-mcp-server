@@ -6,8 +6,24 @@ require_relative '../../src/su_mcp/terrain/heightmap_state'
 require_relative '../../src/su_mcp/terrain/terrain_mesh_generator'
 require_relative '../../src/su_mcp/terrain/terrain_output_plan'
 
-class TerrainMeshGeneratorTest < Minitest::Test
+class TerrainMeshGeneratorTest < Minitest::Test # rubocop:disable Metrics/ClassLength
   include SemanticTestSupport
+
+  def test_generate_uses_entities_builder_without_candidate_response_fields
+    model = build_semantic_model
+    owner = model.active_entities.add_group
+
+    result = identity_generator.generate(
+      owner: owner,
+      state: build_state(columns: 3, rows: 2),
+      terrain_state_summary: { digest: 'abc123' }
+    )
+
+    assert_equal(1, owner.entities.build_calls)
+    assert_equal(%i[outcome summary], result.keys)
+    assert_equal('generated', result.fetch(:outcome))
+    refute_internal_output_fields(result)
+  end
 
   def test_generates_regular_grid_mesh_with_deterministic_counts_and_digest_linkage
     model = build_semantic_model
@@ -32,6 +48,23 @@ class TerrainMeshGeneratorTest < Minitest::Test
     )
     assert_equal(4, owner.entities.faces.length)
     assert_all_faces_point_up(owner.entities.faces)
+  end
+
+  def test_marks_generated_faces_and_edges_as_derived_output
+    model = build_semantic_model
+    owner = model.active_entities.add_group
+
+    identity_generator.generate(
+      owner: owner,
+      state: build_state(columns: 2, rows: 2),
+      terrain_state_summary: { digest: 'abc123' }
+    )
+
+    assert_equal(2, owner.entities.faces.length)
+    owner.entities.faces.each do |face|
+      assert_derived_output(face)
+      face.edges.each { |edge| assert_derived_output(edge) }
+    end
   end
 
   def test_generate_summary_matches_full_grid_output_plan
@@ -106,7 +139,7 @@ class TerrainMeshGeneratorTest < Minitest::Test
     )
   end
 
-  def test_bulk_candidate_uses_entities_builder_without_replacing_production_generate
+  def test_bulk_candidate_remains_validation_only_diagnostic_entrypoint
     model = build_semantic_model
     owner = model.active_entities.add_group
     state = build_state(columns: 3, rows: 2)
@@ -124,6 +157,33 @@ class TerrainMeshGeneratorTest < Minitest::Test
     assert_all_faces_point_up(owner.entities.faces)
   end
 
+  def test_generate_uses_per_face_compatibility_when_entities_do_not_support_build
+    owner = OwnerWithoutBuilder.new
+
+    result = identity_generator.generate(
+      owner: owner,
+      state: build_state(columns: 2, rows: 2),
+      terrain_state_summary: { digest: 'abc123' }
+    )
+
+    assert_equal('generated', result.fetch(:outcome))
+    assert_equal(2, owner.entities.faces.length)
+    refute_internal_output_fields(result)
+  end
+
+  def test_generate_does_not_fall_back_to_per_face_after_builder_failure
+    owner = OwnerWithFailingBuilder.new
+
+    assert_raises(RuntimeError) do
+      identity_generator.generate(
+        owner: owner,
+        state: build_state(columns: 2, rows: 2),
+        terrain_state_summary: { digest: 'abc123' }
+      )
+    end
+    assert_empty(owner.entities.faces)
+  end
+
   def test_regenerate_removes_prior_derived_faces_before_rebuilding
     model = build_semantic_model
     owner = model.active_entities.add_group
@@ -138,6 +198,7 @@ class TerrainMeshGeneratorTest < Minitest::Test
 
     assert_equal('generated', result.fetch(:outcome))
     assert_equal('digest-2', result.dig(:summary, :derivedMesh, :derivedFromStateDigest))
+    assert_equal(1, owner.entities.build_calls)
     refute_includes(owner.entities.faces, old_face)
     assert_equal(2, owner.entities.faces.length)
   end
@@ -161,6 +222,33 @@ class TerrainMeshGeneratorTest < Minitest::Test
   end
 
   private
+
+  def assert_derived_output(entity)
+    assert_equal(
+      true,
+      entity.get_attribute(
+        SU_MCP::Terrain::TerrainMeshGenerator::DERIVED_OUTPUT_DICTIONARY,
+        SU_MCP::Terrain::TerrainMeshGenerator::DERIVED_OUTPUT_KEY
+      )
+    )
+  end
+
+  def refute_internal_output_fields(result)
+    serialized = JSON.generate(result)
+
+    refute_includes(result.keys, :validationOnly)
+    refute_includes(serialized, 'validationOnly')
+    refute_includes(serialized, 'bulk')
+    refute_includes(serialized, 'candidate')
+    refute_includes(serialized, 'strategy')
+    refute_includes(serialized, 'regeneration')
+    refute_includes(serialized, 'sampleWindow')
+    refute_includes(serialized, 'outputRegions')
+    refute_includes(serialized, 'chunks')
+    refute_includes(serialized, 'tiles')
+    refute_includes(serialized, 'faceId')
+    refute_includes(serialized, 'vertexId')
+  end
 
   def identity_generator
     SU_MCP::Terrain::TerrainMeshGenerator.new(
@@ -208,6 +296,48 @@ class TerrainMeshGeneratorTest < Minitest::Test
 
     def public_meters_to_internal(value)
       value.to_f * @multiplier
+    end
+  end
+
+  class OwnerWithoutBuilder
+    attr_reader :entities
+
+    def initialize
+      @entities = EntitiesWithoutBuilder.new
+    end
+  end
+
+  class OwnerWithFailingBuilder
+    attr_reader :entities
+
+    def initialize
+      @entities = EntitiesWithFailingBuilder.new
+    end
+  end
+
+  class EntitiesWithoutBuilder
+    attr_reader :faces
+
+    def initialize
+      @faces = []
+    end
+
+    def add_face(*points)
+      face = SemanticTestSupport::FakeFace.new(
+        entity_id: faces.length + 1,
+        persistent_id: "compat-#{faces.length + 1}",
+        layer: nil,
+        material: nil,
+        points: points
+      )
+      faces << face
+      face
+    end
+  end
+
+  class EntitiesWithFailingBuilder < EntitiesWithoutBuilder
+    def build
+      raise 'builder failed'
     end
   end
 end

@@ -36,6 +36,25 @@ class TerrainContractStabilityTest < Minitest::Test
     refute_includes(JSON.generate(result), 'vertexId')
   end
 
+  def test_public_output_vocabulary_does_not_expose_bulk_or_candidate_internals
+    result = edit_evidence_result
+    serialized = JSON.generate(result)
+    serialized_output = JSON.generate(result.fetch(:output))
+
+    assert_includes(result.fetch(:output).keys, :derivedMesh)
+    refute_includes(serialized, 'validationOnly')
+    refute_includes(serialized, 'bulk')
+    refute_includes(serialized, 'candidate')
+    refute_includes(serialized, 'strategy')
+    refute_includes(serialized_output, 'regeneration')
+    refute_includes(serialized, 'sampleWindow')
+    refute_includes(serialized, 'outputRegions')
+    refute_includes(serialized, 'chunks')
+    refute_includes(serialized, 'tiles')
+    refute_includes(serialized, 'faceId')
+    refute_includes(serialized, 'vertexId')
+  end
+
   private
 
   def serializer

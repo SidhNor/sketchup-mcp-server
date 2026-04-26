@@ -3,12 +3,13 @@
 require_relative '../test_helper'
 
 class TerrainOutputLiveValidationTest < Minitest::Test
-  def test_live_per_face_and_bulk_candidate_comparison_matrix_is_recorded
+  def test_live_production_bulk_output_validation_matrix_is_recorded
     skip(
-      'Manual SketchUp-hosted validation required for MTA-07: compare current per-face output ' \
-      'and the bulk mesh candidate on small, non-square representative, and near-cap terrain. ' \
-      'Record timing, undo behavior, entity cleanup, derived face/edge marking, positive-Z ' \
-      'normals, responsiveness, and save/reopen evidence if production bulk output is adopted.'
+      'Manual SketchUp-hosted validation required for MTA-08: exercise production ' \
+      'create_terrain_surface and edit_terrain_surface regeneration on small, non-square, ' \
+      'near-cap, and high-variation terrain. Record success/refusal, timing, expected and ' \
+      'actual mesh counts, derived face/edge markers, positive-Z normals, digest linkage, ' \
+      'undo behavior, responsiveness/ping, and unmanaged sentinel preservation.'
     )
   end
 end
