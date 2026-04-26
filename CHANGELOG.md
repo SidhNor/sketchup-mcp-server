@@ -2,6 +2,14 @@
 
 <!-- version list -->
 
+## v0.24.0 (2026-04-26)
+
+### Features
+
+- **MTA-10**: Partial terrain mutation
+  ([`d86992f`](https://github.com/SidhNor/sketchup-mcp-server/commit/d86992faa9c7a7c34e7fd174833d974d06440bb9))
+
+
 ## v0.23.0 (2026-04-26)
 
 ### Bug Fixes
