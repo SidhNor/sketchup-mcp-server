@@ -16,6 +16,85 @@ class EditTerrainSurfaceRequestTest < Minitest::Test
     assert_equal(20, result.dig(:params, 'outputOptions', 'sampleEvidenceLimit'))
   end
 
+  def test_accepts_corridor_transition_request_with_side_blend_defaults
+    result = validate_request(corridor_request)
+
+    assert_equal('ready', result.fetch(:outcome))
+    assert_equal('corridor_transition', result.fetch(:operation_mode))
+    assert_equal('corridor', result.fetch(:region_type))
+    assert_equal(0.0, result.dig(:params, 'region', 'sideBlend', 'distance'))
+    assert_equal('none', result.dig(:params, 'region', 'sideBlend', 'falloff'))
+
+    positive = corridor_request
+    positive['region']['sideBlend'] = { 'distance' => 1.5 }
+    assert_equal(
+      'cosine',
+      validate_request(positive).dig(:params, 'region', 'sideBlend', 'falloff')
+    )
+  end
+
+  def test_enforces_operation_mode_and_region_type_compatibility
+    rectangle_corridor = corridor_request
+    rectangle_corridor['region']['type'] = 'rectangle'
+    assert_refusal(
+      validate_request(rectangle_corridor),
+      'unsupported_option',
+      'region.type'
+    )
+
+    target_height_corridor = minimal_request
+    target_height_corridor['region'] = corridor_request.fetch('region')
+    assert_refusal(
+      validate_request(target_height_corridor),
+      'unsupported_option',
+      'region.type'
+    )
+  end
+
+  def test_mode_specific_required_fields_are_runtime_validated
+    missing_target_height = minimal_request
+    missing_target_height['operation'].delete('targetElevation')
+    assert_refusal(
+      validate_request(missing_target_height),
+      'missing_required_field',
+      'operation.targetElevation'
+    )
+
+    missing_corridor_control = corridor_request
+    missing_corridor_control['region'].delete('startControl')
+    assert_refusal(
+      validate_request(missing_corridor_control),
+      'missing_required_field',
+      'region.startControl'
+    )
+  end
+
+  def test_refuses_invalid_corridor_controls_width_and_side_blend_options
+    bad_width = corridor_request
+    bad_width['region']['width'] = 0.0
+    assert_refusal(validate_request(bad_width), 'invalid_edit_request', 'region.width')
+
+    bad_falloff = corridor_request
+    bad_falloff['region']['sideBlend'] = { 'distance' => 1.0, 'falloff' => 'linear' }
+    assert_refusal(
+      validate_request(bad_falloff),
+      'unsupported_option',
+      'region.sideBlend.falloff'
+    )
+
+    inert_falloff = corridor_request
+    inert_falloff['region']['sideBlend'] = { 'distance' => 1.0, 'falloff' => 'none' }
+    assert_refusal(
+      validate_request(inert_falloff),
+      'invalid_edit_request',
+      'region.sideBlend.falloff'
+    )
+
+    coincident = corridor_request
+    coincident['region']['endControl']['point'] = { 'x' => 1.0, 'y' => 1.0 }
+    assert_refusal(validate_request(coincident), 'invalid_corridor_geometry', 'region')
+  end
+
   def test_refuses_unsupported_operation_mode_with_allowed_values
     request = minimal_request
     request['operation']['mode'] = 'smooth'
@@ -77,6 +156,25 @@ class EditTerrainSurfaceRequestTest < Minitest::Test
       'minY' => 1.0,
       'maxX' => 3.0,
       'maxY' => 3.0
+    }
+  end
+
+  def corridor_request
+    {
+      'targetReference' => { 'sourceElementId' => 'terrain-main' },
+      'operation' => { 'mode' => 'corridor_transition' },
+      'region' => {
+        'type' => 'corridor',
+        'startControl' => {
+          'point' => { 'x' => 1.0, 'y' => 1.0 },
+          'elevation' => 1.0
+        },
+        'endControl' => {
+          'point' => { 'x' => 5.0, 'y' => 1.0 },
+          'elevation' => 3.0
+        },
+        'width' => 2.0
+      }
     }
   end
 end

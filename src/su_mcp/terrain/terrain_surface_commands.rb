@@ -6,6 +6,7 @@ require_relative '../semantic/length_converter'
 require_relative '../semantic/managed_object_metadata'
 require_relative '../semantic/scene_properties'
 require_relative 'bounded_grade_edit'
+require_relative 'corridor_transition_edit'
 require_relative 'create_terrain_surface_request'
 require_relative 'edit_terrain_surface_request'
 require_relative 'terrain_edit_evidence_builder'
@@ -41,6 +42,7 @@ module SU_MCP
         length_converter: Semantic::LengthConverter.new,
         edit_request_validator: nil,
         grade_editor: BoundedGradeEdit.new,
+        corridor_editor: CorridorTransitionEdit.new,
         target_resolver: nil,
         edit_evidence_builder: TerrainEditEvidenceBuilder.new
       )
@@ -56,6 +58,7 @@ module SU_MCP
         @length_converter = length_converter
         @edit_request_validator = edit_request_validator
         @grade_editor = grade_editor
+        @corridor_editor = corridor_editor
         @target_resolver = target_resolver || TargetReferenceResolver.new
         @edit_evidence_builder = edit_evidence_builder
       end
@@ -86,7 +89,7 @@ module SU_MCP
       attr_reader :model, :validator, :state_builder, :repository, :mesh_generator,
                   :evidence_builder, :adoption_sampler, :metadata_writer, :scene_properties,
                   :length_converter, :edit_request_validator, :grade_editor, :target_resolver,
-                  :edit_evidence_builder
+                  :corridor_editor, :edit_evidence_builder
 
       def validate(params)
         return validator.validate(params) if validator
@@ -110,7 +113,7 @@ module SU_MCP
         loaded = load_state_or_refusal(owner)
         return loaded if refused?(loaded)
 
-        edit_result = grade_editor.apply(
+        edit_result = editor_for(validation).apply(
           state: loaded.fetch(:state),
           request: validation.fetch(:params)
         )
@@ -122,6 +125,13 @@ module SU_MCP
           loaded: loaded,
           edit_result: edit_result
         }
+      end
+
+      def editor_for(validation)
+        mode = validation[:operation_mode] || validation.fetch(:params).dig('operation', 'mode')
+        return corridor_editor if mode == 'corridor_transition'
+
+        grade_editor
       end
 
       def execute_edit_mutation(context)

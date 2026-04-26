@@ -1,7 +1,7 @@
 # Task: MTA-05 Implement Corridor Transition Terrain Kernel
 **Task ID**: `MTA-05`
 **Title**: `Implement Corridor Transition Terrain Kernel`
-**Status**: `planned`
+**Status**: `completed`
 **Priority**: `P0`
 **Date**: `2026-04-24`
 

@@ -8,14 +8,22 @@ module SU_MCP
     # rubocop:disable Metrics/AbcSize, Metrics/ClassLength, Metrics/CyclomaticComplexity
     # rubocop:disable Metrics/MethodLength, Metrics/PerceivedComplexity
     class EditTerrainSurfaceRequest
-      SUPPORTED_OPERATION_MODES = %w[target_height].freeze
-      SUPPORTED_REGION_TYPES = %w[rectangle].freeze
+      SUPPORTED_OPERATION_MODES = %w[target_height corridor_transition].freeze
+      SUPPORTED_REGION_TYPES = %w[rectangle corridor].freeze
       SUPPORTED_BLEND_FALLOFFS = %w[none linear smooth].freeze
+      SUPPORTED_SIDE_BLEND_FALLOFFS = %w[none cosine].freeze
       SUPPORTED_PRESERVE_ZONE_TYPES = %w[rectangle].freeze
+      SUPPORTED_REGION_TYPES_BY_MODE = {
+        'target_height' => %w[rectangle],
+        'corridor_transition' => %w[corridor]
+      }.freeze
 
       DEFAULT_BLEND_DISTANCE = 0.0
       DEFAULT_BLEND_FALLOFF = 'none'
       DEFAULT_POSITIVE_BLEND_FALLOFF = 'smooth'
+      DEFAULT_SIDE_BLEND_DISTANCE = 0.0
+      DEFAULT_SIDE_BLEND_FALLOFF = 'none'
+      DEFAULT_POSITIVE_SIDE_BLEND_FALLOFF = 'cosine'
       DEFAULT_FIXED_CONTROL_TOLERANCE = 0.01
       DEFAULT_INCLUDE_SAMPLE_EVIDENCE = false
       DEFAULT_SAMPLE_EVIDENCE_LIMIT = 20
@@ -83,11 +91,16 @@ module SU_MCP
             message: 'Operation mode is not supported for edit_terrain_surface.'
           )
         end
-        return invalid_number_refusal('operation.targetElevation') unless finite_number?(
-          operation['targetElevation']
-        )
+        if operation['mode'] == 'target_height'
+          return missing_field_refusal('operation.targetElevation') unless operation.key?(
+            'targetElevation'
+          )
+          return invalid_number_refusal('operation.targetElevation') unless finite_number?(
+            operation['targetElevation']
+          )
+        end
 
-        fixed_controls_refusal
+        nil
       end
 
       def fixed_controls_refusal
@@ -130,8 +143,95 @@ module SU_MCP
             message: 'Region type is not supported for edit_terrain_surface.'
           )
         end
+        compatibility_refusal = mode_region_compatibility_refusal
+        return compatibility_refusal if compatibility_refusal
+
+        return corridor_region_refusal if operation['mode'] == 'corridor_transition'
 
         bounds_refusal(region['bounds'], 'region.bounds') || blend_refusal
+      end
+
+      def mode_region_compatibility_refusal
+        allowed = SUPPORTED_REGION_TYPES_BY_MODE.fetch(operation['mode'], SUPPORTED_REGION_TYPES)
+        return nil if allowed.include?(region['type'])
+
+        unsupported_option_refusal(
+          field: 'region.type',
+          value: region['type'],
+          allowed_values: allowed,
+          message: 'Region type is not supported for this edit operation mode.'
+        )
+      end
+
+      def corridor_region_refusal
+        control_refusal('region.startControl', region['startControl']) ||
+          control_refusal('region.endControl', region['endControl']) ||
+          corridor_width_refusal ||
+          corridor_side_blend_refusal ||
+          coincident_corridor_refusal
+      end
+
+      def control_refusal(field, control)
+        return missing_field_refusal(field) unless control.is_a?(Hash)
+
+        point = control['point']
+        return invalid_shape_refusal("#{field}.point") unless point.is_a?(Hash)
+
+        %w[x y].each do |axis|
+          return invalid_number_refusal("#{field}.point.#{axis}") unless finite_number?(point[axis])
+        end
+        return invalid_number_refusal("#{field}.elevation") unless finite_number?(
+          control['elevation']
+        )
+
+        nil
+      end
+
+      def corridor_width_refusal
+        width = region['width']
+        return missing_field_refusal('region.width') unless region.key?('width')
+        return invalid_number_refusal('region.width') unless finite_number?(width)
+        return invalid_number_refusal('region.width') unless width.to_f.positive?
+
+        nil
+      end
+
+      def corridor_side_blend_refusal
+        side_blend = region.fetch('sideBlend', {})
+        return invalid_shape_refusal('region.sideBlend') unless side_blend.is_a?(Hash)
+
+        distance = side_blend.fetch('distance', DEFAULT_SIDE_BLEND_DISTANCE)
+        return invalid_number_refusal('region.sideBlend.distance') unless finite_number?(distance)
+        return invalid_number_refusal('region.sideBlend.distance') if distance.to_f.negative?
+
+        falloff = normalized_side_blend_falloff(side_blend, distance)
+        unless SUPPORTED_SIDE_BLEND_FALLOFFS.include?(falloff)
+          return unsupported_option_refusal(
+            field: 'region.sideBlend.falloff',
+            value: falloff,
+            allowed_values: SUPPORTED_SIDE_BLEND_FALLOFFS,
+            message: 'Side-blend falloff is not supported for corridor_transition.'
+          )
+        end
+        return invalid_shape_refusal('region.sideBlend.falloff') if distance.to_f.positive? &&
+                                                                    falloff == 'none'
+
+        nil
+      end
+
+      def coincident_corridor_refusal
+        start_point = region.dig('startControl', 'point')
+        end_point = region.dig('endControl', 'point')
+        return nil unless start_point == end_point
+
+        refusal(
+          code: 'invalid_corridor_geometry',
+          message: 'Corridor transition controls do not define supported geometry.',
+          details: {
+            field: 'region',
+            reason: 'start and end controls must not be coincident'
+          }
+        )
       end
 
       def blend_refusal
@@ -156,6 +256,9 @@ module SU_MCP
 
       def constraints_refusal
         return invalid_shape_refusal('constraints') unless constraints.is_a?(Hash)
+
+        fixed_controls_result = fixed_controls_refusal
+        return fixed_controls_result if fixed_controls_result
 
         preserve_zones = constraints.fetch('preserveZones', [])
         return invalid_shape_refusal('constraints.preserveZones') unless preserve_zones.is_a?(Array)
@@ -231,12 +334,30 @@ module SU_MCP
 
       def normalized_region
         normalized = deep_dup(region)
+        return normalized_corridor_region(normalized) if normalized['type'] == 'corridor'
+
         blend = normalized.fetch('blend', {})
         distance = blend.fetch('distance', DEFAULT_BLEND_DISTANCE).to_f
         falloff = blend.fetch('falloff', nil)
         falloff ||= distance.positive? ? DEFAULT_POSITIVE_BLEND_FALLOFF : DEFAULT_BLEND_FALLOFF
         normalized['blend'] = blend.merge('distance' => distance, 'falloff' => falloff)
         normalized
+      end
+
+      def normalized_corridor_region(normalized)
+        side_blend = normalized.fetch('sideBlend', {})
+        distance = side_blend.fetch('distance', DEFAULT_SIDE_BLEND_DISTANCE).to_f
+        falloff = normalized_side_blend_falloff(side_blend, distance)
+        normalized['sideBlend'] = side_blend.merge('distance' => distance, 'falloff' => falloff)
+        normalized
+      end
+
+      def normalized_side_blend_falloff(side_blend, distance)
+        falloff = side_blend.fetch('falloff', nil)
+        return falloff if falloff
+        return DEFAULT_POSITIVE_SIDE_BLEND_FALLOFF if distance.to_f.positive?
+
+        DEFAULT_SIDE_BLEND_FALLOFF
       end
 
       def normalized_constraints

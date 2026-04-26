@@ -115,6 +115,66 @@ class TerrainSurfaceCommandsTest < Minitest::Test # rubocop:disable Metrics/Clas
     )
   end
 
+  def test_target_height_edit_dispatches_to_grade_editor
+    model = build_semantic_model
+    managed_terrain_owner(model)
+    grade_editor = RecordingGradeEditor.new
+    corridor_editor = RecordingCorridorEditor.new
+    commands = build_edit_commands(
+      model: model,
+      repository: EditRepository.new(state),
+      grade_editor: grade_editor,
+      corridor_editor: corridor_editor
+    )
+
+    commands.edit_terrain_surface(edit_request)
+
+    assert_equal(1, grade_editor.calls.length)
+    assert_empty(corridor_editor.calls)
+  end
+
+  def test_corridor_transition_dispatches_to_corridor_editor_and_reuses_regeneration_flow
+    model = build_semantic_model
+    managed_terrain_owner(model)
+    repository = EditRepository.new(state)
+    mesh_generator = RecordingRegeneratingMeshGenerator.new
+    grade_editor = RecordingGradeEditor.new
+    corridor_editor = RecordingCorridorEditor.new
+    commands = build_edit_commands(
+      model: model,
+      repository: repository,
+      mesh_generator: mesh_generator,
+      grade_editor: grade_editor,
+      corridor_editor: corridor_editor
+    )
+
+    result = commands.edit_terrain_surface(corridor_edit_request)
+
+    assert_equal('edited', result.fetch(:outcome))
+    assert_empty(grade_editor.calls)
+    assert_equal(1, corridor_editor.calls.length)
+    assert_equal(2, repository.saved_state.revision)
+    assert_equal([:regenerate], mesh_generator.calls)
+  end
+
+  def test_corridor_transition_refusal_happens_before_save_or_model_operation
+    model = build_semantic_model
+    managed_terrain_owner(model)
+    repository = EditRepository.new(state)
+    commands = build_edit_commands(
+      model: model,
+      repository: repository,
+      edit_request_validator: AcceptingCorridorEditValidator.new,
+      corridor_editor: RefusingCorridorEditor.new
+    )
+
+    result = commands.edit_terrain_surface(corridor_edit_request)
+
+    assert_equal('refused', result.fetch(:outcome))
+    assert_nil(repository.saved_state)
+    assert_empty(model.operations)
+  end
+
   def test_edit_refusal_returns_before_opening_model_operation
     model = build_semantic_model
     commands = build_edit_commands(model: model, edit_request_validator: RefusingEditValidator.new)
@@ -166,6 +226,7 @@ class TerrainSurfaceCommandsTest < Minitest::Test # rubocop:disable Metrics/Clas
                           mesh_generator: RecordingRegeneratingMeshGenerator.new,
                           edit_request_validator: AcceptingEditValidator.new,
                           grade_editor: RecordingGradeEditor.new,
+                          corridor_editor: RecordingCorridorEditor.new,
                           target_resolver: RecordingTargetResolver.new,
                           edit_evidence_builder: EditEvidenceBuilder.new)
     SU_MCP::Terrain::TerrainSurfaceCommands.new(
@@ -178,6 +239,7 @@ class TerrainSurfaceCommandsTest < Minitest::Test # rubocop:disable Metrics/Clas
       adoption_sampler: RecordingAdoptionSampler.new,
       edit_request_validator: edit_request_validator,
       grade_editor: grade_editor,
+      corridor_editor: corridor_editor,
       target_resolver: target_resolver,
       edit_evidence_builder: edit_evidence_builder
     )
@@ -206,6 +268,20 @@ class TerrainSurfaceCommandsTest < Minitest::Test # rubocop:disable Metrics/Clas
           'maxX' => 1.0,
           'maxY' => 1.0
         }
+      }
+    }
+  end
+
+  def corridor_edit_request
+    {
+      'targetReference' => { 'sourceElementId' => 'terrain-main' },
+      'operation' => { 'mode' => 'corridor_transition' },
+      'region' => {
+        'type' => 'corridor',
+        'startControl' => { 'point' => { 'x' => 0.0, 'y' => 1.0 }, 'elevation' => 1.0 },
+        'endControl' => { 'point' => { 'x' => 2.0, 'y' => 1.0 }, 'elevation' => 3.0 },
+        'width' => 1.0,
+        'sideBlend' => { 'distance' => 0.0, 'falloff' => 'none' }
       }
     }
   end
@@ -360,6 +436,17 @@ class TerrainSurfaceCommandsTest < Minitest::Test # rubocop:disable Metrics/Clas
     end
   end
 
+  class AcceptingCorridorEditValidator
+    def validate(params)
+      {
+        outcome: 'ready',
+        operation_mode: 'corridor_transition',
+        region_type: 'corridor',
+        params: params
+      }
+    end
+  end
+
   class RefusingEditValidator
     def validate(_params)
       {
@@ -378,7 +465,14 @@ class TerrainSurfaceCommandsTest < Minitest::Test # rubocop:disable Metrics/Clas
   end
 
   class RecordingGradeEditor
+    attr_reader :calls
+
+    def initialize
+      @calls = []
+    end
+
     def apply(state:, request:)
+      @calls << { state: state, request: request }
       {
         outcome: 'edited',
         state: SU_MCP::Terrain::HeightmapState.new(
@@ -391,6 +485,22 @@ class TerrainSurfaceCommandsTest < Minitest::Test # rubocop:disable Metrics/Clas
           state_id: state.state_id
         ),
         diagnostics: { changedSampleCount: 4, request: request }
+      }
+    end
+  end
+
+  class RecordingCorridorEditor < RecordingGradeEditor
+  end
+
+  class RefusingCorridorEditor
+    def apply(...)
+      {
+        success: true,
+        outcome: 'refused',
+        refusal: {
+          code: 'invalid_corridor_geometry',
+          details: { field: 'region' }
+        }
       }
     end
   end

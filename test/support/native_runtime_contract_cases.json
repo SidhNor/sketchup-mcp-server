@@ -1417,7 +1417,7 @@
             "details": {
               "field": "operation.mode",
               "value": "smooth",
-              "allowedValues": ["target_height"]
+              "allowedValues": ["target_height", "corridor_transition"]
             }
           }
         }
@@ -1557,6 +1557,237 @@
               "controlId": "pad-corner-1",
               "effectiveTolerance": 0.05,
               "predictedDelta": 10.0
+            }
+          }
+        }
+      }
+    },
+    {
+      "case_id": "edit_terrain_surface_corridor_transition_edited",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "params": {
+          "name": "edit_terrain_surface",
+          "arguments": {
+            "targetReference": { "sourceElementId": "terrain-main" },
+            "operation": {
+              "mode": "corridor_transition"
+            },
+            "region": {
+              "type": "corridor",
+              "startControl": {
+                "point": { "x": 1.0, "y": 2.0 },
+                "elevation": 0.5
+              },
+              "endControl": {
+                "point": { "x": 8.0, "y": 2.0 },
+                "elevation": 1.5
+              },
+              "width": 3.0,
+              "sideBlend": { "distance": 1.0, "falloff": "cosine" }
+            },
+            "outputOptions": {
+              "includeSampleEvidence": true,
+              "sampleEvidenceLimit": 4
+            }
+          }
+        },
+        "id": "edit-terrain-surface-corridor-transition"
+      },
+      "response": {
+        "jsonrpc": "2.0",
+        "id": "edit-terrain-surface-corridor-transition",
+        "result": {
+          "success": true,
+          "outcome": "edited",
+          "operation": {
+            "name": "edit_terrain_surface",
+            "mode": "corridor_transition"
+          },
+          "managedTerrain": {
+            "ownerReference": {
+              "sourceElementId": "terrain-main",
+              "persistentId": "5001"
+            },
+            "semanticType": "managed_terrain_surface",
+            "status": "existing",
+            "state": "Adopted"
+          },
+          "terrainState": {
+            "stateId": "state-1",
+            "payloadKind": "heightmap_grid",
+            "schemaVersion": 1,
+            "revision": 2,
+            "digestAlgorithm": "sha256",
+            "digest": "digest-3",
+            "serializedBytes": 238
+          },
+          "output": {
+            "derivedMesh": {
+              "meshType": "regular_grid",
+              "vertexCount": 16,
+              "faceCount": 18,
+              "derivedFromStateDigest": "digest-3"
+            }
+          },
+          "evidence": {
+            "changedRegion": {
+              "min": { "column": 1, "row": 1 },
+              "max": { "column": 8, "row": 3 }
+            },
+            "sampleSummary": {
+              "totalSampleCount": 18,
+              "returnedSampleCount": 4
+            },
+            "fixedControls": [],
+            "preserveZones": {
+              "protectedSampleCount": 0
+            },
+            "transition": {
+              "mode": "corridor_transition",
+              "startControl": {
+                "point": { "x": 1.0, "y": 2.0 },
+                "elevation": 0.5
+              },
+              "endControl": {
+                "point": { "x": 8.0, "y": 2.0 },
+                "elevation": 1.5
+              },
+              "width": 3.0,
+              "sideBlend": { "distance": 1.0, "falloff": "cosine" },
+              "endpointDeltas": { "start": 0.0, "end": 0.0 },
+              "deltaSummary": { "min": -0.25, "max": 1.0 }
+            },
+            "warnings": []
+          }
+        }
+      }
+    },
+    {
+      "case_id": "edit_terrain_surface_corridor_transition_invalid_geometry_refused",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "params": {
+          "name": "edit_terrain_surface",
+          "arguments": {
+            "targetReference": { "sourceElementId": "terrain-main" },
+            "operation": { "mode": "corridor_transition" },
+            "region": {
+              "type": "corridor",
+              "startControl": {
+                "point": { "x": 1.0, "y": 2.0 },
+                "elevation": 0.5
+              },
+              "endControl": {
+                "point": { "x": 1.0, "y": 2.0 },
+                "elevation": 1.5
+              },
+              "width": 3.0
+            }
+          }
+        },
+        "id": "edit-terrain-surface-corridor-invalid-geometry"
+      },
+      "response": {
+        "jsonrpc": "2.0",
+        "id": "edit-terrain-surface-corridor-invalid-geometry",
+        "result": {
+          "success": true,
+          "outcome": "refused",
+          "refusal": {
+            "code": "invalid_corridor_geometry",
+            "message": "Corridor transition controls do not define supported geometry.",
+            "details": {
+              "field": "region",
+              "reason": "start and end controls must not be coincident"
+            }
+          }
+        }
+      }
+    },
+    {
+      "case_id": "edit_terrain_surface_corridor_transition_invalid_pair_refused",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "params": {
+          "name": "edit_terrain_surface",
+          "arguments": {
+            "targetReference": { "sourceElementId": "terrain-main" },
+            "operation": { "mode": "corridor_transition" },
+            "region": {
+              "type": "rectangle",
+              "bounds": {
+                "minX": 1.0,
+                "minY": 1.0,
+                "maxX": 3.0,
+                "maxY": 3.0
+              }
+            }
+          }
+        },
+        "id": "edit-terrain-surface-corridor-invalid-pair"
+      },
+      "response": {
+        "jsonrpc": "2.0",
+        "id": "edit-terrain-surface-corridor-invalid-pair",
+        "result": {
+          "success": true,
+          "outcome": "refused",
+          "refusal": {
+            "code": "unsupported_option",
+            "message": "Region type is not supported for this edit operation mode.",
+            "details": {
+              "field": "region.type",
+              "value": "rectangle",
+              "allowedValues": ["corridor"]
+            }
+          }
+        }
+      }
+    },
+    {
+      "case_id": "edit_terrain_surface_corridor_transition_side_blend_refused",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "params": {
+          "name": "edit_terrain_surface",
+          "arguments": {
+            "targetReference": { "sourceElementId": "terrain-main" },
+            "operation": { "mode": "corridor_transition" },
+            "region": {
+              "type": "corridor",
+              "startControl": {
+                "point": { "x": 1.0, "y": 2.0 },
+                "elevation": 0.5
+              },
+              "endControl": {
+                "point": { "x": 8.0, "y": 2.0 },
+                "elevation": 1.5
+              },
+              "width": 3.0,
+              "sideBlend": { "distance": 1.0, "falloff": "linear" }
+            }
+          }
+        },
+        "id": "edit-terrain-surface-corridor-side-blend"
+      },
+      "response": {
+        "jsonrpc": "2.0",
+        "id": "edit-terrain-surface-corridor-side-blend",
+        "result": {
+          "success": true,
+          "outcome": "refused",
+          "refusal": {
+            "code": "unsupported_option",
+            "message": "Side-blend falloff is not supported for corridor_transition.",
+            "details": {
+              "field": "region.sideBlend.falloff",
+              "value": "linear",
+              "allowedValues": ["none", "cosine"]
             }
           }
         }

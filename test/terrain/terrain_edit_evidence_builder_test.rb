@@ -60,6 +60,24 @@ class TerrainEditEvidenceBuilderTest < Minitest::Test
     assert_equal(0, result.dig(:evidence, :sampleSummary, :returnedSampleCount))
   end
 
+  def test_includes_compact_transition_evidence_when_supplied
+    result = SU_MCP::Terrain::TerrainEditEvidenceBuilder.new.build_success(
+      owner_reference: { sourceElementId: 'terrain-main' },
+      terrain_state_summary: terrain_state_summary,
+      output_summary: { derivedMesh: derived_mesh_summary },
+      edit_summary: edit_summary.merge(mode: 'corridor_transition', region: corridor_region),
+      diagnostics: diagnostics.merge(transition: transition_diagnostics),
+      sample_limit: 0
+    )
+
+    transition = result.dig(:evidence, :transition)
+    assert_equal('corridor_transition', transition.fetch(:mode))
+    assert_equal(2.0, transition.fetch(:width))
+    assert_equal({ 'distance' => 1.0, 'falloff' => 'cosine' }, transition.fetch(:sideBlend))
+    assert_includes(transition.keys, :endpointDeltas)
+    assert_includes(transition.keys, :deltaSummary)
+  end
+
   private
 
   def terrain_state_summary
@@ -101,6 +119,26 @@ class TerrainEditEvidenceBuilderTest < Minitest::Test
       fixedControls: [{ id: 'control-1', status: 'preserved' }],
       preserveZones: { protectedSampleCount: 3 },
       warnings: []
+    }
+  end
+
+  def corridor_region
+    {
+      type: 'corridor',
+      startControl: { point: { x: 0.0, y: 1.0 }, elevation: 1.0 },
+      endControl: { point: { x: 4.0, y: 1.0 }, elevation: 3.0 },
+      width: 2.0,
+      sideBlend: { distance: 1.0, falloff: 'cosine' }
+    }
+  end
+
+  def transition_diagnostics
+    {
+      mode: 'corridor_transition',
+      width: 2.0,
+      sideBlend: { 'distance' => 1.0, 'falloff' => 'cosine' },
+      endpointDeltas: { start: 0.0, end: 0.0 },
+      deltaSummary: { min: 0.0, max: 2.0 }
     }
   end
 end

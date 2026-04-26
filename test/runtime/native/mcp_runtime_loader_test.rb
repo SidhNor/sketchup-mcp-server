@@ -284,6 +284,23 @@ class McpRuntimeLoaderTest < Minitest::Test
         .fetch('mode')
         .fetch('enum')
     )
+    operation_required = edit_terrain_surface_tool
+                         .fetch('inputSchema')
+                         .fetch('properties')
+                         .fetch('operation')
+                         .fetch('required')
+    assert_equal(['mode'], operation_required)
+    refute_includes(operation_required, 'targetElevation')
+
+    region_properties = edit_terrain_surface_tool
+                        .fetch('inputSchema')
+                        .fetch('properties')
+                        .fetch('region')
+                        .fetch('properties')
+    %w[startControl endControl width sideBlend].each do |field|
+      assert_includes(region_properties.keys, field)
+    end
+
     assert_equal(
       SU_MCP::Terrain::EditTerrainSurfaceRequest::SUPPORTED_BLEND_FALLOFFS,
       edit_terrain_surface_tool
@@ -563,6 +580,18 @@ class McpRuntimeLoaderTest < Minitest::Test
         .fetch(:type)
         .fetch(:enum)
     )
+    operation_required = input_schema
+                         .fetch(:properties)
+                         .fetch(:operation)
+                         .fetch(:required)
+    assert_equal(['mode'], operation_required)
+    refute_includes(operation_required, 'targetElevation')
+
+    region_properties = input_schema.fetch(:properties).fetch(:region).fetch(:properties)
+    %i[startControl endControl width sideBlend].each do |field|
+      assert_includes(region_properties.keys, field)
+    end
+
     assert_equal(
       SU_MCP::Terrain::EditTerrainSurfaceRequest::SUPPORTED_BLEND_FALLOFFS,
       input_schema
@@ -570,6 +599,17 @@ class McpRuntimeLoaderTest < Minitest::Test
         .fetch(:region)
         .fetch(:properties)
         .fetch(:blend)
+        .fetch(:properties)
+        .fetch(:falloff)
+        .fetch(:enum)
+    )
+    assert_equal(
+      SU_MCP::Terrain::EditTerrainSurfaceRequest::SUPPORTED_SIDE_BLEND_FALLOFFS,
+      input_schema
+        .fetch(:properties)
+        .fetch(:region)
+        .fetch(:properties)
+        .fetch(:sideBlend)
         .fetch(:properties)
         .fetch(:falloff)
         .fetch(:enum)

@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require_relative 'heightmap_state'
+require_relative 'fixed_control_evaluator'
 require_relative 'sample_window'
 
 module SU_MCP
@@ -18,7 +19,11 @@ module SU_MCP
         return no_affected_samples_refusal if weighted_samples.empty?
 
         edited_elevations = edited_elevations_for(state, request, weighted_samples)
-        fixed_control_refusal = validate_fixed_controls(state, edited_elevations, request)
+        fixed_control_refusal = fixed_control_evaluator(
+          state,
+          edited_elevations,
+          request
+        ).conflict_refusal
         return fixed_control_refusal if fixed_control_refusal
 
         {
@@ -70,60 +75,6 @@ module SU_MCP
           elevations[sample.fetch(:index)] = before + ((target - before) * weight)
         end
         elevations
-      end
-
-      def validate_fixed_controls(state, edited_elevations, request)
-        fixed_controls(request).each do |control|
-          point = control.fetch('point')
-          fixed_elevation = fixed_elevation_for(state, control, point)
-          predicted_after = interpolate(state, edited_elevations, point)
-          delta = (predicted_after - fixed_elevation).abs
-          tolerance = control.fetch('tolerance', DEFAULT_FIXED_CONTROL_TOLERANCE).to_f
-          next unless delta > tolerance
-
-          return refusal(
-            code: 'fixed_control_conflict',
-            message: 'Terrain edit would move a fixed control outside tolerance.',
-            details: {
-              controlId: control['id'],
-              effectiveTolerance: tolerance,
-              predictedDelta: delta
-            }.compact
-          )
-        end
-        nil
-      end
-
-      def fixed_elevation_for(state, control, point)
-        return control.fetch('elevation').to_f if control.key?('elevation')
-
-        interpolate(state, state.elevations, point)
-      end
-
-      def interpolate(state, elevations, point)
-        x_grid = (point.fetch('x').to_f - state.origin.fetch('x')) / state.spacing.fetch('x')
-        y_grid = (point.fetch('y').to_f - state.origin.fetch('y')) / state.spacing.fetch('y')
-        columns = state.dimensions.fetch('columns')
-        rows = state.dimensions.fetch('rows')
-
-        x0 = clamp_integer(x_grid.floor, 0, columns - 1)
-        y0 = clamp_integer(y_grid.floor, 0, rows - 1)
-        x1 = clamp_integer(x0 + 1, 0, columns - 1)
-        y1 = clamp_integer(y0 + 1, 0, rows - 1)
-        tx = x1 == x0 ? 0.0 : x_grid - x0
-        ty = y1 == y0 ? 0.0 : y_grid - y0
-
-        z00 = elevations.fetch((y0 * columns) + x0)
-        z10 = elevations.fetch((y0 * columns) + x1)
-        z01 = elevations.fetch((y1 * columns) + x0)
-        z11 = elevations.fetch((y1 * columns) + x1)
-        lower = z00 + ((z10 - z00) * tx)
-        upper = z01 + ((z11 - z01) * tx)
-        lower + ((upper - lower) * ty)
-      end
-
-      def clamp_integer(value, min, max)
-        value.clamp(min, max)
       end
 
       def edit_weight_for(coordinate, region)
@@ -233,21 +184,7 @@ module SU_MCP
       end
 
       def fixed_control_summaries(state, edited_elevations, request)
-        fixed_controls(request).map do |control|
-          point = control.fetch('point')
-          fixed_elevation = fixed_elevation_for(state, control, point)
-          predicted_after = interpolate(state, edited_elevations, point)
-          {
-            id: control['id'],
-            point: point,
-            beforeElevation: interpolate(state, state.elevations, point),
-            fixedElevation: fixed_elevation,
-            predictedAfterElevation: predicted_after,
-            delta: (predicted_after - fixed_elevation).abs,
-            effectiveTolerance: control.fetch('tolerance', DEFAULT_FIXED_CONTROL_TOLERANCE).to_f,
-            status: 'preserved'
-          }.compact
-        end
+        fixed_control_evaluator(state, edited_elevations, request).summaries
       end
 
       def protected_sample_count(state, request)
@@ -260,6 +197,15 @@ module SU_MCP
 
       def fixed_controls(request)
         request.fetch('constraints', {}).fetch('fixedControls', [])
+      end
+
+      def fixed_control_evaluator(state, edited_elevations, request)
+        FixedControlEvaluator.new(
+          state: state,
+          after_elevations: edited_elevations,
+          fixed_controls: fixed_controls(request),
+          default_tolerance: DEFAULT_FIXED_CONTROL_TOLERANCE
+        )
       end
 
       def preserve_zones(request)

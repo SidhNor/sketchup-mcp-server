@@ -50,7 +50,7 @@ module SU_MCP
 
       def evidence_summary(edit_summary, diagnostics, sample_limit)
         samples = diagnostics.fetch(:samples, [])
-        {
+        summary = {
           editRegion: edit_summary.fetch(:region, {}),
           changedRegion: edit_summary[:changedRegion] || diagnostics[:changedRegion],
           samples: samples.first(sample_limit),
@@ -62,6 +62,8 @@ module SU_MCP
           preserveZones: diagnostics.fetch(:preserveZones, {}),
           warnings: diagnostics.fetch(:warnings, [])
         }
+        summary[:transition] = diagnostics[:transition] if diagnostics[:transition]
+        summary
       end
 
       def fixed_controls(diagnostics)

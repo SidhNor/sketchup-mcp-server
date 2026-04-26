@@ -2,13 +2,13 @@
 
 **Task ID**: `MTA-05`  
 **Title**: Implement Corridor Transition Terrain Kernel  
-**Status**: `challenged`  
+**Status**: `calibrated`  
 **Created**: 2026-04-24  
 **Last Updated**: 2026-04-26  
 
 **Related Task**: [task.md](./task.md)  
 **Related Plan**: [plan.md](./plan.md)  
-**Related Summary**: none yet  
+**Related Summary**: [summary.md](./summary.md)  
 
 ---
 
@@ -160,7 +160,22 @@ No material drift recorded yet.
 
 > Filled at the end of implementation. Do not overwrite predicted values.
 
-Not filled yet.
+| Dimension | Score (0-4) | Notes |
+|---|---:|---|
+| Functional Scope | 3 | Added one new public terrain edit mode inside `edit_terrain_surface`, with visible corridor controls, side blend, fixed-control behavior, preserve-zone behavior, and transition evidence. |
+| Technical Change Surface | 4 | Touched public schema, native runtime loader, request validation, command dispatch, two terrain kernels through shared fixed-control extraction, evidence shaping, README docs, contract fixtures, and live SketchUp verification. |
+| Actual Implementation Friction | 2 | Core implementation followed the planned `CorridorFrame` + `SampleWindow` + `CorridorTransitionEdit` split. Friction came from fixed-control extraction, finite contract alignment, and a small live-discovered endpoint tolerance fix, not from redesign. |
+| Actual Validation Burden | 4 | Validation dominated closeout: focused numerical tests, command/schema/fixture coverage, full CI/package, final Grok-4.20 review, and public MCP live SketchUp testing were all needed to prove correctness. |
+| Actual Dependency Drag | 2 | MTA-04 and MTA-07 foundations were available, but live SketchUp MCP verification and user-provided retest evidence were required to finish the host-sensitive surface. |
+| Actual Discovery Encountered | 2 | The planned shape held, but live testing exposed one exact-endpoint floating-point boundary issue and clarified that production bulk-output adoption belongs to MTA-08 rather than MTA-05. |
+| Actual Scope Volatility | 1 | Scope stayed inside the planned corridor-transition mode. No persisted schema migration, new public tool, localized terrain representation, or production bulk-output adoption was added. |
+| Actual Rework | 2 | Rework was contained: Grok review follow-ups, shared fixed-control extraction, strengthened tests, and a post-live endpoint tolerance fix. No broad rewrite or architecture change was required. |
+| Final Confidence in Completeness | 4 | Confidence is very strong after full CI, final review follow-up, live MCP retest of the prior endpoint bug, normals checks, undo guard, and unmanaged-content preservation. |
+
+### Actual Notes
+- The prediction correctly identified public contract synchronization and hosted verification as the dominant cost drivers.
+- Implementation friction was lower than predicted because the `SampleWindow` and existing edit-command substrate composed cleanly with the new corridor kernel.
+- The dominant actual failure mode was not algorithm shape; it was host/live numeric boundary behavior on adopted terrain with non-zero origin and fractional spacing.
 <!-- SIZE:ACTUAL:END -->
 
 ---
@@ -168,7 +183,34 @@ Not filled yet.
 <!-- SIZE:VALIDATION-EVIDENCE:START -->
 ## Validation Evidence Summary
 
-Not filled yet.
+### Automated Validation
+- `bundle exec rake ci`
+  - RuboCop: 175 files, no offenses
+  - Ruby tests: 654 runs, 3013 assertions, 0 failures, 0 errors, 32 skips
+  - Package verification: `dist/su_mcp-0.22.0.rbz`
+- Focused post-live regression:
+  - corridor transition/frame tests covered non-zero-origin fractional-spacing exact endpoint behavior
+  - focused review-follow-up tests covered diagonal non-uniform bounds and native schema required-field exposure
+
+### Review Validation
+- Final Grok-4.20 Step 10 review after the live endpoint fix found no critical, high, or medium blockers.
+- Review follow-ups addressed low-severity test/comment hardening:
+  - explicit non-uniform diagonal corridor bounds coverage
+  - stronger schema assertions that `operation.required` remains only `mode`
+  - inline comment explaining the endpoint tolerance failure mode
+
+### Live SketchUp MCP Validation
+- Initial live pass covered baseline create, preserve zones, fixed-control conflict, invalid mode/region pairs, invalid corridor geometry, side-blend refusals, diagonal normals, unmanaged-content preservation, and near-cap performance.
+- Initial live pass found the adopted-coordinate exact endpoint bug.
+- Focused retest after the tolerance fix passed:
+  - exact endpoint on adopted non-zero-origin terrain updated to `4.0`
+  - stored state at column `80` / row `80` was `3.9999999999999996`
+  - `endpointDeltas.end` was approximately `7.8e-13`
+  - nearby interpolation samples, invalid geometry refusal, diagonal normals, unmanaged sentinel preservation, and one-step undo all passed.
+
+### Validation Gaps
+- Production output still uses the existing full SketchUp regeneration path. Bulk output adoption remains a separate MTA-08 task.
+- Save/reopen persistence was not added as an MTA-05-specific live retest scenario.
 <!-- SIZE:VALIDATION-EVIDENCE:END -->
 
 ---
@@ -176,7 +218,40 @@ Not filled yet.
 <!-- SIZE:DELTA:START -->
 ## Estimation Delta Review
 
-Not filled yet.
+### What Was Estimated Accurately
+- **Functional Scope**: predicted `3`, actual `3`. The task added one meaningful public edit mode without expanding into a new public tool or broader sculpting workflow.
+- **Technical Change Surface**: predicted `4`, actual `4`. The public contract, validation, command dispatch, kernel math, evidence, docs, fixtures, and hosted checks all moved together.
+- **Validation Burden**: predicted `4`, actual `4`. Correctness required broad automated checks plus real SketchUp MCP verification and retesting after the live endpoint fix.
+- **Dependency Drag**: predicted `2`, actual `2`. Existing MTA-04/MTA-07 foundations reduced implementation drag, but live-host validation remained a real coordination dependency.
+- **Discovery**: predicted `2`, actual `2`. Edge tolerances and performance interpretation remained implementation-time findings, but no major unknown changed the approach.
+
+### What Was Overestimated
+- **Implementation Friction**: predicted `3`, actual `2`. The planned architecture held well; the main code friction was contained extraction and test hardening, not structural redesign.
+- **Scope Volatility**: predicted `2`, actual `1`. The scope did not expand into production bulk output, persisted schema changes, localized state, or partial regeneration.
+- **Rework**: predicted `3`, actual `2`. Review and live testing caused focused fixes, but the implementation did not require revisiting broad completed slices.
+
+### What Was Underestimated
+- No whole scored dimension was materially underestimated.
+- A specific validation sub-risk was underweighted: exact endpoint inclusion on adopted terrain with non-zero origin and fractional spacing needed live public MCP evidence, not only local math tests.
+
+### Early Signals That Mattered
+- The premortem schema concern was real: `operation.targetElevation` had to move from schema-required to runtime mode-specific validation.
+- The MTA-04 analog correctly predicted live SketchUp validation and undo/output behavior would be a closeout gate.
+- The plan's edge-tolerance concern was justified; it manifested as the adopted-coordinate endpoint bug.
+
+### Genuinely Unknowable Factors
+- The exact floating-point endpoint drift on a fresh adopted terrain with non-zero origin and `0.1m` spacing was not fully knowable before live public-client testing.
+- The observed cold/warm and near-cap timing split was measurable only in live SketchUp; it confirmed that corridor math was not the main performance cost.
+
+### Future Analog Guidance
+- Use this task as an analog for public terrain edit-mode extensions that combine:
+  - finite MCP contract changes
+  - SketchUp-free heightmap kernels
+  - full derived-output regeneration
+  - live numeric edge validation on adopted terrain coordinates
+- Dominant actual failure mode: live host-coordinate numeric boundary behavior after otherwise-green local tests.
+- Future estimates should keep validation burden high for terrain edit kernels even when implementation primitives are already available.
+- Future estimates should avoid assuming bulk-output performance improvements are included unless the task explicitly owns production regeneration-path adoption.
 <!-- SIZE:DELTA:END -->
 
 ---

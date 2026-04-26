@@ -389,9 +389,9 @@ module SU_MCP
         tool_entry(
           name: 'edit_terrain_surface',
           title: 'Edit Managed Terrain Surface',
-          description: 'Apply a bounded target-height edit to a repository-backed Managed ' \
-                       'Terrain Surface. Use for deterministic heightmap edits with rectangle ' \
-                       'regions, blend falloff, fixed controls, and preserve zones; not for ' \
+          description: 'Apply bounded edits to a repository-backed Managed Terrain Surface. ' \
+                       'Supports target_height with rectangle regions or corridor_transition ' \
+                       'with corridor regions, controls, width, and optional sideBlend; not for ' \
                        'terrain smoothing, fairing, arbitrary TIN edits, or site elements.',
           handler_key: :edit_terrain_surface,
           annotations: { read_only_hint: false, destructive_hint: false },
@@ -1311,18 +1311,23 @@ module SU_MCP
     def edit_terrain_operation_schema
       {
         type: 'object',
-        required: %w[mode targetElevation],
-        properties: {
-          mode: described_schema(
-            enum_schema(SU_MCP::Terrain::EditTerrainSurfaceRequest::SUPPORTED_OPERATION_MODES),
-            'Edit operation mode. MTA-04 supports target_height only.'
-          ),
-          targetElevation: described_schema(
-            number_schema,
-            'Target terrain elevation in public meters.'
-          )
-        },
+        required: %w[mode],
+        properties: edit_terrain_operation_properties,
         additionalProperties: false
+      }
+    end
+
+    def edit_terrain_operation_properties
+      {
+        mode: described_schema(
+          enum_schema(SU_MCP::Terrain::EditTerrainSurfaceRequest::SUPPORTED_OPERATION_MODES),
+          'Edit operation mode. target_height uses a rectangle; ' \
+          'corridor_transition uses a corridor.'
+        ),
+        targetElevation: described_schema(
+          number_schema,
+          'Target terrain elevation in public meters. Required for target_height only.'
+        )
       }
     end
 
@@ -1347,14 +1352,42 @@ module SU_MCP
     def edit_terrain_region_schema
       {
         type: 'object',
-        required: %w[type bounds],
+        required: %w[type],
+        properties: edit_terrain_region_properties,
+        additionalProperties: false
+      }
+    end
+
+    def edit_terrain_region_properties
+      {
+        type: described_schema(
+          enum_schema(SU_MCP::Terrain::EditTerrainSurfaceRequest::SUPPORTED_REGION_TYPES),
+          'Edit region type. rectangle pairs with target_height; ' \
+          'corridor pairs with corridor_transition.'
+        ),
+        bounds: edit_terrain_rectangle_bounds_schema,
+        blend: edit_terrain_blend_schema,
+        startControl: edit_terrain_corridor_control_schema,
+        endControl: edit_terrain_corridor_control_schema,
+        width: edit_terrain_corridor_width_schema,
+        sideBlend: edit_terrain_side_blend_schema
+      }
+    end
+
+    def edit_terrain_corridor_width_schema
+      described_schema(
+        number_schema,
+        'Full-weight corridor width in public meters. Required for corridor_transition.'
+      )
+    end
+
+    def edit_terrain_corridor_control_schema
+      {
+        type: 'object',
+        required: %w[point elevation],
         properties: {
-          type: described_schema(
-            enum_schema(SU_MCP::Terrain::EditTerrainSurfaceRequest::SUPPORTED_REGION_TYPES),
-            'Edit region type. MTA-04 supports rectangle only.'
-          ),
-          bounds: edit_terrain_rectangle_bounds_schema,
-          blend: edit_terrain_blend_schema
+          point: edit_terrain_xy_point_schema,
+          elevation: described_schema(number_schema, 'Control elevation in public meters.')
         },
         additionalProperties: false
       }
@@ -1383,6 +1416,23 @@ module SU_MCP
           falloff: described_schema(
             enum_schema(SU_MCP::Terrain::EditTerrainSurfaceRequest::SUPPORTED_BLEND_FALLOFFS),
             'Blend falloff. smooth applies smoothstep y*y*(3-2*y) to linear falloff.'
+          )
+        },
+        additionalProperties: false
+      }
+    end
+
+    def edit_terrain_side_blend_schema
+      {
+        type: 'object',
+        properties: {
+          distance: described_schema(
+            number_schema,
+            'Additional lateral shoulder distance on each side in public meters.'
+          ),
+          falloff: described_schema(
+            enum_schema(SU_MCP::Terrain::EditTerrainSurfaceRequest::SUPPORTED_SIDE_BLEND_FALLOFFS),
+            'Corridor side-blend falloff. cosine blends from unchanged terrain to full corridor.'
           )
         },
         additionalProperties: false
