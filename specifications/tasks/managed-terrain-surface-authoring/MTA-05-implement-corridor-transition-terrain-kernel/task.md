@@ -1,7 +1,7 @@
 # Task: MTA-05 Implement Corridor Transition Terrain Kernel
 **Task ID**: `MTA-05`
 **Title**: `Implement Corridor Transition Terrain Kernel`
-**Status**: `draft`
+**Status**: `planned`
 **Priority**: `P0`
 **Date**: `2026-04-24`
 
@@ -15,10 +15,12 @@ Terrain workflows need controlled transitions between terrain conditions, such a
 
 This task adds a corridor transition terrain kernel on top of the adopted terrain and bounded edit substrate. It should define and realize a transition operation that updates materialized terrain state, respects controls and preserve zones, regenerates output, and returns evidence about transition quality.
 
+Local Unreal Engine Landscape source research supports treating the first representative shape as a two-control corridor transition with endpoint controls, corridor width, and side falloff. That research is implementation input only; public naming and runtime ownership remain product-shaped for SketchUp MCP.
+
 ## Goals
 
 - define a concrete internal corridor transition kernel contract
-- support explicit corridor or transition controls, blend behavior, fixed controls, and preserve zones
+- support explicit endpoint corridor controls, corridor width, side-falloff or blend behavior, fixed controls, and preserve zones
 - update terrain state and regenerate derived output through the existing managed terrain flow
 - return measurable transition evidence such as before/after samples, slope or continuity summaries, changed region, and warnings
 - refuse unsupported or unsafe transition inputs without live mesh surgery
@@ -28,17 +30,17 @@ This task adds a corridor transition terrain kernel on top of the adopted terrai
 ```gherkin
 Scenario: corridor transition updates managed terrain state
   Given an adopted Managed Terrain Surface exists
-  And a supported corridor transition request supplies explicit controls and region data
+  And a supported corridor transition request supplies explicit endpoint controls, width, and transition region data
   When the transition kernel is applied
   Then the materialized terrain state is updated according to the transition intent
   And derived terrain output is regenerated from updated state
   And the operation does not edit arbitrary live TIN geometry in place
 
 Scenario: transition controls and preserve zones are honored
-  Given a corridor transition includes fixed controls, transition controls, and preserve zones
+  Given a corridor transition includes endpoint controls, side-falloff or blend controls, fixed controls, and preserve zones
   When the transition is applied
   Then fixed controls and preserve zones remain within documented tolerance
-  And transition behavior remains bounded to the allowed region and blend area
+  And transition behavior remains bounded to the allowed corridor and side-falloff or blend area
 
 Scenario: transition evidence is measurable
   Given a corridor transition completes
@@ -87,7 +89,7 @@ Scenario: unsupported transition requests refuse
 
 ## Related Technical Plan
 
-- none yet
+- [Technical Plan](./plan.md)
 
 ## Success Metrics
 
