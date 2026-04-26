@@ -2,13 +2,13 @@
 
 **Task ID**: `MTA-04`  
 **Title**: Implement Bounded Grade Edit MVP  
-**Status**: `challenged`  
+**Status**: `calibrated`
 **Created**: 2026-04-24  
 **Last Updated**: 2026-04-26  
 
 **Related Task**: [task.md](./task.md)  
 **Related Plan**: [plan.md](./plan.md)  
-**Related Summary**: none yet  
+**Related Summary**: [summary.md](./summary.md)
 
 ---
 
@@ -152,7 +152,17 @@ No material drift recorded yet.
 
 > Filled at the end of implementation. Do not overwrite predicted values.
 
-Not filled yet.
+| Dimension | Actual (0-4) | Notes |
+|---|---:|---|
+| Functional Scope | 3 | Delivered the planned first public bounded terrain edit MVP: target-height rectangle edits with blend, fixed controls, preserve zones, regeneration, undo coherence, and evidence. |
+| Technical Change Surface | 4 | Touched public schema/routing, command factory/facade, request validation, pure heightmap kernel, repository save/load orchestration, mesh regeneration, evidence, native fixtures, README, task metadata, and tests. |
+| Implementation Friction | 3 | Core plan held, but review and live testing exposed several meaningful fixes: sample-evidence default behavior, no-data refusal wording, real `Sketchup::Entities` traversal, and generated face winding. |
+| Validation Burden | 4 | Required unit and integration tests, contract fixtures, lint/package checks, `grok-4.20` review, focused review after live fixes, and a broad public MCP/SketchUp retest matrix including undo, performance, evidence, and normals. |
+| Dependency / Coordination Drag | 2 | Depended on MTA-02/MTA-03 terrain state and output foundations plus live SketchUp access, but no upstream ownership change blocked completion. |
+| Discovery Encountered | 3 | Live checks discovered important host-specific behavior: adopted terrain state-coordinate semantics, unsupported `entities.groups` assumptions, output face winding, and the lack of a public no-data terrain fixture. |
+| Scope Volatility | 2 | The rectangle target-height MVP stayed intact; volatility showed up as clarified coordinate semantics and a future polygonal preserve-zone follow-up rather than MTA-04 scope expansion. |
+| Rework | 3 | Required post-review and live-driven rework across evidence behavior, output regeneration safety, mesh writer normals, tests, docs, and task metadata. |
+| Final Confidence in Completeness | 3 | Final live suite passed for the public contract and performance/undo/output invariants; confidence is not `4` because no public live path exists for a real no-data terrain state. |
 <!-- SIZE:ACTUAL:END -->
 
 ---
@@ -160,7 +170,15 @@ Not filled yet.
 <!-- SIZE:VALIDATION-EVIDENCE:START -->
 ## Validation Evidence Summary
 
-Not filled yet.
+- Full Ruby suite: `bundle exec rake ruby:test` passed with 620 runs, 2376 assertions, 0 failures, 0 errors, 31 skips after final changes.
+- Focused terrain mesh suite: `bundle exec ruby -Itest test/terrain/terrain_mesh_generator_test.rb` passed with 6 runs, 22 assertions, 0 failures.
+- Lint: `bundle exec rake ruby:lint` passed with 164 files inspected and no offenses.
+- Package verification: `bundle exec rake package:verify` generated `dist/su_mcp-0.20.0.rbz`.
+- Diff hygiene: `git diff --check` passed.
+- PAL codereview with `grok-4.20` completed for the full implementation; follow-up fixes were applied. A focused `grok-4.20` review of the face-winding fix also completed; its nil-safe normal guard recommendation was applied.
+- Final public MCP/SketchUp retest passed F01-F13 and F15-F18: create/edit, adopted irregular terrain coordinates, smooth blend, preserve zones, fixed controls, finite refusals, unsafe child refusal, edge/single/whole edits, edit chains, undo, evidence modes, near-cap performance, output normals, and multi-rectangle preserve approximations.
+- Performance evidence: final near-cap 100x100 create about 20.2s; edit/regenerate about 23.2s; output 10,000 vertices / 19,602 faces; MCP responsive after the run.
+- Residual gap: F14 no-data live check is partial because the public API cannot create a valid real no-data terrain. A grey-box missing-state stub refused before mutation with `terrain_state_load_failed`; automated no-data domain coverage remains the proof for `terrain_no_data_unsupported`.
 <!-- SIZE:VALIDATION-EVIDENCE:END -->
 
 ---
@@ -168,7 +186,45 @@ Not filled yet.
 <!-- SIZE:DELTA:START -->
 ## Estimation Delta Review
 
-Not filled yet.
+### Prediction Accuracy
+
+- Functional scope matched prediction: the public edit MVP shipped without adding ramp, polygon, fairing, smoothing, chunked regeneration, or durable generated face/vertex IDs.
+- Technical surface matched the very-high prediction because the task moved contract, runtime, command, domain kernel, output, evidence, docs, fixtures, and tests together.
+- Validation burden matched the very-high prediction; final confidence depended on live SketchUp/public MCP checks rather than local tests alone.
+- Dependency drag came in slightly lower than predicted because MTA-02/MTA-03 foundations were usable, and coordination centered on live verification rather than upstream redesign.
+
+### Underestimated
+
+- Live SketchUp output behavior: production `Sketchup::Entities` did not expose fake-only collection helpers, and generated face winding varied across create/edit/regenerate paths.
+- The need to prove evidence defaults and caps through public-client behavior, not only unit tests.
+- The public fixture gap for no-data terrain states, which left no-data live verification partial even though automated domain coverage existed.
+
+### Overestimated
+
+- Representative-case scope pressure. Rectangle target-height editing with blend, fixed controls, and multiple rectangle preserve zones covered the final representative cases without expanding MTA-04 to polygon/ramp/fairing behavior.
+- Performance as a blocker. Near-cap full regeneration is slow and documented, but final live timings remained acceptable for the MVP.
+
+### Dominant Actual Failure Mode
+
+Live-host terrain output invariants were the dominant rework driver: real SketchUp entity traversal, deletion safety, undo/output coherence, and face-normal behavior had to be proven against the host instead of trusted from local fakes.
+
+### Underweighted Early Signals
+
+- Prior MTA-03 live work had already shown hosted SketchUp behavior can invalidate fake assumptions; that should have put more early pressure on output-entity traversal and face-normal checks.
+- Full regeneration was known as validation-heavy, but visual/normal correctness was not initially explicit in the hosted smoke checklist.
+
+### Retrieval Facets For Future Estimates
+
+- public MCP mutation tool
+- terrain state mutation
+- derived SketchUp mesh regeneration
+- host entity traversal
+- output face winding
+- fixed-control and preserve-zone evidence
+- undo coherence
+- near-cap full regeneration timing
+- hosted/live validation
+- public fixture gap for unsupported state shapes
 <!-- SIZE:DELTA:END -->
 
 ---

@@ -288,7 +288,7 @@ module SemanticTestSupport
 
   class FakeFace < Sketchup::Face
     attr_accessor :material, :bounds, :parent_collection
-    attr_reader :pushpull_calls, :points, :layer, :persistent_id
+    attr_reader :pushpull_calls, :points, :layer, :persistent_id, :attributes
 
     def initialize(entity_id:, persistent_id:, layer:, material:, points:)
       super()
@@ -299,6 +299,7 @@ module SemanticTestSupport
       @points = points
       @normal_z = polygon_signed_area(points).negative? ? -1.0 : 1.0
       @pushpull_calls = []
+      @attributes = Hash.new { |hash, key| hash[key] = {} }
       @bounds = build_bounds(points)
     end
 
@@ -315,6 +316,14 @@ module SemanticTestSupport
     def pushpull(distance)
       @pushpull_calls << distance
       distance
+    end
+
+    def set_attribute(dictionary_name, key, value)
+      @attributes[dictionary_name][key] = value
+    end
+
+    def get_attribute(dictionary_name, key, default = nil)
+      @attributes.fetch(dictionary_name, {}).fetch(key, default)
     end
 
     def normal

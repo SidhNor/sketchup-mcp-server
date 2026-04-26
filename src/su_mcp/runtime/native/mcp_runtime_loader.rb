@@ -8,6 +8,7 @@ require_relative '../../semantic/managed_object_metadata'
 require_relative '../../semantic/request_shape_contract'
 require_relative '../../semantic/request_validator'
 require_relative '../../terrain/create_terrain_surface_request'
+require_relative '../../terrain/edit_terrain_surface_request'
 
 module SU_MCP
   # Loader for the staged Ruby-native MCP runtime.
@@ -384,6 +385,18 @@ module SU_MCP
           annotations: { read_only_hint: false, destructive_hint: false },
           classification: 'first_class',
           input_schema: create_terrain_surface_schema
+        ),
+        tool_entry(
+          name: 'edit_terrain_surface',
+          title: 'Edit Managed Terrain Surface',
+          description: 'Apply a bounded target-height edit to a repository-backed Managed ' \
+                       'Terrain Surface. Use for deterministic heightmap edits with rectangle ' \
+                       'regions, blend falloff, fixed controls, and preserve zones; not for ' \
+                       'terrain smoothing, fairing, arbitrary TIN edits, or site elements.',
+          handler_key: :edit_terrain_surface,
+          annotations: { read_only_hint: false, destructive_hint: false },
+          classification: 'first_class',
+          input_schema: edit_terrain_surface_schema
         ),
         tool_entry(
           name: 'get_entity_info',
@@ -1272,6 +1285,164 @@ module SU_MCP
         properties: {
           name: string_schema,
           tag: string_schema
+        },
+        additionalProperties: false
+      }
+    end
+
+    def edit_terrain_surface_schema
+      {
+        type: 'object',
+        required: %w[targetReference operation region],
+        properties: {
+          targetReference: described_schema(
+            target_reference_schema,
+            'Managed terrain owner reference. Supports sourceElementId, persistentId, or entityId.'
+          ),
+          operation: edit_terrain_operation_schema,
+          region: edit_terrain_region_schema,
+          constraints: edit_terrain_constraints_schema,
+          outputOptions: edit_terrain_output_options_schema
+        },
+        additionalProperties: false
+      }
+    end
+
+    def edit_terrain_operation_schema
+      {
+        type: 'object',
+        required: %w[mode targetElevation],
+        properties: {
+          mode: described_schema(
+            enum_schema(SU_MCP::Terrain::EditTerrainSurfaceRequest::SUPPORTED_OPERATION_MODES),
+            'Edit operation mode. MTA-04 supports target_height only.'
+          ),
+          targetElevation: described_schema(
+            number_schema,
+            'Target terrain elevation in public meters.'
+          )
+        },
+        additionalProperties: false
+      }
+    end
+
+    def edit_terrain_fixed_control_schema
+      {
+        type: 'object',
+        required: ['point'],
+        properties: {
+          id: string_schema,
+          point: edit_terrain_xy_point_schema,
+          elevation: described_schema(
+            number_schema,
+            'Fixed elevation in public meters. point is in the stored terrain state XY frame. ' \
+            'If elevation is omitted, runtime uses pre-edit terrain elevation.'
+          ),
+          tolerance: described_schema(number_schema, 'Allowed elevation delta in public meters.')
+        },
+        additionalProperties: false
+      }
+    end
+
+    def edit_terrain_region_schema
+      {
+        type: 'object',
+        required: %w[type bounds],
+        properties: {
+          type: described_schema(
+            enum_schema(SU_MCP::Terrain::EditTerrainSurfaceRequest::SUPPORTED_REGION_TYPES),
+            'Edit region type. MTA-04 supports rectangle only.'
+          ),
+          bounds: edit_terrain_rectangle_bounds_schema,
+          blend: edit_terrain_blend_schema
+        },
+        additionalProperties: false
+      }
+    end
+
+    def edit_terrain_rectangle_bounds_schema
+      {
+        type: 'object',
+        description: 'Rectangle bounds in the stored terrain state XY frame, in public meters.',
+        required: %w[minX minY maxX maxY],
+        properties: {
+          minX: number_schema,
+          minY: number_schema,
+          maxX: number_schema,
+          maxY: number_schema
+        },
+        additionalProperties: false
+      }
+    end
+
+    def edit_terrain_blend_schema
+      {
+        type: 'object',
+        properties: {
+          distance: described_schema(number_schema, 'Blend distance in public meters.'),
+          falloff: described_schema(
+            enum_schema(SU_MCP::Terrain::EditTerrainSurfaceRequest::SUPPORTED_BLEND_FALLOFFS),
+            'Blend falloff. smooth applies smoothstep y*y*(3-2*y) to linear falloff.'
+          )
+        },
+        additionalProperties: false
+      }
+    end
+
+    def edit_terrain_constraints_schema
+      {
+        type: 'object',
+        properties: {
+          fixedControls: {
+            type: 'array',
+            items: edit_terrain_fixed_control_schema
+          },
+          preserveZones: {
+            type: 'array',
+            items: edit_terrain_preserve_zone_schema
+          }
+        },
+        additionalProperties: false
+      }
+    end
+
+    def edit_terrain_preserve_zone_schema
+      {
+        type: 'object',
+        required: %w[type bounds],
+        properties: {
+          id: string_schema,
+          type: described_schema(
+            enum_schema(SU_MCP::Terrain::EditTerrainSurfaceRequest::SUPPORTED_PRESERVE_ZONE_TYPES),
+            'Preserve zone type. MTA-04 supports rectangle only.'
+          ),
+          bounds: edit_terrain_rectangle_bounds_schema
+        },
+        additionalProperties: false
+      }
+    end
+
+    def edit_terrain_output_options_schema
+      {
+        type: 'object',
+        properties: {
+          includeSampleEvidence: boolean_schema,
+          sampleEvidenceLimit: described_schema(
+            integer_schema,
+            'Returned sample evidence cap, max 100.'
+          )
+        },
+        additionalProperties: false
+      }
+    end
+
+    def edit_terrain_xy_point_schema
+      {
+        type: 'object',
+        required: %w[x y],
+        properties: {
+          x: number_schema,
+          y: number_schema
         },
         additionalProperties: false
       }

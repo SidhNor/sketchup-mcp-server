@@ -5,7 +5,7 @@ require_relative '../support/semantic_test_support'
 require_relative '../../src/su_mcp/terrain/heightmap_state'
 require_relative '../../src/su_mcp/terrain/terrain_surface_commands'
 
-class TerrainSurfaceCommandsTest < Minitest::Test
+class TerrainSurfaceCommandsTest < Minitest::Test # rubocop:disable Metrics/ClassLength
   include SemanticTestSupport
 
   def test_create_mode_commits_owner_metadata_state_output_and_json_safe_evidence
@@ -92,6 +92,57 @@ class TerrainSurfaceCommandsTest < Minitest::Test
     assert_includes(model.operations, [:abort_operation])
   end
 
+  def test_edit_mode_loads_state_saves_edited_state_and_regenerates_output
+    model = build_semantic_model
+    owner = managed_terrain_owner(model)
+    repository = EditRepository.new(state)
+    mesh_generator = RecordingRegeneratingMeshGenerator.new
+    commands = build_edit_commands(
+      model: model,
+      repository: repository,
+      mesh_generator: mesh_generator
+    )
+
+    result = commands.edit_terrain_surface(edit_request)
+
+    assert_equal('edited', result.fetch(:outcome))
+    assert_equal(owner, repository.loaded_owner)
+    assert_equal(2, repository.saved_state.revision)
+    assert_equal([:regenerate], mesh_generator.calls)
+    assert_equal(
+      [[:start_operation, 'Edit Terrain Surface', true], [:commit_operation]],
+      model.operations
+    )
+  end
+
+  def test_edit_refusal_returns_before_opening_model_operation
+    model = build_semantic_model
+    commands = build_edit_commands(model: model, edit_request_validator: RefusingEditValidator.new)
+
+    result = commands.edit_terrain_surface(edit_request)
+
+    assert_equal('refused', result.fetch(:outcome))
+    assert_equal('unsupported_option', result.dig(:refusal, :code))
+    assert_empty(model.operations)
+  end
+
+  def test_edit_regeneration_refusal_aborts_operation_without_success
+    model = build_semantic_model
+    managed_terrain_owner(model)
+    commands = build_edit_commands(
+      model: model,
+      repository: EditRepository.new(state),
+      mesh_generator: RefusingRegeneratingMeshGenerator.new
+    )
+
+    result = commands.edit_terrain_surface(edit_request)
+
+    assert_equal('refused', result.fetch(:outcome))
+    assert_equal('terrain_output_contains_unsupported_entities', result.dig(:refusal, :code))
+    assert_equal([[:start_operation, 'Edit Terrain Surface', true], [:abort_operation]],
+                 model.operations)
+  end
+
   private
 
   def build_commands(model:, repository: RecordingRepository.new,
@@ -110,6 +161,29 @@ class TerrainSurfaceCommandsTest < Minitest::Test
     )
   end
 
+  # rubocop:disable Metrics/ParameterLists
+  def build_edit_commands(model:, repository: EditRepository.new(state),
+                          mesh_generator: RecordingRegeneratingMeshGenerator.new,
+                          edit_request_validator: AcceptingEditValidator.new,
+                          grade_editor: RecordingGradeEditor.new,
+                          target_resolver: RecordingTargetResolver.new,
+                          edit_evidence_builder: EditEvidenceBuilder.new)
+    SU_MCP::Terrain::TerrainSurfaceCommands.new(
+      model: model,
+      validator: AcceptingValidator.new,
+      state_builder: StateBuilder.new,
+      repository: repository,
+      mesh_generator: mesh_generator,
+      evidence_builder: EvidenceBuilder.new,
+      adoption_sampler: RecordingAdoptionSampler.new,
+      edit_request_validator: edit_request_validator,
+      grade_editor: grade_editor,
+      target_resolver: target_resolver,
+      edit_evidence_builder: edit_evidence_builder
+    )
+  end
+  # rubocop:enable Metrics/ParameterLists
+
   def create_request
     { 'metadata' => { 'sourceElementId' => 'terrain-main', 'status' => 'existing' },
       'lifecycle' => { 'mode' => 'create' } }
@@ -118,6 +192,29 @@ class TerrainSurfaceCommandsTest < Minitest::Test
   def adopt_request
     { 'metadata' => { 'sourceElementId' => 'terrain-main', 'status' => 'existing' },
       'lifecycle' => { 'mode' => 'adopt', 'target' => { 'sourceElementId' => 'source' } } }
+  end
+
+  def edit_request
+    {
+      'targetReference' => { 'sourceElementId' => 'terrain-main' },
+      'operation' => { 'mode' => 'target_height', 'targetElevation' => 12.5 },
+      'region' => {
+        'type' => 'rectangle',
+        'bounds' => {
+          'minX' => 0.0,
+          'minY' => 0.0,
+          'maxX' => 1.0,
+          'maxY' => 1.0
+        }
+      }
+    }
+  end
+
+  def managed_terrain_owner(model)
+    owner = model.active_entities.add_group
+    owner.set_attribute('su_mcp', 'sourceElementId', 'terrain-main')
+    owner.set_attribute('su_mcp', 'semanticType', 'managed_terrain_surface')
+    owner
   end
 
   def state
@@ -188,6 +285,25 @@ class TerrainSurfaceCommandsTest < Minitest::Test
     end
   end
 
+  class EditRepository < RecordingRepository
+    attr_reader :loaded_owner, :saved_state
+
+    def initialize(state)
+      super()
+      @state = state
+    end
+
+    def load(owner)
+      @loaded_owner = owner
+      { outcome: 'loaded', state: @state, summary: { digest: 'digest-1' } }
+    end
+
+    def save(owner, state)
+      @saved_state = state
+      super
+    end
+  end
+
   class RecordingMeshGenerator
     attr_reader :calls
 
@@ -201,6 +317,25 @@ class TerrainSurfaceCommandsTest < Minitest::Test
     end
   end
 
+  class RecordingRegeneratingMeshGenerator < RecordingMeshGenerator
+    def regenerate(...)
+      @calls << :regenerate
+      { outcome: 'generated', summary: { derivedMesh: { derivedFromStateDigest: 'digest-2' } } }
+    end
+  end
+
+  class RefusingRegeneratingMeshGenerator
+    def regenerate(...)
+      {
+        outcome: 'refused',
+        refusal: {
+          code: 'terrain_output_contains_unsupported_entities',
+          message: 'Owner contains unsupported child output.'
+        }
+      }
+    end
+  end
+
   class FailingMeshGenerator
     def generate(...)
       raise 'mesh failed'
@@ -210,6 +345,59 @@ class TerrainSurfaceCommandsTest < Minitest::Test
   class EvidenceBuilder
     def build_success(outcome:, **_attributes)
       { success: true, outcome: outcome }
+    end
+  end
+
+  class EditEvidenceBuilder
+    def build_success(outcome:, **_attributes)
+      { success: true, outcome: outcome }
+    end
+  end
+
+  class AcceptingEditValidator
+    def validate(params)
+      { outcome: 'ready', params: params }
+    end
+  end
+
+  class RefusingEditValidator
+    def validate(_params)
+      {
+        success: true,
+        outcome: 'refused',
+        refusal: {
+          code: 'unsupported_option',
+          details: {
+            field: 'operation.mode',
+            value: 'smooth',
+            allowedValues: ['target_height']
+          }
+        }
+      }
+    end
+  end
+
+  class RecordingGradeEditor
+    def apply(state:, request:)
+      {
+        outcome: 'edited',
+        state: SU_MCP::Terrain::HeightmapState.new(
+          basis: state.basis,
+          origin: state.origin,
+          spacing: state.spacing,
+          dimensions: state.dimensions,
+          elevations: state.elevations.map { |value| value.nil? ? nil : value + 1.0 },
+          revision: state.revision + 1,
+          state_id: state.state_id
+        ),
+        diagnostics: { changedSampleCount: 4, request: request }
+      }
+    end
+  end
+
+  class RecordingTargetResolver
+    def resolve(_target)
+      { outcome: 'resolved', target: { sourceElementId: 'terrain-main' } }
     end
   end
 

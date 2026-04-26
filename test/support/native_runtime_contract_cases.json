@@ -1275,6 +1275,292 @@
           }
         }
       }
+    },
+    {
+      "case_id": "edit_terrain_surface_edited",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "params": {
+          "name": "edit_terrain_surface",
+          "arguments": {
+            "targetReference": {
+              "sourceElementId": "terrain-main"
+            },
+            "operation": {
+              "mode": "target_height",
+              "targetElevation": 12.5
+            },
+            "region": {
+              "type": "rectangle",
+              "bounds": {
+                "minX": 1.0,
+                "minY": 1.0,
+                "maxX": 3.0,
+                "maxY": 3.0
+              },
+              "blend": {
+                "distance": 1.0,
+                "falloff": "smooth"
+              }
+            },
+            "constraints": {
+              "preserveZones": [
+                {
+                  "type": "rectangle",
+                  "bounds": {
+                    "minX": 2.0,
+                    "minY": 2.0,
+                    "maxX": 2.5,
+                    "maxY": 2.5
+                  }
+                }
+              ]
+            },
+            "outputOptions": {
+              "includeSampleEvidence": true,
+              "sampleEvidenceLimit": 4
+            }
+          }
+        },
+        "id": "edit-terrain-surface-edited"
+      },
+      "response": {
+        "jsonrpc": "2.0",
+        "id": "edit-terrain-surface-edited",
+        "result": {
+          "success": true,
+          "outcome": "edited",
+          "operation": {
+            "name": "edit_terrain_surface",
+            "mode": "target_height"
+          },
+          "managedTerrain": {
+            "ownerReference": {
+              "sourceElementId": "terrain-main",
+              "persistentId": "5001"
+            },
+            "semanticType": "managed_terrain_surface",
+            "status": "existing",
+            "state": "Adopted"
+          },
+          "terrainState": {
+            "stateId": "state-1",
+            "payloadKind": "heightmap_grid",
+            "schemaVersion": 1,
+            "revision": 2,
+            "digestAlgorithm": "sha256",
+            "digest": "digest-2",
+            "serializedBytes": 234
+          },
+          "output": {
+            "derivedMesh": {
+              "meshType": "regular_grid",
+              "vertexCount": 16,
+              "faceCount": 18,
+              "derivedFromStateDigest": "digest-2"
+            }
+          },
+          "evidence": {
+            "changedRegion": {
+              "min": { "column": 1, "row": 1 },
+              "max": { "column": 3, "row": 3 }
+            },
+            "sampleSummary": {
+              "totalSampleCount": 9,
+              "returnedSampleCount": 4
+            },
+            "fixedControls": [],
+            "preserveZones": {
+              "protectedSampleCount": 1
+            },
+            "warnings": []
+          }
+        }
+      }
+    },
+    {
+      "case_id": "edit_terrain_surface_invalid_operation_refused",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "params": {
+          "name": "edit_terrain_surface",
+          "arguments": {
+            "targetReference": { "sourceElementId": "terrain-main" },
+            "operation": {
+              "mode": "smooth",
+              "targetElevation": 12.5
+            },
+            "region": {
+              "type": "rectangle",
+              "bounds": {
+                "minX": 1.0,
+                "minY": 1.0,
+                "maxX": 3.0,
+                "maxY": 3.0
+              }
+            }
+          }
+        },
+        "id": "edit-terrain-surface-invalid-operation"
+      },
+      "response": {
+        "jsonrpc": "2.0",
+        "id": "edit-terrain-surface-invalid-operation",
+        "result": {
+          "success": true,
+          "outcome": "refused",
+          "refusal": {
+            "code": "unsupported_option",
+            "message": "Operation mode is not supported for edit_terrain_surface.",
+            "details": {
+              "field": "operation.mode",
+              "value": "smooth",
+              "allowedValues": ["target_height"]
+            }
+          }
+        }
+      }
+    },
+    {
+      "case_id": "edit_terrain_surface_no_data_refused",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "params": {
+          "name": "edit_terrain_surface",
+          "arguments": {
+            "targetReference": { "sourceElementId": "terrain-main" },
+            "operation": {
+              "mode": "target_height",
+              "targetElevation": 12.5
+            },
+            "region": {
+              "type": "rectangle",
+              "bounds": {
+                "minX": 1.0,
+                "minY": 1.0,
+                "maxX": 2.0,
+                "maxY": 2.0
+              }
+            }
+          }
+        },
+        "id": "edit-terrain-surface-no-data"
+      },
+      "response": {
+        "jsonrpc": "2.0",
+        "id": "edit-terrain-surface-no-data",
+        "result": {
+          "success": true,
+          "outcome": "refused",
+          "refusal": {
+            "code": "terrain_no_data_unsupported",
+            "message": "Terrain state includes no-data samples and cannot be fully regenerated.",
+            "details": {
+              "samples": [{ "column": 1, "row": 1 }]
+            }
+          }
+        }
+      }
+    },
+    {
+      "case_id": "edit_terrain_surface_output_contains_unsupported_entities_refused",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "params": {
+          "name": "edit_terrain_surface",
+          "arguments": {
+            "targetReference": { "sourceElementId": "terrain-main" },
+            "operation": {
+              "mode": "target_height",
+              "targetElevation": 12.5
+            },
+            "region": {
+              "type": "rectangle",
+              "bounds": {
+                "minX": 1.0,
+                "minY": 1.0,
+                "maxX": 3.0,
+                "maxY": 3.0
+              }
+            }
+          }
+        },
+        "id": "edit-terrain-surface-output-unsupported"
+      },
+      "response": {
+        "jsonrpc": "2.0",
+        "id": "edit-terrain-surface-output-unsupported",
+        "result": {
+          "success": true,
+          "outcome": "refused",
+          "refusal": {
+            "code": "terrain_output_contains_unsupported_entities",
+            "message": "Terrain owner contains unsupported child entities.",
+            "details": {
+              "unsupportedChildTypes": ["group"],
+              "action": "remove unsupported children or recreate the managed terrain output"
+            }
+          }
+        }
+      }
+    },
+    {
+      "case_id": "edit_terrain_surface_fixed_control_conflict_refused",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "params": {
+          "name": "edit_terrain_surface",
+          "arguments": {
+            "targetReference": { "sourceElementId": "terrain-main" },
+            "operation": {
+              "mode": "target_height",
+              "targetElevation": 20.0
+            },
+            "constraints": {
+              "fixedControls": [
+                {
+                  "id": "pad-corner-1",
+                  "point": { "x": 2.0, "y": 2.0 },
+                  "elevation": 10.0,
+                  "tolerance": 0.05
+                }
+              ]
+            },
+            "region": {
+              "type": "rectangle",
+              "bounds": {
+                "minX": 1.0,
+                "minY": 1.0,
+                "maxX": 3.0,
+                "maxY": 3.0
+              }
+            }
+          }
+        },
+        "id": "edit-terrain-surface-fixed-control-conflict"
+      },
+      "response": {
+        "jsonrpc": "2.0",
+        "id": "edit-terrain-surface-fixed-control-conflict",
+        "result": {
+          "success": true,
+          "outcome": "refused",
+          "refusal": {
+            "code": "fixed_control_conflict",
+            "message": "Terrain edit would move a fixed control outside tolerance.",
+            "details": {
+              "controlId": "pad-corner-1",
+              "effectiveTolerance": 0.05,
+              "predictedDelta": 10.0
+            }
+          }
+        }
+      }
     }
   ]
 }

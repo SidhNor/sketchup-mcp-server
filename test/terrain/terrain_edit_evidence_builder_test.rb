@@ -1,0 +1,106 @@
+# frozen_string_literal: true
+
+require_relative '../test_helper'
+require_relative '../../src/su_mcp/terrain/terrain_edit_evidence_builder'
+
+class TerrainEditEvidenceBuilderTest < Minitest::Test
+  def test_builds_edit_success_payload_with_capped_json_safe_evidence # rubocop:disable Metrics/AbcSize
+    result = SU_MCP::Terrain::TerrainEditEvidenceBuilder.new.build_success(
+      owner_reference: { sourceElementId: 'terrain-main', persistentId: '5001' },
+      terrain_state_summary: terrain_state_summary,
+      output_summary: { derivedMesh: derived_mesh_summary },
+      edit_summary: edit_summary,
+      diagnostics: diagnostics,
+      metadata: { status: 'existing', state: 'Adopted' },
+      sample_limit: 2
+    )
+
+    assert_equal(true, result.fetch(:success))
+    assert_equal('edited', result.fetch(:outcome))
+    assert_equal('edit_terrain_surface', result.dig(:operation, :name))
+    assert_equal('target_height', result.dig(:operation, :mode))
+    assert_equal('existing', result.dig(:managedTerrain, :status))
+    assert_equal('Adopted', result.dig(:managedTerrain, :state))
+    assert_equal(2, result.dig(:evidence, :samples).length)
+    assert_equal(4, result.dig(:evidence, :sampleSummary, :totalSampleCount))
+    refute_includes(JSON.generate(result), 'Sketchup::')
+    refute_includes(JSON.generate(result), 'faceId')
+    refute_includes(JSON.generate(result), 'vertexId')
+  end
+
+  def test_reports_controls_preserve_zones_and_warnings_without_raw_entities
+    result = SU_MCP::Terrain::TerrainEditEvidenceBuilder.new.build_success(
+      owner_reference: { sourceElementId: 'terrain-main' },
+      terrain_state_summary: terrain_state_summary,
+      output_summary: { derivedMesh: derived_mesh_summary },
+      edit_summary: edit_summary,
+      diagnostics: diagnostics.merge(warnings: ['large edit region']),
+      sample_limit: 8
+    )
+
+    assert_equal([{ id: 'control-1', status: 'preserved' }],
+                 result.dig(:evidence, :fixedControls))
+    assert_equal(3, result.dig(:evidence, :preserveZones, :protectedSampleCount))
+    assert_equal(['large edit region'], result.dig(:evidence, :warnings))
+    refute_includes(JSON.generate(result), 'Sketchup::')
+  end
+
+  def test_omits_sample_rows_when_sample_limit_is_zero
+    result = SU_MCP::Terrain::TerrainEditEvidenceBuilder.new.build_success(
+      owner_reference: { sourceElementId: 'terrain-main' },
+      terrain_state_summary: terrain_state_summary,
+      output_summary: { derivedMesh: derived_mesh_summary },
+      edit_summary: edit_summary,
+      diagnostics: diagnostics,
+      sample_limit: 0
+    )
+
+    assert_empty(result.dig(:evidence, :samples))
+    assert_equal(4, result.dig(:evidence, :sampleSummary, :totalSampleCount))
+    assert_equal(0, result.dig(:evidence, :sampleSummary, :returnedSampleCount))
+  end
+
+  private
+
+  def terrain_state_summary
+    {
+      stateId: 'state-2',
+      payloadKind: 'heightmap_grid',
+      schemaVersion: 1,
+      revision: 2,
+      digest: 'digest-2',
+      serializedBytes: 234
+    }
+  end
+
+  def derived_mesh_summary
+    {
+      meshType: 'regular_grid',
+      vertexCount: 16,
+      faceCount: 18,
+      derivedFromStateDigest: 'digest-2'
+    }
+  end
+
+  def edit_summary
+    {
+      mode: 'target_height',
+      region: { type: 'rectangle' },
+      changedRegion: { min: { column: 1, row: 1 }, max: { column: 2, row: 2 } }
+    }
+  end
+
+  def diagnostics
+    {
+      samples: [
+        { column: 1, row: 1, before: 1.0, after: 4.0 },
+        { column: 2, row: 1, before: 1.0, after: 4.0 },
+        { column: 1, row: 2, before: 1.0, after: 4.0 },
+        { column: 2, row: 2, before: 1.0, after: 4.0 }
+      ],
+      fixedControls: [{ id: 'control-1', status: 'preserved' }],
+      preserveZones: { protectedSampleCount: 3 },
+      warnings: []
+    }
+  end
+end

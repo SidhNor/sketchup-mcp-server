@@ -440,6 +440,33 @@ class McpRuntimeNativeContractTest < Minitest::Test
     end
   end
 
+  def test_native_transport_preserves_edit_terrain_surface_contract_shapes # rubocop:disable Metrics/MethodLength
+    skip_unless_staged_vendor_runtime!
+
+    %w[
+      edit_terrain_surface_edited
+      edit_terrain_surface_invalid_operation_refused
+      edit_terrain_surface_no_data_refused
+      edit_terrain_surface_output_contains_unsupported_entities_refused
+      edit_terrain_surface_fixed_control_conflict_refused
+    ].each do |case_id|
+      contract_case = contract_case(case_id)
+      transport = @loader.build_transport(
+        handlers: {
+          edit_terrain_surface: ->(_arguments) { contract_case.fetch('response').fetch('result') }
+        }
+      )
+
+      response = perform_raw_json_request(transport, contract_case.fetch('request'))
+
+      assert_equal(200, response[:status])
+      assert_equal(
+        contract_case.dig('response', 'result'),
+        response[:body].dig('result', 'structuredContent')
+      )
+    end
+  end
+
   private
 
   def contract_case(case_id)

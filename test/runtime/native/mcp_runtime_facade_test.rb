@@ -85,6 +85,11 @@ class McpRuntimeFacadeTest < Minitest::Test
       @calls << params
       @result
     end
+
+    def edit_terrain_surface(params)
+      @calls << params
+      @result
+    end
   end
 
   class RecordingRuntimeCommandFactory
@@ -240,6 +245,30 @@ class McpRuntimeFacadeTest < Minitest::Test
       [{
         'metadata' => { 'sourceElementId' => 'terrain-main' },
         'lifecycle' => { 'mode' => 'create' }
+      }],
+      terrain_commands.calls
+    )
+    assert_equal(expected, result)
+  end
+
+  def test_edit_terrain_surface_dispatches_through_the_shared_runtime_command_factory
+    expected = { success: true, outcome: 'edited', managedTerrain: {} }
+    terrain_commands = RecordingTerrainCommands.new(result: expected)
+    factory = RecordingRuntimeCommandFactory.new(targets: [terrain_commands])
+    facade = SU_MCP::McpRuntimeFacade.new(runtime_command_factory: factory)
+
+    result = facade.edit_terrain_surface(
+      'targetReference' => { 'sourceElementId' => 'terrain-main' },
+      'operation' => { 'mode' => 'target_height', 'targetElevation' => 12.5 },
+      'region' => { 'type' => 'rectangle' }
+    )
+
+    assert_equal(1, factory.calls)
+    assert_equal(
+      [{
+        'targetReference' => { 'sourceElementId' => 'terrain-main' },
+        'operation' => { 'mode' => 'target_height', 'targetElevation' => 12.5 },
+        'region' => { 'type' => 'rectangle' }
       }],
       terrain_commands.calls
     )

@@ -102,6 +102,17 @@ class ToolDispatcherTest < Minitest::Test
       }
     end
 
+    def edit_terrain_surface(args)
+      @calls << [:edit_terrain_surface, args]
+      {
+        success: true,
+        outcome: 'edited',
+        managedTerrain: {
+          ownerReference: { sourceElementId: args.dig('targetReference', 'sourceElementId') }
+        }
+      }
+    end
+
     # rubocop:disable Naming/AccessorMethodName
     def set_entity_metadata(args)
       @calls << [:set_entity_metadata, args]
@@ -128,6 +139,7 @@ class ToolDispatcherTest < Minitest::Test
             :delete_entities,
             :sample_surface_z,
             :create_group, :reparent_entities, :create_site_element, :create_terrain_surface,
+            :edit_terrain_surface,
             :set_entity_metadata, :apply_material
   end
 
@@ -287,6 +299,34 @@ class ToolDispatcherTest < Minitest::Test
       [[:create_terrain_surface, { 'metadata' => { 'sourceElementId' => 'terrain-main' } }]],
       @target.calls.last(1)
     )
+  end
+
+  def test_dispatches_edit_terrain_surface_to_the_terrain_command
+    payload = {
+      'targetReference' => { 'sourceElementId' => 'terrain-main' },
+      'operation' => { 'mode' => 'target_height', 'targetElevation' => 12.5 },
+      'region' => {
+        'type' => 'rectangle',
+        'bounds' => {
+          'minX' => 0.0,
+          'minY' => 0.0,
+          'maxX' => 1.0,
+          'maxY' => 1.0
+        }
+      }
+    }
+
+    result = @dispatcher.call('edit_terrain_surface', payload)
+
+    assert_equal(
+      {
+        success: true,
+        outcome: 'edited',
+        managedTerrain: { ownerReference: { sourceElementId: 'terrain-main' } }
+      },
+      result
+    )
+    assert_equal([[:edit_terrain_surface, payload]], @target.calls.last(1))
   end
   # rubocop:enable Metrics/MethodLength
 

@@ -73,7 +73,7 @@ State mutation rules:
 Coordinate rules:
 
 - Public terrain coordinates and elevations are meters.
-- Region and constraint coordinates are interpreted in the terrain state's owner-local XY frame using `origin`, `basis`, and `spacing`.
+- Region and constraint coordinates are interpreted in the stored terrain state's XY frame using `origin`, `basis`, and `spacing`. For adopted terrain, this frame may carry source/world-like meter coordinates rather than zero-based bounds.
 - Rectangle bounds are inclusive for sample eligibility.
 - Requests below current grid resolution are allowed only insofar as they affect existing stored samples; evidence must report affected samples honestly.
 
@@ -91,7 +91,7 @@ Kernel rules:
 
 Fixed controls:
 
-- `constraints.fixedControls[].point` identifies an owner-local XY point.
+- `constraints.fixedControls[].point` identifies a point in the stored terrain state's XY coordinate frame.
 - The control protects the bilinear sample stencil for that point: the four surrounding samples, or fewer at terrain edges.
 - If `elevation` is omitted, the fixed elevation is the pre-edit bilinear interpolated elevation at the point.
 - `tolerance` is optional and defaults to `0.01` meters.
@@ -366,6 +366,7 @@ Output regeneration rules:
 - Clear expected derived faces/edges from the stable terrain owner before regenerating.
 - If the owner is empty or contains only recognized derived terrain faces/edges, regenerate from valid state.
 - If the owner contains unexpected child groups/components or user-added content, refuse instead of deleting it.
+- Normalize generated terrain face winding so front-face normals point upward in the z-up terrain basis.
 - Derived output regeneration is required for success; optional response sample evidence can be omitted or capped, but the model output itself must be current.
 
 ### Configuration
@@ -442,7 +443,7 @@ flowchart TD
 
 - A valid `edit_terrain_surface` request edits a managed terrain surface by changing only affected stored heightmap samples within the rectangle and blend band, after preserve masks and fixed-control checks are applied.
 - The edit supports only `operation.mode: "target_height"` and refuses unsupported operation modes with `field`, rejected `value`, and `allowedValues`.
-- The edit supports only rectangle edit regions in owner-local public meters and refuses invalid, inverted, out-of-terrain, or no-sample regions.
+- The edit supports only rectangle edit regions in the stored terrain state's public-meter XY frame and refuses invalid, inverted, out-of-terrain, or no-sample regions.
 - Blend policy supports `none`, `linear`, and `smooth`; unsupported falloff values refuse with `allowedValues`.
 - Preserve zones are rectangle zero-weight masks and remain unchanged in the resulting state within evidence-reported tolerance.
 - Fixed controls protect the bilinear sample stencil and refuse before mutation if predicted post-edit elevation exceeds the effective tolerance.

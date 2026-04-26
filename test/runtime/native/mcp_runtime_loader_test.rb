@@ -3,6 +3,7 @@
 require_relative '../../test_helper'
 require 'tmpdir'
 require_relative '../../../src/su_mcp/runtime/tool_response'
+require_relative '../../../src/su_mcp/terrain/edit_terrain_surface_request'
 require_relative '../../../src/su_mcp/runtime/native/mcp_runtime_loader'
 
 # rubocop:disable Metrics/ClassLength
@@ -18,6 +19,7 @@ class McpRuntimeLoaderTest < Minitest::Test
     measure_scene
     sample_surface_z
     create_terrain_surface
+    edit_terrain_surface
     get_entity_info
     create_site_element
     set_entity_metadata
@@ -258,6 +260,52 @@ class McpRuntimeLoaderTest < Minitest::Test
         .fetch('kind')
         .fetch('enum')
     )
+
+    edit_terrain_surface_tool = tools.find do |tool|
+      tool.fetch('name') == 'edit_terrain_surface'
+    end
+    assert_equal('Edit Managed Terrain Surface', edit_terrain_surface_tool.fetch('title'))
+    assert_equal(false, edit_terrain_surface_tool.fetch('annotations').fetch('readOnlyHint'))
+    assert_equal(
+      %w[targetReference operation region],
+      edit_terrain_surface_tool.fetch('inputSchema').fetch('required')
+    )
+    assert_equal(
+      %w[constraints operation outputOptions region targetReference],
+      edit_terrain_surface_tool.fetch('inputSchema').fetch('properties').keys.sort
+    )
+    assert_equal(
+      SU_MCP::Terrain::EditTerrainSurfaceRequest::SUPPORTED_OPERATION_MODES,
+      edit_terrain_surface_tool
+        .fetch('inputSchema')
+        .fetch('properties')
+        .fetch('operation')
+        .fetch('properties')
+        .fetch('mode')
+        .fetch('enum')
+    )
+    assert_equal(
+      SU_MCP::Terrain::EditTerrainSurfaceRequest::SUPPORTED_BLEND_FALLOFFS,
+      edit_terrain_surface_tool
+        .fetch('inputSchema')
+        .fetch('properties')
+        .fetch('region')
+        .fetch('properties')
+        .fetch('blend')
+        .fetch('properties')
+        .fetch('falloff')
+        .fetch('enum')
+    )
+    assert_equal(
+      %w[fixedControls preserveZones],
+      edit_terrain_surface_tool
+        .fetch('inputSchema')
+        .fetch('properties')
+        .fetch('constraints')
+        .fetch('properties')
+        .keys
+        .sort
+    )
     create_terrain_schema = create_terrain_surface_tool.fetch('inputSchema')
     assert_includes(
       create_terrain_schema
@@ -487,6 +535,57 @@ class McpRuntimeLoaderTest < Minitest::Test
     refute(input_schema.fetch(:properties).key?(:sourceElementId))
     refute(input_schema.fetch(:properties).key?(:path))
     refute(input_schema.fetch(:properties).key?(:material))
+  end
+
+  def test_edit_terrain_surface_tool_schema_exposes_finite_contract_options
+    edit_terrain_surface_tool = @loader.tool_catalog.find do |tool|
+      tool.fetch(:name) == 'edit_terrain_surface'
+    end
+    refute_nil(edit_terrain_surface_tool)
+
+    input_schema = edit_terrain_surface_tool.fetch(:input_schema)
+    assert_equal(%w[targetReference operation region], input_schema.fetch(:required))
+    assert_equal(
+      SU_MCP::Terrain::EditTerrainSurfaceRequest::SUPPORTED_OPERATION_MODES,
+      input_schema
+        .fetch(:properties)
+        .fetch(:operation)
+        .fetch(:properties)
+        .fetch(:mode)
+        .fetch(:enum)
+    )
+    assert_equal(
+      SU_MCP::Terrain::EditTerrainSurfaceRequest::SUPPORTED_REGION_TYPES,
+      input_schema
+        .fetch(:properties)
+        .fetch(:region)
+        .fetch(:properties)
+        .fetch(:type)
+        .fetch(:enum)
+    )
+    assert_equal(
+      SU_MCP::Terrain::EditTerrainSurfaceRequest::SUPPORTED_BLEND_FALLOFFS,
+      input_schema
+        .fetch(:properties)
+        .fetch(:region)
+        .fetch(:properties)
+        .fetch(:blend)
+        .fetch(:properties)
+        .fetch(:falloff)
+        .fetch(:enum)
+    )
+    assert_equal(
+      SU_MCP::Terrain::EditTerrainSurfaceRequest::SUPPORTED_PRESERVE_ZONE_TYPES,
+      input_schema
+        .fetch(:properties)
+        .fetch(:constraints)
+        .fetch(:properties)
+        .fetch(:preserveZones)
+        .fetch(:items)
+        .fetch(:properties)
+        .fetch(:type)
+        .fetch(:enum)
+    )
   end
 
   def test_create_group_tool_schema_uses_compact_target_references_only

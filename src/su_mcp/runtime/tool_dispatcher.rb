@@ -11,6 +11,7 @@ module SU_MCP
       'measure_scene' => :measure_scene,
       'sample_surface_z' => :sample_surface_z,
       'create_terrain_surface' => :create_terrain_surface,
+      'edit_terrain_surface' => :edit_terrain_surface,
       'get_entity_info' => :get_entity_info,
       'create_site_element' => :create_site_element,
       'set_entity_metadata' => :set_entity_metadata,

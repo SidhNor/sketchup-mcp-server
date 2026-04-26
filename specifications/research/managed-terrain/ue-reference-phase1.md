@@ -9,7 +9,7 @@ last_updated: 2026-04-25
 
 ## Research Posture
 
-This note is non-normative and research-only.
+This note is research-only.
 
 It preserves Unreal Engine Landscape documentation and source areas that may help later Managed Terrain Surface Authoring tasks reason about terrain-edit behavior, brush weighting, heightfield access, and fairing expectations. It does not define public MCP tool names, request schemas, response payloads, Ruby class names, repository layout, or architecture ownership for this repository.
 

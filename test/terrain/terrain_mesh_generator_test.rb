@@ -30,6 +30,7 @@ class TerrainMeshGeneratorTest < Minitest::Test
       result.fetch(:summary).fetch(:derivedMesh)
     )
     assert_equal(4, owner.entities.faces.length)
+    assert_all_faces_point_up(owner.entities.faces)
   end
 
   def test_uses_one_deterministic_diagonal_direction_for_every_cell
@@ -46,6 +47,22 @@ class TerrainMeshGeneratorTest < Minitest::Test
     triangles = owner.entities.faces.map(&:points)
     assert_includes(triangles, [[0.0, 0.0, 1.0], [1.0, 0.0, 1.0], [1.0, 1.0, 1.0]])
     refute_includes(triangles, [[0.0, 0.0, 1.0], [1.0, 0.0, 1.0], [0.0, 1.0, 1.0]])
+    assert_all_faces_point_up(owner.entities.faces)
+  end
+
+  def test_normalizes_generated_faces_to_positive_z_normals
+    model = build_semantic_model
+    owner = model.active_entities.add_group
+    force_added_faces_downward(owner.entities)
+
+    identity_generator.generate(
+      owner: owner,
+      state: build_state(columns: 3, rows: 3),
+      terrain_state_summary: { digest: 'abc123' }
+    )
+
+    assert_equal(8, owner.entities.faces.length)
+    assert_all_faces_point_up(owner.entities.faces)
   end
 
   def test_converts_public_meter_state_values_to_internal_geometry_units
@@ -68,12 +85,64 @@ class TerrainMeshGeneratorTest < Minitest::Test
     )
   end
 
+  def test_regenerate_removes_prior_derived_faces_before_rebuilding
+    model = build_semantic_model
+    owner = model.active_entities.add_group
+    old_face = owner.entities.add_face([0, 0, 0], [1, 0, 0], [1, 1, 0])
+    old_face.set_attribute('su_mcp_terrain', 'derivedOutput', true)
+
+    result = identity_generator.regenerate(
+      owner: owner,
+      state: build_state(columns: 2, rows: 2),
+      terrain_state_summary: { digest: 'digest-2' }
+    )
+
+    assert_equal('generated', result.fetch(:outcome))
+    assert_equal('digest-2', result.dig(:summary, :derivedMesh, :derivedFromStateDigest))
+    refute_includes(owner.entities.faces, old_face)
+    assert_equal(2, owner.entities.faces.length)
+  end
+
+  def test_regenerate_refuses_unexpected_child_entities_before_erasing_output
+    model = build_semantic_model
+    owner = model.active_entities.add_group
+    owner.entities.add_group
+    old_face = owner.entities.add_face([0, 0, 0], [1, 0, 0], [1, 1, 0])
+    old_face.set_attribute('su_mcp_terrain', 'derivedOutput', true)
+
+    result = identity_generator.regenerate(
+      owner: owner,
+      state: build_state(columns: 2, rows: 2),
+      terrain_state_summary: { digest: 'digest-2' }
+    )
+
+    assert_equal('refused', result.fetch(:outcome))
+    assert_equal('terrain_output_contains_unsupported_entities', result.dig(:refusal, :code))
+    assert_includes(owner.entities.faces, old_face)
+  end
+
   private
 
   def identity_generator
     SU_MCP::Terrain::TerrainMeshGenerator.new(
       length_converter: ScalingLengthConverter.new(multiplier: 1.0)
     )
+  end
+
+  def assert_all_faces_point_up(faces)
+    assert(
+      faces.all? { |face| face.normal.z.positive? },
+      'expected every terrain face normal to point up'
+    )
+  end
+
+  def force_added_faces_downward(entities)
+    original_add_face = entities.method(:add_face)
+    entities.define_singleton_method(:add_face) do |*points|
+      face = original_add_face.call(*points)
+      face.reverse! if face.normal.z.positive?
+      face
+    end
   end
 
   def build_state(columns:, rows:, origin: { 'x' => 0.0, 'y' => 0.0, 'z' => 0.0 })

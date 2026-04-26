@@ -15,4 +15,10 @@ class RuntimeCommandFactoryTest < Minitest::Test
 
     assert(targets.any? { |target| target.respond_to?(:create_terrain_surface, true) })
   end
+
+  def test_builds_an_editable_terrain_surface_command_target
+    targets = SU_MCP::RuntimeCommandFactory.new.build_command_targets
+
+    assert(targets.any? { |target| target.respond_to?(:edit_terrain_surface, true) })
+  end
 end
