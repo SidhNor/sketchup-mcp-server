@@ -9,6 +9,7 @@ require_relative '../scene_validation/measure_scene_commands'
 require_relative '../scene_validation/scene_validation_commands'
 require_relative '../semantic/hierarchy_maintenance_commands'
 require_relative '../semantic/semantic_commands'
+require_relative '../staged_assets/staged_asset_commands'
 require_relative '../terrain/terrain_surface_commands'
 require_relative '../modeling/solid_modeling_commands'
 
@@ -26,6 +27,7 @@ module SU_MCP
         measure_scene_commands,
         scene_validation_commands,
         terrain_surface_commands,
+        staged_asset_commands,
         semantic_commands,
         hierarchy_maintenance_commands,
         editing_commands,
@@ -53,6 +55,12 @@ module SU_MCP
     def terrain_surface_commands
       @terrain_surface_commands ||= Terrain::TerrainSurfaceCommands.new(
         model: Sketchup.active_model
+      )
+    end
+
+    def staged_asset_commands
+      @staged_asset_commands ||= StagedAssets::StagedAssetCommands.new(
+        model_adapter: model_adapter
       )
     end
 

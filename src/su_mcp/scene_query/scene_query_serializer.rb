@@ -251,7 +251,15 @@ module SU_MCP
     end
 
     def managed_scene_object?(entity)
+      return false if asset_exemplar?(entity)
+
       !source_element_id_for(entity).nil?
+    end
+
+    def asset_exemplar?(entity)
+      return false unless entity.respond_to?(:get_attribute)
+
+      entity.get_attribute('su_mcp', 'assetExemplar') == true
     end
 
     def public_meter_value(value)

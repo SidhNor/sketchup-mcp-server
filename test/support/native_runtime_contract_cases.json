@@ -1792,6 +1792,155 @@
           }
         }
       }
+    },
+    {
+      "case_id": "curate_staged_asset_curated",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "params": {
+          "name": "curate_staged_asset",
+          "arguments": {
+            "targetReference": { "sourceElementId": "curatable-source-001" },
+            "metadata": {
+              "sourceElementId": "asset-tree-oak-001",
+              "category": "tree",
+              "displayName": "Oak Tree Exemplar",
+              "tags": ["tree", "deciduous"],
+              "attributes": {
+                "species": "oak",
+                "detailLevel": "high"
+              }
+            },
+            "approval": { "state": "approved" },
+            "staging": { "mode": "metadata_only" },
+            "outputOptions": { "includeBounds": true }
+          }
+        },
+        "id": "curate-staged-asset"
+      },
+      "response": {
+        "jsonrpc": "2.0",
+        "id": "curate-staged-asset",
+        "result": {
+          "success": true,
+          "outcome": "curated",
+          "asset": {
+            "sourceElementId": "asset-tree-oak-001",
+            "persistentId": "8801",
+            "entityId": "801",
+            "type": "group",
+            "displayName": "Oak Tree Exemplar",
+            "category": "tree",
+            "approvalState": "approved",
+            "tags": ["tree", "deciduous"],
+            "metadata": {
+              "assetRole": "exemplar",
+              "stagingMode": "metadata_only",
+              "schemaVersion": 1,
+              "attributes": {
+                "species": "oak",
+                "detailLevel": "high"
+              }
+            },
+            "bounds": {
+              "min": [0.0, 0.0, 0.0],
+              "max": [1.0, 2.0, 3.0],
+              "center": [0.5, 1.0, 1.5],
+              "size": [1.0, 2.0, 3.0]
+            }
+          }
+        }
+      }
+    },
+    {
+      "case_id": "list_staged_assets_filtered",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "params": {
+          "name": "list_staged_assets",
+          "arguments": {
+            "filters": {
+              "category": "tree",
+              "tags": ["deciduous"],
+              "attributes": { "species": "oak" },
+              "approvalState": "approved"
+            },
+            "outputOptions": {
+              "limit": 25,
+              "includeBounds": true
+            }
+          }
+        },
+        "id": "list-staged-assets-filtered"
+      },
+      "response": {
+        "jsonrpc": "2.0",
+        "id": "list-staged-assets-filtered",
+        "result": {
+          "success": true,
+          "count": 1,
+          "assets": [
+            {
+              "sourceElementId": "asset-tree-oak-001",
+              "persistentId": "8801",
+              "entityId": "801",
+              "type": "group",
+              "displayName": "Oak Tree Exemplar",
+              "category": "tree",
+              "approvalState": "approved",
+              "tags": ["tree", "deciduous"],
+              "metadata": {
+                "assetRole": "exemplar",
+                "stagingMode": "metadata_only",
+                "schemaVersion": 1,
+                "attributes": {
+                  "species": "oak",
+                  "detailLevel": "high"
+                }
+              },
+              "bounds": {
+                "min": [0.0, 0.0, 0.0],
+                "max": [1.0, 2.0, 3.0],
+                "center": [0.5, 1.0, 1.5],
+                "size": [1.0, 2.0, 3.0]
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "case_id": "list_staged_assets_approval_state_refused",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "params": {
+          "name": "list_staged_assets",
+          "arguments": {
+            "filters": { "approvalState": "draft" }
+          }
+        },
+        "id": "list-staged-assets-approval-state-refused"
+      },
+      "response": {
+        "jsonrpc": "2.0",
+        "id": "list-staged-assets-approval-state-refused",
+        "result": {
+          "success": true,
+          "outcome": "refused",
+          "refusal": {
+            "code": "unsupported_approval_state",
+            "message": "Only approved Asset Exemplars are discoverable in SAR-01.",
+            "details": {
+              "field": "filters.approvalState",
+              "value": "draft",
+              "allowedValues": ["approved"]
+            }
+          }
+        }
+      }
     }
   ]
 }

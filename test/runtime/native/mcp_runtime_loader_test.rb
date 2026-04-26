@@ -20,6 +20,8 @@ class McpRuntimeLoaderTest < Minitest::Test
     sample_surface_z
     create_terrain_surface
     edit_terrain_surface
+    curate_staged_asset
+    list_staged_assets
     get_entity_info
     create_site_element
     set_entity_metadata
@@ -56,6 +58,29 @@ class McpRuntimeLoaderTest < Minitest::Test
       end
     end
   end
+
+  def test_staged_asset_tool_catalog_exposes_contract_options_and_annotations
+    curate_tool = @loader.tool_catalog.find { |tool| tool.fetch(:name) == 'curate_staged_asset' }
+    list_tool = @loader.tool_catalog.find { |tool| tool.fetch(:name) == 'list_staged_assets' }
+
+    assert_equal(false, curate_tool.dig(:metadata, :annotations, :read_only_hint))
+    assert_equal(false, curate_tool.dig(:metadata, :annotations, :destructive_hint))
+    assert_equal(%w[approved], nested_enum(curate_tool, :approval, :state))
+    assert_equal(%w[metadata_only], nested_enum(curate_tool, :staging, :mode))
+    assert_equal(true, list_tool.dig(:metadata, :annotations, :read_only_hint))
+    assert_equal(false, list_tool.dig(:metadata, :annotations, :destructive_hint))
+    assert_equal(%w[approved], nested_enum(list_tool, :filters, :approvalState))
+  end
+
+  def nested_enum(tool, *keys)
+    schema = tool.fetch(:input_schema).fetch(:properties)
+    keys[0...-1].each do |key|
+      schema = schema.fetch(key).fetch(:properties)
+    end
+    schema.fetch(keys.last).fetch(:enum)
+  end
+
+  private :nested_enum
 
   def test_available_is_false_when_staged_vendor_tree_is_absent
     Dir.mktmpdir do |empty_vendor_root|
@@ -322,6 +347,59 @@ class McpRuntimeLoaderTest < Minitest::Test
         .fetch('properties')
         .keys
         .sort
+    )
+
+    curate_staged_asset_tool = tools.find { |tool| tool.fetch('name') == 'curate_staged_asset' }
+    assert_equal('Curate Staged Asset', curate_staged_asset_tool.fetch('title'))
+    assert_equal(false, curate_staged_asset_tool.fetch('annotations').fetch('readOnlyHint'))
+    assert_equal(false, curate_staged_asset_tool.fetch('annotations').fetch('destructiveHint'))
+    assert_equal(
+      %w[targetReference metadata approval staging],
+      curate_staged_asset_tool.fetch('inputSchema').fetch('required')
+    )
+    assert_equal(
+      %w[approval metadata outputOptions staging targetReference],
+      curate_staged_asset_tool.fetch('inputSchema').fetch('properties').keys.sort
+    )
+    assert_equal(
+      %w[approved],
+      curate_staged_asset_tool
+        .fetch('inputSchema')
+        .fetch('properties')
+        .fetch('approval')
+        .fetch('properties')
+        .fetch('state')
+        .fetch('enum')
+    )
+    assert_equal(
+      %w[metadata_only],
+      curate_staged_asset_tool
+        .fetch('inputSchema')
+        .fetch('properties')
+        .fetch('staging')
+        .fetch('properties')
+        .fetch('mode')
+        .fetch('enum')
+    )
+
+    list_staged_assets_tool = tools.find { |tool| tool.fetch('name') == 'list_staged_assets' }
+    assert_equal('List Staged Assets', list_staged_assets_tool.fetch('title'))
+    assert_equal(true, list_staged_assets_tool.fetch('annotations').fetch('readOnlyHint'))
+    assert_equal(false, list_staged_assets_tool.fetch('annotations').fetch('destructiveHint'))
+    refute(list_staged_assets_tool.fetch('inputSchema').key?('required'))
+    assert_equal(
+      %w[filters outputOptions],
+      list_staged_assets_tool.fetch('inputSchema').fetch('properties').keys.sort
+    )
+    assert_equal(
+      %w[approved],
+      list_staged_assets_tool
+        .fetch('inputSchema')
+        .fetch('properties')
+        .fetch('filters')
+        .fetch('properties')
+        .fetch('approvalState')
+        .fetch('enum')
     )
     create_terrain_schema = create_terrain_surface_tool.fetch('inputSchema')
     assert_includes(

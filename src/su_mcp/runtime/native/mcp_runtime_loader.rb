@@ -7,6 +7,7 @@ require_relative 'tool_definition'
 require_relative '../../semantic/managed_object_metadata'
 require_relative '../../semantic/request_shape_contract'
 require_relative '../../semantic/request_validator'
+require_relative '../../staged_assets/asset_exemplar_metadata'
 require_relative '../../terrain/create_terrain_surface_request'
 require_relative '../../terrain/edit_terrain_surface_request'
 
@@ -348,7 +349,7 @@ module SU_MCP
       ]
     end
 
-    def scene_tool_catalog
+    def scene_tool_catalog # rubocop:disable Metrics/AbcSize
       [
         tool_entry(
           name: 'sample_surface_z',
@@ -397,6 +398,29 @@ module SU_MCP
           annotations: { read_only_hint: false, destructive_hint: false },
           classification: 'first_class',
           input_schema: edit_terrain_surface_schema
+        ),
+        tool_entry(
+          name: 'curate_staged_asset',
+          title: 'Curate Staged Asset',
+          description: 'Curate an existing in-model group or component instance as an ' \
+                       'approved metadata-backed Asset Exemplar. This writes Asset ' \
+                       'Exemplar metadata only; it does not import, move, reparent, tag, ' \
+                       'lock, duplicate, or delete geometry.',
+          handler_key: :curate_staged_asset,
+          annotations: { read_only_hint: false, destructive_hint: false },
+          classification: 'first_class',
+          input_schema: curate_staged_asset_schema
+        ),
+        tool_entry(
+          name: 'list_staged_assets',
+          title: 'List Staged Assets',
+          description: 'Discover approved metadata-backed Asset Exemplars with category, ' \
+                       'tag, and asset-attribute filters. SAR-01 only returns approved, ' \
+                       'complete exemplars and refuses unapproved discovery overrides.',
+          handler_key: :list_staged_assets,
+          annotations: { read_only_hint: true, destructive_hint: false },
+          classification: 'first_class',
+          input_schema: list_staged_assets_schema
         ),
         tool_entry(
           name: 'get_entity_info',
@@ -769,6 +793,109 @@ module SU_MCP
           identity: identity_selector_schema,
           attributes: attribute_selector_schema,
           metadata: metadata_selector_schema
+        },
+        additionalProperties: false
+      }
+    end
+
+    def asset_metadata_schema
+      {
+        type: 'object',
+        required: %w[sourceElementId category displayName],
+        properties: {
+          sourceElementId: string_schema,
+          category: string_schema,
+          displayName: string_schema,
+          tags: string_array_schema,
+          attributes: {
+            type: 'object',
+            additionalProperties: true
+          }
+        },
+        additionalProperties: false
+      }
+    end
+
+    def asset_approval_schema
+      {
+        type: 'object',
+        required: ['state'],
+        properties: {
+          state: enum_schema(StagedAssets::AssetExemplarMetadata::SUPPORTED_APPROVAL_STATES)
+        },
+        additionalProperties: false
+      }
+    end
+
+    def asset_staging_schema
+      {
+        type: 'object',
+        required: ['mode'],
+        properties: {
+          mode: enum_schema(StagedAssets::AssetExemplarMetadata::SUPPORTED_STAGING_MODES)
+        },
+        additionalProperties: false
+      }
+    end
+
+    def staged_asset_output_options_schema
+      {
+        type: 'object',
+        properties: {
+          includeBounds: boolean_schema
+        },
+        additionalProperties: false
+      }
+    end
+
+    def curate_staged_asset_schema
+      {
+        type: 'object',
+        required: %w[targetReference metadata approval staging],
+        properties: {
+          targetReference: target_reference_schema,
+          metadata: asset_metadata_schema,
+          approval: asset_approval_schema,
+          staging: asset_staging_schema,
+          outputOptions: staged_asset_output_options_schema
+        },
+        additionalProperties: false
+      }
+    end
+
+    def list_staged_assets_filters_schema
+      {
+        type: 'object',
+        properties: {
+          category: string_schema,
+          tags: string_array_schema,
+          attributes: {
+            type: 'object',
+            additionalProperties: true
+          },
+          approvalState: enum_schema(StagedAssets::AssetExemplarMetadata::SUPPORTED_APPROVAL_STATES)
+        },
+        additionalProperties: false
+      }
+    end
+
+    def list_staged_assets_output_options_schema
+      {
+        type: 'object',
+        properties: {
+          limit: integer_schema,
+          includeBounds: boolean_schema
+        },
+        additionalProperties: false
+      }
+    end
+
+    def list_staged_assets_schema
+      {
+        type: 'object',
+        properties: {
+          filters: list_staged_assets_filters_schema,
+          outputOptions: list_staged_assets_output_options_schema
         },
         additionalProperties: false
       }

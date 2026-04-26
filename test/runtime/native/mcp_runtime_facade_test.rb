@@ -8,6 +8,7 @@ require_relative '../../../src/su_mcp/scene_query/scene_query_commands'
 require_relative '../../../src/su_mcp/runtime/native/mcp_runtime_facade'
 require_relative '../../../src/su_mcp/runtime/runtime_command_factory'
 
+# rubocop:disable Metrics/ClassLength
 class McpRuntimeFacadeTest < Minitest::Test
   include SceneQueryTestSupport
   include SemanticTestSupport
@@ -88,6 +89,25 @@ class McpRuntimeFacadeTest < Minitest::Test
 
     def edit_terrain_surface(params)
       @calls << params
+      @result
+    end
+  end
+
+  class RecordingStagedAssetCommands
+    attr_reader :calls
+
+    def initialize(result:)
+      @result = result
+      @calls = []
+    end
+
+    def curate_staged_asset(params)
+      @calls << [:curate_staged_asset, params]
+      @result
+    end
+
+    def list_staged_assets(params)
+      @calls << [:list_staged_assets, params]
       @result
     end
   end
@@ -275,6 +295,39 @@ class McpRuntimeFacadeTest < Minitest::Test
     assert_equal(expected, result)
   end
 
+  def test_curate_staged_asset_dispatches_through_the_shared_runtime_command_factory
+    expected = { success: true, outcome: 'curated', asset: {} }
+    staged_commands = RecordingStagedAssetCommands.new(result: expected)
+    factory = RecordingRuntimeCommandFactory.new(targets: [staged_commands])
+    facade = SU_MCP::McpRuntimeFacade.new(runtime_command_factory: factory)
+    payload = {
+      'targetReference' => { 'sourceElementId' => 'curatable-source-001' },
+      'metadata' => { 'sourceElementId' => 'asset-tree-oak-001' }
+    }
+
+    result = facade.curate_staged_asset(payload)
+
+    assert_equal(1, factory.calls)
+    assert_equal([[:curate_staged_asset, payload]], staged_commands.calls)
+    assert_equal(expected, result)
+  end
+
+  def test_list_staged_assets_dispatches_through_the_shared_runtime_command_factory
+    expected = { success: true, count: 0, assets: [] }
+    staged_commands = RecordingStagedAssetCommands.new(result: expected)
+    factory = RecordingRuntimeCommandFactory.new(targets: [staged_commands])
+    facade = SU_MCP::McpRuntimeFacade.new(runtime_command_factory: factory)
+
+    result = facade.list_staged_assets('filters' => { 'category' => 'tree' })
+
+    assert_equal(1, factory.calls)
+    assert_equal(
+      [[:list_staged_assets, { 'filters' => { 'category' => 'tree' } }]],
+      staged_commands.calls
+    )
+    assert_equal(expected, result)
+  end
+
   # rubocop:disable Metrics/MethodLength, Layout/LineLength
   def test_validate_scene_update_surface_offset_payload_dispatches_through_the_shared_runtime_command_factory
     expected = { success: true, outcome: 'passed', errors: [], warnings: [], summary: {} }
@@ -330,3 +383,4 @@ class McpRuntimeFacadeTest < Minitest::Test
     assert_equal('group', result.dig(:group, :type))
   end
 end
+# rubocop:enable Metrics/ClassLength

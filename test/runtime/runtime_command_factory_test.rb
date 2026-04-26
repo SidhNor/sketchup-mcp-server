@@ -21,4 +21,11 @@ class RuntimeCommandFactoryTest < Minitest::Test
 
     assert(targets.any? { |target| target.respond_to?(:edit_terrain_surface, true) })
   end
+
+  def test_builds_a_staged_asset_command_target
+    targets = SU_MCP::RuntimeCommandFactory.new.build_command_targets
+
+    assert(targets.any? { |target| target.respond_to?(:curate_staged_asset, true) })
+    assert(targets.any? { |target| target.respond_to?(:list_staged_assets, true) })
+  end
 end

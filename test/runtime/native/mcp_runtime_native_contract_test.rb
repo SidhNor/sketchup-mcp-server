@@ -249,6 +249,77 @@ class McpRuntimeNativeContractTest < Minitest::Test
     )
   end
 
+  def test_native_transport_preserves_curate_staged_asset_success_shape_from_shared_contract
+    skip_unless_staged_vendor_runtime!
+
+    contract_case = contract_case('curate_staged_asset_curated')
+    transport = @loader.build_transport(
+      handlers: {
+        curate_staged_asset: ->(_arguments) { contract_case.fetch('response').fetch('result') }
+      }
+    )
+
+    response = perform_raw_json_request(transport, contract_case.fetch('request'))
+
+    assert_equal(200, response[:status])
+    assert_equal(
+      contract_case.dig('response', 'result'),
+      response[:body].dig('result', 'structuredContent')
+    )
+  end
+
+  def test_native_transport_preserves_list_staged_assets_success_shape_from_shared_contract
+    skip_unless_staged_vendor_runtime!
+
+    contract_case = contract_case('list_staged_assets_filtered')
+    transport = @loader.build_transport(
+      handlers: {
+        list_staged_assets: ->(_arguments) { contract_case.fetch('response').fetch('result') }
+      }
+    )
+
+    response = perform_raw_json_request(transport, contract_case.fetch('request'))
+
+    assert_equal(200, response[:status])
+    assert_equal(
+      contract_case.dig('response', 'result'),
+      response[:body].dig('result', 'structuredContent')
+    )
+  end
+
+  def test_native_transport_preserves_staged_asset_finite_option_refusal_details
+    skip_unless_staged_vendor_runtime!
+
+    contract_case = contract_case('list_staged_assets_approval_state_refused')
+    transport = @loader.build_transport(
+      handlers: {
+        list_staged_assets: ->(_arguments) { contract_case.fetch('response').fetch('result') }
+      }
+    )
+
+    response = perform_raw_json_request(transport, contract_case.fetch('request'))
+
+    assert_equal(200, response[:status])
+    assert_equal(
+      expected_staged_asset_approval_refusal_details,
+      response[:body].dig('result', 'structuredContent', 'refusal', 'details')
+    )
+    assert_equal(
+      contract_case.dig('response', 'result'),
+      response[:body].dig('result', 'structuredContent')
+    )
+  end
+
+  def expected_staged_asset_approval_refusal_details
+    {
+      'field' => 'filters.approvalState',
+      'value' => 'draft',
+      'allowedValues' => ['approved']
+    }
+  end
+
+  private :expected_staged_asset_approval_refusal_details
+
   def test_native_transport_preserves_managed_transform_success_shape_from_shared_contract
     skip_unless_staged_vendor_runtime!
 
