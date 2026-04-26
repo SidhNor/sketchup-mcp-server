@@ -1,7 +1,7 @@
-# Size: MTA-11 Design And Implement Durable Localized Terrain Representation v2
+# Size: MTA-11 Design And Implement Localized Survey Detail Zones
 
 **Task ID**: `MTA-11`
-**Title**: Design And Implement Durable Localized Terrain Representation v2
+**Title**: Design And Implement Localized Survey Detail Zones
 **Status**: `seeded`
 **Created**: 2026-04-26
 **Last Updated**: 2026-04-26
@@ -16,7 +16,7 @@
 ## Identity
 
 - **Task Archetype**: platform / migration
-- **Primary Scope Area**: durable localized terrain state representation
+- **Primary Scope Area**: localized survey detail terrain representation
 - **Likely Systems Touched**:
   - terrain state model
   - terrain serializer and repository dispatch
@@ -27,7 +27,7 @@
 - **Likely Analog Class**: terrain state storage and migration foundation
 
 ### Identity Notes
-- Deferred representation task that changes persisted terrain state shape while preserving v1 `heightmap_grid` compatibility.
+- Deferred representation task that changes persisted terrain state shape when survey/detail fidelity exceeds v1 `heightmap_grid` capacity, while preserving v1 compatibility.
 <!-- SIZE:IDENTITY:END -->
 
 ---
@@ -39,7 +39,7 @@
 
 | Dimension | Seed (0-4) | Notes |
 |---|---:|---|
-| Functional Scope | 3 | Enables localized terrain detail and larger extents, but may remain mostly internal unless evidence schemas evolve. |
+| Functional Scope | 3 | Enables localized survey/detail fidelity and larger extents, but may remain mostly internal unless evidence schemas evolve. |
 | Technical Change Surface | 4 | Likely touches state model, serializer, repository, migration, tests, and possibly public evidence compatibility. |
 | Hidden Complexity Suspicion | 4 | Storage versioning, v1 compatibility, localized units, migration/refusal behavior, and edit-kernel abstraction are sensitive. |
 | Validation Burden Suspicion | 4 | Requires round-trip, migration, corrupt/unsupported payload, compatibility, and likely hosted persistence validation. |
@@ -49,12 +49,12 @@
 
 ### Early Signals
 - MTA-02 showed terrain storage foundation has high validation and rework sensitivity.
-- MTA-07 intentionally did not introduce persisted v2 and kept contract/no-drift tests first.
+- MTA-07 intentionally did not introduce persisted localized-detail state and kept contract/no-drift tests first.
 - Any durable representation change must preserve exact v1 `heightmap_grid` round-trip behavior.
-- Partial output regeneration may reveal whether durable output-region metadata is needed earlier.
+- MTA-13 is expected to provide the evidence for whether v1 heightmap survey constraints are sufficient before this task is pulled forward.
 
 ### Early Estimate Notes
-- Seed treats this as a high-risk migration/platform task with low-medium confidence until representation choices are planned and challenged.
+- Seed treats this as a high-risk migration/platform task with low-medium confidence until survey-detail representation choices are planned and challenged.
 <!-- SIZE:INITIAL-SHAPE:END -->
 
 ---

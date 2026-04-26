@@ -23,7 +23,9 @@ The current task order proves terrain authoring through concrete, testable incre
 - scalable terrain representation strategy for localized detail and larger terrain extents
 - production bulk output adoption and region-aware output planning
 - partial terrain output regeneration
-- durable localized terrain representation v2
+- circular local terrain regions and preserve zones
+- survey point constraint terrain editing
+- localized survey/detail zones when v1 heightmap fidelity is insufficient
 
 ## Current Task Order
 
@@ -37,7 +39,9 @@ The current task order proves terrain authoring through concrete, testable incre
 8. [MTA-08 Adopt Bulk Full-Grid Terrain Output In Production](MTA-08-adopt-bulk-full-grid-terrain-output-in-production/task.md)
 9. [MTA-09 Define Region-Aware Terrain Output Planning Foundation](MTA-09-define-region-aware-terrain-output-planning-foundation/task.md)
 10. [MTA-10 Implement Partial Terrain Output Regeneration](MTA-10-implement-partial-terrain-output-regeneration/task.md)
-11. [MTA-11 Design And Implement Durable Localized Terrain Representation v2](MTA-11-design-and-implement-durable-localized-terrain-representation-v2/task.md)
+11. [MTA-11 Design And Implement Localized Survey Detail Zones](MTA-11-design-and-implement-durable-localized-terrain-representation-v2/task.md)
+12. [MTA-12 Add Circular Terrain Regions And Preserve Zones](MTA-12-add-circular-terrain-regions-and-preserve-zones/task.md)
+13. [MTA-13 Implement Survey Point Constraint Terrain Edit](MTA-13-implement-survey-point-constraint-terrain-edit/task.md)
 
 ## Deferred Follow-Ons
 
@@ -49,9 +53,12 @@ Deferred work is not promoted into active task folders in this iteration:
 - interactive sculpt or brush UI
 - erosion, weathering, or procedural terrain generation
 - public Unreal-style terrain tools such as flatten, smooth, or ramp
+- polygon/freeform terrain edit regions
+- broad localized-detail storage before survey point constraint evidence proves v1 heightmap fidelity is insufficient
 
 ## Notes
 
 - Each implementation task must carry its own TDD and live verification expectations. Recovery cases such as corrupt payloads, missing derived output, stale output, and unsupported versions belong in the task that introduces the relevant behavior.
 - The UE research reference is non-normative research input only. It may inform internal terrain math and kernel design, but it does not define public MCP tool names or Ruby architecture names.
 - Existing `STI-*`, `SVR-*`, `SEM-*`, and `PLAT-*` tasks remain dependency history and should not be rewritten by this task set.
+- `MTA-11` is the localized survey/detail-zone escalation path and should not block `MTA-13` unless survey point constraint planning proves the current v1 heightmap cannot satisfy representative survey tolerances.

@@ -1,6 +1,6 @@
-# Task: MTA-11 Design And Implement Durable Localized Terrain Representation v2
+# Task: MTA-11 Design And Implement Localized Survey Detail Zones
 **Task ID**: `MTA-11`
-**Title**: `Design And Implement Durable Localized Terrain Representation v2`
+**Title**: `Design And Implement Localized Survey Detail Zones`
 **Status**: `draft`
 **Priority**: `P1`
 **Date**: `2026-04-26`
@@ -11,15 +11,15 @@
 
 ## Problem Statement
 
-Managed terrain currently persists a uniform `heightmap_grid` v1 state. MTA-07 selected a heightmap-derived scalable direction and deferred durable localized-detail storage. Bulk full-grid output and partial output regeneration can improve derived mesh performance, but they do not by themselves solve the need for localized terrain detail, tiled or chunked storage, serializer and repository dispatch, migration behavior, or explicit compatibility guarantees for existing terrain states.
+Managed terrain currently persists a uniform `heightmap_grid` v1 state. MTA-07 selected a heightmap-derived scalable direction and deferred durable localized-detail storage. MTA-13 will first attempt survey point constraint editing on the existing v1 heightmap substrate. That is the right first proof point, but it may expose survey cases where small tolerances, dense measured points, or localized grading detail cannot be represented without globally increasing terrain density.
 
-This task defines and implements the next persisted terrain representation version for localized detail while preserving v1 terrain loading and the architecture rule that materialized terrain state, not generated SketchUp TIN geometry, is authoritative.
+This task defines and implements localized survey/detail zones as the durable escalation path for those cases. It preserves v1 terrain loading and the architecture rule that materialized terrain state, not generated SketchUp TIN geometry, is authoritative.
 
 ## Goals
 
-- define a durable terrain representation beyond uniform `heightmap_grid` v1
-- support localized-detail, tiled/chunked state, patch-overlay, or equivalent heightmap-derived representation units
-- add serializer and repository dispatch for the new representation version
+- define durable localized survey/detail zones beyond uniform `heightmap_grid` v1
+- support localized-detail, tiled/chunked state, patch-overlay, or equivalent heightmap-derived representation units for survey fidelity
+- add serializer and repository dispatch for the localized detail representation
 - preserve v1 terrain state loading, integrity checks, and compatibility
 - define migration, unsupported-version, corrupt-payload, and refusal behavior
 - define any public evidence or contract evolution needed for representation units
@@ -27,10 +27,10 @@ This task defines and implements the next persisted terrain representation versi
 ## Acceptance Criteria
 
 ```gherkin
-Scenario: v2 terrain representation is persisted and loaded
-  Given a Managed Terrain Surface uses the new localized terrain representation
+Scenario: localized survey detail zones are persisted and loaded
+  Given a Managed Terrain Surface uses localized survey/detail zones
   When the terrain state is saved and loaded through the terrain repository
-  Then the repository returns the correct v2 terrain state
+  Then the repository returns the correct localized terrain state
   And payload integrity checks, version fields, and state summaries are deterministic
   And raw SketchUp objects are not exposed through the domain-facing repository contract
 
@@ -38,7 +38,7 @@ Scenario: existing v1 terrain remains compatible
   Given an existing Managed Terrain Surface uses `heightmap_grid` schema version 1
   When repository load, edit, or regeneration behavior is exercised
   Then v1 terrain state round trips exactly according to the existing migration baseline
-  And unsupported v2-only behavior refuses clearly rather than corrupting v1 state
+  And unsupported localized-detail-only behavior refuses clearly rather than corrupting v1 state
 
 Scenario: migration and refusal behavior is explicit
   Given stored terrain state is missing, corrupt, unsupported, or cannot be safely migrated
@@ -48,7 +48,7 @@ Scenario: migration and refusal behavior is explicit
 
 Scenario: edit kernels remain storage-agnostic
   Given terrain edit kernels operate on materialized terrain state
-  When the persisted backing uses localized representation units
+  When the persisted backing uses localized survey/detail zones
   Then edit behavior is routed through domain-facing terrain state contracts
   And edit kernels do not depend on raw storage dictionaries, sidecar paths, or generated mesh identity
 ```
@@ -64,7 +64,7 @@ Scenario: edit kernels remain storage-agnostic
 ## Business Constraints
 
 - existing terrain models created with v1 `heightmap_grid` must remain loadable and recoverable
-- localized detail must support practical terrain authoring without forcing unnecessary density across an entire terrain surface
+- localized detail must support survey fidelity and practical terrain authoring without forcing unnecessary density across an entire terrain surface
 - storage evolution must remain portable with SketchUp model workflows unless a later sidecar design explicitly changes that posture
 - terrain evidence and validation handoff should remain understandable to downstream MCP clients
 
@@ -86,8 +86,8 @@ Scenario: edit kernels remain storage-agnostic
 ## Relationships
 
 - follows the scalable representation direction selected in `MTA-07`
-- may be pulled earlier or narrowed if `MTA-10` proves partial output requires durable output-region metadata
-- informs future edit kernels that need localized detail beyond uniform-grid state
+- follows `MTA-13` unless MTA-13 planning proves v1 heightmap state cannot support representative survey constraints
+- informs future edit kernels that need localized survey/detail fidelity beyond uniform-grid state
 
 ## Related Technical Plan
 
@@ -95,7 +95,7 @@ Scenario: edit kernels remain storage-agnostic
 
 ## Success Metrics
 
-- v2 terrain state saves, loads, validates, and refuses unsupported cases through the repository seam
-- v1 `heightmap_grid` terrain round trips exactly after v2 support is added
+- localized survey/detail state saves, loads, validates, and refuses unsupported cases through the repository seam
+- v1 `heightmap_grid` terrain round trips exactly after localized survey/detail support is added
 - edit kernels remain storage-agnostic and do not depend on generated mesh identity
 - migration, corrupt-payload, unsupported-version, and compatibility behavior are covered by tests
