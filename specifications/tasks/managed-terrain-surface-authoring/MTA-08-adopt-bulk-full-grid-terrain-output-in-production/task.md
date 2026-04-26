@@ -1,7 +1,7 @@
 # Task: MTA-08 Adopt Bulk Full-Grid Terrain Output In Production
 **Task ID**: `MTA-08`
 **Title**: `Adopt Bulk Full-Grid Terrain Output In Production`
-**Status**: `planned`
+**Status**: `completed`
 **Priority**: `P1`
 **Date**: `2026-04-26`
 

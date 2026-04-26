@@ -1,6 +1,6 @@
-# MTA-08 Interim Implementation Summary
+# MTA-08 Implementation Summary
 
-**Status**: implementation complete locally; not closed  
+**Status**: completed  
 **Task**: `MTA-08 Adopt Bulk Full-Grid Terrain Output In Production`  
 **Captured**: 2026-04-26
 
@@ -43,20 +43,73 @@
 
 ## Live Validation Status
 
-Live MCP validation has **not** been completed for MTA-08.
+Live MCP validation was completed against the updated deployed extension.
 
-An initial `ping` confirmed the hosted MCP endpoint was reachable, and one unmanaged sentinel was created in the live SketchUp model. Validation was then stopped because the live MCP process did not yet contain the local MTA-08 changes. Any live evidence from that session is therefore not valid for production bulk-output acceptance.
+### Loaded-Code Check
 
-Required live validation remains:
+- Hosted `eval_ruby` confirmed `TerrainMeshGenerator#generate` was loaded from the deployed SketchUp plugin path and contains the production builder emitter call.
+- Hosted `eval_ruby` confirmed `TerrainSurfaceCommands` no longer contains the `output.fetch(:summary).merge(regeneration: ...)` output-strategy merge.
+- Hosted `ping` returned `pong` before and after terrain operations.
 
-- confirm the updated extension/package is loaded in SketchUp
-- exercise production `create_terrain_surface` on small, non-square, near-cap, and high-variation cases
-- exercise production `edit_terrain_surface` regeneration
-- record timings, mesh counts, digest linkage, response shape, derived face/edge markers, positive-Z normals, undo behavior, responsiveness/ping, and unmanaged sentinel preservation
-- verify unsupported-child refusal still happens before derived output deletion in the live host
+### Production Create Cases
+
+| Case | MCP call timing | Mesh | State | Result |
+| --- | ---: | ---: | --- | --- |
+| Small 4x3 | 0.097s | 12 vertices / 12 faces | `heightmap_grid` v1 revision 1 | PASS |
+| Non-square 17x9 | 0.775s | 153 vertices / 256 faces | `heightmap_grid` v1 revision 1 | PASS |
+| Near-cap 100x100 | 0.622s | 10,000 vertices / 19,602 faces | `heightmap_grid` v1 revision 1 | PASS |
+
+Create response checks passed:
+
+- `output.derivedMesh.derivedFromStateDigest` matched the saved terrain-state digest.
+- Public output stayed on the `derivedMesh` shape without `validationOnly`, `bulk`, `candidate`, `strategy`, `chunks`, `tiles`, `faceId`, or `vertexId`.
+- Persisted terrain payload stayed `payloadKind: "heightmap_grid"` and `schemaVersion: 1`.
+
+Hosted geometry inspection after create passed:
+
+| Case | Faces | Edges | Derived faces | Derived edges | Non-positive normals | Minimum normal Z |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| Small 4x3 | 12 | 23 | 12 | 23 | 0 | 1.0 |
+| Non-square 17x9 | 256 | 408 | 256 | 408 | 0 | 1.0 |
+| Near-cap 100x100 | 19,602 | 29,601 | 19,602 | 29,601 | 0 | 1.0 |
+
+### Production Edit / Regenerate
+
+- Edited `mta08-live-nonsquare-20260426` through public `edit_terrain_surface`.
+- MCP call timing: 1.833s.
+- Revision changed from 1 to 2.
+- Digest changed from `a1fbb02dad3cdb4d9381ea4ca5e678c341ca1e265863738bba6c27e1b0f1059f` to `972d9a3ecd6fd571793ac17488d590e219d7edd6a2a4e69dae003adeb370d36e`.
+- `output.derivedMesh.derivedFromStateDigest` matched the after-state digest.
+- Regenerated output contained 256 faces and 408 edges.
+- All 256 faces and all 408 edges retained derived-output markers.
+- Normals remained positive: 0 non-positive normals, minimum normal Z about `0.1741`.
+- Elevations changed from flat 0.0m to a 0.0m-4.0m high-variation range.
+- Post-edit `ping` returned `pong`.
+
+### Undo
+
+- Hosted `Sketchup.undo` after edit restored:
+  - terrain revision 1
+  - original digest `a1fbb02dad3cdb4d9381ea4ca5e678c341ca1e265863738bba6c27e1b0f1059f`
+  - flat elevation range 0.0m-0.0m
+  - 256 derived faces and 408 derived edges
+  - 0 non-positive normals
+
+### Unsupported-Child Refusal
+
+- Added an unmanaged child group under `mta08-live-sentinel-check-20260426`.
+- Public `edit_terrain_surface` refused with `terrain_output_contains_unsupported_entities`.
+- Refusal details reported `unsupportedChildTypes: ["group"]`.
+- Existing derived output was not erased: 12 faces remained, with all 12 still marked derived.
+- Terrain state stayed revision 1.
+
+### Unmanaged Scene Safety
+
+- A solid unmanaged sentinel group was created in the live scene with its own child face.
+- The solid sentinel survived subsequent create/edit/refusal checks.
+- Existing prior scene geometry remained present during the terrain operations.
 
 ## Remaining Gaps
 
-- MTA-08 is not closed until hosted SketchUp validation runs against the updated extension.
-- `size.md` actual calibration has not been performed yet because Step 11 is intentionally blocked until live validation is complete.
-- `task.md` status remains unchanged until the live validation result is known.
+- No remaining MTA-08 implementation or validation gaps are known.
+- The internal per-face diagnostic/compatibility path remains available by design until a later task removes or demotes it.

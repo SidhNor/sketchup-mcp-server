@@ -2,13 +2,13 @@
 
 **Task ID**: `MTA-08`
 **Title**: Adopt Bulk Full-Grid Terrain Output In Production
-**Status**: `challenged`
+**Status**: `calibrated`
 **Created**: 2026-04-26
 **Last Updated**: 2026-04-26
 
 **Related Task**: [task.md](./task.md)
 **Related Plan**: [plan.md](./plan.md)
-**Related Summary**: none yet
+**Related Summary**: [summary.md](./summary.md)
 
 ---
 
@@ -163,7 +163,22 @@ No material drift recorded yet.
 <!-- SIZE:ACTUAL:START -->
 ## Actual Profile
 
-Not filled yet.
+| Dimension | Score (0-4) | Notes |
+|---|---:|---|
+| Functional Scope | 2 | Production create/edit behavior changed visibly through faster full-grid terrain output, but no public request fields, edit modes, persisted schema, or response vocabulary were added. |
+| Technical Change Surface | 1 | Production code changes were very small and localized to `TerrainMeshGenerator` plus removal of one output-strategy merge in `TerrainSurfaceCommands`; the rest was tests and task metadata. |
+| Actual Implementation Friction | 1 | The planned output seam already existed, and the core implementation was a direct switch to the existing builder-backed emitter. Friction was limited to review-driven no-leak assertions and distinguishing permitted builder-unavailable compatibility from forbidden post-failure fallback. |
+| Actual Validation Burden | 4 | Validation dominated the task: focused terrain tests, full Ruby suite, lint, package verification, `grok-4.20` review, loaded-code checks, public MCP create/edit calls, hosted geometry inspection, undo, responsiveness, unmanaged-scene safety, and unsupported-child refusal checks. |
+| Actual Dependency Drag | 2 | Local work was unblocked, but final completion depended on deploying the updated extension into SketchUp before live MCP validation could be trusted. |
+| Actual Discovery Encountered | 1 | Minor discoveries: empty SketchUp sentinel groups disappear, and existing `operation.regeneration: "full"` is public evidence while `output.regeneration.strategy` was not acceptable output vocabulary. |
+| Actual Scope Volatility | 0 | Scope stayed exactly within full-grid production adoption; no schema v2, partial regeneration, output containers, public options, or command branching were pulled in. |
+| Actual Rework | 1 | Rework was small: codereview follow-up removed command-level `output.regeneration.strategy` leakage and tightened tests. No architectural or algorithmic rework was needed. |
+| Final Confidence in Completeness | 4 | Automated checks, package verification, expert review, and hosted SketchUp validation all passed against the updated extension. |
+
+### Actual Notes
+
+- Stakeholder calibration signal: the implementation felt subjectively like a micro task and may have been too small to stand alone; future similar one-seam production promotions should be considered for bundling with adjacent work when the only large component is validation.
+- The actual task shape was "tiny implementation, heavyweight host validation." This should not be estimated as moderate implementation friction merely because the acceptance bar is high.
 <!-- SIZE:ACTUAL:END -->
 
 ---
@@ -171,7 +186,22 @@ Not filled yet.
 <!-- SIZE:VALIDATION-EVIDENCE:START -->
 ## Validation Evidence Summary
 
-Not filled yet.
+- Focused terrain integration passed: 29 runs, 197 assertions, 0 failures, 0 errors, 1 hosted-validation skip.
+- Full Ruby suite passed: 688 runs, 3195 assertions, 0 failures, 0 errors, 35 skips.
+- `bundle exec rake ruby:lint` passed: 185 files inspected, no offenses.
+- `bundle exec rake package:verify` passed and produced `dist/su_mcp-0.22.0.rbz`.
+- `mcp__pal__.codereview` with `grok-4.20` completed. Findings were addressed before rerunning focused checks, full tests, lint, and package verification.
+- Hosted loaded-code check confirmed the deployed SketchUp extension was using the production builder emitter and no longer had command-level `output.regeneration.strategy` leakage.
+- Hosted public MCP create validation passed:
+  - 4x3 create: 0.097s, 12 vertices / 12 faces, `heightmap_grid` v1.
+  - 17x9 create: 0.775s, 153 vertices / 256 faces, `heightmap_grid` v1.
+  - 100x100 create: 0.622s, 10,000 vertices / 19,602 faces, `heightmap_grid` v1.
+- Hosted geometry inspection passed after create: all generated faces and edges had derived-output markers; normals were positive; near-cap output had 19,602 faces and 29,601 marked edges.
+- Hosted edit/regenerate passed on 17x9 terrain: 1.833s, revision 1 -> 2, digest changed, `derivedFromStateDigest` matched the after-state digest, 256 faces and 408 edges stayed marked, minimum normal Z was about 0.1741.
+- Hosted undo passed: revision, digest, flat elevations, marked output, and positive normals returned coherently after `Sketchup.undo`.
+- Hosted unsupported-child refusal passed: edit refused with `terrain_output_contains_unsupported_entities`, old derived output remained intact, and terrain state stayed revision 1.
+- Hosted responsiveness passed with `ping` after terrain operations.
+- Unmanaged-scene safety passed using existing scene geometry plus a solid unmanaged sentinel; earlier empty sentinel checks were discarded because empty SketchUp groups can disappear independently of terrain behavior.
 <!-- SIZE:VALIDATION-EVIDENCE:END -->
 
 ---
@@ -179,7 +209,42 @@ Not filled yet.
 <!-- SIZE:DELTA:START -->
 ## Estimation Delta Review
 
-Not filled yet.
+### What Was Estimated Well
+
+- Validation Burden Risk `4` was correct. The live host matrix, response-shape checks, marker/normal inspection, undo, refusal, package verification, and review follow-up were the dominant closeout work.
+- Scope Volatility Risk `1` was conservative; actual volatility was even lower. The task did not expand into schema, partial regeneration, command routing, or output ownership changes.
+- Confidence was correctly capped before live validation; final confidence increased only after hosted checks passed against the deployed extension.
+
+### What Was Overestimated
+
+- Technical Change Surface predicted `2`, actual `1`. The production change was essentially a localized emitter promotion plus a small command output cleanup.
+- Implementation Friction Risk predicted `2`, actual `1`. MTA-07 had already created the seam, so implementation did not encounter meaningful hidden coupling or algorithmic difficulty.
+- Rework Risk predicted `2`, actual `1`. Review follow-up was useful but small and test/contract oriented.
+
+### What Was Underestimated
+
+- Dependency drag was slightly underweighted in practice because live MCP validation was initially attempted against an old deployed extension and had to wait for deployment alignment. This was not a design dependency, but it affected closeout sequencing.
+
+### Dominant Actual Failure Mode
+
+- The dominant risk was not implementation failure; it was false confidence from validating the wrong host/runtime or from mistaking local fake behavior for real SketchUp `Entities#build` behavior. The loaded-code check before live validation was essential.
+
+### Future Estimation Lessons
+
+- Similar "promote validated path into production" tasks should be treated as micro implementation tasks when the seam already exists and the public contract is stable.
+- Keep validation burden separate from implementation friction. A task can be too small as a standalone implementation slice while still requiring heavyweight hosted proof.
+- Consider bundling future one-seam production promotions with adjacent cleanup or follow-on work when stakeholder appetite favors larger implementation batches, as long as hosted validation remains explicit and not diluted.
+- For live SketchUp checks, use solid sentinel geometry rather than empty groups, and always confirm the deployed extension contains the expected code before collecting acceptance evidence.
+
+### Retrieval Facets For Future Analogs
+
+- `analog:validated-candidate-promotion`
+- `implementation:micro`
+- `validation:hosted-heavy`
+- `surface:terrain-mesh-generator`
+- `contract:no-public-shape-change`
+- `risk:wrong-live-runtime`
+- `performance:near-cap-bulk-output`
 <!-- SIZE:DELTA:END -->
 
 ---
