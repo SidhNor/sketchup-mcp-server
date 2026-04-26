@@ -2,6 +2,51 @@
 
 <!-- version list -->
 
+## v0.23.0 (2026-04-26)
+
+### Bug Fixes
+
+- **SAR-01**: Categorization updates and adoption
+  ([`243bd70`](https://github.com/SidhNor/sketchup-mcp-server/commit/243bd7064fd8266b428ae316dfa9497c9d590cd8))
+
+### Documentation
+
+- **MTA-05**: Planning terrain corridor transitions
+  ([`2e61441`](https://github.com/SidhNor/sketchup-mcp-server/commit/2e614419cfc6af869538491cd4b454d7a41ea7b4))
+
+- **MTA-08**: Closeout notes and summary
+  ([`8b18d76`](https://github.com/SidhNor/sketchup-mcp-server/commit/8b18d768c11fb9e3edc843a8c960834fbf40c925))
+
+- **MTA-08**: Planning adoption of bulk generation of terrain
+  ([`038b844`](https://github.com/SidhNor/sketchup-mcp-server/commit/038b8441e34a20fd894c6a153ebda2b9c81694f2))
+
+- **SAR-01**: Planning first staged asset reuse
+  ([`b9bec6c`](https://github.com/SidhNor/sketchup-mcp-server/commit/b9bec6c7857762fa415d6aaff64fbb09a537f89d))
+
+- **taggin**: Correct task tagging
+  ([`10051fc`](https://github.com/SidhNor/sketchup-mcp-server/commit/10051fc49cf75c21fbbe22775c995d633592dc91))
+
+- **terrain**: Follow-on scalable terrain enhacements
+  ([`b32abec`](https://github.com/SidhNor/sketchup-mcp-server/commit/b32abecd2d2ae7652c30a734f884699ad5ae39e0))
+
+### Features
+
+- **MTA-05**: Terrain slope editing
+  ([`359f5b1`](https://github.com/SidhNor/sketchup-mcp-server/commit/359f5b10caf43f113dff17edcaecc04629100633))
+
+- **MTA-07**: Interal terrain editing sample windows
+  ([`c211ac6`](https://github.com/SidhNor/sketchup-mcp-server/commit/c211ac6b7d21e1c0abc519e0d063c742fd1462d1))
+
+- **MTA-08**: Switched to bulk builder for terrain and tools
+  ([`f596d0e`](https://github.com/SidhNor/sketchup-mcp-server/commit/f596d0e6c0f81643d4efeed074a0e5ac928ceb74))
+
+- **MTA-09**: Add region-aware output planning seam
+  ([`2c0187d`](https://github.com/SidhNor/sketchup-mcp-server/commit/2c0187d596e36f2647861e16b7fb3c507074c483))
+
+- **SAR-01**: Currated asset grouping
+  ([`c29dddd`](https://github.com/SidhNor/sketchup-mcp-server/commit/c29dddd168f8c3863cf7fe845a072c1e28e52c5d))
+
+
 ## v0.22.0 (2026-04-26)
 
 ### Documentation
