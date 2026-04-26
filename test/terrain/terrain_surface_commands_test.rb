@@ -176,6 +176,23 @@ class TerrainSurfaceCommandsTest < Minitest::Test # rubocop:disable Metrics/Clas
     assert_dirty_window_plan(mesh_generator.last_regenerate_args.fetch(:output_plan))
   end
 
+  def test_local_fairing_edit_passes_dirty_window_output_plan_from_changed_region
+    model = build_semantic_model
+    managed_terrain_owner(model)
+    mesh_generator = RecordingRegeneratingMeshGenerator.new
+    commands = build_edit_commands(
+      model: model,
+      repository: EditRepository.new(state),
+      mesh_generator: mesh_generator,
+      edit_request_validator: AcceptingLocalFairingEditValidator.new,
+      local_fairing_editor: RecordingLocalFairingEditor.new
+    )
+
+    commands.edit_terrain_surface(local_fairing_edit_request)
+
+    assert_dirty_window_plan(mesh_generator.last_regenerate_args.fetch(:output_plan))
+  end
+
   def test_edit_mode_does_not_leak_output_strategy_fields
     model = build_semantic_model
     managed_terrain_owner(model)
@@ -237,6 +254,33 @@ class TerrainSurfaceCommandsTest < Minitest::Test # rubocop:disable Metrics/Clas
     assert_equal([:regenerate], mesh_generator.calls)
   end
 
+  def test_local_fairing_dispatches_to_local_fairing_editor_and_reuses_regeneration_flow # rubocop:disable Metrics/AbcSize, Metrics/MethodLength
+    model = build_semantic_model
+    managed_terrain_owner(model)
+    repository = EditRepository.new(state)
+    mesh_generator = RecordingRegeneratingMeshGenerator.new
+    grade_editor = RecordingGradeEditor.new
+    corridor_editor = RecordingCorridorEditor.new
+    local_fairing_editor = RecordingLocalFairingEditor.new
+    commands = build_edit_commands(
+      model: model,
+      repository: repository,
+      mesh_generator: mesh_generator,
+      grade_editor: grade_editor,
+      corridor_editor: corridor_editor,
+      local_fairing_editor: local_fairing_editor
+    )
+
+    result = commands.edit_terrain_surface(local_fairing_edit_request)
+
+    assert_equal('edited', result.fetch(:outcome))
+    assert_empty(grade_editor.calls)
+    assert_empty(corridor_editor.calls)
+    assert_equal(1, local_fairing_editor.calls.length)
+    assert_equal(2, repository.saved_state.revision)
+    assert_equal([:regenerate], mesh_generator.calls)
+  end
+
   def test_corridor_transition_refusal_happens_before_save_or_model_operation
     model = build_semantic_model
     managed_terrain_owner(model)
@@ -253,6 +297,30 @@ class TerrainSurfaceCommandsTest < Minitest::Test # rubocop:disable Metrics/Clas
     assert_equal('refused', result.fetch(:outcome))
     assert_nil(repository.saved_state)
     assert_empty(model.operations)
+  end
+
+  def test_local_fairing_refusals_happen_before_save_or_model_operation
+    %w[fairing_no_effect fixed_control_conflict].each do |code|
+      model = build_semantic_model
+      managed_terrain_owner(model)
+      repository = EditRepository.new(state)
+      mesh_generator = RecordingRegeneratingMeshGenerator.new
+      commands = build_edit_commands(
+        model: model,
+        repository: repository,
+        mesh_generator: mesh_generator,
+        edit_request_validator: AcceptingLocalFairingEditValidator.new,
+        local_fairing_editor: RefusingLocalFairingEditor.new(code)
+      )
+
+      result = commands.edit_terrain_surface(local_fairing_edit_request)
+
+      assert_equal('refused', result.fetch(:outcome))
+      assert_equal(code, result.dig(:refusal, :code))
+      assert_nil(repository.saved_state)
+      assert_empty(mesh_generator.calls)
+      assert_empty(model.operations)
+    end
   end
 
   def test_edit_refusal_returns_before_opening_model_operation
@@ -328,9 +396,10 @@ class TerrainSurfaceCommandsTest < Minitest::Test # rubocop:disable Metrics/Clas
                           edit_request_validator: AcceptingEditValidator.new,
                           grade_editor: RecordingGradeEditor.new,
                           corridor_editor: RecordingCorridorEditor.new,
+                          local_fairing_editor: nil,
                           target_resolver: RecordingTargetResolver.new,
                           edit_evidence_builder: EditEvidenceBuilder.new)
-    SU_MCP::Terrain::TerrainSurfaceCommands.new(
+    options = {
       model: model,
       validator: AcceptingValidator.new,
       state_builder: StateBuilder.new,
@@ -343,7 +412,10 @@ class TerrainSurfaceCommandsTest < Minitest::Test # rubocop:disable Metrics/Clas
       corridor_editor: corridor_editor,
       target_resolver: target_resolver,
       edit_evidence_builder: edit_evidence_builder
-    )
+    }
+    options[:local_fairing_editor] = local_fairing_editor if local_fairing_editor
+
+    SU_MCP::Terrain::TerrainSurfaceCommands.new(**options)
   end
   # rubocop:enable Metrics/ParameterLists
 
@@ -383,6 +455,27 @@ class TerrainSurfaceCommandsTest < Minitest::Test # rubocop:disable Metrics/Clas
         'endControl' => { 'point' => { 'x' => 2.0, 'y' => 1.0 }, 'elevation' => 3.0 },
         'width' => 1.0,
         'sideBlend' => { 'distance' => 0.0, 'falloff' => 'none' }
+      }
+    }
+  end
+
+  def local_fairing_edit_request
+    {
+      'targetReference' => { 'sourceElementId' => 'terrain-main' },
+      'operation' => {
+        'mode' => 'local_fairing',
+        'strength' => 0.35,
+        'neighborhoodRadiusSamples' => 2,
+        'iterations' => 1
+      },
+      'region' => {
+        'type' => 'rectangle',
+        'bounds' => {
+          'minX' => 0.0,
+          'minY' => 0.0,
+          'maxX' => 1.0,
+          'maxY' => 1.0
+        }
       }
     }
   end
@@ -556,6 +649,17 @@ class TerrainSurfaceCommandsTest < Minitest::Test # rubocop:disable Metrics/Clas
     end
   end
 
+  class AcceptingLocalFairingEditValidator
+    def validate(params)
+      {
+        outcome: 'ready',
+        operation_mode: 'local_fairing',
+        region_type: 'rectangle',
+        params: params
+      }
+    end
+  end
+
   class RefusingEditValidator
     def validate(_params)
       {
@@ -618,6 +722,28 @@ class TerrainSurfaceCommandsTest < Minitest::Test # rubocop:disable Metrics/Clas
   class RecordingCorridorEditor < RecordingGradeEditor
   end
 
+  class RecordingLocalFairingEditor < RecordingGradeEditor
+    private
+
+    def diagnostics(request)
+      super.merge(
+        fairing: {
+          metric: 'mean_absolute_neighborhood_residual',
+          beforeResidual: 1.0,
+          afterResidual: 0.5,
+          improved: true,
+          strength: request.dig('operation', 'strength'),
+          neighborhoodRadiusSamples: request.dig('operation', 'neighborhoodRadiusSamples'),
+          iterations: request.dig('operation', 'iterations'),
+          actualIterations: request.dig('operation', 'iterations'),
+          changedSampleCount: 4,
+          warnings: []
+        },
+        warnings: []
+      )
+    end
+  end
+
   class RefusingCorridorEditor
     def apply(...)
       {
@@ -626,6 +752,23 @@ class TerrainSurfaceCommandsTest < Minitest::Test # rubocop:disable Metrics/Clas
         refusal: {
           code: 'invalid_corridor_geometry',
           details: { field: 'region' }
+        }
+      }
+    end
+  end
+
+  class RefusingLocalFairingEditor
+    def initialize(code)
+      @code = code
+    end
+
+    def apply(...)
+      {
+        success: true,
+        outcome: 'refused',
+        refusal: {
+          code: @code,
+          details: { field: 'operation.mode' }
         }
       }
     end

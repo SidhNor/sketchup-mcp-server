@@ -291,6 +291,7 @@ class McpRuntimeLoaderTest < Minitest::Test
     end
     assert_equal('Edit Managed Terrain Surface', edit_terrain_surface_tool.fetch('title'))
     assert_equal(false, edit_terrain_surface_tool.fetch('annotations').fetch('readOnlyHint'))
+    assert_includes(edit_terrain_surface_tool.fetch('description'), 'local_fairing')
     assert_equal(
       %w[targetReference operation region],
       edit_terrain_surface_tool.fetch('inputSchema').fetch('required')
@@ -316,6 +317,7 @@ class McpRuntimeLoaderTest < Minitest::Test
                          .fetch('required')
     assert_equal(['mode'], operation_required)
     refute_includes(operation_required, 'targetElevation')
+    refute_includes(operation_required, 'strength')
 
     region_properties = edit_terrain_surface_tool
                         .fetch('inputSchema')
@@ -324,6 +326,15 @@ class McpRuntimeLoaderTest < Minitest::Test
                         .fetch('properties')
     %w[startControl endControl width sideBlend].each do |field|
       assert_includes(region_properties.keys, field)
+    end
+
+    operation_properties = edit_terrain_surface_tool
+                           .fetch('inputSchema')
+                           .fetch('properties')
+                           .fetch('operation')
+                           .fetch('properties')
+    %w[strength neighborhoodRadiusSamples iterations].each do |field|
+      assert_includes(operation_properties.keys.map(&:to_s), field)
     end
 
     assert_equal(
@@ -664,6 +675,12 @@ class McpRuntimeLoaderTest < Minitest::Test
                          .fetch(:required)
     assert_equal(['mode'], operation_required)
     refute_includes(operation_required, 'targetElevation')
+    refute_includes(operation_required, 'strength')
+
+    operation_properties = input_schema.fetch(:properties).fetch(:operation).fetch(:properties)
+    %i[strength neighborhoodRadiusSamples iterations].each do |field|
+      assert_includes(operation_properties.keys, field)
+    end
 
     region_properties = input_schema.fetch(:properties).fetch(:region).fetch(:properties)
     %i[startControl endControl width sideBlend].each do |field|

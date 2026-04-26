@@ -9,6 +9,7 @@ require_relative 'bounded_grade_edit'
 require_relative 'corridor_transition_edit'
 require_relative 'create_terrain_surface_request'
 require_relative 'edit_terrain_surface_request'
+require_relative 'local_fairing_edit'
 require_relative 'sample_window'
 require_relative 'terrain_edit_evidence_builder'
 require_relative 'terrain_mesh_generator'
@@ -45,6 +46,7 @@ module SU_MCP
         edit_request_validator: nil,
         grade_editor: BoundedGradeEdit.new,
         corridor_editor: CorridorTransitionEdit.new,
+        local_fairing_editor: LocalFairingEdit.new,
         target_resolver: nil,
         edit_evidence_builder: TerrainEditEvidenceBuilder.new
       )
@@ -61,6 +63,7 @@ module SU_MCP
         @edit_request_validator = edit_request_validator
         @grade_editor = grade_editor
         @corridor_editor = corridor_editor
+        @local_fairing_editor = local_fairing_editor
         @target_resolver = target_resolver || TargetReferenceResolver.new
         @edit_evidence_builder = edit_evidence_builder
       end
@@ -91,7 +94,7 @@ module SU_MCP
       attr_reader :model, :validator, :state_builder, :repository, :mesh_generator,
                   :evidence_builder, :adoption_sampler, :metadata_writer, :scene_properties,
                   :length_converter, :edit_request_validator, :grade_editor, :target_resolver,
-                  :corridor_editor, :edit_evidence_builder
+                  :corridor_editor, :local_fairing_editor, :edit_evidence_builder
 
       def validate(params)
         return validator.validate(params) if validator
@@ -132,6 +135,7 @@ module SU_MCP
       def editor_for(validation)
         mode = validation[:operation_mode] || validation.fetch(:params).dig('operation', 'mode')
         return corridor_editor if mode == 'corridor_transition'
+        return local_fairing_editor if mode == 'local_fairing'
 
         grade_editor
       end

@@ -3,7 +3,7 @@
 require_relative '../test_helper'
 require_relative '../../src/su_mcp/terrain/edit_terrain_surface_request'
 
-class EditTerrainSurfaceRequestTest < Minitest::Test
+class EditTerrainSurfaceRequestTest < Minitest::Test # rubocop:disable Metrics/ClassLength
   def test_accepts_minimal_target_height_rectangle_request_with_defaults
     result = validate_request(minimal_request)
 
@@ -33,6 +33,17 @@ class EditTerrainSurfaceRequestTest < Minitest::Test
     )
   end
 
+  def test_accepts_local_fairing_rectangle_request_with_iteration_default
+    result = validate_request(local_fairing_request)
+
+    assert_equal('ready', result.fetch(:outcome))
+    assert_equal('local_fairing', result.fetch(:operation_mode))
+    assert_equal('rectangle', result.fetch(:region_type))
+    assert_equal(1, result.dig(:params, 'operation', 'iterations'))
+    assert_equal(0.0, result.dig(:params, 'region', 'blend', 'distance'))
+    assert_equal('none', result.dig(:params, 'region', 'blend', 'falloff'))
+  end
+
   def test_enforces_operation_mode_and_region_type_compatibility
     rectangle_corridor = corridor_request
     rectangle_corridor['region']['type'] = 'rectangle'
@@ -49,9 +60,15 @@ class EditTerrainSurfaceRequestTest < Minitest::Test
       'unsupported_option',
       'region.type'
     )
+
+    local_fairing_corridor = local_fairing_request
+    local_fairing_corridor['region'] = corridor_request.fetch('region')
+    result = validate_request(local_fairing_corridor)
+    assert_refusal(result, 'unsupported_option', 'region.type')
+    assert_equal(['rectangle'], result.dig(:refusal, :details, :allowedValues))
   end
 
-  def test_mode_specific_required_fields_are_runtime_validated
+  def test_mode_specific_required_fields_are_runtime_validated # rubocop:disable Metrics/MethodLength
     missing_target_height = minimal_request
     missing_target_height['operation'].delete('targetElevation')
     assert_refusal(
@@ -66,6 +83,44 @@ class EditTerrainSurfaceRequestTest < Minitest::Test
       validate_request(missing_corridor_control),
       'missing_required_field',
       'region.startControl'
+    )
+
+    missing_strength = local_fairing_request
+    missing_strength['operation'].delete('strength')
+    assert_refusal(
+      validate_request(missing_strength),
+      'missing_required_field',
+      'operation.strength'
+    )
+
+    missing_radius = local_fairing_request
+    missing_radius['operation'].delete('neighborhoodRadiusSamples')
+    assert_refusal(
+      validate_request(missing_radius),
+      'missing_required_field',
+      'operation.neighborhoodRadiusSamples'
+    )
+  end
+
+  def test_refuses_invalid_local_fairing_operation_fields
+    bad_strength = local_fairing_request
+    bad_strength['operation']['strength'] = 0.0
+    assert_refusal(validate_request(bad_strength), 'invalid_edit_request', 'operation.strength')
+
+    bad_radius = local_fairing_request
+    bad_radius['operation']['neighborhoodRadiusSamples'] = 32
+    assert_refusal(
+      validate_request(bad_radius),
+      'invalid_edit_request',
+      'operation.neighborhoodRadiusSamples'
+    )
+
+    bad_iterations = local_fairing_request
+    bad_iterations['operation']['iterations'] = 9
+    assert_refusal(
+      validate_request(bad_iterations),
+      'invalid_edit_request',
+      'operation.iterations'
     )
   end
 
@@ -175,6 +230,18 @@ class EditTerrainSurfaceRequestTest < Minitest::Test
         },
         'width' => 2.0
       }
+    }
+  end
+
+  def local_fairing_request
+    {
+      'targetReference' => { 'sourceElementId' => 'terrain-main' },
+      'operation' => {
+        'mode' => 'local_fairing',
+        'strength' => 0.35,
+        'neighborhoodRadiusSamples' => 2
+      },
+      'region' => { 'type' => 'rectangle', 'bounds' => rectangle_bounds }
     }
   end
 end

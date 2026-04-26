@@ -392,8 +392,9 @@ module SU_MCP
           title: 'Edit Managed Terrain Surface',
           description: 'Apply bounded edits to a repository-backed Managed Terrain Surface. ' \
                        'Supports target_height with rectangle regions or corridor_transition ' \
-                       'with corridor regions, controls, width, and optional sideBlend; not for ' \
-                       'terrain smoothing, fairing, arbitrary TIN edits, or site elements.',
+                       'with corridor regions, controls, width, and optional sideBlend, or ' \
+                       'local_fairing with rectangle regions; not for arbitrary TIN edits, ' \
+                       'broad sculpting, or site elements.',
           handler_key: :edit_terrain_surface,
           annotations: { read_only_hint: false, destructive_hint: false },
           classification: 'first_class',
@@ -1444,16 +1445,28 @@ module SU_MCP
       }
     end
 
-    def edit_terrain_operation_properties
+    def edit_terrain_operation_properties # rubocop:disable Metrics/MethodLength
       {
         mode: described_schema(
           enum_schema(SU_MCP::Terrain::EditTerrainSurfaceRequest::SUPPORTED_OPERATION_MODES),
           'Edit operation mode. target_height uses a rectangle; ' \
-          'corridor_transition uses a corridor.'
+          'corridor_transition uses a corridor; local_fairing uses a rectangle.'
         ),
         targetElevation: described_schema(
           number_schema,
           'Target terrain elevation in public meters. Required for target_height only.'
+        ),
+        strength: described_schema(
+          number_schema,
+          'Fairing strength from > 0 to <= 1. Required for local_fairing only.'
+        ),
+        neighborhoodRadiusSamples: described_schema(
+          integer_schema,
+          'Fairing neighborhood radius in samples, 1..31. Required for local_fairing only.'
+        ),
+        iterations: described_schema(
+          integer_schema,
+          'Fairing iteration count, 1..8. Defaults to 1 for local_fairing.'
         )
       }
     end
@@ -1490,7 +1503,7 @@ module SU_MCP
         type: described_schema(
           enum_schema(SU_MCP::Terrain::EditTerrainSurfaceRequest::SUPPORTED_REGION_TYPES),
           'Edit region type. rectangle pairs with target_height; ' \
-          'corridor pairs with corridor_transition.'
+          'corridor pairs with corridor_transition; rectangle pairs with local_fairing.'
         ),
         bounds: edit_terrain_rectangle_bounds_schema,
         blend: edit_terrain_blend_schema,

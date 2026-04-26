@@ -49,7 +49,7 @@ module SU_MCP
         summary
       end
 
-      def evidence_summary(edit_summary, diagnostics, sample_limit)
+      def evidence_summary(edit_summary, diagnostics, sample_limit) # rubocop:disable Metrics/MethodLength
         samples = diagnostics.fetch(:samples, [])
         summary = {
           editRegion: edit_summary.fetch(:region, {}),
@@ -64,6 +64,7 @@ module SU_MCP
           warnings: diagnostics.fetch(:warnings, [])
         }
         summary[:transition] = diagnostics[:transition] if diagnostics[:transition]
+        summary[:fairing] = diagnostics[:fairing] if diagnostics[:fairing]
         summary
       end
 

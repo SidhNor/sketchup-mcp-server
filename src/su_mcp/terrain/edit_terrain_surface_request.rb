@@ -8,15 +8,19 @@ module SU_MCP
     # rubocop:disable Metrics/AbcSize, Metrics/ClassLength, Metrics/CyclomaticComplexity
     # rubocop:disable Metrics/MethodLength, Metrics/PerceivedComplexity
     class EditTerrainSurfaceRequest
-      SUPPORTED_OPERATION_MODES = %w[target_height corridor_transition].freeze
+      SUPPORTED_OPERATION_MODES = %w[target_height corridor_transition local_fairing].freeze
       SUPPORTED_REGION_TYPES = %w[rectangle corridor].freeze
       SUPPORTED_BLEND_FALLOFFS = %w[none linear smooth].freeze
       SUPPORTED_SIDE_BLEND_FALLOFFS = %w[none cosine].freeze
       SUPPORTED_PRESERVE_ZONE_TYPES = %w[rectangle].freeze
       SUPPORTED_REGION_TYPES_BY_MODE = {
         'target_height' => %w[rectangle],
-        'corridor_transition' => %w[corridor]
+        'corridor_transition' => %w[corridor],
+        'local_fairing' => %w[rectangle]
       }.freeze
+
+      LOCAL_FAIRING_RADIUS_RANGE = (1..31).freeze
+      LOCAL_FAIRING_ITERATIONS_RANGE = (1..8).freeze
 
       DEFAULT_BLEND_DISTANCE = 0.0
       DEFAULT_BLEND_FALLOFF = 'none'
@@ -99,8 +103,37 @@ module SU_MCP
             operation['targetElevation']
           )
         end
+        return local_fairing_operation_refusal if operation['mode'] == 'local_fairing'
 
         nil
+      end
+
+      def local_fairing_operation_refusal
+        return missing_field_refusal('operation.strength') unless operation.key?('strength')
+        return invalid_number_refusal('operation.strength') unless finite_number?(
+          operation['strength']
+        )
+
+        strength = operation['strength'].to_f
+        unless strength.positive? && strength <= 1.0
+          return invalid_number_refusal('operation.strength')
+        end
+
+        unless operation.key?('neighborhoodRadiusSamples')
+          return missing_field_refusal('operation.neighborhoodRadiusSamples')
+        end
+
+        radius = operation['neighborhoodRadiusSamples']
+        unless radius.is_a?(Integer) && LOCAL_FAIRING_RADIUS_RANGE.cover?(radius)
+          return invalid_number_refusal('operation.neighborhoodRadiusSamples')
+        end
+
+        return nil unless operation.key?('iterations')
+
+        iterations = operation['iterations']
+        return nil if iterations.is_a?(Integer) && LOCAL_FAIRING_ITERATIONS_RANGE.cover?(iterations)
+
+        invalid_number_refusal('operation.iterations')
       end
 
       def fixed_controls_refusal
@@ -326,9 +359,19 @@ module SU_MCP
 
       def normalized_params
         normalized = deep_dup(params)
+        normalized['operation'] = normalized_operation
         normalized['constraints'] = normalized_constraints
         normalized['region'] = normalized_region
         normalized['outputOptions'] = normalized_output_options
+        normalized
+      end
+
+      def normalized_operation
+        normalized = deep_dup(operation)
+        if normalized['mode'] == 'local_fairing'
+          normalized['strength'] = normalized.fetch('strength').to_f
+          normalized['iterations'] = normalized.fetch('iterations', 1)
+        end
         normalized
       end
 

@@ -81,6 +81,24 @@ class TerrainEditEvidenceBuilderTest < Minitest::Test
     assert_includes(transition.keys, :deltaSummary)
   end
 
+  def test_includes_compact_fairing_evidence_when_supplied
+    result = SU_MCP::Terrain::TerrainEditEvidenceBuilder.new.build_success(
+      owner_reference: { sourceElementId: 'terrain-main' },
+      terrain_state_summary: terrain_state_summary,
+      output_summary: { derivedMesh: derived_mesh_summary },
+      edit_summary: edit_summary.merge(mode: 'local_fairing'),
+      diagnostics: diagnostics.merge(fairing: fairing_diagnostics),
+      sample_limit: 0
+    )
+
+    fairing = result.dig(:evidence, :fairing)
+    assert_equal('mean_absolute_neighborhood_residual', fairing.fetch(:metric))
+    assert_equal(1.0, fairing.fetch(:beforeResidual))
+    assert_equal(0.4, fairing.fetch(:afterResidual))
+    assert_equal(true, fairing.fetch(:improved))
+    assert_equal(2, fairing.fetch(:actualIterations))
+  end
+
   def test_private_output_planning_diagnostics_do_not_leak_into_public_payload
     result = SU_MCP::Terrain::TerrainEditEvidenceBuilder.new.build_success(
       owner_reference: { sourceElementId: 'terrain-main' },
@@ -163,6 +181,21 @@ class TerrainEditEvidenceBuilderTest < Minitest::Test
       sideBlend: { 'distance' => 1.0, 'falloff' => 'cosine' },
       endpointDeltas: { start: 0.0, end: 0.0 },
       deltaSummary: { min: 0.0, max: 2.0 }
+    }
+  end
+
+  def fairing_diagnostics
+    {
+      metric: 'mean_absolute_neighborhood_residual',
+      beforeResidual: 1.0,
+      afterResidual: 0.4,
+      improved: true,
+      strength: 0.35,
+      neighborhoodRadiusSamples: 2,
+      iterations: 3,
+      actualIterations: 2,
+      changedSampleCount: 8,
+      warnings: []
     }
   end
 

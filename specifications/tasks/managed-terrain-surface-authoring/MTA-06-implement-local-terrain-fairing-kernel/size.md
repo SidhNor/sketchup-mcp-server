@@ -2,7 +2,7 @@
 
 **Task ID**: `MTA-06`  
 **Title**: Implement Local Terrain Fairing Kernel  
-**Status**: `challenged`  
+**Status**: `calibrated`
 **Created**: 2026-04-24  
 **Last Updated**: 2026-04-26  
 
@@ -170,7 +170,17 @@ No material drift recorded yet.
 
 > Filled at the end of implementation. Do not overwrite predicted values.
 
-Not filled yet.
+| Dimension | Actual (0-4) | Rationale |
+|---|---:|---|
+| Functional Scope | 3 | The delivered behavior is the planned public `edit_terrain_surface` mode with user-visible controls, refusals, and review evidence. No extra brush, polygon, erosion, or representation scope was added. |
+| Technical Change Surface | 4 | The implementation touched the public request parser, runtime dispatch, loader schema, native fixtures, command orchestration, a new SketchUp-free terrain kernel, evidence shaping, README examples, and contract/regression tests. |
+| Actual Implementation Friction | 2 | The planned algorithm and boundary mostly held. Friction was contained to mode-specific validation, material-delta accounting, fixed-control refusal, and the final `actualIterations` review follow-up. |
+| Actual Validation Burden | 2 | Automated tests, lint, package verification, contract/no-leak checks, native transport contract execution, and a clean hosted MCP smoke matrix including undo coherence were completed without validation-driven fix/redeploy/rerun loops. |
+| Actual Dependency Drag | 1 | The task depended on existing managed-terrain edit/output behavior and user-provided hosted validation, but those dependencies did not block or reshape delivery. |
+| Actual Discovery Encountered | 1 | Planning decisions for field names, metric, region support, and output ownership remained valid. Larger sloped/noisy terrain evidence confirmed the residual metric without forcing a redesign. |
+| Actual Scope Volatility | 1 | Scope stayed stable through implementation. Review follow-up changed evidence accounting and comments only, not public shape or task boundaries. |
+| Actual Rework | 1 | PAL review found only low-severity follow-ups: count the converged fairing pass in `actualIterations` and clarify a test subclass. No completed slice required structural rework. |
+| Final Confidence in Completeness | 4 | Confidence is very strong for the public contract, kernel behavior, evidence shape, refusals, native contract execution, hosted output coherence, and undo coherence. |
 <!-- SIZE:ACTUAL:END -->
 
 ---
@@ -178,7 +188,16 @@ Not filled yet.
 <!-- SIZE:VALIDATION-EVIDENCE:START -->
 ## Validation Evidence Summary
 
-Not filled yet.
+- Automated validation passed after code review follow-up:
+  - focused kernel/request/evidence/contract tests
+  - full `bundle exec rake ruby:test`
+  - `bundle exec rake ruby:lint`
+  - `bundle exec rake package:verify`
+  - `git diff --check`
+- Native runtime transport contract execution was subsequently verified successfully.
+- Final PAL code review with `model: "grok-4.20"` found no critical, high, or medium issues. Two low follow-ups were addressed and the relevant validation was rerun.
+- Hosted MCP validation was clean and user-provided after code review. Cases `LF-01` through `LF-14` passed across happy path, default iterations, preserve zones, fixed controls, no-effect refusal, bounds/no-data validation, invalid inputs, unsupported options, no-leak inspection, larger noisy terrain, and larger preserve-zone terrain.
+- Hosted validation classification: clean routine matrix with larger-terrain addendum and verified undo coherence; no material hosted fix loop.
 <!-- SIZE:VALIDATION-EVIDENCE:END -->
 
 ---
@@ -186,7 +205,21 @@ Not filled yet.
 <!-- SIZE:DELTA:START -->
 ## Estimation Delta Review
 
-Not filled yet.
+### Prediction Accuracy
+
+- Accurate: Functional Scope `3` and Technical Change Surface `4` matched the delivered public mode and broad contract/runtime/test/docs touch surface.
+- Overestimated: Validation Burden Risk `4` calibrated to Actual Validation Burden `2` because hosted validation ran cleanly and did not require fix/redeploy/restart/rerun loops.
+- Overestimated: Rework Risk `3` calibrated to Actual Rework `1`; review found only low local follow-ups.
+- Slightly overestimated: Implementation Friction Risk `3`, Dependency / Coordination Risk `3`, Discovery / Ambiguity Risk `2`, and Scope Volatility Risk `2` all landed lower because the plan held and external dependencies did not reshape delivery.
+- Underestimated: no material dimension was underestimated.
+
+### Calibration Lessons
+
+- Public terrain edit mode extensions still deserve a high technical-surface prediction when loader schema, fixtures, docs, dispatch, validation, evidence, and no-leak coverage move together.
+- Do not score hosted terrain validation high from matrix breadth alone. For this task, the 11x11 and 31x31 hosted cases increased confidence but did not create validation burden because they ran cleanly.
+- The strongest early signal was contract breadth, not algorithmic uncertainty. The bounded neighborhood-average design and `mean_absolute_neighborhood_residual` metric were sufficiently settled before implementation.
+- The dominant actual failure mode was minor review rework around evidence semantics, not host-output mismatch, performance scaling, or partial-output corruption.
+- Future analog retrieval should use `archetype:feature`, `scope:managed-terrain`, `systems:terrain-kernel`, `systems:public-contract`, `systems:loader-schema`, `systems:runtime-dispatch`, `systems:terrain-output`, `validation:contract`, `validation:hosted-matrix`, `host:routine-matrix`, `risk:contract-drift`, `risk:schema-requiredness`, `risk:undo-semantics`, `friction:medium`, `rework:low`, and `confidence:high`.
 <!-- SIZE:DELTA:END -->
 
 ---

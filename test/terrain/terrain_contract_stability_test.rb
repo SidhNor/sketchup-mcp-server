@@ -49,6 +49,31 @@ class TerrainContractStabilityTest < Minitest::Test
     refute_internal_output_vocabulary(result)
   end
 
+  def test_public_fairing_evidence_does_not_expose_output_or_generated_entity_internals # rubocop:disable Metrics/MethodLength
+    result = edit_evidence_result(
+      diagnostics: edit_diagnostics.merge(
+        private_output_planning_diagnostics,
+        fairing: {
+          metric: 'mean_absolute_neighborhood_residual',
+          beforeResidual: 1.0,
+          afterResidual: 0.5,
+          improved: true,
+          strength: 0.35,
+          neighborhoodRadiusSamples: 2,
+          iterations: 1,
+          actualIterations: 1,
+          changedSampleCount: 1,
+          warnings: []
+        }
+      ),
+      edit_summary: edit_summary.merge(mode: 'local_fairing')
+    )
+
+    assert_equal('local_fairing', result.dig(:operation, :mode))
+    assert_equal('mean_absolute_neighborhood_residual', result.dig(:evidence, :fairing, :metric))
+    refute_internal_output_vocabulary(result)
+  end
+
   private
 
   def serializer
@@ -67,12 +92,12 @@ class TerrainContractStabilityTest < Minitest::Test
     )
   end
 
-  def edit_evidence_result(diagnostics: edit_diagnostics)
+  def edit_evidence_result(diagnostics: edit_diagnostics, edit_summary: nil)
     SU_MCP::Terrain::TerrainEditEvidenceBuilder.new.build_success(
       owner_reference: { sourceElementId: 'terrain-main' },
       terrain_state_summary: terrain_state_summary,
       output_summary: { derivedMesh: derived_mesh_summary },
-      edit_summary: edit_summary,
+      edit_summary: edit_summary || self.edit_summary,
       diagnostics: diagnostics,
       sample_limit: 20
     )
