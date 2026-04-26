@@ -87,6 +87,25 @@ class TerrainMeshGeneratorTest < Minitest::Test # rubocop:disable Metrics/ClassL
     )
   end
 
+  def test_generate_uses_supplied_dirty_window_plan_summary_while_emitting_full_grid_mesh
+    model = build_semantic_model
+    owner = model.active_entities.add_group
+    state = build_state(columns: 3, rows: 2)
+    plan = dirty_window_plan(state, digest: 'dirty-plan-digest')
+
+    result = identity_generator.generate(
+      owner: owner,
+      state: state,
+      terrain_state_summary: { digest: 'fallback-digest' },
+      output_plan: plan
+    )
+
+    assert_equal(plan.to_summary, result.fetch(:summary))
+    assert_equal('dirty-plan-digest', result.dig(:summary, :derivedMesh, :derivedFromStateDigest))
+    assert_equal(4, owner.entities.faces.length)
+    assert_all_faces_point_up(owner.entities.faces)
+  end
+
   def test_uses_one_deterministic_diagonal_direction_for_every_cell
     model = build_semantic_model
     owner = model.active_entities.add_group
@@ -203,6 +222,30 @@ class TerrainMeshGeneratorTest < Minitest::Test # rubocop:disable Metrics/ClassL
     assert_equal(2, owner.entities.faces.length)
   end
 
+  def test_regenerate_forwards_supplied_dirty_window_plan_after_cleanup
+    model = build_semantic_model
+    owner = model.active_entities.add_group
+    old_face = owner.entities.add_face([0, 0, 0], [1, 0, 0], [1, 1, 0])
+    old_face.set_attribute('su_mcp_terrain', 'derivedOutput', true)
+    state = build_state(columns: 2, rows: 2)
+    plan = dirty_window_plan(state, digest: 'dirty-regenerate-digest')
+
+    result = identity_generator.regenerate(
+      owner: owner,
+      state: state,
+      terrain_state_summary: { digest: 'fallback-digest' },
+      output_plan: plan
+    )
+
+    assert_equal(plan.to_summary, result.fetch(:summary))
+    assert_equal(
+      'dirty-regenerate-digest',
+      result.dig(:summary, :derivedMesh, :derivedFromStateDigest)
+    )
+    refute_includes(owner.entities.faces, old_face)
+    assert_equal(2, owner.entities.faces.length)
+  end
+
   def test_regenerate_refuses_unexpected_child_entities_before_erasing_output
     model = build_semantic_model
     owner = model.active_entities.add_group
@@ -286,6 +329,19 @@ class TerrainMeshGeneratorTest < Minitest::Test # rubocop:disable Metrics/ClassL
       elevations: Array.new(columns * rows, 1.0),
       revision: 1,
       state_id: 'terrain-state-1'
+    )
+  end
+
+  def dirty_window_plan(state, digest:)
+    SU_MCP::Terrain::TerrainOutputPlan.dirty_window(
+      state: state,
+      terrain_state_summary: { digest: digest },
+      window: SU_MCP::Terrain::SampleWindow.new(
+        min_column: 0,
+        min_row: 0,
+        max_column: 0,
+        max_row: 0
+      )
     )
   end
 

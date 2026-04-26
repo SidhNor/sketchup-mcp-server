@@ -1,9 +1,12 @@
 # frozen_string_literal: true
 
 require_relative '../test_helper'
+require_relative '../support/terrain_output_planning_diagnostics'
 require_relative '../../src/su_mcp/terrain/terrain_edit_evidence_builder'
 
 class TerrainEditEvidenceBuilderTest < Minitest::Test
+  include TerrainOutputPlanningDiagnostics
+
   def test_builds_edit_success_payload_with_capped_json_safe_evidence # rubocop:disable Metrics/AbcSize
     result = SU_MCP::Terrain::TerrainEditEvidenceBuilder.new.build_success(
       owner_reference: { sourceElementId: 'terrain-main', persistentId: '5001' },
@@ -78,6 +81,27 @@ class TerrainEditEvidenceBuilderTest < Minitest::Test
     assert_includes(transition.keys, :deltaSummary)
   end
 
+  def test_private_output_planning_diagnostics_do_not_leak_into_public_payload
+    result = SU_MCP::Terrain::TerrainEditEvidenceBuilder.new.build_success(
+      owner_reference: { sourceElementId: 'terrain-main' },
+      terrain_state_summary: terrain_state_summary,
+      output_summary: { derivedMesh: derived_mesh_summary },
+      edit_summary: edit_summary,
+      diagnostics: diagnostics.merge(private_planning_diagnostics),
+      sample_limit: 2
+    )
+    serialized = JSON.generate(result)
+
+    assert_equal('full', result.dig(:operation, :regeneration))
+    refute_includes(JSON.generate(result.fetch(:output)), 'regeneration')
+    refute_includes(serialized, 'sampleWindow')
+    refute_includes(serialized, 'outputPlan')
+    refute_includes(serialized, 'dirtyWindow')
+    refute_includes(serialized, 'outputRegions')
+    refute_includes(serialized, 'chunks')
+    refute_includes(serialized, 'tiles')
+  end
+
   private
 
   def terrain_state_summary
@@ -140,5 +164,9 @@ class TerrainEditEvidenceBuilderTest < Minitest::Test
       endpointDeltas: { start: 0.0, end: 0.0 },
       deltaSummary: { min: 0.0, max: 2.0 }
     }
+  end
+
+  def private_planning_diagnostics
+    private_output_planning_diagnostics
   end
 end

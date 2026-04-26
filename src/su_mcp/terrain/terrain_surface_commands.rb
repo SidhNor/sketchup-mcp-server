@@ -9,8 +9,10 @@ require_relative 'bounded_grade_edit'
 require_relative 'corridor_transition_edit'
 require_relative 'create_terrain_surface_request'
 require_relative 'edit_terrain_surface_request'
+require_relative 'sample_window'
 require_relative 'terrain_edit_evidence_builder'
 require_relative 'terrain_mesh_generator'
+require_relative 'terrain_output_plan'
 require_relative 'terrain_repository'
 require_relative 'terrain_surface_adoption_sampler'
 require_relative 'terrain_surface_evidence_builder'
@@ -148,7 +150,8 @@ module SU_MCP
         output = mesh_generator.regenerate(
           owner: context.fetch(:owner),
           state: context.fetch(:edit_result).fetch(:state),
-          terrain_state_summary: saved.fetch(:summary)
+          terrain_state_summary: saved.fetch(:summary),
+          output_plan: edit_output_plan(context, saved)
         )
         return finish_edit_refusal(output_refusal(output)) if refused?(output)
 
@@ -248,6 +251,27 @@ module SU_MCP
           code: refusal.fetch(:code),
           message: refusal.fetch(:message),
           details: refusal[:details]
+        )
+      end
+
+      def edit_output_plan(context, saved)
+        TerrainOutputPlan.dirty_window(
+          state: context.fetch(:edit_result).fetch(:state),
+          terrain_state_summary: saved.fetch(:summary),
+          window: changed_region_window(context.fetch(:edit_result).fetch(:diagnostics))
+        )
+      end
+
+      def changed_region_window(diagnostics)
+        # Edit kernels own changed-region diagnostics; commands translate them into output intent.
+        changed_region = diagnostics.fetch(:changedRegion)
+        min = changed_region.fetch(:min)
+        max = changed_region.fetch(:max)
+        SampleWindow.new(
+          min_column: min.fetch(:column),
+          min_row: min.fetch(:row),
+          max_column: max.fetch(:column),
+          max_row: max.fetch(:row)
         )
       end
 

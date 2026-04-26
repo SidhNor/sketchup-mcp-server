@@ -34,6 +34,7 @@ module SU_MCP
         {
           name: 'edit_terrain_surface',
           mode: edit_summary.fetch(:mode),
+          # Public operation recap; output planning strategy stays out of the output summary.
           regeneration: 'full'
         }
       end

@@ -115,6 +115,37 @@ class TerrainSurfaceCommandsTest < Minitest::Test # rubocop:disable Metrics/Clas
     )
   end
 
+  def test_target_height_edit_passes_dirty_window_output_plan_from_changed_region
+    model = build_semantic_model
+    managed_terrain_owner(model)
+    mesh_generator = RecordingRegeneratingMeshGenerator.new
+    commands = build_edit_commands(
+      model: model,
+      repository: EditRepository.new(state),
+      mesh_generator: mesh_generator
+    )
+
+    commands.edit_terrain_surface(edit_request)
+
+    assert_dirty_window_plan(mesh_generator.last_regenerate_args.fetch(:output_plan))
+  end
+
+  def test_corridor_transition_edit_passes_dirty_window_output_plan_from_changed_region
+    model = build_semantic_model
+    managed_terrain_owner(model)
+    mesh_generator = RecordingRegeneratingMeshGenerator.new
+    commands = build_edit_commands(
+      model: model,
+      repository: EditRepository.new(state),
+      mesh_generator: mesh_generator,
+      edit_request_validator: AcceptingCorridorEditValidator.new
+    )
+
+    commands.edit_terrain_surface(corridor_edit_request)
+
+    assert_dirty_window_plan(mesh_generator.last_regenerate_args.fetch(:output_plan))
+  end
+
   def test_edit_mode_does_not_leak_output_strategy_fields
     model = build_semantic_model
     managed_terrain_owner(model)
@@ -223,6 +254,22 @@ class TerrainSurfaceCommandsTest < Minitest::Test # rubocop:disable Metrics/Clas
   end
 
   private
+
+  def assert_dirty_window_plan(plan)
+    assert_instance_of(SU_MCP::Terrain::TerrainOutputPlan, plan)
+    assert_equal(:dirty_window, plan.intent)
+    assert_equal(:full_grid, plan.execution_strategy)
+    assert_equal(expected_changed_region_window, plan.window)
+  end
+
+  def expected_changed_region_window
+    SU_MCP::Terrain::SampleWindow.new(
+      min_column: 0,
+      min_row: 0,
+      max_column: 1,
+      max_row: 1
+    )
+  end
 
   def build_commands(model:, repository: RecordingRepository.new,
                      mesh_generator: RecordingMeshGenerator.new,
@@ -413,8 +460,16 @@ class TerrainSurfaceCommandsTest < Minitest::Test # rubocop:disable Metrics/Clas
   end
 
   class RecordingRegeneratingMeshGenerator < RecordingMeshGenerator
-    def regenerate(...)
+    attr_reader :last_regenerate_args
+
+    def regenerate(owner:, state:, terrain_state_summary:, output_plan: nil)
       @calls << :regenerate
+      @last_regenerate_args = {
+        owner: owner,
+        state: state,
+        terrain_state_summary: terrain_state_summary,
+        output_plan: output_plan
+      }
       { outcome: 'generated', summary: { derivedMesh: { derivedFromStateDigest: 'digest-2' } } }
     end
   end
@@ -494,16 +549,33 @@ class TerrainSurfaceCommandsTest < Minitest::Test # rubocop:disable Metrics/Clas
       @calls << { state: state, request: request }
       {
         outcome: 'edited',
-        state: SU_MCP::Terrain::HeightmapState.new(
-          basis: state.basis,
-          origin: state.origin,
-          spacing: state.spacing,
-          dimensions: state.dimensions,
-          elevations: state.elevations.map { |value| value.nil? ? nil : value + 1.0 },
-          revision: state.revision + 1,
-          state_id: state.state_id
-        ),
-        diagnostics: { changedSampleCount: 4, request: request }
+        state: edited_state(state),
+        diagnostics: diagnostics(request)
+      }
+    end
+
+    private
+
+    def edited_state(state)
+      SU_MCP::Terrain::HeightmapState.new(
+        basis: state.basis,
+        origin: state.origin,
+        spacing: state.spacing,
+        dimensions: state.dimensions,
+        elevations: state.elevations.map { |value| value.nil? ? nil : value + 1.0 },
+        revision: state.revision + 1,
+        state_id: state.state_id
+      )
+    end
+
+    def diagnostics(request)
+      {
+        changedSampleCount: 4,
+        changedRegion: {
+          min: { column: 0, row: 0 },
+          max: { column: 1, row: 1 }
+        },
+        request: request
       }
     end
   end

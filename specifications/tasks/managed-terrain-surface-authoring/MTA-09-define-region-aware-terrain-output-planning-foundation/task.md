@@ -1,7 +1,7 @@
 # Task: MTA-09 Define Region-Aware Terrain Output Planning Foundation
 **Task ID**: `MTA-09`
 **Title**: `Define Region-Aware Terrain Output Planning Foundation`
-**Status**: `draft`
+**Status**: `completed`
 **Priority**: `P1`
 **Date**: `2026-04-26`
 
@@ -90,7 +90,7 @@ Scenario: future partial regeneration has a clear boundary
 
 ## Related Technical Plan
 
-- none yet
+- [Technical plan](./plan.md)
 
 ## Success Metrics
 

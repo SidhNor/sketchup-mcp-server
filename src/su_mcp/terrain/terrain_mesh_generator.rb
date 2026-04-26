@@ -15,18 +15,19 @@ module SU_MCP
         @length_converter = length_converter
       end
 
-      def generate(owner:, state:, terrain_state_summary:)
+      def generate(owner:, state:, terrain_state_summary:, output_plan: nil)
         rows = state.dimensions.fetch('rows')
         columns = state.dimensions.fetch('columns')
         vertices = vertices_for(state, columns, rows)
-        output_plan = TerrainOutputPlan.full_grid(
+        # MTA-09 records dirty intent in the plan; production output remains full-grid.
+        plan = output_plan || TerrainOutputPlan.full_grid(
           state: state,
           terrain_state_summary: terrain_state_summary
         )
 
         emit_faces_via_builder(owner.entities, vertices, columns, rows)
 
-        generated_result(output_plan)
+        generated_result(plan)
       end
 
       # Validation-only path for live SketchUp comparisons.
@@ -44,12 +45,17 @@ module SU_MCP
         generated_result(output_plan).merge(validationOnly: true)
       end
 
-      def regenerate(owner:, state:, terrain_state_summary:)
+      def regenerate(owner:, state:, terrain_state_summary:, output_plan: nil)
         unsupported = unsupported_child_types(owner.entities)
         return unsupported_children_refusal(unsupported) unless unsupported.empty?
 
         erase_entities(owner.entities, derived_output_entities(owner.entities))
-        generate(owner: owner, state: state, terrain_state_summary: terrain_state_summary)
+        generate(
+          owner: owner,
+          state: state,
+          terrain_state_summary: terrain_state_summary,
+          output_plan: output_plan
+        )
       end
 
       private

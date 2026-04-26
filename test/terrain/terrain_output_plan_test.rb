@@ -19,6 +19,8 @@ class TerrainOutputPlanTest < Minitest::Test
       terrain_state_summary: { digest: 'digest-1' }
     )
 
+    assert_equal(:full_grid, plan.intent)
+    assert_equal(:full_grid, plan.execution_strategy)
     assert_equal(SU_MCP::Terrain::SampleWindow.full_grid(state), plan.window)
     assert_equal(
       {
@@ -33,7 +35,52 @@ class TerrainOutputPlanTest < Minitest::Test
     )
   end
 
+  def test_dirty_window_plan_records_internal_intent_without_changing_public_mesh_summary
+    window = SU_MCP::Terrain::SampleWindow.new(
+      min_column: 1,
+      min_row: 0,
+      max_column: 2,
+      max_row: 1
+    )
+
+    plan = SU_MCP::Terrain::TerrainOutputPlan.dirty_window(
+      state: state,
+      terrain_state_summary: { digest: 'digest-2' },
+      window: window
+    )
+
+    assert_equal(:dirty_window, plan.intent)
+    assert_equal(:full_grid, plan.execution_strategy)
+    assert_equal(window, plan.window)
+    assert_equal(expected_summary('digest-2'), plan.to_summary)
+    refute_includes(JSON.generate(plan.to_summary), 'dirtyWindow')
+    refute_includes(JSON.generate(plan.to_summary), 'sampleWindow')
+  end
+
+  def test_dirty_window_plan_rejects_empty_windows_as_internal_invalid_plan
+    error = assert_raises(ArgumentError) do
+      SU_MCP::Terrain::TerrainOutputPlan.dirty_window(
+        state: state,
+        terrain_state_summary: { digest: 'digest-2' },
+        window: SU_MCP::Terrain::SampleWindow.new(empty: true)
+      )
+    end
+
+    assert_match(/dirty window/i, error.message)
+  end
+
   private
+
+  def expected_summary(digest)
+    {
+      derivedMesh: {
+        meshType: 'regular_grid',
+        vertexCount: 12,
+        faceCount: 12,
+        derivedFromStateDigest: digest
+      }
+    }
+  end
 
   def state
     SU_MCP::Terrain::HeightmapState.new(

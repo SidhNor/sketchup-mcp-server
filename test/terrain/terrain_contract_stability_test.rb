@@ -1,11 +1,14 @@
 # frozen_string_literal: true
 
 require_relative '../test_helper'
+require_relative '../support/terrain_output_planning_diagnostics'
 require_relative '../../src/su_mcp/terrain/heightmap_state'
 require_relative '../../src/su_mcp/terrain/terrain_edit_evidence_builder'
 require_relative '../../src/su_mcp/terrain/terrain_state_serializer'
 
 class TerrainContractStabilityTest < Minitest::Test
+  include TerrainOutputPlanningDiagnostics
+
   BASIS = {
     'xAxis' => [1.0, 0.0, 0.0],
     'yAxis' => [0.0, 1.0, 0.0],
@@ -37,22 +40,13 @@ class TerrainContractStabilityTest < Minitest::Test
   end
 
   def test_public_output_vocabulary_does_not_expose_bulk_or_candidate_internals
-    result = edit_evidence_result
-    serialized = JSON.generate(result)
-    serialized_output = JSON.generate(result.fetch(:output))
+    result = edit_evidence_result(
+      diagnostics: edit_diagnostics.merge(private_output_planning_diagnostics)
+    )
 
     assert_includes(result.fetch(:output).keys, :derivedMesh)
-    refute_includes(serialized, 'validationOnly')
-    refute_includes(serialized, 'bulk')
-    refute_includes(serialized, 'candidate')
-    refute_includes(serialized, 'strategy')
-    refute_includes(serialized_output, 'regeneration')
-    refute_includes(serialized, 'sampleWindow')
-    refute_includes(serialized, 'outputRegions')
-    refute_includes(serialized, 'chunks')
-    refute_includes(serialized, 'tiles')
-    refute_includes(serialized, 'faceId')
-    refute_includes(serialized, 'vertexId')
+    assert_equal('full', result.dig(:operation, :regeneration))
+    refute_internal_output_vocabulary(result)
   end
 
   private
@@ -73,15 +67,26 @@ class TerrainContractStabilityTest < Minitest::Test
     )
   end
 
-  def edit_evidence_result
+  def edit_evidence_result(diagnostics: edit_diagnostics)
     SU_MCP::Terrain::TerrainEditEvidenceBuilder.new.build_success(
       owner_reference: { sourceElementId: 'terrain-main' },
       terrain_state_summary: terrain_state_summary,
       output_summary: { derivedMesh: derived_mesh_summary },
       edit_summary: edit_summary,
-      diagnostics: edit_diagnostics,
+      diagnostics: diagnostics,
       sample_limit: 20
     )
+  end
+
+  def refute_internal_output_vocabulary(result)
+    serialized = JSON.generate(result)
+    serialized_output = JSON.generate(result.fetch(:output))
+
+    %w[
+      validationOnly bulk candidate strategy sampleWindow outputPlan dirtyWindow
+      outputRegions chunks tiles faceId vertexId
+    ].each { |term| refute_includes(serialized, term) }
+    refute_includes(serialized_output, 'regeneration')
   end
 
   def terrain_state_summary
