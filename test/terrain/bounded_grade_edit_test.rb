@@ -3,6 +3,7 @@
 require_relative '../test_helper'
 require_relative '../../src/su_mcp/terrain/bounded_grade_edit'
 require_relative '../../src/su_mcp/terrain/heightmap_state'
+require_relative '../../src/su_mcp/terrain/sample_window'
 
 class BoundedGradeEditTest < Minitest::Test
   def test_target_height_changes_only_samples_inside_hard_rectangle
@@ -119,6 +120,19 @@ class BoundedGradeEditTest < Minitest::Test
 
     assert_equal(1.0, elevation_at(result.fetch(:state), 2, 2))
     assert_operator(result.dig(:diagnostics, :preserveZones, :protectedSampleCount), :>=, 4)
+  end
+
+  def test_changed_region_matches_shared_sample_window_summary
+    result = apply_edit(
+      region: rectangle_region(min: [1.0, 1.0], max: [2.0, 2.0]),
+      operation: target_height_operation(10.0)
+    )
+
+    expected = SU_MCP::Terrain::SampleWindow.from_samples(
+      result.dig(:diagnostics, :samples)
+    ).to_changed_region
+
+    assert_equal(expected, result.dig(:diagnostics, :changedRegion))
   end
 
   def test_refuses_no_data_state_before_full_regeneration

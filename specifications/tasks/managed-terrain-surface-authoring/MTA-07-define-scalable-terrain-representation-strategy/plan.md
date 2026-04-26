@@ -1,7 +1,7 @@
 # Technical Plan: MTA-07 Define Scalable Terrain Representation Strategy
 **Task ID**: `MTA-07`
 **Title**: `Define Scalable Terrain Representation Strategy`
-**Status**: `finalized`
+**Status**: `implemented`
 **Date**: `2026-04-26`
 
 ## Source Task
@@ -283,6 +283,22 @@ Implementation should proceed from the lowest SketchUp-free behavior outward:
    - Decide whether bulk output is safe for production adoption in MTA-07 or should remain follow-on.
    - Record follow-on tasks for localized-detail persistence, tiled/chunked storage, partial regeneration, serializer/repository dispatch, and evidence evolution.
    - Update implementation notes and validation evidence.
+
+## Implementation Notes
+
+MTA-07 completed the bounded preparatory slice without changing the persisted terrain payload:
+
+- Selected direction remains heightmap-derived managed terrain state with future localized-detail units, tiled/chunked storage, or patch overlays introduced through explicit follow-on tasks.
+- Persisted `heightmap_grid` state remains schema version `1`; no v2 migration or chunked persisted representation was introduced in this task.
+- Added `SampleWindow` as the SketchUp-free affected-region primitive for owner-local bounds, grid clipping, changed-region summaries, intersection, and union.
+- `BoundedGradeEdit` now uses `SampleWindow.from_samples(...).to_changed_region` for edit diagnostics.
+- Added `TerrainOutputPlan` as the full-grid output descriptor that preserves the existing `output.derivedMesh` public summary while representing current full regeneration through internal window vocabulary.
+- `TerrainMeshGenerator` now builds current production summaries through `TerrainOutputPlan` while keeping the existing per-face production writer and regeneration behavior.
+- Added `generate_bulk_candidate` as a validation-only builder-based mesh candidate. It is not used by production `generate` or `regenerate`, and production bulk adoption remains gated on live SketchUp evidence.
+
+Grok-4.20 queue review before Step 06 confirmed that deferring persisted v2/chunked state is faithful to this task as long as contract/schema no-drift tests are part of the initial skeleton set. The implementation followed the corrected queue by locking contract/persistence behavior first, then adding domain primitives, edit integration, mesh seam equivalence, and the validation-only bulk candidate.
+
+MTA-05 and MTA-06 may proceed on the existing uniform-grid substrate unless their representative cases require localized persistence, partial regeneration, or stronger hosted performance guarantees. Follow-on implementation tasks should own durable localized-detail persistence, tiled/chunked storage, serializer/repository dispatch, partial regeneration, production bulk-output adoption if validated, and any future evidence schema evolution.
 
 ## Rollout Approach
 

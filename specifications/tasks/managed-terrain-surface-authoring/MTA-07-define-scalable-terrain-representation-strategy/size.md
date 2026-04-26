@@ -2,13 +2,13 @@
 
 **Task ID**: `MTA-07`  
 **Title**: `Define Scalable Terrain Representation Strategy`  
-**Status**: `challenged`
+**Status**: `calibrated`
 **Created**: `2026-04-26`  
 **Last Updated**: `2026-04-26`  
 
 **Related Task**: [task.md](./task.md)  
 **Related Plan**: [plan.md](./plan.md)
-**Related Summary**: none yet  
+**Related Summary**: [summary.md](./summary.md)
 
 ---
 
@@ -174,7 +174,17 @@
 
 > Filled at the end of implementation. Do not overwrite predicted values.
 
-Not filled yet.
+| Dimension | Score (0-4) | Notes |
+|---|---:|---|
+| Functional Scope | 3 | Delivered the planned representation direction and bounded prep foundation: sample windows, changed-region integration, output plan seam, and validation-only bulk candidate. No public tool or persisted schema expansion occurred. |
+| Technical Change Surface | 3 | Touched terrain domain primitives, edit diagnostics, mesh generation summary seam, validation-only output path, terrain tests, and task metadata. Runtime routing, public schemas, repository dispatch, and persisted payload shape stayed unchanged. |
+| Actual Implementation Friction | 1 | Implementation followed the corrected queue smoothly. The only friction was routine: queue ordering was clarified before edits, the bulk-candidate skeleton was added before implementation, and local RuboCop shape issues were cleaned up. No architectural redesign or behavioral fix was required. |
+| Actual Validation Burden | 4 | Required focused TDD baselines, full Ruby tests, lint, package verification, contract/no-drift tests, `grok-4.20` codereview, public MCP hosted validation, greybox bulk-candidate comparison, high-variation terrain checks, undo checks, responsiveness checks, and performance timing. |
+| Actual Dependency Drag | 2 | Work depended on MTA-02/MTA-03/MTA-04 terrain foundations and external review. Live SketchUp validation access remains a follow-up gap, but no upstream code dependency blocked the local implementation. |
+| Actual Discovery Encountered | 1 | Discovery was low. The only meaningful clarification was that persisted v2/chunked state was intentionally out of scope and contract/no-drift skeletons should lead the queue. No hidden serializer, host API, or public contract requirement emerged. |
+| Actual Scope Volatility | 1 | Scope stayed within the finalized prep slice. The queue changed order and gained an explicit bulk-candidate skeleton before implementation, but no split, production adoption, or persisted representation expansion was needed. |
+| Actual Rework | 0 | No production slice required rework. `grok-4.20` code review found no required fixes; the only follow-up was an optional guardrail comment and routine lint cleanup. |
+| Final Confidence in Completeness | 4 | Confidence is high for the prep slice and contract preservation, backed by tests, lint, package verification, codereview, public MCP hosted validation, greybox bulk-candidate comparison, high-relief checks, undo checks, and responsiveness checks. |
 <!-- SIZE:ACTUAL:END -->
 
 ---
@@ -185,22 +195,37 @@ Not filled yet.
 > Fill only the sections that are relevant. Say `not applicable` where needed.
 
 ### Automated Validation
-- Not filled yet.
+- Focused MTA-07 terrain set: `26 runs, 83 assertions, 0 failures, 0 errors, 1 skip`.
+- `bundle exec rake ruby:test`: `633 runs, 2419 assertions, 0 failures, 0 errors, 32 skips`.
+- `bundle exec rake ruby:lint`: `170 files inspected, no offenses`.
+- `bundle exec rake package:verify`: passed and produced `dist/su_mcp-0.21.0.rbz`.
+- `mcp__pal__.codereview` with `grok-4.20`: completed with no required fixes.
 
 ### Manual Validation
-- Not filled yet.
+- Live SketchUp production MCP path passed after scene reset for small 4x3, non-square 17x9, and near-cap 100x100 terrain.
+- Public sampling confirmed edited regions changed and outside points stayed unchanged.
+- `Sketchup.undo` restored revision 1, original digest, and original sampled elevations in the production MCP path.
+- `ping` succeeded after each edit, including near-cap.
+- An unmanaged top-level sentinel survived operations, confirming unrelated unmanaged scene content was not deleted.
+- Public MCP high-variation 17x9 edit passed with coherent samples, all normals up, minimum normal Z about `0.2018`, and post-operation ping success.
 
 ### Performance Validation
-- Not filled yet.
+- Production MCP path timings: small 4x3 create `0.055s`, edit/regenerate `0.338s`; non-square 17x9 create `0.128s`, edit/regenerate `0.388s`; near-cap 100x100 create `21.629s`, edit/regenerate `23.039s`.
+- Internal high-variation greybox timings: 9x7 amplitude 8m per-face `0.2355s`, bulk candidate `0.0020s`; 100x100 amplitude 12m per-face `74.8048s`, bulk candidate `0.4239s`.
+- High-relief near-cap normals stayed positive, with minimum normal Z about `0.0383`.
 
 ### Migration / Compatibility Validation
-- Not filled yet.
+- Contract/no-drift tests prove persisted terrain remains `payloadKind: "heightmap_grid"` and `schemaVersion: 1`.
+- Tests assert no `sampleWindows`, `outputRegions`, `chunks`, or `tiles` are serialized into v1 state.
+- Public edit evidence remains `changedRegion`, `samples`, and `sampleSummary` without generated face or vertex identifiers.
 
 ### Operational / Rollout Validation
-- Not filled yet.
+- Production `generate` / `regenerate` continue to use per-face output.
+- `generate_bulk_candidate` is validation-only and not wired into production regeneration.
+- Live validation shows the bulk candidate is materially faster in greybox tests, including high-variation near-cap terrain, but production bulk-output adoption remains gated on a follow-on task.
 
 ### Validation Notes
-- Not filled yet.
+- Final validation covers local tests, lint, package verification, codereview, public MCP hosted behavior, greybox bulk-candidate behavior, high-variation terrain behavior, undo, responsiveness, derived markers, and positive-Z normals.
 <!-- SIZE:VALIDATION-EVIDENCE:END -->
 
 ---
@@ -210,14 +235,15 @@ Not filled yet.
 
 > Filled during final calibration. Compare prediction to actual behavior.
 
-- **Most Underestimated Dimension**: Not filled yet.
-- **Most Overestimated Dimension**: Not filled yet.
-- **Signal Present Early But Underweighted**: Not filled yet.
-- **Genuinely Unknowable Factor**: Not filled yet.
-- **Future Similar Tasks Should Assume**: Not filled yet.
+- **Most Underestimated Dimension**: Validation burden. The prediction correctly identified live validation as dominant, but the final useful evidence expanded to include high-variation terrain, undo, responsiveness, unmanaged sentinel preservation, and steep-normal checks.
+- **Most Overestimated Dimension**: Implementation friction and rework. The mesh seam and changed-region primitive integrated with less resistance than predicted because the current seams were already narrow enough and MTA-04 gave a concrete changed-region integration point. Code review required no fixes.
+- **Signal Present Early But Underweighted**: The need to lock persistence no-drift before primitive work. User clarification and `grok-4.20` review showed this should be a first-class skeleton, not just a later regression check.
+- **Genuinely Unknowable Factor**: The size of the bulk-candidate performance delta was unknowable from local tests. Live greybox evidence showed near-cap high-variation bulk candidate generation at `0.4239s` versus per-face generation at `74.8048s`.
+- **Future Similar Tasks Should Assume**: For terrain representation prep that intentionally defers schema migration, start with contract/no-drift skeletons, then add domain primitives, then integrate them into one real seam before output refactoring. Include high-relief hosted cases early because they expose normals, markers, precision, and timing behavior that flat terrain can hide.
 
 ### Calibration Notes
-- Not filled yet.
+- The prediction was directionally accurate on scope and validation burden, but overestimated implementation friction and rework. Actual implementation stayed bounded because persisted v2/chunked state remained out of scope and the bulk path was isolated as validation-only.
+- The major calibration lesson is that high-variation hosted terrain checks should be part of the default validation matrix for terrain output-path work, not an optional enhancement.
 <!-- SIZE:DELTA:END -->
 
 ---

@@ -1,10 +1,12 @@
 # frozen_string_literal: true
 
 require_relative '../semantic/length_converter'
+require_relative 'terrain_output_plan'
 
 module SU_MCP
   module Terrain
     # Regenerates disposable SketchUp mesh output from authoritative terrain state.
+    # rubocop:disable Metrics/ClassLength
     class TerrainMeshGenerator
       DERIVED_OUTPUT_DICTIONARY = 'su_mcp_terrain'
       DERIVED_OUTPUT_KEY = 'derivedOutput'
@@ -17,12 +19,31 @@ module SU_MCP
         rows = state.dimensions.fetch('rows')
         columns = state.dimensions.fetch('columns')
         vertices = vertices_for(state, columns, rows)
+        output_plan = TerrainOutputPlan.full_grid(
+          state: state,
+          terrain_state_summary: terrain_state_summary
+        )
 
         each_cell(columns, rows) do |column, row|
           add_cell_triangles(owner.entities, vertices, column, row, columns)
         end
 
-        generated_result(vertices, columns, rows, terrain_state_summary)
+        generated_result(output_plan)
+      end
+
+      # Validation-only path for live SketchUp comparisons.
+      # Do not wire this into production regeneration.
+      def generate_bulk_candidate(owner:, state:, terrain_state_summary:)
+        rows = state.dimensions.fetch('rows')
+        columns = state.dimensions.fetch('columns')
+        vertices = vertices_for(state, columns, rows)
+        output_plan = TerrainOutputPlan.full_grid(
+          state: state,
+          terrain_state_summary: terrain_state_summary
+        )
+
+        emit_candidate_faces(owner.entities, vertices, columns, rows)
+        generated_result(output_plan).merge(validationOnly: true)
       end
 
       def regenerate(owner:, state:, terrain_state_summary:)
@@ -37,17 +58,10 @@ module SU_MCP
 
       attr_reader :length_converter
 
-      def generated_result(vertices, columns, rows, terrain_state_summary)
+      def generated_result(output_plan)
         {
           outcome: 'generated',
-          summary: {
-            derivedMesh: {
-              meshType: 'regular_grid',
-              vertexCount: vertices.length,
-              faceCount: (columns - 1) * (rows - 1) * 2,
-              derivedFromStateDigest: terrain_state_summary.fetch(:digest)
-            }
-          }
+          summary: output_plan.to_summary
         }
       end
 
@@ -78,6 +92,20 @@ module SU_MCP
           (0...(columns - 1)).each do |column|
             yield column, row
           end
+        end
+      end
+
+      def emit_candidate_faces(entities, vertices, columns, rows)
+        return emit_faces(entities, vertices, columns, rows) unless entities.respond_to?(:build)
+
+        entities.build do |builder|
+          emit_faces(builder, vertices, columns, rows)
+        end
+      end
+
+      def emit_faces(face_target, vertices, columns, rows)
+        each_cell(columns, rows) do |column, row|
+          add_cell_triangles(face_target, vertices, column, row, columns)
         end
       end
 
@@ -189,5 +217,6 @@ module SU_MCP
         }
       end
     end
+    # rubocop:enable Metrics/ClassLength
   end
 end

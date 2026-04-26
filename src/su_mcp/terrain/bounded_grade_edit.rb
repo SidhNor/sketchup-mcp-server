@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require_relative 'heightmap_state'
+require_relative 'sample_window'
 
 module SU_MCP
   module Terrain
@@ -228,14 +229,7 @@ module SU_MCP
       end
 
       def changed_region(samples)
-        return nil if samples.empty?
-
-        columns = samples.map { |sample| sample.fetch(:column) }
-        rows = samples.map { |sample| sample.fetch(:row) }
-        {
-          min: { column: columns.min, row: rows.min },
-          max: { column: columns.max, row: rows.max }
-        }
+        SampleWindow.from_samples(samples).to_changed_region
       end
 
       def fixed_control_summaries(state, edited_elevations, request)

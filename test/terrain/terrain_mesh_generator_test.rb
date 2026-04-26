@@ -4,6 +4,7 @@ require_relative '../test_helper'
 require_relative '../support/semantic_test_support'
 require_relative '../../src/su_mcp/terrain/heightmap_state'
 require_relative '../../src/su_mcp/terrain/terrain_mesh_generator'
+require_relative '../../src/su_mcp/terrain/terrain_output_plan'
 
 class TerrainMeshGeneratorTest < Minitest::Test
   include SemanticTestSupport
@@ -31,6 +32,26 @@ class TerrainMeshGeneratorTest < Minitest::Test
     )
     assert_equal(4, owner.entities.faces.length)
     assert_all_faces_point_up(owner.entities.faces)
+  end
+
+  def test_generate_summary_matches_full_grid_output_plan
+    model = build_semantic_model
+    owner = model.active_entities.add_group
+    state = build_state(columns: 3, rows: 2)
+    terrain_state_summary = { digest: 'abc123' }
+
+    result = identity_generator.generate(
+      owner: owner,
+      state: state,
+      terrain_state_summary: terrain_state_summary
+    )
+
+    assert_equal(
+      SU_MCP::Terrain::TerrainOutputPlan
+        .full_grid(state: state, terrain_state_summary: terrain_state_summary)
+        .to_summary,
+      result.fetch(:summary)
+    )
   end
 
   def test_uses_one_deterministic_diagonal_direction_for_every_cell
@@ -83,6 +104,24 @@ class TerrainMeshGeneratorTest < Minitest::Test
       owner.entities.faces.map(&:points),
       [[10.0, 20.0, 10.0], [20.0, 20.0, 10.0], [20.0, 30.0, 10.0]]
     )
+  end
+
+  def test_bulk_candidate_uses_entities_builder_without_replacing_production_generate
+    model = build_semantic_model
+    owner = model.active_entities.add_group
+    state = build_state(columns: 3, rows: 2)
+
+    result = identity_generator.generate_bulk_candidate(
+      owner: owner,
+      state: state,
+      terrain_state_summary: { digest: 'abc123' }
+    )
+
+    assert_equal('generated', result.fetch(:outcome))
+    assert_equal(true, result.fetch(:validationOnly))
+    assert_equal(1, owner.entities.build_calls)
+    assert_equal(4, owner.entities.faces.length)
+    assert_all_faces_point_up(owner.entities.faces)
   end
 
   def test_regenerate_removes_prior_derived_faces_before_rebuilding
