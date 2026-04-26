@@ -21,6 +21,9 @@ The current task order proves terrain authoring through concrete, testable incre
 - corridor transition kernel
 - local terrain fairing kernel
 - scalable terrain representation strategy for localized detail and larger terrain extents
+- production bulk output adoption and region-aware output planning
+- partial terrain output regeneration
+- durable localized terrain representation v2
 
 ## Current Task Order
 
@@ -31,6 +34,10 @@ The current task order proves terrain authoring through concrete, testable incre
 5. [MTA-05 Implement Corridor Transition Terrain Kernel](MTA-05-implement-corridor-transition-terrain-kernel/task.md)
 6. [MTA-06 Implement Local Terrain Fairing Kernel](MTA-06-implement-local-terrain-fairing-kernel/task.md)
 7. [MTA-07 Define Scalable Terrain Representation Strategy](MTA-07-define-scalable-terrain-representation-strategy/task.md)
+8. [MTA-08 Adopt Bulk Full-Grid Terrain Output In Production](MTA-08-adopt-bulk-full-grid-terrain-output-in-production/task.md)
+9. [MTA-09 Define Region-Aware Terrain Output Planning Foundation](MTA-09-define-region-aware-terrain-output-planning-foundation/task.md)
+10. [MTA-10 Implement Partial Terrain Output Regeneration](MTA-10-implement-partial-terrain-output-regeneration/task.md)
+11. [MTA-11 Design And Implement Durable Localized Terrain Representation v2](MTA-11-design-and-implement-durable-localized-terrain-representation-v2/task.md)
 
 ## Deferred Follow-Ons
 
