@@ -2,12 +2,12 @@
 
 **Task ID**: `MTA-07`  
 **Title**: `Define Scalable Terrain Representation Strategy`  
-**Status**: `seeded`  
+**Status**: `challenged`
 **Created**: `2026-04-26`  
 **Last Updated**: `2026-04-26`  
 
 **Related Task**: [task.md](./task.md)  
-**Related Plan**: none yet  
+**Related Plan**: [plan.md](./plan.md)
 **Related Summary**: none yet  
 
 ---
@@ -15,20 +15,20 @@
 <!-- SIZE:IDENTITY:START -->
 ## Identity
 
-- **Task Archetype**: platform
-- **Primary Scope Area**: managed terrain scalable representation
+- **Task Archetype**: platform / performance-sensitive prep
+- **Primary Scope Area**: managed terrain scalable representation and output-generation foundation
 - **Likely Systems Touched**:
-  - terrain state schema and representation model
-  - terrain repository and storage strategy
-  - derived output generation and regeneration granularity
-  - edit kernel representation boundary
-  - evidence and migration/refusal contracts
-  - hosted SketchUp performance validation
-- **Validation Class**: mixed
-- **Likely Analog Class**: performance-sensitive terrain state architecture rebaseline
+  - terrain representation strategy and future state boundaries
+  - SketchUp-free terrain window / changed-region domain primitives
+  - derived output generation seam and current regular-grid output behavior
+  - terrain evidence vocabulary and public contract stability
+  - terrain repository / serializer migration-baseline checks
+  - hosted SketchUp bulk-mesh and regeneration validation
+- **Validation Class**: mixed / performance-sensitive / manual-heavy
+- **Likely Analog Class**: performance-sensitive terrain foundation with hosted output validation
 
 ### Identity Notes
-- This is currently a strategy and architecture task rather than a direct implementation slice. It may spawn follow-on implementation tasks for tiled state, local refinement, patch overlays, chunked output regeneration, storage migration, or sidecar-backed payloads.
+- Planning refinement changed this from a strategy-only task into strategy plus a bounded preparatory implementation slice. The current shape keeps `heightmap_grid` / heightmap-derived managed state authoritative, keeps SketchUp TIN output disposable, adds internal terrain window / changed-region primitives, adds a behavior-preserving mesh output seam, and requires live SketchUp validation of a bulk mesh candidate.
 <!-- SIZE:IDENTITY:END -->
 
 ---
@@ -40,25 +40,25 @@
 
 | Dimension | Seed (0-4) | Notes |
 |---|---:|---|
-| Functional Scope | 3 | Defines the next supported terrain representation direction beyond one uniform heightmap grid and affects future edit workflows, but does not yet require a new public MCP tool. |
-| Technical Change Surface | 4 | Candidate directions touch state schema, repository storage, derived output regeneration, edit-kernel boundaries, evidence contracts, compatibility, and migration behavior. |
-| Hidden Complexity Suspicion | 4 | Representation choices can create seams around resolution, chunk boundaries, blend behavior, payload size, undo, and existing `heightmap_grid` compatibility. |
-| Validation Burden Suspicion | 4 | Any selected direction needs storage/migration checks, hosted SketchUp performance evidence, output regeneration verification, undo behavior, and JSON-safe refusal/evidence validation. |
-| Dependency / Coordination Suspicion | 3 | Depends on MTA-03 and MTA-04 findings, informs MTA-05 and MTA-06, and may split into multiple follow-on implementation tasks. |
-| Scope Volatility Suspicion | 4 | The task could remain a design decision, or expand into schema/storage/output implementation if planning narrows it too aggressively. |
-| Confidence | 2 | Strong early signals exist, but the accepted representation direction and implementation boundary are not yet planned. |
+| Functional Scope | 3 | Selects a long-term localized-detail direction and adds tangible prep work, but public terrain tool request shape is expected to remain stable. |
+| Technical Change Surface | 3 | Likely touches terrain domain primitives, mesh generation seam, evidence stability checks, repository/serializer guardrails, and tests, but does not intentionally change persisted schema or public contracts. |
+| Hidden Complexity Suspicion | 4 | Boundary conversion, changed-region semantics, mesh seam equivalence, SketchUp bulk mesh behavior, undo, and derived-output marking can all hide host-specific complexity. |
+| Validation Burden Suspicion | 4 | Requires unit tests, contract/evidence stability checks, repository round-tripping, live SketchUp output/regeneration/undo validation, and performance timing for bulk mesh. |
+| Dependency / Coordination Suspicion | 3 | Depends on MTA-02/MTA-03 foundations, MTA-04 edit direction, current MCP terrain vocabulary, SketchUp hosted test access, and informs MTA-05/MTA-06 sequencing. |
+| Scope Volatility Suspicion | 3 | Scope has been narrowed to CC prep, but production bulk adoption, failed host validation, or evidence-shape drift could still force split or deferral decisions. |
+| Confidence | 3 | Planning has stronger evidence after UE source review, PAL consensus, and Step 05 refinement, but hosted bulk-mesh behavior remains unproven. |
 
 ### Early Signals
-- MTA-03 performance improved materially, but near-cap terrain creation still costs about 17-18 seconds MCP time and about 26-27 seconds external wall time for roughly 10,000 samples.
-- MTA-03 adoption is acceptable as a one-time workflow after improvements, with representative 80 m x 80 m wavy adoption at about 31 seconds MCP time and about 43 seconds external wall time.
-- MTA-04 planning accepted full derived-output regeneration for the bounded grade edit MVP, but explicitly deferred tiled, chunked, localized refinement, and partial output regeneration decisions.
-- The managed terrain HLD already preserves materialized terrain state as authoritative and generated SketchUp geometry as derived output, so representation work must extend that contract rather than replace it with live generated mesh edits.
-- UE research suggests useful comparison concepts: componentized heightmap data, rectangular heightmap read/write regions, LOD, LOD blending, streaming proxies, World Partition, edit layers, and local patch systems.
-- UE research also suggests the repo should not assume arbitrary adaptive per-small-area heightmap resolution is the default answer; UE Landscape appears to scale through componentization and related systems rather than making generated mesh geometry authoritative.
-- Future bounded edits, corridor transitions, and terrain fairing kernels may depend on whether the uniform-grid substrate remains sufficient or whether localized detail, tiled state, overlays, or sidecar-backed payloads are required first.
+- MTA-03 performance improved materially, but repeated near-cap full terrain regeneration remains expensive enough to justify output-path and localized-detail preparation.
+- Step 05 refinement selected heightmap-derived managed state as the source of truth and explicitly rejected generated SketchUp TIN geometry as durable terrain state.
+- User direction changed the task from research-only toward a more palpable CC prep slice: terrain window / changed-region primitives, mesh-generation seam, and live SketchUp bulk-mesh validation.
+- PAL consensus supported the long-term base-plus-localized-detail direction while warning that mesh generation and public evidence vocabulary need strict boundaries.
+- The current public terrain vocabulary uses owner-local meter `region.bounds` and result sections such as `operation`, `managedTerrain`, `terrainState`, `output`, and `evidence`; internal sample windows must not leak into the public contract accidentally.
+- Current `TerrainMeshGenerator` produces regular-grid TIN output through per-face SketchUp calls, making bulk mesh validation useful but host-sensitive.
+- UE source review supports rectangular read/write regions, componentized data, affected-region updates, and patch/layer concepts, but not renderer LOD or generated mesh identity as product architecture.
 
 ### Early Estimate Notes
-- This seed treats MTA-07 as a high-ambiguity platform strategy task. If later planning narrows it to documentation only, implementation friction may drop; if it includes schema, storage, output, or migration implementation, the high change-surface and validation scores should remain.
+- This reseed is a pre-prediction planning rebaseline, not implementation drift. The updated shape is no longer documentation-only, but it also intentionally avoids full localized-detail persistence, partial regeneration, new public tool fields, and persisted payload-kind/schema changes.
 <!-- SIZE:INITIAL-SHAPE:END -->
 
 ---
@@ -68,7 +68,48 @@
 
 > Filled during task planning. This is the main pre-implementation estimate.
 
-Not filled yet.
+| Dimension | Score (0-4) | Notes |
+|---|---:|---|
+| Functional Scope | 3 | Selects the scalable representation direction and delivers tangible prep work, but avoids new public tool fields, persisted schema changes, partial regeneration, and full localized-detail implementation. |
+| Technical Change Surface | 3 | Touches terrain domain primitives, mesh generation structure, evidence/contract stability tests, repository/serializer guardrails, and hosted validation, without intentionally widening runtime routing or public schemas. |
+| Implementation Friction Risk | 3 | Window conversion, changed-region normalization, behavior-preserving mesh seam extraction, and bulk candidate isolation can expose coupling in current terrain generation and edit code. |
+| Validation Burden Risk | 4 | Correctness depends on unit tests, public vocabulary stability, serializer/repository regression, mesh equivalence, and live SketchUp timing/undo/entity checks for per-face and bulk paths. |
+| Dependency / Coordination Risk | 3 | Depends on MTA-02/MTA-03 foundations, MTA-04 edit direction, current MCP terrain vocabulary, available live SketchUp validation, and must inform MTA-05/MTA-06 sequencing. |
+| Discovery / Ambiguity Risk | 3 | Step 05 resolved the architecture, but bulk mesh host behavior, exact seam shape, and whether production adoption is safe remain implementation-time discoveries. |
+| Scope Volatility Risk | 3 | Scope is bounded as CC prep, but failed or surprisingly successful bulk validation could split, defer, or expand the output path decision. |
+| Rework Risk | 3 | A weak mesh seam, leaked public evidence vocabulary, or incorrect bounds semantics would require revisiting early primitives and tests before downstream edit kernels consume them. |
+| Confidence | 3 | Planning evidence is strong after UE source review, PAL consensus, reseeding, and draft plan creation; confidence is capped because the highest-risk output behavior must be proven live. |
+
+### Top Assumptions
+
+- Managed source state remains `heightmap_grid` / heightmap-derived; generated SketchUp TIN never becomes durable source state.
+- The prep slice can keep public terrain request vocabulary and persisted payload schema unchanged.
+- Internal terrain window / changed-region primitives can be introduced without forcing MTA-05/MTA-06 to wait for full localized-detail persistence.
+- `TerrainMeshGenerator` can gain a behavior-preserving seam while keeping the current per-face output path as fallback.
+- Live SketchUp validation access is available for near-cap per-face and bulk mesh output checks.
+
+### Estimate Breakers
+
+- Bulk mesh validation reveals SketchUp API behavior that requires broad output ownership, material/attribute propagation, undo, or cleanup redesign.
+- The mesh seam cannot be extracted without changing current generated output summaries, derived-output marking, or regeneration refusal behavior.
+- Public evidence needs new fields or renamed structures, forcing loader schema, contract fixtures, docs, and example updates into MTA-07.
+- Existing `heightmap_grid` serializer/repository assumptions are insufficient for the prep primitives, forcing a payload schema or dispatch change.
+- Live validation shows near-cap generation remains unacceptable even with the seam, creating pressure to implement partial regeneration or tiled output now.
+
+### Predicted Signals
+
+- Calibrated MTA-02 shows terrain state/storage foundations carry high validation and rework sensitivity even before public behavior.
+- Calibrated MTA-03 shows live SketchUp can expose unit conversion, boundary sampling, performance, source replacement, and persistence issues that local tests miss.
+- MTA-04 planning keeps full regeneration for bounded edit MVP but flags output cleanup/regeneration and hosted timing as high-risk validation surfaces.
+- STI-03 and SVR-04 analogs show terrain/surface evidence features require hosted checks and performance evidence despite bounded functional scope.
+- PAL consensus agreed with the long-term base-plus-localized-detail direction while contesting how much mesh generation work should be included, indicating real scope-volatility and validation pressure.
+
+### Predicted Estimate Notes
+
+- This prediction uses the post-reseed CC scope as the current planning baseline: strategy plus internal primitives, behavior-preserving mesh seam, and live bulk-mesh validation.
+- Functional scope is high but not very high because the task deliberately avoids a new public tool contract and full localized-detail storage.
+- Validation burden is the dominant driver because production readiness depends on hosted SketchUp behavior that cannot be proven by Ruby unit tests alone.
+- Confidence is moderate-high for direction and moderate for delivery because bulk mesh behavior and seam extraction still need implementation evidence.
 <!-- SIZE:PREDICTED:END -->
 
 ---
@@ -79,19 +120,37 @@ Not filled yet.
 > Filled when the estimate is pressure-tested through external review, premortem, or controlled consensus.
 
 ### Agreed Drivers
-- Not filled yet.
+- The task is no longer strategy-only: it includes internal terrain window / changed-region primitives, a behavior-preserving mesh generation seam, and live SketchUp validation of a bulk mesh candidate.
+- Public contract stability is central to the estimate. The plan intentionally avoids new public request fields, new persisted payload kind/schema, and new public evidence vocabulary unless explicitly revised.
+- Validation burden is the dominant cost driver because mesh output behavior, undo, entity cleanup, and bulk mesh viability must be proven in live SketchUp.
+- Calibrated MTA-02 and MTA-03 support the prediction that terrain state/output work has high validation and rework sensitivity even when the functional surface is bounded.
+- MTA-04 implementation evidence reinforces the predicted validation burden: live SketchUp checks found face-winding inconsistencies in generated terrain output, and the fix made positive-Z face normals and derived face/edge marking part of the output seam invariants.
+- MTA-04 also gives the changed-region primitive a concrete integration point in `BoundedGradeEdit`, reducing the risk that MTA-07 creates a standalone abstraction with no current consumer.
+- The premortem correctly tightened the plan by requiring the new primitives to connect to a current integration seam, avoiding a speculative abstraction-only slice.
 
 ### Contested Drivers
-- Not filled yet.
+- Bulk mesh adoption remains contested. `gpt-5.4` and `grok-4` supported making bulk generation a meaningful prep target, while `grok-4.20` warned that adopting or deeply reshaping the output path could become a hidden rewrite.
+- The challenged plan resolves this by requiring live validation and keeping current per-face output as fallback; production bulk adoption is allowed only if equivalence is proven and recorded.
+- The exact implementation shape of the mesh seam remains a friction risk. The premortem added the full-grid region descriptor guardrail so the seam is tangible without forcing partial regeneration.
+- Scope volatility remains material but bounded: failed bulk validation should defer adoption, while successful validation may still require a deliberate production-switch decision.
 
 ### Missing Evidence
-- Not filled yet.
+- Live SketchUp comparison of per-face output and bulk mesh candidate on small, non-square representative, and near-cap terrain cases.
+- Evidence that the output seam preserves derived-output marking, face/vertex counts, digest linkage, regeneration refusal, and undo behavior.
+- Evidence that the output seam preserves positive-Z terrain face-normal orientation and derived marking on both faces and edges.
+- Evidence that internal terrain window / changed-region primitives integrate with the mesh seam, and with edit changed-region calculation if that path is present in the implementation baseline.
+- Confirmation that no public response vocabulary or persisted payload schema change is needed after implementation starts.
+- Save/reopen behavior if production output switches to bulk mesh.
 
 ### Recommendation
-- Not filled yet.
+- Confirm the predicted profile without score changes.
+- Proceed with the finalized plan, but treat live SketchUp validation as a hard implementation gate before any production bulk-output adoption.
+- Do not split before implementation. Split or defer only if bulk mesh validation, public evidence shape, or persistence requirements force behavior beyond the finalized non-goals.
 
 ### Challenge Notes
-- Not filled yet.
+- No predicted scores changed after premortem and challenge review. Validation burden was already `4`, and friction, discovery, volatility, and rework were already scored `3`.
+- The premortem added guardrails and validation specificity rather than materially expanding the task: primitives must connect to the mesh seam, and live validation must cover small, non-square, and near-cap cases.
+- Challenge evidence preserves the main disagreement from PAL consensus: how far to go on bulk mesh. The plan carries that disagreement as a gated validation/rollout decision instead of assuming success.
 <!-- SIZE:CHALLENGE:END -->
 
 ---
@@ -167,11 +226,15 @@ Not filled yet.
 ## Retrieval Tags
 
 - `archetype:platform`
+- `archetype:performance-sensitive-prep`
 - `scope:managed-terrain-scalable-representation`
-- `validation:mixed`
-- `systems:terrain-state-storage-output-edit-kernels-evidence`
+- `scope:terrain-window-changed-region-primitives`
+- `validation:mixed-performance-manual`
+- `systems:terrain-domain-primitives-output-generation-evidence-repository-serializer`
+- `host:sketchup-live-validation`
+- `contract:public-vocabulary-stability`
 - `volatility:high`
 - `friction:high`
 - `rework:high`
-- `confidence:medium`
+- `confidence:medium-high`
 <!-- SIZE:TAGS:END -->
