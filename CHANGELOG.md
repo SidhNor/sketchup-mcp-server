@@ -2,6 +2,22 @@
 
 <!-- version list -->
 
+## v0.25.0 (2026-04-26)
+
+### Documentation
+
+- **terrain**: Additional terrain work
+  ([`bfeaac1`](https://github.com/SidhNor/sketchup-mcp-server/commit/bfeaac136823232f991c2fbaafba7b81449849cb))
+
+### Features
+
+- **MTA-06**: Smoothing terrain tool
+  ([`ed3f858`](https://github.com/SidhNor/sketchup-mcp-server/commit/ed3f858eb1d4f0472c55c7929fd3253b6a0ab2cb))
+
+- **MTA-12**: Circular tooling and boundaries
+  ([`eb6ca98`](https://github.com/SidhNor/sketchup-mcp-server/commit/eb6ca98020a13006d6a000708ad2ebd6d03da9ca))
+
+
 ## v0.24.0 (2026-04-26)
 
 ### Features
