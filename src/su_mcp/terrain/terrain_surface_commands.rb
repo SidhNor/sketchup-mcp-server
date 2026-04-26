@@ -169,6 +169,9 @@ module SU_MCP
       end
 
       def resolve_terrain_owner(target_reference)
+        direct_resolution = direct_managed_terrain_owner_resolution(target_reference)
+        return direct_resolution if direct_resolution
+
         resolution = target_resolver.resolve(target_reference)
         resolution_state = resolution[:resolution] || resolution[:outcome]
         if %w[unique resolved].include?(resolution_state)
@@ -194,20 +197,37 @@ module SU_MCP
         )
       end
 
+      def direct_managed_terrain_owner_resolution(target_reference)
+        matches = managed_entities.select do |entity|
+          managed_entity_matches_reference?(entity, target_reference)
+        end
+        return nil if matches.empty?
+        return terrain_target_ambiguous(target_reference) if matches.length > 1
+
+        owner = matches.first
+        return unsupported_target_type(owner) unless managed_terrain_owner?(owner)
+
+        { outcome: 'resolved', owner: owner }
+      end
+
+      def managed_entity_matches_reference?(entity, target_reference)
+        target_reference.all? do |key, value|
+          case key
+          when 'sourceElementId'
+            entity.get_attribute('su_mcp', 'sourceElementId') == value
+          when 'persistentId'
+            persistent_id_for(entity) == value.to_s
+          when 'entityId'
+            entity.respond_to?(:entityID) && entity.entityID.to_s == value.to_s
+          else
+            false
+          end
+        end
+      end
+
       def managed_entity_for(target_reference)
         managed_entities.find do |entity|
-          target_reference.all? do |key, value|
-            case key
-            when 'sourceElementId'
-              entity.get_attribute('su_mcp', 'sourceElementId') == value
-            when 'persistentId'
-              persistent_id_for(entity) == value.to_s
-            when 'entityId'
-              entity.respond_to?(:entityID) && entity.entityID.to_s == value.to_s
-            else
-              false
-            end
-          end
+          managed_entity_matches_reference?(entity, target_reference)
         end
       end
 
@@ -220,6 +240,14 @@ module SU_MCP
         ToolResponse.refusal(
           code: 'terrain_target_not_found',
           message: 'Managed terrain target was not found.',
+          details: { targetReference: target_reference }
+        )
+      end
+
+      def terrain_target_ambiguous(target_reference)
+        ToolResponse.refusal(
+          code: 'terrain_target_ambiguous',
+          message: 'Managed terrain target reference matched multiple entities.',
           details: { targetReference: target_reference }
         )
       end
@@ -258,6 +286,7 @@ module SU_MCP
         TerrainOutputPlan.dirty_window(
           state: context.fetch(:edit_result).fetch(:state),
           terrain_state_summary: saved.fetch(:summary),
+          previous_terrain_state_summary: context.fetch(:loaded).fetch(:summary),
           window: changed_region_window(context.fetch(:edit_result).fetch(:diagnostics))
         )
       end

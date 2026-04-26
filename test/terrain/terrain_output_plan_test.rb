@@ -3,8 +3,10 @@
 require_relative '../test_helper'
 require_relative '../../src/su_mcp/terrain/heightmap_state'
 require_relative '../../src/su_mcp/terrain/sample_window'
+require_relative '../../src/su_mcp/terrain/terrain_output_cell_window'
 require_relative '../../src/su_mcp/terrain/terrain_output_plan'
 
+# rubocop:disable Metrics/MethodLength
 class TerrainOutputPlanTest < Minitest::Test
   BASIS = {
     'xAxis' => [1.0, 0.0, 0.0],
@@ -22,6 +24,13 @@ class TerrainOutputPlanTest < Minitest::Test
     assert_equal(:full_grid, plan.intent)
     assert_equal(:full_grid, plan.execution_strategy)
     assert_equal(SU_MCP::Terrain::SampleWindow.full_grid(state), plan.window)
+    assert_equal(
+      SU_MCP::Terrain::TerrainOutputCellWindow.from_sample_window(
+        window: SU_MCP::Terrain::SampleWindow.full_grid(state),
+        state: state
+      ),
+      plan.cell_window
+    )
     assert_equal(
       {
         derivedMesh: {
@@ -52,6 +61,10 @@ class TerrainOutputPlanTest < Minitest::Test
     assert_equal(:dirty_window, plan.intent)
     assert_equal(:full_grid, plan.execution_strategy)
     assert_equal(window, plan.window)
+    assert_equal(
+      SU_MCP::Terrain::TerrainOutputCellWindow.from_sample_window(window: window, state: state),
+      plan.cell_window
+    )
     assert_equal(expected_summary('digest-2'), plan.to_summary)
     refute_includes(JSON.generate(plan.to_summary), 'dirtyWindow')
     refute_includes(JSON.generate(plan.to_summary), 'sampleWindow')
@@ -94,3 +107,4 @@ class TerrainOutputPlanTest < Minitest::Test
     )
   end
 end
+# rubocop:enable Metrics/MethodLength

@@ -84,7 +84,8 @@ class TerrainContractStabilityTest < Minitest::Test
 
     %w[
       validationOnly bulk candidate strategy sampleWindow outputPlan dirtyWindow
-      outputRegions chunks tiles faceId vertexId
+      outputRegions chunks tiles faceId vertexId outputSchemaVersion
+      terrainStateRevision gridCellColumn gridCellRow gridTriangleIndex
     ].each { |term| refute_includes(serialized, term) }
     refute_includes(serialized_output, 'regeneration')
   end

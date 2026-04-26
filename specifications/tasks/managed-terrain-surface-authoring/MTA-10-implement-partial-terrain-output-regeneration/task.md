@@ -1,27 +1,28 @@
 # Task: MTA-10 Implement Partial Terrain Output Regeneration
 **Task ID**: `MTA-10`
 **Title**: `Implement Partial Terrain Output Regeneration`
-**Status**: `draft`
+**Status**: `completed`
 **Priority**: `P1`
 **Date**: `2026-04-26`
 
 ## Linked HLD
 
-- [Managed Terrain Surface Authoring](../../../hlds/hld-managed-terrain-surface-authoring.md)
+- [Managed Terrain Surface Authoring](specifications/hlds/hld-managed-terrain-surface-authoring.md)
 
 ## Problem Statement
 
 After bulk full-grid output and region-aware planning are in place, managed terrain can know which sample windows changed, but production output still regenerates the complete derived mesh. That is simple and safe, but it can remain expensive for repeated localized edits on larger terrain. Partial output regeneration should update only affected output regions when the output state is safe enough to do so.
 
-This task implements partial terrain output regeneration as a bounded output-layer capability. It must prove mesh-region ownership, seams, derived markers, normals, cleanup, undo, and save/reopen behavior before partial output can become production behavior.
+This task implements partial terrain output regeneration as a bounded output-layer capability for the current managed terrain state model. It must prove mesh-region ownership, seams, derived markers, normals, cleanup, undo, and save/reopen behavior before partial output can become production behavior. Durable localized-detail terrain representation work remains outside this task.
 
 ## Goals
 
 - regenerate only affected derived terrain output regions when partial regeneration is safe
 - define output-region ownership and cleanup behavior for partial replacement
-- preserve adjacent terrain coherence, derived markers, positive-Z normals, and digest linkage
+- preserve adjacent terrain coherence, derived markers, positive-Z normals, and output summary digest linkage
 - fall back or refuse clearly when partial output cannot be trusted
 - validate partial output behavior in live SketchUp, including undo and save/reopen where applicable
+- keep the task scoped to local output regeneration rather than broad localized-detail representation
 
 ## Acceptance Criteria
 
@@ -55,7 +56,8 @@ Scenario: hosted validation proves output coherence
 
 ## Non-Goals
 
-- introducing persisted terrain representation v2 unless partial output proves a minimal durable metadata dependency
+- implementing durable localized-detail terrain representation v2
+- adding broad terrain storage migration or representation-unit dispatch
 - adding new public terrain edit modes
 - changing terrain source state from persisted heightmap-derived state to generated SketchUp mesh
 - implementing broad mesh repair or unrestricted TIN surgery
@@ -70,27 +72,27 @@ Scenario: hosted validation proves output coherence
 ## Technical Constraints
 
 - SketchUp entity mutation remains isolated to terrain output adapter/generator boundaries
-- partial output must preserve derived marker, normal, digest, cleanup, and ownership invariants
+- partial output must preserve derived marker, normal, output summary digest, cleanup, and ownership invariants
 - fallback or refusal behavior must be explicit when seam coherence or undo atomicity is not proven
-- any need for durable output-region metadata must be surfaced as a planned storage/schema dependency rather than hidden inside this task
+- any minimal output-region bookkeeping must be justified by partial-output safety and must not become broad localized-detail representation work
 - hosted SketchUp validation is mandatory before partial output is treated as production-ready
 
 ## Dependencies
 
 - `MTA-08`
 - `MTA-09`
-- [Managed Terrain Surface Authoring HLD](../../../hlds/hld-managed-terrain-surface-authoring.md)
-- [PRD: Managed Terrain Surface Authoring](../../../prds/prd-managed-terrain-surface-authoring.md)
+- [Managed Terrain Surface Authoring HLD](specifications/hlds/hld-managed-terrain-surface-authoring.md)
+- [PRD: Managed Terrain Surface Authoring](specifications/prds/prd-managed-terrain-surface-authoring.md)
 
 ## Relationships
 
 - follows `MTA-09`
-- may force a minimal storage dependency from `MTA-11` if durable output-region metadata is required
-- informs later scalable terrain output and validation diagnostics
+- keeps durable localized-detail representation work separated for `MTA-11`
+- informs later scalable terrain output, localized representation, and validation diagnostics
 
 ## Related Technical Plan
 
-- none yet
+- [Technical plan](./plan.md)
 
 ## Success Metrics
 
@@ -98,3 +100,4 @@ Scenario: hosted validation proves output coherence
 - live SketchUp validation proves seams, markers, normals, undo, cleanup, and responsiveness
 - unsafe partial-output states fall back or refuse clearly
 - no generated face or vertex identity becomes durable terrain source state
+- durable localized-detail representation remains outside the MTA-10 implementation scope

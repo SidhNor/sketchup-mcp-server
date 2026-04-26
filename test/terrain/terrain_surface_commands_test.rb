@@ -115,6 +115,36 @@ class TerrainSurfaceCommandsTest < Minitest::Test # rubocop:disable Metrics/Clas
     )
   end
 
+  def test_edit_mode_resolves_top_level_managed_terrain_without_recursive_target_resolver
+    model = build_semantic_model
+    owner = managed_terrain_owner(model)
+    repository = EditRepository.new(state)
+    commands = build_edit_commands(
+      model: model,
+      repository: repository,
+      target_resolver: ExplodingTargetResolver.new
+    )
+
+    result = commands.edit_terrain_surface(edit_request)
+
+    assert_equal('edited', result.fetch(:outcome))
+    assert_equal(owner, repository.loaded_owner)
+  end
+
+  def test_edit_mode_reports_ambiguous_top_level_managed_terrain_reference
+    model = build_semantic_model
+    2.times { managed_terrain_owner(model) }
+    commands = build_edit_commands(
+      model: model,
+      target_resolver: ExplodingTargetResolver.new
+    )
+
+    result = commands.edit_terrain_surface(edit_request)
+
+    assert_equal('refused', result.fetch(:outcome))
+    assert_equal('terrain_target_ambiguous', result.dig(:refusal, :code))
+  end
+
   def test_target_height_edit_passes_dirty_window_output_plan_from_changed_region
     model = build_semantic_model
     managed_terrain_owner(model)
@@ -260,6 +290,11 @@ class TerrainSurfaceCommandsTest < Minitest::Test # rubocop:disable Metrics/Clas
     assert_equal(:dirty_window, plan.intent)
     assert_equal(:full_grid, plan.execution_strategy)
     assert_equal(expected_changed_region_window, plan.window)
+    assert_equal([0, 0, 0, 0], bounds_for(plan.cell_window))
+  end
+
+  def bounds_for(window)
+    [window.min_column, window.min_row, window.max_column, window.max_row]
   end
 
   def expected_changed_region_window
@@ -599,6 +634,12 @@ class TerrainSurfaceCommandsTest < Minitest::Test # rubocop:disable Metrics/Clas
   class RecordingTargetResolver
     def resolve(_target)
       { outcome: 'resolved', target: { sourceElementId: 'terrain-main' } }
+    end
+  end
+
+  class ExplodingTargetResolver
+    def resolve(_target)
+      raise 'recursive resolver should not be used'
     end
   end
 
