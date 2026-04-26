@@ -2,6 +2,19 @@
 
 <!-- version list -->
 
+## v0.22.0 (2026-04-26)
+
+### Documentation
+
+- **MTA-07**: Plan terrain improvements
+  ([`f842516`](https://github.com/SidhNor/sketchup-mcp-server/commit/f8425162473ae424d7cb4eb62708286ec51790c5))
+
+### Features
+
+- **MTA-04**: Terrain editing for elevation
+  ([`0f3ee14`](https://github.com/SidhNor/sketchup-mcp-server/commit/0f3ee1453acdbe92f9d399be6fd6ad2cc931e7fc))
+
+
 ## v0.21.0 (2026-04-25)
 
 ### Documentation
