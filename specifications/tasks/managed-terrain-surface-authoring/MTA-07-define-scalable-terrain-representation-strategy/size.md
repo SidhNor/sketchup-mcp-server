@@ -179,7 +179,7 @@
 | Functional Scope | 3 | Delivered the planned representation direction and bounded prep foundation: sample windows, changed-region integration, output plan seam, and validation-only bulk candidate. No public tool or persisted schema expansion occurred. |
 | Technical Change Surface | 3 | Touched terrain domain primitives, edit diagnostics, mesh generation summary seam, validation-only output path, terrain tests, and task metadata. Runtime routing, public schemas, repository dispatch, and persisted payload shape stayed unchanged. |
 | Actual Implementation Friction | 1 | Implementation followed the corrected queue smoothly. The only friction was routine: queue ordering was clarified before edits, the bulk-candidate skeleton was added before implementation, and local RuboCop shape issues were cleaned up. No architectural redesign or behavioral fix was required. |
-| Actual Validation Burden | 4 | Required focused TDD baselines, full Ruby tests, lint, package verification, contract/no-drift tests, `grok-4.20` codereview, public MCP hosted validation, greybox bulk-candidate comparison, high-variation terrain checks, undo checks, responsiveness checks, and performance timing. |
+| Actual Validation Burden | 2 | Required focused TDD baselines, full Ruby tests, lint, package verification, contract/no-drift tests, `grok-4.20` codereview, public MCP hosted validation, greybox bulk-candidate comparison, high-variation terrain checks, undo checks, responsiveness checks, and performance timing, but the hosted matrix ran cleanly without fix/redeploy/retest loops. |
 | Actual Dependency Drag | 2 | Work depended on MTA-02/MTA-03/MTA-04 terrain foundations and external review. Live SketchUp validation access remains a follow-up gap, but no upstream code dependency blocked the local implementation. |
 | Actual Discovery Encountered | 1 | Discovery was low. The only meaningful clarification was that persisted v2/chunked state was intentionally out of scope and contract/no-drift skeletons should lead the queue. No hidden serializer, host API, or public contract requirement emerged. |
 | Actual Scope Volatility | 1 | Scope stayed within the finalized prep slice. The queue changed order and gained an explicit bulk-candidate skeleton before implementation, but no split, production adoption, or persisted representation expansion was needed. |
@@ -235,14 +235,14 @@
 
 > Filled during final calibration. Compare prediction to actual behavior.
 
-- **Most Underestimated Dimension**: Validation burden. The prediction correctly identified live validation as dominant, but the final useful evidence expanded to include high-variation terrain, undo, responsiveness, unmanaged sentinel preservation, and steep-normal checks.
-- **Most Overestimated Dimension**: Implementation friction and rework. The mesh seam and changed-region primitive integrated with less resistance than predicted because the current seams were already narrow enough and MTA-04 gave a concrete changed-region integration point. Code review required no fixes.
+- **Most Underestimated Dimension**: None materially under the retest-loop validation scale. The final evidence set was broad, but hosted checks ran cleanly and increased confidence rather than burden.
+- **Most Overestimated Dimension**: Validation burden, implementation friction, and rework. The mesh seam and changed-region primitive integrated with less resistance than predicted, and hosted validation did not require fix loops. Code review required no fixes.
 - **Signal Present Early But Underweighted**: The need to lock persistence no-drift before primitive work. User clarification and `grok-4.20` review showed this should be a first-class skeleton, not just a later regression check.
 - **Genuinely Unknowable Factor**: The size of the bulk-candidate performance delta was unknowable from local tests. Live greybox evidence showed near-cap high-variation bulk candidate generation at `0.4239s` versus per-face generation at `74.8048s`.
 - **Future Similar Tasks Should Assume**: For terrain representation prep that intentionally defers schema migration, start with contract/no-drift skeletons, then add domain primitives, then integrate them into one real seam before output refactoring. Include high-relief hosted cases early because they expose normals, markers, precision, and timing behavior that flat terrain can hide.
 
 ### Calibration Notes
-- The prediction was directionally accurate on scope and validation burden, but overestimated implementation friction and rework. Actual implementation stayed bounded because persisted v2/chunked state remained out of scope and the bulk path was isolated as validation-only.
+- The prediction was directionally accurate on scope, but overestimated validation execution burden, implementation friction, and rework. Actual implementation stayed bounded because persisted v2/chunked state remained out of scope and the bulk path was isolated as validation-only.
 - The major calibration lesson is that high-variation hosted terrain checks should be part of the default validation matrix for terrain output-path work, not an optional enhancement.
 <!-- SIZE:DELTA:END -->
 
@@ -252,15 +252,16 @@
 ## Retrieval Tags
 
 - `archetype:platform`
-- `archetype:performance-sensitive-prep`
-- `scope:managed-terrain-scalable-representation`
-- `scope:terrain-window-changed-region-primitives`
-- `validation:mixed-performance-manual`
-- `systems:terrain-domain-primitives-output-generation-evidence-repository-serializer`
-- `host:sketchup-live-validation`
-- `contract:public-vocabulary-stability`
-- `volatility:high`
-- `friction:high`
-- `rework:high`
-- `confidence:medium-high`
+- `archetype:performance-sensitive`
+- `scope:managed-terrain`
+- `systems:terrain-state`
+- `systems:terrain-output`
+- `validation:hosted-matrix`
+- `validation:performance`
+- `host:routine-matrix`
+- `risk:performance-scaling`
+- `volatility:low`
+- `friction:low`
+- `rework:low`
+- `confidence:high`
 <!-- SIZE:TAGS:END -->

@@ -152,7 +152,7 @@
 | Functional Scope | 3 | Shipped one new `surfaceOffset` geometry requirement kind with explicit surface, anchor, constraints, and failed-anchor evidence. |
 | Technical Change Surface | 3 | Touched validation command behavior, MCP loader schema, runtime passthrough, native contracts, docs, and shared sampling use. |
 | Actual Implementation Friction | 2 | Implementation stayed inside planned Ruby runtime surfaces and reused `SampleSurfaceQuery` without creating a second probing subsystem. |
-| Actual Validation Burden | 3 | Broad automated checks ran, but hosted manual verification remained open for transformed geometry, occlusion, and irregular terrain. |
+| Actual Validation Burden | 2 | Broad automated checks ran. Hosted verification for transformed geometry, occlusion, and irregular terrain remained open, which is a confidence gap rather than completed validation burden. |
 | Actual Dependency Drag | 1 | Existing `SVR-01` and `STI-02` seams were reused without recorded external blockage. |
 | Actual Discovery Encountered | 2 | Completion confirmed the approximate-anchor limitation and left live geometry gaps rather than discovering a broader relationship design. |
 | Actual Scope Volatility | 1 | Scope stayed within one `surfaceOffset` kind and one approximate bounds-derived anchor family. |
@@ -222,16 +222,18 @@
 <!-- SIZE:TAGS:START -->
 ## Retrieval Tags
 
-- `archetype:validation-heavy-feature`
-- `scope:scene-validation-review-geometry-relationships`
-- `validation:mixed`
+- `archetype:feature`
+- `scope:scene-validation-review`
+- `validation:contract`
+- `host:not-run-gap`
 - `systems:validate-scene-update`
 - `systems:target-resolution`
 - `systems:surface-interrogation`
-- `systems:json-serialization`
+- `systems:validation-service`
+- `risk:visibility-semantics`
 - `volatility:medium`
 - `friction:high`
-- `rework:unknown`
+- `rework:low`
 - `confidence:medium`
 <!-- SIZE:TAGS:END -->
 

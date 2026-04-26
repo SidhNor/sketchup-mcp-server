@@ -199,12 +199,14 @@ No material drift recorded yet.
 <!-- SIZE:TAGS:START -->
 ## Retrieval Tags
 
-- `archetype:platform`
-- `scope:managed-terrain-domain`
-- `validation:standard`
-- `systems:specifications`
-- `volatility:medium`
+- `archetype:docs-specs`
+- `scope:managed-terrain`
+- `scope:docs-specs`
+- `systems:docs`
+- `validation:docs-check`
+- `host:not-needed`
+- `volatility:low`
 - `friction:low`
-- `rework:medium`
+- `rework:low`
 - `confidence:high`
 <!-- SIZE:TAGS:END -->

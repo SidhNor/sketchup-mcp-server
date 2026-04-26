@@ -213,16 +213,19 @@
 <!-- SIZE:TAGS:START -->
 ## Retrieval Tags
 
-- `archetype:validation-heavy-feature`
-- `scope:scene-validation-review-measurement`
-- `validation:mixed`
-- `systems:measure-scene`
-- `systems:terrain-profile-evidence`
-- `systems:json-serialization`
+- `archetype:feature`
+- `scope:scene-validation-review`
+- `validation:contract`
+- `validation:hosted-smoke`
+- `validation:performance`
+- `host:single-fix-loop`
+- `systems:measurement-service`
+- `systems:surface-sampling`
+- `risk:performance-scaling`
 - `volatility:medium`
 - `friction:medium`
-- `rework:unknown`
-- `confidence:medium`
+- `rework:medium`
+- `confidence:high`
 <!-- SIZE:TAGS:END -->
 
 ---

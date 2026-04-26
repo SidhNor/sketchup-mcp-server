@@ -112,12 +112,15 @@ Not filled yet.
 
 - `archetype:platform`
 - `archetype:migration`
-- `scope:durable-localized-terrain-representation`
-- `validation:migration-sensitive-regression-heavy`
-- `systems:terrain-state-serializer-repository-migration-compatibility`
-- `contract:v1-heightmap-grid-compatibility`
+- `scope:managed-terrain`
+- `validation:migration`
+- `systems:terrain-state`
+- `systems:terrain-repository`
+- `systems:serialization`
+- `contract:response-shape`
+- `risk:contract-drift`
 - `volatility:high`
 - `friction:high`
 - `rework:high`
-- `confidence:low-medium`
+- `confidence:medium`
 <!-- SIZE:TAGS:END -->

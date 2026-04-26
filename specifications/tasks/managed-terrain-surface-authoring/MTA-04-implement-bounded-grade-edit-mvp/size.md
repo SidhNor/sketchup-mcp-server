@@ -233,9 +233,14 @@ Live-host terrain output invariants were the dominant rework driver: real Sketch
 ## Retrieval Tags
 
 - `archetype:feature`
-- `scope:terrain-grade-edit`
-- `validation:mixed`
-- `systems:public-contract-runtime-command-heightmap-kernel-regeneration-evidence`
+- `scope:managed-terrain`
+- `systems:terrain-kernel`
+- `systems:terrain-output`
+- `validation:hosted-matrix`
+- `validation:performance`
+- `host:repeated-fix-loop`
+- `risk:host-api-mismatch`
+- `risk:performance-scaling`
 - `volatility:high`
 - `friction:high`
 - `rework:high`

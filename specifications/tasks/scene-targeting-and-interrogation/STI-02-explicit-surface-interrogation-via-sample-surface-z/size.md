@@ -152,7 +152,7 @@
 | Functional Scope | 3 | Shipped public `sample_surface_z` bridge contract cases, Ruby-owned explicit surface interrogation, and Python MCP registration. |
 | Technical Change Surface | 4 | Touched Ruby command/query/serializer, dispatcher, Python tool schema/bridge forwarding, shared bridge contracts, and test support. |
 | Actual Implementation Friction | 3 | Implementation required a new `SampleSurfaceQuery`, custom test overlays, transform-aware traversal, occlusion filtering, clustering, and face-plane/classify-point evaluation. |
-| Actual Validation Burden | 3 | Broad Ruby, Python, and contract coverage was added, but manual live SketchUp verification remained outstanding. |
+| Actual Validation Burden | 2 | Broad Ruby, Python, and contract coverage was added. Manual live SketchUp verification remained outstanding, which is a confidence gap rather than completed validation burden. |
 | Actual Dependency Drag | 2 | Work depended on Ruby/Python bridge contracts and prior targeting/platform seams, but no external blocker is recorded. |
 | Actual Discovery Encountered | 3 | Review/implementation replaced an unsafe bounds-center shortcut with runtime face-plane intersection plus `classify_point`, and test support had to model richer geometry. |
 | Actual Scope Volatility | 1 | Scope stayed focused on `sample_surface_z`; no bounds, topology, broad discovery, or workflow helper tools were added. |
@@ -222,14 +222,15 @@
 ## Retrieval Tags
 
 - `archetype:feature`
-- `scope:scene-targeting-interrogation-surface-sampling`
-- `validation:mixed`
+- `scope:scene-targeting-interrogation`
+- `validation:contract`
+- `host:not-run-gap`
 - `systems:sample-surface-z`
 - `systems:target-resolution`
-- `systems:sketchup-geometry`
-- `systems:json-serialization`
+- `systems:surface-sampling`
+- `risk:transform-semantics`
 - `volatility:medium`
 - `friction:high`
-- `rework:unknown`
+- `rework:medium`
 - `confidence:medium`
 <!-- SIZE:TAGS:END -->

@@ -165,7 +165,7 @@ No material drift recorded yet.
 | Functional Scope | 3 | Added one new public terrain edit mode inside `edit_terrain_surface`, with visible corridor controls, side blend, fixed-control behavior, preserve-zone behavior, and transition evidence. |
 | Technical Change Surface | 4 | Touched public schema, native runtime loader, request validation, command dispatch, two terrain kernels through shared fixed-control extraction, evidence shaping, README docs, contract fixtures, and live SketchUp verification. |
 | Actual Implementation Friction | 2 | Core implementation followed the planned `CorridorFrame` + `SampleWindow` + `CorridorTransitionEdit` split. Friction came from fixed-control extraction, finite contract alignment, and a small live-discovered endpoint tolerance fix, not from redesign. |
-| Actual Validation Burden | 4 | Validation dominated closeout: focused numerical tests, command/schema/fixture coverage, full CI/package, final Grok-4.20 review, and public MCP live SketchUp testing were all needed to prove correctness. |
+| Actual Validation Burden | 3 | Validation required focused numerical tests, command/schema/fixture coverage, full CI/package, final Grok-4.20 review, and one live-discovered endpoint bug fix with focused MCP retest. |
 | Actual Dependency Drag | 2 | MTA-04 and MTA-07 foundations were available, but live SketchUp MCP verification and user-provided retest evidence were required to finish the host-sensitive surface. |
 | Actual Discovery Encountered | 2 | The planned shape held, but live testing exposed one exact-endpoint floating-point boundary issue and clarified that production bulk-output adoption belongs to MTA-08 rather than MTA-05. |
 | Actual Scope Volatility | 1 | Scope stayed inside the planned corridor-transition mode. No persisted schema migration, new public tool, localized terrain representation, or production bulk-output adoption was added. |
@@ -221,7 +221,7 @@ No material drift recorded yet.
 ### What Was Estimated Accurately
 - **Functional Scope**: predicted `3`, actual `3`. The task added one meaningful public edit mode without expanding into a new public tool or broader sculpting workflow.
 - **Technical Change Surface**: predicted `4`, actual `4`. The public contract, validation, command dispatch, kernel math, evidence, docs, fixtures, and hosted checks all moved together.
-- **Validation Burden**: predicted `4`, actual `4`. Correctness required broad automated checks plus real SketchUp MCP verification and retesting after the live endpoint fix.
+- **Validation Burden**: predicted `4`, actual `3` under the retest-loop scale. Correctness required broad automated checks plus real SketchUp MCP verification, but live validation produced one contained endpoint fix and focused retest rather than repeated validation loops.
 - **Dependency Drag**: predicted `2`, actual `2`. Existing MTA-04/MTA-07 foundations reduced implementation drag, but live-host validation remained a real coordination dependency.
 - **Discovery**: predicted `2`, actual `2`. Edge tolerances and performance interpretation remained implementation-time findings, but no major unknown changed the approach.
 
@@ -250,7 +250,7 @@ No material drift recorded yet.
   - full derived-output regeneration
   - live numeric edge validation on adopted terrain coordinates
 - Dominant actual failure mode: live host-coordinate numeric boundary behavior after otherwise-green local tests.
-- Future estimates should keep validation burden high for terrain edit kernels even when implementation primitives are already available.
+- Future estimates should keep validation burden elevated for terrain edit kernels when live numeric edge behavior may force a fix/retest loop, while treating clean hosted matrices as routine.
 - Future estimates should avoid assuming bulk-output performance improvements are included unless the task explicitly owns production regeneration-path adoption.
 <!-- SIZE:DELTA:END -->
 
@@ -260,15 +260,15 @@ No material drift recorded yet.
 ## Retrieval Tags
 
 - `archetype:feature`
-- `scope:terrain-transition-kernel`
-- `scope:public-edit-terrain-surface-mode`
-- `contract:edit-terrain-surface`
-- `validation:regression-heavy`
-- `systems:kernel-heightmap-math-sample-window-command-loader-fixtures`
-- `dependency:mta-04-bounded-grade-edit`
-- `dependency:mta-07-sample-window`
-- `volatility:high`
-- `friction:high`
-- `rework:high`
-- `confidence:medium`
+- `scope:managed-terrain`
+- `systems:terrain-kernel`
+- `systems:terrain-output`
+- `validation:hosted-matrix`
+- `validation:undo`
+- `host:single-fix-loop`
+- `risk:host-api-mismatch`
+- `volatility:low`
+- `friction:medium`
+- `rework:medium`
+- `confidence:high`
 <!-- SIZE:TAGS:END -->

@@ -171,7 +171,7 @@ No material drift recorded yet.
 | Functional Scope | 3 | Delivered the planned first staged-asset workflow: public curation, approved-only discovery, metadata-only staging, finite option refusals, and exemplar predicate support for later guardrails. Instantiation, replacement, locking, import, ranking, and versioning stayed out of scope. |
 | Technical Change Surface | 3 | Touched new staged-asset metadata/query/serializer/command classes, scene-query managed-object classification, runtime dispatcher/factory/loader catalog, native contract fixtures, README, task docs, and focused test support. |
 | Actual Implementation Friction | 3 | Implementation followed the planned layered route, but live SketchUp exposed a real hidden storage mismatch: Ruby hash `assetAttributes` did not survive entity-attribute persistence and broke discovery until JSON-backed storage/read normalization was added. |
-| Actual Validation Burden | 4 | Required focused TDD skeletons, full Ruby tests, lint, package verification, public schema/fixture checks, Grok-4.20 review, initial live MCP smoke, live defect diagnosis, post-fix CI, and post-fix live rerun for curation/list/filter/side-effect behavior. |
+| Actual Validation Burden | 3 | Required focused TDD skeletons, full Ruby tests, lint, package verification, public schema/fixture checks, Grok-4.20 review, and one live MCP smoke blocker followed by a storage fix, post-fix CI, and live rerun for curation/list/filter/side-effect behavior. |
 | Actual Dependency Drag | 2 | Work depended on existing target resolution, model traversal, serializer, runtime catalog, response envelopes, and external live SketchUp verification, but no upstream code dependency blocked completion. |
 | Actual Discovery Encountered | 3 | The main discovery was host-specific attribute persistence: local doubles accepted hash attributes, while live SketchUp did not. Component-instance verification and simplified user-led smoke guidance also refined the final validation posture. |
 | Actual Scope Volatility | 1 | Scope stayed within SAR-01. The live fix changed storage representation for asset attributes but did not add tags/layers, physical staging, unapproved listing, locking, instantiation, or guardrail enforcement. |
@@ -240,7 +240,7 @@ No material drift recorded yet.
 
 ### Calibration Notes
 
-- Prediction was accurate on functional scope, technical surface, dependency drag, and high validation burden.
+- Prediction was accurate on functional scope, technical surface, dependency drag, and elevated validation burden; actual validation lands at `3` under the retest-loop scale because there was one contained live blocker and rerun rather than repeated loops.
 - Actual implementation friction and rework were driven by host persistence, not target resolution or component definition semantics.
 - The final confidence is higher than the challenged estimate because the live blocker was reproduced, fixed, covered by regression tests, and validated through post-fix live smoke.
 <!-- SIZE:DELTA:END -->
@@ -252,14 +252,14 @@ No material drift recorded yet.
 
 - `archetype:feature`
 - `scope:staged-asset-reuse`
-- `scope:asset-curation-discovery`
-- `validation:mixed`
-- `systems:metadata-policy`
-- `systems:mcp-tool-registration`
-- `systems:scene-query-serialization`
+- `systems:asset-metadata`
+- `systems:asset-query`
+- `validation:hosted-smoke`
+- `host:single-fix-loop`
+- `risk:metadata-storage`
 - `systems:target-resolution`
-- `volatility:high`
+- `volatility:low`
 - `friction:medium`
 - `rework:medium`
-- `confidence:low`
+- `confidence:high`
 <!-- SIZE:TAGS:END -->

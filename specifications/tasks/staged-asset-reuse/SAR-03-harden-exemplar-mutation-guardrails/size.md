@@ -121,12 +121,11 @@ Not filled yet.
 
 - `archetype:feature`
 - `scope:staged-asset-reuse`
-- `scope:mutation-guardrails`
-- `validation:regression-heavy`
-- `systems:editing-commands`
-- `systems:metadata-mutation`
-- `systems:tool-response`
+- `validation:regression`
 - `systems:asset-protection`
+- `systems:scene-mutation`
+- `systems:tool-response`
+- `risk:partial-state`
 - `volatility:medium`
 - `friction:medium`
 - `rework:medium`

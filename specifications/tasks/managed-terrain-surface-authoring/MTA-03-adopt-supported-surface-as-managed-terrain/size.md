@@ -241,10 +241,14 @@ Live-host geometric sampling semantics were the dominant source of rework: publi
 ## Retrieval Tags
 
 - `archetype:feature`
-- `scope:terrain-adoption`
-- `validation:mixed`
-- `systems:detection-heightmap-repository-geometry-command`
-- `systems:public-mcp-mutation-terrain-state-sampling-units`
+- `scope:managed-terrain`
+- `systems:surface-sampling`
+- `systems:terrain-output`
+- `validation:hosted-matrix`
+- `validation:performance`
+- `host:repeated-fix-loop`
+- `risk:unit-conversion`
+- `risk:performance-scaling`
 - `volatility:medium`
 - `friction:high`
 - `rework:high`

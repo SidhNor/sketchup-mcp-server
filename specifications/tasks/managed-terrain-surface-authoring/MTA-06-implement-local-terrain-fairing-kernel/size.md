@@ -118,9 +118,10 @@ Not filled yet.
 ## Retrieval Tags
 
 - `archetype:feature`
-- `scope:terrain-fairing-kernel`
-- `validation:regression-heavy`
-- `systems:kernel-heightmap-math-grade-edit-fixtures`
+- `scope:managed-terrain`
+- `validation:regression`
+- `systems:terrain-kernel`
+- `risk:performance-scaling`
 - `volatility:high`
 - `friction:high`
 - `rework:high`

@@ -230,13 +230,16 @@
 ## Retrieval Tags
 
 - `archetype:feature`
-- `scope:scene-targeting-interrogation-surface-sampling`
-- `validation:mixed`
+- `scope:scene-targeting-interrogation`
+- `validation:contract`
+- `validation:hosted-matrix`
+- `host:repeated-fix-loop`
 - `systems:sample-surface-z`
 - `systems:surface-interrogation`
-- `systems:json-serialization`
+- `systems:surface-sampling`
+- `risk:visibility-semantics`
 - `volatility:medium`
 - `friction:high`
-- `rework:unknown`
-- `confidence:medium`
+- `rework:medium`
+- `confidence:high`
 <!-- SIZE:TAGS:END -->

@@ -162,12 +162,12 @@ No material drift recorded yet.
 | Functional Scope | 2 | Delivered the planned internal terrain state and storage foundation without adoption, mesh output, public tools, or edit behavior. |
 | Technical Change Surface | 3 | Added a new terrain runtime subtree, serializer, storage adapter, repository seam, and terrain test suite. No runtime dispatcher, loader, packaging logic, or public contract code changed. |
 | Actual Implementation Friction | 2 | Core implementation was straightforward after TDD skeletons; friction was limited to serializer refusal short-circuiting, constructor shape, and RuboCop-driven reshaping. |
-| Actual Validation Burden | 4 | Required focused terrain tests, full Ruby tests, lint, package verification, PAL codereview, review follow-up, and an explicit hosted smoke marker for live persistence. |
+| Actual Validation Burden | 3 | Required focused terrain tests, full Ruby tests, lint, package verification, PAL codereview, review follow-up, and one hosted persistence fix/retest loop for stable transform signatures plus save/reopen proof. |
 | Actual Dependency Drag | 1 | MTA-01 and planning artifacts were sufficient; no upstream code blocker or cross-team coordination appeared during implementation. |
 | Actual Discovery Encountered | 2 | Implementation confirmed the planned shape; discovery was limited to test harness order-independence, default migration coverage, and save-summary parsing overhead. |
 | Actual Scope Volatility | 1 | Scope stayed internal and did not expand into public MCP tools, adoption, chunking, compression, sidecars, or mesh regeneration. |
 | Actual Rework | 2 | PAL review produced targeted follow-up changes, but no architectural rewrite or contract change was needed. |
-| Final Confidence in Completeness | 3 | Automated validation and review are strong; confidence remains below 4 until live SketchUp save/reopen persistence is reviewed. |
+| Final Confidence in Completeness | 4 | Automated validation, review, hosted in-session persistence, and save/reopen verification all passed after the stable transform-signature fix. |
 <!-- SIZE:ACTUAL:END -->
 
 ---
@@ -218,11 +218,16 @@ No material drift recorded yet.
 ## Retrieval Tags
 
 - `archetype:platform`
-- `scope:terrain-state-storage`
-- `validation:regression-heavy`
-- `systems:domain-repository-adapter-serialization`
+- `scope:managed-terrain`
+- `systems:terrain-state`
+- `systems:terrain-storage`
+- `systems:terrain-repository`
+- `validation:persistence`
+- `host:single-fix-loop`
+- `host:save-reopen`
+- `risk:host-persistence-mismatch`
 - `volatility:medium`
 - `friction:medium`
 - `rework:medium`
-- `confidence:medium`
+- `confidence:high`
 <!-- SIZE:TAGS:END -->

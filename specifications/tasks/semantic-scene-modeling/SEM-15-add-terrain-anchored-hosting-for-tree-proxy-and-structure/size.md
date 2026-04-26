@@ -158,7 +158,7 @@
 | Functional Scope | 2 | Delivered one existing hosting mode for two existing families plus hosted replacement parity. |
 | Technical Change Surface | 3 | Touched resolver support, two builders, command matrix/replace context, loader guidance, README, and tests. |
 | Actual Implementation Friction | 2 | Existing sampler/refusal patterns fit well; main friction was tightening no-partial-wrapper ordering and lint shape. |
-| Actual Validation Burden | 3 | Focused unit/command/native/lint checks and live SketchUp verification passed. |
+| Actual Validation Burden | 2 | Focused unit/command/native/lint checks and live SketchUp verification passed cleanly without blocker or fix/redeploy/retest loops. |
 | Actual Dependency Drag | 1 | No upstream dependency blocked implementation; live SketchUp evidence was supplied at closeout. |
 | Actual Discovery Encountered | 2 | Grok review identified hosted replacement and no-wrapper-created assertions before code changes. |
 | Actual Scope Volatility | 1 | Scope stayed bounded to tree_proxy and structure; no additional terrain families were added. |
@@ -237,13 +237,14 @@
 
 - `archetype:feature`
 - `scope:semantic-scene-modeling`
-- `validation:mixed`
-- `systems:create-site-element`
+- `validation:contract`
+- `validation:hosted-matrix`
+- `host:routine-matrix`
 - `systems:semantic-hosting`
-- `systems:tree-proxy-builder`
-- `systems:structure-builder`
+- `systems:semantic-builders`
+- `systems:surface-sampling`
 - `volatility:medium`
 - `friction:medium`
-- `rework:unknown`
-- `confidence:high-pending-live`
+- `rework:low`
+- `confidence:high`
 <!-- SIZE:TAGS:END -->

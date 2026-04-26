@@ -113,12 +113,15 @@ Not filled yet.
 
 - `archetype:platform`
 - `archetype:performance-sensitive`
-- `scope:partial-terrain-output-regeneration`
-- `validation:mixed-performance-manual`
-- `systems:terrain-output-ownership-mesh-seams-derived-markers-undo`
-- `host:sketchup-live-validation`
+- `scope:managed-terrain`
+- `validation:hosted-matrix`
+- `validation:performance`
+- `systems:terrain-output`
+- `systems:terrain-mesh-generator`
+- `host:routine-matrix`
+- `risk:performance-scaling`
 - `volatility:high`
 - `friction:high`
 - `rework:high`
-- `confidence:low-medium`
+- `confidence:medium`
 <!-- SIZE:TAGS:END -->

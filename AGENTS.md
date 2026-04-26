@@ -56,6 +56,8 @@ These are architectural boundaries, not a frozen directory layout. Move code tow
 
 **IMPORTANT** If you are touching any part of the code, ensure you read `specifications/guidelines/ryby-coding-guidelines.md`
 
+For task estimation identity fields and retrieval tags, use `specifications/guidelines/task-estimation-taxonomy.md`.
+
 When making changes:
 
 1. Keep SketchUp-specific and behavior-defining logic in the main runtime path rather than pushing it into build, packaging, or release helpers.

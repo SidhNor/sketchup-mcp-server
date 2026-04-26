@@ -121,13 +121,13 @@ Not filled yet.
 
 - `archetype:feature`
 - `scope:staged-asset-reuse`
-- `scope:asset-replacement`
-- `validation:mixed`
-- `systems:mcp-tool-registration`
+- `validation:hosted-smoke`
 - `systems:target-resolution`
 - `systems:managed-object-metadata`
-- `systems:lineage-metadata`
+- `systems:asset-metadata`
 - `systems:scene-mutation`
+- `host:routine-smoke`
+- `risk:partial-state`
 - `volatility:high`
 - `friction:medium`
 - `rework:medium`

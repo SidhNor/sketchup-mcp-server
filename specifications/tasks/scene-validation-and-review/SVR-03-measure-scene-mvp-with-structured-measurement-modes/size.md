@@ -151,7 +151,7 @@
 | Functional Scope | 3 | Shipped `measure_scene` as a first-class read-only MCP tool with five supported mode/kind combinations. |
 | Technical Change Surface | 3 | Summary records schema fields, runtime validation, command validation, target-reference resolution, reusable measurement service behavior, docs, guide, and native fixtures. |
 | Actual Implementation Friction | 2 | Implementation largely followed the planned surfaces; live distance testing found and fixed a SketchUp vector API mismatch. |
-| Actual Validation Burden | 4 | Validation covered schema, dispatcher/factory, command behavior, measurement service, native contracts, live SketchUp modes, resolver paths, evidence, and `tools/list`. |
+| Actual Validation Burden | 3 | Validation covered schema, dispatcher/factory, command behavior, measurement service, native contracts, live SketchUp modes, resolver paths, evidence, and `tools/list`; live distance testing found one contained SketchUp vector API mismatch that required a fix and rerun. |
 | Actual Dependency Drag | 1 | Prior runtime and resolver seams were reused; no external blocker or coordination drag is recorded. |
 | Actual Discovery Encountered | 2 | Live testing exposed the absent vector `magnitude` API and accepted sub-micro-square-meter rounding behavior. |
 | Actual Scope Volatility | 1 | The shipped feature stayed within the planned five generic modes and deferred terrain/clearance behavior. |
@@ -206,14 +206,14 @@
 
 > Filled during final calibration. Compare prediction to actual behavior.
 
-- **Most Underestimated Dimension**: None materially. The predicted high validation burden matched the completed evidence.
-- **Most Overestimated Dimension**: Rework risk. The plan correctly identified risky public-contract and geometry areas, but recorded rework was limited to the live SketchUp vector API mismatch.
+- **Most Underestimated Dimension**: None materially. The predicted validation concern was directionally right because live SketchUp exposed a vector API mismatch.
+- **Most Overestimated Dimension**: Validation burden and rework risk. Under the retest-loop scale, actual validation burden is `3` because the live issue required one contained fix/rerun rather than repeated loops. Recorded rework was limited to that vector API mismatch.
 - **Signal Present Early But Underweighted**: Host-sensitive SketchUp API behavior was recognized in the plan, and the live vector API mismatch confirms it deserved explicit hosted smoke.
 - **Genuinely Unknowable Factor**: The missing live SketchUp vector `magnitude` API behavior was only proven during live verification.
 - **Future Similar Tasks Should Assume**: New public MCP tools with geometry semantics need broad contract and hosted validation even when the functional mode set is bounded.
 
 ### Calibration Notes
-- Prediction and challenge were directionally accurate: scope and technical surface landed at 3, validation landed at 4, while implementation friction and rework landed lower than their risk scores.
+- Prediction and challenge were directionally accurate: scope and technical surface landed at 3, while validation landed at 3 under the retest-loop scale and implementation friction/rework landed lower than their risk scores.
 <!-- SIZE:DELTA:END -->
 
 ---
@@ -221,17 +221,18 @@
 <!-- SIZE:TAGS:START -->
 ## Retrieval Tags
 
-- `archetype:validation-heavy-feature`
-- `scope:scene-validation-review-measurement`
-- `validation:regression-heavy`
-- `systems:mcp-tool-registration`
+- `archetype:feature`
+- `scope:scene-validation-review`
+- `validation:contract`
+- `validation:hosted-matrix`
+- `host:single-fix-loop`
 - `systems:measurement-service`
 - `systems:target-resolution`
-- `systems:json-serialization`
+- `risk:host-api-mismatch`
 - `volatility:medium`
-- `friction:high`
-- `rework:unknown`
-- `confidence:medium`
+- `friction:medium`
+- `rework:low`
+- `confidence:high`
 <!-- SIZE:TAGS:END -->
 
 ---

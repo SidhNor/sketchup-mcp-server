@@ -168,7 +168,7 @@ No material drift recorded yet.
 | Functional Scope | 2 | Production create/edit behavior changed visibly through faster full-grid terrain output, but no public request fields, edit modes, persisted schema, or response vocabulary were added. |
 | Technical Change Surface | 1 | Production code changes were very small and localized to `TerrainMeshGenerator` plus removal of one output-strategy merge in `TerrainSurfaceCommands`; the rest was tests and task metadata. |
 | Actual Implementation Friction | 1 | The planned output seam already existed, and the core implementation was a direct switch to the existing builder-backed emitter. Friction was limited to review-driven no-leak assertions and distinguishing permitted builder-unavailable compatibility from forbidden post-failure fallback. |
-| Actual Validation Burden | 4 | Validation dominated the task: focused terrain tests, full Ruby suite, lint, package verification, `grok-4.20` review, loaded-code checks, public MCP create/edit calls, hosted geometry inspection, undo, responsiveness, unmanaged-scene safety, and unsupported-child refusal checks. |
+| Actual Validation Burden | 2 | Validation was broad but routine under the retest-loop scale: focused terrain tests, full Ruby suite, lint, package verification, `grok-4.20` review, loaded-code checks, public MCP create/edit calls, hosted geometry inspection, undo, responsiveness, unmanaged-scene safety, and unsupported-child refusal checks all passed cleanly on the first trusted hosted pass. |
 | Actual Dependency Drag | 2 | Local work was unblocked, but final completion depended on deploying the updated extension into SketchUp before live MCP validation could be trusted. |
 | Actual Discovery Encountered | 1 | Minor discoveries: empty SketchUp sentinel groups disappear, and existing `operation.regeneration: "full"` is public evidence while `output.regeneration.strategy` was not acceptable output vocabulary. |
 | Actual Scope Volatility | 0 | Scope stayed exactly within full-grid production adoption; no schema v2, partial regeneration, output containers, public options, or command branching were pulled in. |
@@ -211,7 +211,7 @@ No material drift recorded yet.
 
 ### What Was Estimated Well
 
-- Validation Burden Risk `4` was correct. The live host matrix, response-shape checks, marker/normal inspection, undo, refusal, package verification, and review follow-up were the dominant closeout work.
+- Validation evidence was broad, but Actual Validation Burden is `2` under the retest-loop scale because the trusted hosted pass was clean and did not require fix/redeploy/retest loops.
 - Scope Volatility Risk `1` was conservative; actual volatility was even lower. The task did not expand into schema, partial regeneration, command routing, or output ownership changes.
 - Confidence was correctly capped before live validation; final confidence increased only after hosted checks passed against the deployed extension.
 
@@ -232,7 +232,7 @@ No material drift recorded yet.
 ### Future Estimation Lessons
 
 - Similar "promote validated path into production" tasks should be treated as micro implementation tasks when the seam already exists and the public contract is stable.
-- Keep validation burden separate from implementation friction. A task can be too small as a standalone implementation slice while still requiring heavyweight hosted proof.
+- Keep validation breadth separate from validation burden. A task can collect heavyweight hosted proof while still being low-burden when the matrix runs cleanly.
 - Consider bundling future one-seam production promotions with adjacent cleanup or follow-on work when stakeholder appetite favors larger implementation batches, as long as hosted validation remains explicit and not diluted.
 - For live SketchUp checks, use solid sentinel geometry rather than empty groups, and always confirm the deployed extension contains the expected code before collecting acceptance evidence.
 
@@ -240,7 +240,8 @@ No material drift recorded yet.
 
 - `analog:validated-candidate-promotion`
 - `implementation:micro`
-- `validation:hosted-heavy`
+- `validation:hosted-matrix`
+- `host:routine-matrix`
 - `surface:terrain-mesh-generator`
 - `contract:no-public-shape-change`
 - `risk:wrong-live-runtime`
@@ -254,13 +255,14 @@ No material drift recorded yet.
 
 - `archetype:platform`
 - `archetype:performance-sensitive`
-- `scope:managed-terrain-output-generation`
-- `validation:mixed-performance-manual`
-- `systems:terrain-mesh-generator-output-summary-hosted-validation`
-- `host:sketchup-live-validation`
-- `contract:public-vocabulary-stability`
-- `volatility:medium`
-- `friction:medium`
-- `rework:medium`
-- `confidence:medium`
+- `scope:managed-terrain`
+- `systems:terrain-mesh-generator`
+- `validation:hosted-matrix`
+- `validation:performance`
+- `host:routine-matrix`
+- `risk:wrong-live-runtime`
+- `volatility:low`
+- `friction:low`
+- `rework:low`
+- `confidence:high`
 <!-- SIZE:TAGS:END -->
