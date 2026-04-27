@@ -25,6 +25,7 @@ The current task order proves terrain authoring through concrete, testable incre
 - partial terrain output regeneration
 - circular local terrain regions and preserve zones
 - survey point constraint terrain editing
+- base/detail-preserving survey correction evaluation
 - localized survey/detail zones when v1 heightmap fidelity is insufficient
 
 ## Current Task Order
@@ -42,6 +43,7 @@ The current task order proves terrain authoring through concrete, testable incre
 11. [MTA-11 Design And Implement Localized Survey Detail Zones](MTA-11-design-and-implement-durable-localized-terrain-representation-v2/task.md)
 12. [MTA-12 Add Circular Terrain Regions And Preserve Zones](MTA-12-add-circular-terrain-regions-and-preserve-zones/task.md)
 13. [MTA-13 Implement Survey Point Constraint Terrain Edit](MTA-13-implement-survey-point-constraint-terrain-edit/task.md)
+14. [MTA-14 Evaluate Base Detail Preserving Survey Correction](MTA-14-evaluate-base-detail-preserving-survey-correction/task.md)
 
 ## Deferred Follow-Ons
 
