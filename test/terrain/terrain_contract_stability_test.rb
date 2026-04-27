@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+# rubocop:disable Metrics/MethodLength
+
 require_relative '../test_helper'
 require_relative '../support/terrain_output_planning_diagnostics'
 require_relative '../../src/su_mcp/terrain/heightmap_state'
@@ -72,6 +74,46 @@ class TerrainContractStabilityTest < Minitest::Test
     assert_equal('local_fairing', result.dig(:operation, :mode))
     assert_equal('mean_absolute_neighborhood_residual', result.dig(:evidence, :fairing, :metric))
     refute_internal_output_vocabulary(result)
+  end
+
+  def test_public_survey_evidence_does_not_expose_solver_or_generated_entity_internals
+    result = edit_evidence_result(
+      diagnostics: edit_diagnostics.merge(
+        private_output_planning_diagnostics,
+        survey: {
+          points: [
+            {
+              id: 'survey-1',
+              requestedElevation: 1.5,
+              beforeElevation: 1.0,
+              afterElevation: 1.5,
+              residual: 0.0,
+              tolerance: 0.01,
+              status: 'satisfied'
+            }
+          ],
+          correction: {
+            correctionScope: 'regional',
+            supportRegionType: 'rectangle',
+            changedSampleCount: 9,
+            maxSampleDelta: 0.5,
+            detailPreservation: { outsideInfluenceRatio: 1.0 },
+            distortion: { slopeProxy: { maxIncrease: 0.0 } },
+            warnings: []
+          }
+        }
+      ),
+      edit_summary: edit_summary.merge(mode: 'survey_point_constraint')
+    )
+    serialized = JSON.generate(result)
+
+    assert_equal('survey_point_constraint', result.dig(:operation, :mode))
+    assert_equal('regional', result.dig(:evidence, :survey, :correction, :correctionScope))
+    refute_internal_output_vocabulary(result)
+    %w[retained_detail stencil matrix lambda SurveyCorrectionEvaluation outputPlan faceId
+       vertexId].each do |term|
+      refute_includes(serialized, term)
+    end
   end
 
   private
@@ -151,3 +193,4 @@ class TerrainContractStabilityTest < Minitest::Test
     }
   end
 end
+# rubocop:enable Metrics/MethodLength

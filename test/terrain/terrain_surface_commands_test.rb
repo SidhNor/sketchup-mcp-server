@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+# rubocop:disable Metrics/AbcSize, Metrics/MethodLength
+
 require_relative '../test_helper'
 require_relative '../support/semantic_test_support'
 require_relative '../../src/su_mcp/terrain/heightmap_state'
@@ -281,6 +283,33 @@ class TerrainSurfaceCommandsTest < Minitest::Test # rubocop:disable Metrics/Clas
     assert_equal([:regenerate], mesh_generator.calls)
   end
 
+  def test_survey_point_constraint_dispatches_to_survey_editor_and_reuses_regeneration_flow
+    model = build_semantic_model
+    managed_terrain_owner(model)
+    repository = EditRepository.new(state)
+    mesh_generator = RecordingRegeneratingMeshGenerator.new
+    grade_editor = RecordingGradeEditor.new
+    survey_editor = RecordingSurveyPointConstraintEditor.new
+    commands = build_edit_commands(
+      model: model,
+      repository: repository,
+      mesh_generator: mesh_generator,
+      edit_request_validator: AcceptingSurveyEditValidator.new,
+      grade_editor: grade_editor,
+      survey_point_editor: survey_editor
+    )
+
+    result = commands.edit_terrain_surface(survey_edit_request)
+
+    assert_equal('edited', result.fetch(:outcome))
+    assert_empty(grade_editor.calls)
+    assert_equal(1, survey_editor.calls.length)
+    assert_equal('survey_point_constraint',
+                 survey_editor.calls.first.fetch(:request).dig('operation', 'mode'))
+    assert_equal(2, repository.saved_state.revision)
+    assert_equal([:regenerate], mesh_generator.calls)
+  end
+
   def test_corridor_transition_refusal_happens_before_save_or_model_operation
     model = build_semantic_model
     managed_terrain_owner(model)
@@ -321,6 +350,28 @@ class TerrainSurfaceCommandsTest < Minitest::Test # rubocop:disable Metrics/Clas
       assert_empty(mesh_generator.calls)
       assert_empty(model.operations)
     end
+  end
+
+  def test_survey_point_constraint_refusal_happens_before_save_or_model_operation
+    model = build_semantic_model
+    managed_terrain_owner(model)
+    repository = EditRepository.new(state)
+    mesh_generator = RecordingRegeneratingMeshGenerator.new
+    commands = build_edit_commands(
+      model: model,
+      repository: repository,
+      mesh_generator: mesh_generator,
+      edit_request_validator: AcceptingSurveyEditValidator.new,
+      survey_point_editor: RefusingSurveyPointConstraintEditor.new
+    )
+
+    result = commands.edit_terrain_surface(survey_edit_request)
+
+    assert_equal('refused', result.fetch(:outcome))
+    assert_equal('survey_point_outside_support_region', result.dig(:refusal, :code))
+    assert_nil(repository.saved_state)
+    assert_empty(mesh_generator.calls)
+    assert_empty(model.operations)
   end
 
   def test_edit_refusal_returns_before_opening_model_operation
@@ -397,6 +448,7 @@ class TerrainSurfaceCommandsTest < Minitest::Test # rubocop:disable Metrics/Clas
                           grade_editor: RecordingGradeEditor.new,
                           corridor_editor: RecordingCorridorEditor.new,
                           local_fairing_editor: nil,
+                          survey_point_editor: nil,
                           target_resolver: RecordingTargetResolver.new,
                           edit_evidence_builder: EditEvidenceBuilder.new)
     options = {
@@ -414,6 +466,7 @@ class TerrainSurfaceCommandsTest < Minitest::Test # rubocop:disable Metrics/Clas
       edit_evidence_builder: edit_evidence_builder
     }
     options[:local_fairing_editor] = local_fairing_editor if local_fairing_editor
+    options[:survey_point_editor] = survey_point_editor if survey_point_editor
 
     SU_MCP::Terrain::TerrainSurfaceCommands.new(**options)
   end
@@ -476,6 +529,30 @@ class TerrainSurfaceCommandsTest < Minitest::Test # rubocop:disable Metrics/Clas
           'maxX' => 1.0,
           'maxY' => 1.0
         }
+      }
+    }
+  end
+
+  def survey_edit_request
+    {
+      'targetReference' => { 'sourceElementId' => 'terrain-main' },
+      'operation' => {
+        'mode' => 'survey_point_constraint',
+        'correctionScope' => 'local'
+      },
+      'region' => {
+        'type' => 'rectangle',
+        'bounds' => {
+          'minX' => 0.0,
+          'minY' => 0.0,
+          'maxX' => 1.0,
+          'maxY' => 1.0
+        }
+      },
+      'constraints' => {
+        'surveyPoints' => [
+          { 'id' => 'survey-1', 'point' => { 'x' => 1.0, 'y' => 1.0, 'z' => 2.0 } }
+        ]
       }
     }
   end
@@ -660,6 +737,17 @@ class TerrainSurfaceCommandsTest < Minitest::Test # rubocop:disable Metrics/Clas
     end
   end
 
+  class AcceptingSurveyEditValidator
+    def validate(params)
+      {
+        outcome: 'ready',
+        operation_mode: 'survey_point_constraint',
+        region_type: 'rectangle',
+        params: params
+      }
+    end
+  end
+
   class RefusingEditValidator
     def validate(_params)
       {
@@ -744,6 +832,36 @@ class TerrainSurfaceCommandsTest < Minitest::Test # rubocop:disable Metrics/Clas
     end
   end
 
+  class RecordingSurveyPointConstraintEditor < RecordingGradeEditor
+    private
+
+    def diagnostics(request)
+      super.merge(
+        survey: {
+          points: [
+            {
+              id: 'survey-1',
+              requestedElevation: 2.0,
+              beforeElevation: 1.0,
+              afterElevation: 2.0,
+              residual: 0.0,
+              tolerance: 0.01,
+              status: 'satisfied'
+            }
+          ],
+          correction: {
+            correctionScope: request.dig('operation', 'correctionScope'),
+            supportRegionType: request.dig('region', 'type'),
+            changedSampleCount: 4,
+            maxSampleDelta: 1.0,
+            warnings: []
+          }
+        },
+        warnings: []
+      )
+    end
+  end
+
   class RefusingCorridorEditor
     def apply(...)
       {
@@ -769,6 +887,19 @@ class TerrainSurfaceCommandsTest < Minitest::Test # rubocop:disable Metrics/Clas
         refusal: {
           code: @code,
           details: { field: 'operation.mode' }
+        }
+      }
+    end
+  end
+
+  class RefusingSurveyPointConstraintEditor
+    def apply(...)
+      {
+        success: true,
+        outcome: 'refused',
+        refusal: {
+          code: 'survey_point_outside_support_region',
+          details: { field: 'constraints.surveyPoints[0]' }
         }
       }
     end
@@ -840,3 +971,4 @@ class TerrainSurfaceCommandsTest < Minitest::Test # rubocop:disable Metrics/Clas
     end
   end
 end
+# rubocop:enable Metrics/AbcSize, Metrics/MethodLength

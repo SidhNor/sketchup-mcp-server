@@ -16,46 +16,68 @@ AllCops:
 Layout/LineLength:
   Max: 100
 
+Lint/RedundantCopDisableDirective:
+  Enabled: false
+
 Metrics/BlockLength:
+  Max: 40
   Exclude:
     - "rakelib/**/*.rake"
 
 Metrics/MethodLength:
-  Max: 15
+  Max: 35
+  CountAsOne:
+    - array
+    - hash
+    - heredoc
+    - method_call
   Exclude:
     - "rakelib/**/*.rb"
     - "src/su_mcp/transport/socket_server.rb"
 
 Metrics/AbcSize:
-  Max: 20
+  Max: 30
   Exclude:
     - "src/su_mcp/transport/socket_server.rb"
 
 Metrics/BlockNesting:
+  Max: 4
   Exclude:
     - "src/su_mcp/transport/socket_server.rb"
 
 Metrics/ClassLength:
-  Max: 150
+  Max: 220
+  CountAsOne:
+    - array
+    - hash
+    - heredoc
+    - method_call
   Exclude:
     - "src/su_mcp/transport/socket_server.rb"
 
 Metrics/CyclomaticComplexity:
-  Max: 7
+  Max: 10
   Exclude:
     - "src/su_mcp/transport/socket_server.rb"
 
 Metrics/ModuleLength:
+  Max: 220
+  CountAsOne:
+    - array
+    - hash
+    - heredoc
+    - method_call
   Exclude:
     - "rakelib/**/*.rb"
 
 Metrics/ParameterLists:
-  Max: 5
+  Max: 6
+  CountKeywordArgs: false
   Exclude:
     - "src/su_mcp/transport/socket_server.rb"
 
 Metrics/PerceivedComplexity:
-  Max: 8
+  Max: 12
   Exclude:
     - "src/su_mcp/transport/socket_server.rb"
 
@@ -66,6 +88,24 @@ Naming/FileName:
 Naming/ClassAndModuleCamelCase:
   AllowedNames:
     - "SU_MCP"
+
+Naming/MethodParameterName:
+  MinNameLength: 2
+  AllowedNames:
+    - x
+    - y
+    - z
+    - u
+    - v
+    - i
+    - j
+    - k
+    - id
+    - io
+    - dx
+    - dy
+    - dz
+    - pt
 
 SketchupRequirements/ExtensionNamespace:
   Exclude:

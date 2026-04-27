@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+# rubocop:disable Metrics/AbcSize, Metrics/MethodLength
+
 require_relative '../test_helper'
 require_relative '../../src/su_mcp/terrain/edit_terrain_surface_request'
 
@@ -42,6 +44,19 @@ class EditTerrainSurfaceRequestTest < Minitest::Test # rubocop:disable Metrics/C
     assert_equal(1, result.dig(:params, 'operation', 'iterations'))
     assert_equal(0.0, result.dig(:params, 'region', 'blend', 'distance'))
     assert_equal('none', result.dig(:params, 'region', 'blend', 'falloff'))
+  end
+
+  def test_accepts_survey_point_constraint_request_with_defaults
+    result = validate_request(survey_request)
+
+    assert_equal('ready', result.fetch(:outcome))
+    assert_equal('survey_point_constraint', result.fetch(:operation_mode))
+    assert_equal('rectangle', result.fetch(:region_type))
+    assert_equal('local', result.dig(:params, 'operation', 'correctionScope'))
+    point = result.dig(:params, 'constraints', 'surveyPoints').first
+    assert_equal('survey-1', point.fetch('id'))
+    assert_equal(0.01, point.fetch('tolerance'))
+    assert_equal({ 'x' => 2.0, 'y' => 2.0, 'z' => 1.75 }, point.fetch('point'))
   end
 
   def test_accepts_circle_regions_for_local_area_modes_with_blend_defaults
@@ -103,6 +118,12 @@ class EditTerrainSurfaceRequestTest < Minitest::Test # rubocop:disable Metrics/C
     result = validate_request(local_fairing_corridor)
     assert_refusal(result, 'unsupported_option', 'region.type')
     assert_equal(%w[rectangle circle], result.dig(:refusal, :details, :allowedValues))
+
+    survey_corridor = survey_request
+    survey_corridor['region'] = corridor_request.fetch('region')
+    result = validate_request(survey_corridor)
+    assert_refusal(result, 'unsupported_option', 'region.type')
+    assert_equal(%w[rectangle circle], result.dig(:refusal, :details, :allowedValues))
   end
 
   def test_refuses_circle_region_for_corridor_transition_with_mode_specific_allowed_values
@@ -146,6 +167,22 @@ class EditTerrainSurfaceRequestTest < Minitest::Test # rubocop:disable Metrics/C
       validate_request(missing_radius),
       'missing_required_field',
       'operation.neighborhoodRadiusSamples'
+    )
+
+    missing_scope = survey_request
+    missing_scope['operation'].delete('correctionScope')
+    assert_refusal(
+      validate_request(missing_scope),
+      'missing_required_field',
+      'operation.correctionScope'
+    )
+
+    missing_points = survey_request
+    missing_points['constraints'].delete('surveyPoints')
+    assert_refusal(
+      validate_request(missing_points),
+      'missing_required_field',
+      'constraints.surveyPoints'
     )
   end
 
@@ -208,6 +245,43 @@ class EditTerrainSurfaceRequestTest < Minitest::Test # rubocop:disable Metrics/C
     assert_equal(
       SU_MCP::Terrain::EditTerrainSurfaceRequest::SUPPORTED_OPERATION_MODES,
       result.dig(:refusal, :details, :allowedValues)
+    )
+  end
+
+  def test_refuses_invalid_survey_correction_scope_with_allowed_values
+    request = survey_request
+    request['operation']['correctionScope'] = 'global'
+
+    result = validate_request(request)
+
+    assert_refusal(result, 'unsupported_option', 'operation.correctionScope')
+    assert_equal('global', result.dig(:refusal, :details, :value))
+    assert_equal(%w[local regional], result.dig(:refusal, :details, :allowedValues))
+  end
+
+  def test_refuses_invalid_survey_point_shapes
+    missing_point = survey_request
+    missing_point['constraints']['surveyPoints'] = [{ 'id' => 'bad' }]
+    assert_refusal(
+      validate_request(missing_point),
+      'invalid_edit_request',
+      'constraints.surveyPoints[0].point'
+    )
+
+    invalid_z = survey_request
+    invalid_z['constraints']['surveyPoints'][0]['point'].delete('z')
+    assert_refusal(
+      validate_request(invalid_z),
+      'invalid_edit_request',
+      'constraints.surveyPoints[0].point.z'
+    )
+
+    negative_tolerance = survey_request
+    negative_tolerance['constraints']['surveyPoints'][0]['tolerance'] = -0.01
+    assert_refusal(
+      validate_request(negative_tolerance),
+      'invalid_edit_request',
+      'constraints.surveyPoints[0].tolerance'
     )
   end
 
@@ -375,4 +449,24 @@ class EditTerrainSurfaceRequestTest < Minitest::Test # rubocop:disable Metrics/C
       'region' => { 'type' => 'rectangle', 'bounds' => rectangle_bounds }
     }
   end
+
+  def survey_request
+    {
+      'targetReference' => { 'sourceElementId' => 'terrain-main' },
+      'operation' => {
+        'mode' => 'survey_point_constraint',
+        'correctionScope' => 'local'
+      },
+      'region' => { 'type' => 'rectangle', 'bounds' => rectangle_bounds },
+      'constraints' => {
+        'surveyPoints' => [
+          {
+            'id' => 'survey-1',
+            'point' => { 'x' => 2.0, 'y' => 2.0, 'z' => 1.75 }
+          }
+        ]
+      }
+    }
+  end
 end
+# rubocop:enable Metrics/AbcSize, Metrics/MethodLength

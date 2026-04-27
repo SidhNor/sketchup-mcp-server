@@ -2324,6 +2324,374 @@
       }
     },
     {
+      "case_id": "edit_terrain_surface_survey_local_edited",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "params": {
+          "name": "edit_terrain_surface",
+          "arguments": {
+            "targetReference": { "sourceElementId": "terrain-main" },
+            "operation": {
+              "mode": "survey_point_constraint",
+              "correctionScope": "local"
+            },
+            "region": {
+              "type": "rectangle",
+              "bounds": { "minX": 0.0, "minY": 0.0, "maxX": 3.0, "maxY": 3.0 }
+            },
+            "constraints": {
+              "surveyPoints": [
+                { "id": "survey-1", "point": { "x": 1.0, "y": 1.0, "z": 2.0 } }
+              ]
+            },
+            "outputOptions": { "includeSampleEvidence": false }
+          }
+        },
+        "id": "edit-terrain-surface-survey-local"
+      },
+      "response": {
+        "jsonrpc": "2.0",
+        "id": "edit-terrain-surface-survey-local",
+        "result": {
+          "success": true,
+          "outcome": "edited",
+          "operation": {
+            "name": "edit_terrain_surface",
+            "mode": "survey_point_constraint"
+          },
+          "managedTerrain": {
+            "ownerReference": {
+              "sourceElementId": "terrain-main",
+              "persistentId": "5001"
+            },
+            "semanticType": "managed_terrain_surface"
+          },
+          "terrainState": {
+            "stateId": "state-1",
+            "payloadKind": "heightmap_grid",
+            "schemaVersion": 1,
+            "revision": 2,
+            "digest": "digest-survey-1"
+          },
+          "output": {
+            "derivedMesh": {
+              "meshType": "regular_grid",
+              "vertexCount": 16,
+              "faceCount": 18,
+              "derivedFromStateDigest": "digest-survey-1"
+            }
+          },
+          "evidence": {
+            "changedRegion": {
+              "min": { "column": 1, "row": 1 },
+              "max": { "column": 1, "row": 1 }
+            },
+            "sampleSummary": { "totalSampleCount": 1, "returnedSampleCount": 0 },
+            "fixedControls": [],
+            "preserveZones": { "protectedSampleCount": 0 },
+            "survey": {
+              "points": [
+                {
+                  "id": "survey-1",
+                  "requestedElevation": 2.0,
+                  "beforeElevation": 0.0,
+                  "afterElevation": 2.0,
+                  "residual": 0.0,
+                  "tolerance": 0.01,
+                  "status": "satisfied"
+                }
+              ],
+              "correction": {
+                "correctionScope": "local",
+                "supportRegionType": "rectangle",
+                "changedSampleCount": 1,
+                "maxSampleDelta": 2.0,
+                "warnings": []
+              }
+            },
+            "warnings": []
+          }
+        }
+      }
+    },
+    {
+      "case_id": "edit_terrain_surface_survey_regional_edited",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "params": {
+          "name": "edit_terrain_surface",
+          "arguments": {
+            "targetReference": { "sourceElementId": "terrain-main" },
+            "operation": {
+              "mode": "survey_point_constraint",
+              "correctionScope": "regional"
+            },
+            "region": {
+              "type": "circle",
+              "center": { "x": 2.0, "y": 2.0 },
+              "radius": 2.0
+            },
+            "constraints": {
+              "surveyPoints": [
+                { "id": "survey-a", "point": { "x": 1.0, "y": 1.0, "z": 1.0 } },
+                { "id": "survey-b", "point": { "x": 3.0, "y": 3.0, "z": 3.0 } }
+              ]
+            },
+            "outputOptions": { "includeSampleEvidence": false }
+          }
+        },
+        "id": "edit-terrain-surface-survey-regional"
+      },
+      "response": {
+        "jsonrpc": "2.0",
+        "id": "edit-terrain-surface-survey-regional",
+        "result": {
+          "success": true,
+          "outcome": "edited",
+          "operation": {
+            "name": "edit_terrain_surface",
+            "mode": "survey_point_constraint"
+          },
+          "managedTerrain": {
+            "ownerReference": { "sourceElementId": "terrain-main" },
+            "semanticType": "managed_terrain_surface"
+          },
+          "terrainState": {
+            "stateId": "state-1",
+            "payloadKind": "heightmap_grid",
+            "schemaVersion": 1,
+            "revision": 2,
+            "digest": "digest-survey-2"
+          },
+          "output": {
+            "derivedMesh": {
+              "meshType": "regular_grid",
+              "vertexCount": 16,
+              "faceCount": 18,
+              "derivedFromStateDigest": "digest-survey-2"
+            }
+          },
+          "evidence": {
+            "changedRegion": {
+              "min": { "column": 1, "row": 1 },
+              "max": { "column": 3, "row": 3 }
+            },
+            "sampleSummary": { "totalSampleCount": 9, "returnedSampleCount": 0 },
+            "fixedControls": [],
+            "preserveZones": { "protectedSampleCount": 0 },
+            "survey": {
+              "points": [
+                {
+                  "id": "survey-a",
+                  "requestedElevation": 1.0,
+                  "beforeElevation": 0.5,
+                  "afterElevation": 1.0,
+                  "residual": 0.0,
+                  "tolerance": 0.01,
+                  "status": "satisfied"
+                },
+                {
+                  "id": "survey-b",
+                  "requestedElevation": 3.0,
+                  "beforeElevation": 2.5,
+                  "afterElevation": 3.0,
+                  "residual": 0.0,
+                  "tolerance": 0.01,
+                  "status": "satisfied"
+                }
+              ],
+              "correction": {
+                "correctionScope": "regional",
+                "supportRegionType": "circle",
+                "changedSampleCount": 9,
+                "maxSampleDelta": 0.5,
+                "detailPreservation": { "outsideInfluenceRatio": 1.0 },
+                "distortion": {
+                  "slopeProxy": { "maxIncrease": 0.0 },
+                  "curvatureProxy": { "maxIncrease": 0.0 }
+                },
+                "warnings": []
+              }
+            },
+            "warnings": []
+          }
+        }
+      }
+    },
+    {
+      "case_id": "edit_terrain_surface_survey_invalid_scope_refused",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "params": {
+          "name": "edit_terrain_surface",
+          "arguments": {
+            "targetReference": { "sourceElementId": "terrain-main" },
+            "operation": {
+              "mode": "survey_point_constraint",
+              "correctionScope": "global"
+            },
+            "region": {
+              "type": "rectangle",
+              "bounds": { "minX": 0.0, "minY": 0.0, "maxX": 3.0, "maxY": 3.0 }
+            },
+            "constraints": {
+              "surveyPoints": [
+                { "id": "survey-1", "point": { "x": 1.0, "y": 1.0, "z": 2.0 } }
+              ]
+            }
+          }
+        },
+        "id": "edit-terrain-surface-survey-invalid-scope"
+      },
+      "response": {
+        "jsonrpc": "2.0",
+        "id": "edit-terrain-surface-survey-invalid-scope",
+        "result": {
+          "success": true,
+          "outcome": "refused",
+          "refusal": {
+            "code": "unsupported_option",
+            "message": "Survey correction scope is not supported for edit_terrain_surface.",
+            "details": {
+              "field": "operation.correctionScope",
+              "value": "global",
+              "allowedValues": ["local", "regional"]
+            }
+          }
+        }
+      }
+    },
+    {
+      "case_id": "edit_terrain_surface_survey_missing_points_refused",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "params": {
+          "name": "edit_terrain_surface",
+          "arguments": {
+            "targetReference": { "sourceElementId": "terrain-main" },
+            "operation": {
+              "mode": "survey_point_constraint",
+              "correctionScope": "local"
+            },
+            "region": {
+              "type": "rectangle",
+              "bounds": { "minX": 0.0, "minY": 0.0, "maxX": 3.0, "maxY": 3.0 }
+            }
+          }
+        },
+        "id": "edit-terrain-surface-survey-missing-points"
+      },
+      "response": {
+        "jsonrpc": "2.0",
+        "id": "edit-terrain-surface-survey-missing-points",
+        "result": {
+          "success": true,
+          "outcome": "refused",
+          "refusal": {
+            "code": "missing_required_field",
+            "message": "constraints.surveyPoints is required.",
+            "details": { "field": "constraints.surveyPoints" }
+          }
+        }
+      }
+    },
+    {
+      "case_id": "edit_terrain_surface_survey_invalid_point_refused",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "params": {
+          "name": "edit_terrain_surface",
+          "arguments": {
+            "targetReference": { "sourceElementId": "terrain-main" },
+            "operation": {
+              "mode": "survey_point_constraint",
+              "correctionScope": "local"
+            },
+            "region": {
+              "type": "rectangle",
+              "bounds": { "minX": 0.0, "minY": 0.0, "maxX": 3.0, "maxY": 3.0 }
+            },
+            "constraints": {
+              "surveyPoints": [
+                { "id": "survey-1", "point": { "x": 1.0, "y": 1.0 } }
+              ]
+            }
+          }
+        },
+        "id": "edit-terrain-surface-survey-invalid-point"
+      },
+      "response": {
+        "jsonrpc": "2.0",
+        "id": "edit-terrain-surface-survey-invalid-point",
+        "result": {
+          "success": true,
+          "outcome": "refused",
+          "refusal": {
+            "code": "invalid_edit_request",
+            "message": "edit_terrain_surface numeric field is invalid.",
+            "details": { "field": "constraints.surveyPoints[0].point.z" }
+          }
+        }
+      }
+    },
+    {
+      "case_id": "edit_terrain_surface_survey_corridor_refused",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "params": {
+          "name": "edit_terrain_surface",
+          "arguments": {
+            "targetReference": { "sourceElementId": "terrain-main" },
+            "operation": {
+              "mode": "survey_point_constraint",
+              "correctionScope": "local"
+            },
+            "region": {
+              "type": "corridor",
+              "startControl": {
+                "point": { "x": 1.0, "y": 2.0 },
+                "elevation": 0.5
+              },
+              "endControl": {
+                "point": { "x": 8.0, "y": 2.0 },
+                "elevation": 1.5
+              },
+              "width": 3.0
+            },
+            "constraints": {
+              "surveyPoints": [
+                { "id": "survey-1", "point": { "x": 1.0, "y": 1.0, "z": 2.0 } }
+              ]
+            }
+          }
+        },
+        "id": "edit-terrain-surface-survey-corridor"
+      },
+      "response": {
+        "jsonrpc": "2.0",
+        "id": "edit-terrain-surface-survey-corridor",
+        "result": {
+          "success": true,
+          "outcome": "refused",
+          "refusal": {
+            "code": "unsupported_option",
+            "message": "Region type is not supported for this edit operation mode.",
+            "details": {
+              "field": "region.type",
+              "value": "corridor",
+              "allowedValues": ["rectangle", "circle"]
+            }
+          }
+        }
+      }
+    },
+    {
       "case_id": "curate_staged_asset_curated",
       "request": {
         "jsonrpc": "2.0",

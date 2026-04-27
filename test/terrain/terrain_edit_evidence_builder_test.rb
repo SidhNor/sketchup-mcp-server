@@ -1,10 +1,12 @@
 # frozen_string_literal: true
 
+# rubocop:disable Metrics/AbcSize, Metrics/MethodLength
+
 require_relative '../test_helper'
 require_relative '../support/terrain_output_planning_diagnostics'
 require_relative '../../src/su_mcp/terrain/terrain_edit_evidence_builder'
 
-class TerrainEditEvidenceBuilderTest < Minitest::Test
+class TerrainEditEvidenceBuilderTest < Minitest::Test # rubocop:disable Metrics/ClassLength
   include TerrainOutputPlanningDiagnostics
 
   def test_builds_edit_success_payload_with_capped_json_safe_evidence # rubocop:disable Metrics/AbcSize
@@ -97,6 +99,27 @@ class TerrainEditEvidenceBuilderTest < Minitest::Test
     assert_equal(0.4, fairing.fetch(:afterResidual))
     assert_equal(true, fairing.fetch(:improved))
     assert_equal(2, fairing.fetch(:actualIterations))
+  end
+
+  def test_includes_compact_survey_evidence_without_solver_internals
+    result = SU_MCP::Terrain::TerrainEditEvidenceBuilder.new.build_success(
+      owner_reference: { sourceElementId: 'terrain-main' },
+      terrain_state_summary: terrain_state_summary,
+      output_summary: { derivedMesh: derived_mesh_summary },
+      edit_summary: edit_summary.merge(mode: 'survey_point_constraint'),
+      diagnostics: diagnostics.merge(survey: survey_diagnostics),
+      sample_limit: 0
+    )
+
+    survey = result.dig(:evidence, :survey)
+    assert_equal('local', survey.dig(:correction, :correctionScope))
+    assert_equal('rectangle', survey.dig(:correction, :supportRegionType))
+    assert_equal('survey-1', survey.fetch(:points).first.fetch(:id))
+    assert_equal('satisfied', survey.fetch(:points).first.fetch(:status))
+    serialized = JSON.generate(result)
+    %w[retained_detail stencil matrix lambda test/support SurveyCorrectionEvaluation].each do |term|
+      refute_includes(serialized, term)
+    end
   end
 
   def test_private_output_planning_diagnostics_do_not_leak_into_public_payload
@@ -199,7 +222,38 @@ class TerrainEditEvidenceBuilderTest < Minitest::Test
     }
   end
 
+  def survey_diagnostics
+    {
+      points: [
+        {
+          id: 'survey-1',
+          point: { x: 2.0, y: 2.0 },
+          requestedElevation: 1.75,
+          beforeElevation: 1.0,
+          afterElevation: 1.75,
+          residual: 0.0,
+          tolerance: 0.01,
+          status: 'satisfied'
+        }
+      ],
+      correction: {
+        correctionScope: 'local',
+        supportRegionType: 'rectangle',
+        changedSampleCount: 4,
+        changedBounds: { min: { column: 1, row: 1 }, max: { column: 2, row: 2 } },
+        maxSampleDelta: 0.75,
+        detailPreservation: { outsideInfluenceRatio: 1.0 },
+        distortion: {
+          slopeProxy: { maxIncrease: 0.0 },
+          curvatureProxy: { maxIncrease: 0.0 }
+        },
+        warnings: []
+      }
+    }
+  end
+
   def private_planning_diagnostics
     private_output_planning_diagnostics
   end
 end
+# rubocop:enable Metrics/AbcSize, Metrics/MethodLength

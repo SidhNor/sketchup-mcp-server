@@ -292,6 +292,7 @@ class McpRuntimeLoaderTest < Minitest::Test
     assert_equal('Edit Managed Terrain Surface', edit_terrain_surface_tool.fetch('title'))
     assert_equal(false, edit_terrain_surface_tool.fetch('annotations').fetch('readOnlyHint'))
     assert_includes(edit_terrain_surface_tool.fetch('description'), 'local_fairing')
+    assert_includes(edit_terrain_surface_tool.fetch('description'), 'survey_point_constraint')
     assert_equal(
       %w[targetReference operation region],
       edit_terrain_surface_tool.fetch('inputSchema').fetch('required')
@@ -333,9 +334,10 @@ class McpRuntimeLoaderTest < Minitest::Test
                            .fetch('properties')
                            .fetch('operation')
                            .fetch('properties')
-    %w[strength neighborhoodRadiusSamples iterations].each do |field|
+    %w[strength neighborhoodRadiusSamples iterations correctionScope].each do |field|
       assert_includes(operation_properties.keys.map(&:to_s), field)
     end
+    assert_equal(%w[local regional], operation_properties.fetch(:correctionScope).fetch(:enum))
 
     assert_equal(
       SU_MCP::Terrain::EditTerrainSurfaceRequest::SUPPORTED_BLEND_FALLOFFS,
@@ -349,16 +351,18 @@ class McpRuntimeLoaderTest < Minitest::Test
         .fetch('falloff')
         .fetch('enum')
     )
-    assert_equal(
-      %w[fixedControls preserveZones],
-      edit_terrain_surface_tool
-        .fetch('inputSchema')
-        .fetch('properties')
-        .fetch('constraints')
-        .fetch('properties')
-        .keys
-        .sort
-    )
+    constraint_properties = edit_terrain_surface_tool
+                            .fetch('inputSchema')
+                            .fetch('properties')
+                            .fetch('constraints')
+                            .fetch('properties')
+    assert_equal(%w[fixedControls preserveZones surveyPoints],
+                 constraint_properties.keys.map(&:to_s).sort)
+    survey_point_schema = constraint_properties.fetch(:surveyPoints).fetch(:items)
+    assert_equal(['point'], survey_point_schema.fetch(:required))
+    assert_includes(survey_point_schema.fetch(:properties).keys, :id)
+    assert_includes(survey_point_schema.fetch(:properties).keys, :tolerance)
+    assert_equal(%w[x y z], survey_point_schema.fetch(:properties).fetch(:point).fetch(:required))
 
     curate_staged_asset_tool = tools.find { |tool| tool.fetch('name') == 'curate_staged_asset' }
     assert_equal('Curate Staged Asset', curate_staged_asset_tool.fetch('title'))
@@ -678,9 +682,10 @@ class McpRuntimeLoaderTest < Minitest::Test
     refute_includes(operation_required, 'strength')
 
     operation_properties = input_schema.fetch(:properties).fetch(:operation).fetch(:properties)
-    %i[strength neighborhoodRadiusSamples iterations].each do |field|
+    %i[strength neighborhoodRadiusSamples iterations correctionScope].each do |field|
       assert_includes(operation_properties.keys, field)
     end
+    assert_equal(%w[local regional], operation_properties.fetch(:correctionScope).fetch(:enum))
 
     region_properties = input_schema.fetch(:properties).fetch(:region).fetch(:properties)
     %i[center radius startControl endControl width sideBlend].each do |field|
@@ -697,6 +702,15 @@ class McpRuntimeLoaderTest < Minitest::Test
     %i[bounds center radius].each do |field|
       assert_includes(preserve_zone_schema.fetch(:properties).keys, field)
     end
+
+    survey_point_schema = input_schema
+                          .fetch(:properties)
+                          .fetch(:constraints)
+                          .fetch(:properties)
+                          .fetch(:surveyPoints)
+                          .fetch(:items)
+    assert_equal(['point'], survey_point_schema.fetch(:required))
+    assert_equal(%w[x y z], survey_point_schema.fetch(:properties).fetch(:point).fetch(:required))
 
     assert_equal(
       SU_MCP::Terrain::EditTerrainSurfaceRequest::SUPPORTED_BLEND_FALLOFFS,

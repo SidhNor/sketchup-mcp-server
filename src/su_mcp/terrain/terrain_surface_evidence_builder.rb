@@ -6,7 +6,6 @@ module SU_MCP
   module Terrain
     # Builds JSON-safe create_terrain_surface success evidence.
     class TerrainSurfaceEvidenceBuilder
-      # rubocop:disable Metrics/ParameterLists
       def build_success(
         outcome:,
         lifecycle_mode:,
@@ -27,7 +26,6 @@ module SU_MCP
           evidence: evidence_summary(request_summary, source_summary, sampling_summary)
         )
       end
-      # rubocop:enable Metrics/ParameterLists
 
       private
 

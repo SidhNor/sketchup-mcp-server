@@ -8,7 +8,10 @@ module SU_MCP
     # rubocop:disable Metrics/AbcSize, Metrics/ClassLength, Metrics/CyclomaticComplexity
     # rubocop:disable Metrics/MethodLength, Metrics/PerceivedComplexity
     class EditTerrainSurfaceRequest
-      SUPPORTED_OPERATION_MODES = %w[target_height corridor_transition local_fairing].freeze
+      SUPPORTED_OPERATION_MODES = %w[
+        target_height corridor_transition local_fairing survey_point_constraint
+      ].freeze
+      SUPPORTED_SURVEY_CORRECTION_SCOPES = %w[local regional].freeze
       SUPPORTED_REGION_TYPES = %w[rectangle corridor circle].freeze
       SUPPORTED_BLEND_FALLOFFS = %w[none linear smooth].freeze
       SUPPORTED_SIDE_BLEND_FALLOFFS = %w[none cosine].freeze
@@ -16,12 +19,14 @@ module SU_MCP
       SUPPORTED_REGION_TYPES_BY_MODE = {
         'target_height' => %w[rectangle circle],
         'corridor_transition' => %w[corridor],
-        'local_fairing' => %w[rectangle circle]
+        'local_fairing' => %w[rectangle circle],
+        'survey_point_constraint' => %w[rectangle circle]
       }.freeze
       SUPPORTED_PRESERVE_ZONE_TYPES_BY_MODE = {
         'target_height' => %w[rectangle circle],
         'corridor_transition' => %w[rectangle],
-        'local_fairing' => %w[rectangle circle]
+        'local_fairing' => %w[rectangle circle],
+        'survey_point_constraint' => %w[rectangle circle]
       }.freeze
 
       LOCAL_FAIRING_RADIUS_RANGE = (1..31).freeze
@@ -34,6 +39,7 @@ module SU_MCP
       DEFAULT_SIDE_BLEND_FALLOFF = 'none'
       DEFAULT_POSITIVE_SIDE_BLEND_FALLOFF = 'cosine'
       DEFAULT_FIXED_CONTROL_TOLERANCE = 0.01
+      DEFAULT_SURVEY_POINT_TOLERANCE = 0.01
       DEFAULT_INCLUDE_SAMPLE_EVIDENCE = false
       DEFAULT_SAMPLE_EVIDENCE_LIMIT = 20
       MAX_SAMPLE_EVIDENCE_LIMIT = 100
@@ -109,8 +115,23 @@ module SU_MCP
           )
         end
         return local_fairing_operation_refusal if operation['mode'] == 'local_fairing'
+        return survey_operation_refusal if operation['mode'] == 'survey_point_constraint'
 
         nil
+      end
+
+      def survey_operation_refusal
+        return missing_field_refusal('operation.correctionScope') if blank?(
+          operation['correctionScope']
+        )
+        return nil if SUPPORTED_SURVEY_CORRECTION_SCOPES.include?(operation['correctionScope'])
+
+        unsupported_option_refusal(
+          field: 'operation.correctionScope',
+          value: operation['correctionScope'],
+          allowed_values: SUPPORTED_SURVEY_CORRECTION_SCOPES,
+          message: 'Survey correction scope is not supported for edit_terrain_surface.'
+        )
       end
 
       def local_fairing_operation_refusal
@@ -313,6 +334,9 @@ module SU_MCP
       def constraints_refusal
         return invalid_shape_refusal('constraints') unless constraints.is_a?(Hash)
 
+        survey_result = survey_points_refusal
+        return survey_result if survey_result
+
         fixed_controls_result = fixed_controls_refusal
         return fixed_controls_result if fixed_controls_result
 
@@ -341,6 +365,43 @@ module SU_MCP
                            bounds_refusal(zone['bounds'], "#{field}.bounds")
                          end
           return shape_result if shape_result
+        end
+        nil
+      end
+
+      def survey_points_refusal
+        return nil unless operation['mode'] == 'survey_point_constraint'
+        return missing_field_refusal('constraints.surveyPoints') unless constraints.key?(
+          'surveyPoints'
+        )
+
+        survey_points = constraints['surveyPoints']
+        return invalid_shape_refusal('constraints.surveyPoints') unless survey_points.is_a?(Array)
+        return missing_field_refusal('constraints.surveyPoints') if survey_points.empty?
+
+        survey_points.each_with_index do |point_constraint, index|
+          unless point_constraint.is_a?(Hash)
+            return invalid_shape_refusal("constraints.surveyPoints[#{index}]")
+          end
+
+          point = point_constraint['point']
+          unless point.is_a?(Hash)
+            return invalid_shape_refusal("constraints.surveyPoints[#{index}].point")
+          end
+
+          %w[x y z].each do |axis|
+            unless finite_number?(point[axis])
+              return invalid_number_refusal("constraints.surveyPoints[#{index}].point.#{axis}")
+            end
+          end
+          if point_constraint.key?('tolerance') &&
+             (!finite_number?(point_constraint['tolerance']) ||
+              point_constraint['tolerance'].to_f.negative?)
+            return invalid_number_refusal("constraints.surveyPoints[#{index}].tolerance")
+          end
+          if point_constraint.key?('id') && !json_safe_scalar?(point_constraint['id'])
+            return invalid_shape_refusal("constraints.surveyPoints[#{index}].id")
+          end
         end
         nil
       end
@@ -454,6 +515,15 @@ module SU_MCP
             'tolerance' => control.fetch('tolerance', DEFAULT_FIXED_CONTROL_TOLERANCE).to_f
           )
         end
+        survey_points = normalized.fetch('surveyPoints', [])
+        normalized['surveyPoints'] = survey_points.map do |point_constraint|
+          point_constraint.merge(
+            'tolerance' => point_constraint.fetch(
+              'tolerance',
+              DEFAULT_SURVEY_POINT_TOLERANCE
+            ).to_f
+          )
+        end
         normalized['preserveZones'] = normalized.fetch('preserveZones', [])
         normalized
       end
@@ -505,6 +575,11 @@ module SU_MCP
 
       def boolean?(value)
         [true, false].include?(value)
+      end
+
+      def json_safe_scalar?(value)
+        value.nil? || value.is_a?(String) || value.is_a?(Numeric) ||
+          boolean?(value)
       end
 
       def missing_field_refusal(field)

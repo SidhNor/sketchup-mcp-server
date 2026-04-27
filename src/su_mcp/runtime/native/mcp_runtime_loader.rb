@@ -394,7 +394,9 @@ module SU_MCP
                        'Supports target_height with rectangle or circle regions, ' \
                        'corridor_transition ' \
                        'with corridor regions, controls, width, and optional sideBlend, or ' \
-                       'local_fairing with rectangle or circle regions; not for arbitrary ' \
+                       'local_fairing with rectangle or circle regions; ' \
+                       'survey_point_constraint with local or regional correction scope; ' \
+                       'not for arbitrary ' \
                        'TIN edits, ' \
                        'broad sculpting, or site elements.',
           handler_key: :edit_terrain_surface,
@@ -1452,7 +1454,8 @@ module SU_MCP
         mode: described_schema(
           enum_schema(SU_MCP::Terrain::EditTerrainSurfaceRequest::SUPPORTED_OPERATION_MODES),
           'Edit operation mode. target_height uses a rectangle or circle; ' \
-          'corridor_transition uses a corridor; local_fairing uses a rectangle or circle.'
+          'corridor_transition uses a corridor; local_fairing uses a rectangle or circle; ' \
+          'survey_point_constraint uses a rectangle or circle support region.'
         ),
         targetElevation: described_schema(
           number_schema,
@@ -1469,6 +1472,11 @@ module SU_MCP
         iterations: described_schema(
           integer_schema,
           'Fairing iteration count, 1..8. Defaults to 1 for local_fairing.'
+        ),
+        correctionScope: described_schema(
+          enum_schema(SU_MCP::Terrain::EditTerrainSurfaceRequest::SUPPORTED_SURVEY_CORRECTION_SCOPES),
+          'Required for survey_point_constraint. local applies isolated point correction; ' \
+          'regional applies a bounded coherent correction field over the support region.'
         )
       }
     end
@@ -1583,7 +1591,7 @@ module SU_MCP
       }
     end
 
-    def edit_terrain_constraints_schema
+    def edit_terrain_constraints_schema # rubocop:disable Metrics/MethodLength
       {
         type: 'object',
         properties: {
@@ -1594,7 +1602,24 @@ module SU_MCP
           preserveZones: {
             type: 'array',
             items: edit_terrain_preserve_zone_schema
+          },
+          surveyPoints: {
+            type: 'array',
+            items: edit_terrain_survey_point_schema
           }
+        },
+        additionalProperties: false
+      }
+    end
+
+    def edit_terrain_survey_point_schema
+      {
+        type: 'object',
+        required: ['point'],
+        properties: {
+          id: string_schema,
+          point: edit_terrain_xyz_point_schema,
+          tolerance: described_schema(number_schema, 'Allowed survey residual in public meters.')
         },
         additionalProperties: false
       }
@@ -1644,6 +1669,19 @@ module SU_MCP
         properties: {
           x: number_schema,
           y: number_schema
+        },
+        additionalProperties: false
+      }
+    end
+
+    def edit_terrain_xyz_point_schema
+      {
+        type: 'object',
+        required: %w[x y z],
+        properties: {
+          x: number_schema,
+          y: number_schema,
+          z: number_schema
         },
         additionalProperties: false
       }
