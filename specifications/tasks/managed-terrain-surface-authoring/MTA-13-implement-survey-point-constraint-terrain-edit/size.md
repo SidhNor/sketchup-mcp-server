@@ -153,7 +153,9 @@
 > Append only. Log only material changes that affect estimate shape, risk, confidence, or validation burden.
 
 - 2026-04-27: Implementation split `SurveyPointConstraintEdit` into focused production collaborators after review of excessive RuboCop disables. This improved maintainability without changing public contract or solver behavior.
-- 2026-04-27: Hosted public MCP validation expanded from routine contract checks to larger regional performance fixtures. The broader validation increased evidence quality but did not require implementation changes.
+- 2026-04-27: Hosted public MCP validation expanded from routine contract checks to larger regional performance fixtures. The broader validation increased evidence quality and exposed regional correction-field edge cases.
+- 2026-04-27: Post-deploy hosted validation found regional interpolation defects for full-region planar redirection and complete-grid crowned/breakline surfaces. Fixed by adding affine residual-field seeding and complete survey-grid residual-field seeding before the inverse-distance fallback.
+- 2026-04-27: Complex terrain plus four planar corner survey points was reclassified as a product-boundary case. `survey_point_constraint` preserves existing terrain detail while satisfying survey points; explicit full interior plane replacement should be a future mode or policy.
 <!-- SIZE:DRIFT:END -->
 
 ---
@@ -170,17 +172,18 @@
 | Implementation Friction | 3 | Solver promotion and regional support were substantial, but MTA-14 evidence and existing terrain edit flows kept the implementation controlled. |
 | Validation Burden | 4 | Required automated contract/kernel/evidence coverage plus hosted public MCP validation for targeting, transforms, regions, constraints, output sanity, and performance. |
 | Dependency / Coordination | 3 | Depended on MTA-06, MTA-12, MTA-14, and hosted MCP access, but no cross-repo or external service dependency was introduced. |
-| Discovery / Ambiguity | 2 | Contract and behavior clarified during planning; hosted validation added precedence/safety-gate clarifications but no redesign. |
+| Discovery / Ambiguity | 3 | Contract was stable, but hosted validation clarified regional interpolation semantics and the boundary between survey correction and forced planar replacement. |
 | Scope Volatility | 2 | The implementation stayed within the planned local/regional contract and did not escalate to localized detail zones or public solver knobs. |
-| Rework | 1 | Post-implementation review changed code organization for lint/maintainability, but hosted deployment and verification required no implementation changes. |
-| Confidence | 4 | Automated tests, final code review, and broad hosted public MCP checks all passed, including complex `100x100` regional validation. |
+| Rework | 2 | Post-implementation review changed code organization, and hosted validation required targeted regional-kernel fixes. No public contract redesign or output-layer rework was needed. |
+| Confidence | 4 | Automated tests, final code review, broad hosted public MCP checks, redeployed regional planar checks, and complex `100x100` regional validation all passed. |
 
 ### Actual Notes
 
 - The public contract shape selected during planning held: `operation.mode: "survey_point_constraint"`, `operation.correctionScope`, and `constraints.surveyPoints`.
 - The MTA-14 base/detail solver was promoted into production terrain-domain code and remained isolated from `test/support`.
-- Regional correction stayed bounded and explicit, with no need for localized detail zones or a stronger optimizer in this slice.
-- The first hosted deployment validation passed without requiring implementation changes.
+- Regional correction stayed bounded and explicit, with no need for localized detail zones, public solver knobs, or a stronger optimizer in this slice.
+- Hosted validation required targeted regional seed fixes: affine residual fields for planar replacement and complete survey-grid residual fields for crowned/breakline-style surfaces.
+- Complex terrain plus four planar corner points remains a deliberate product boundary: MTA-13 survey correction should not infer full interior terrain-detail replacement from sparse points.
 <!-- SIZE:ACTUAL:END -->
 
 ---
@@ -188,14 +191,16 @@
 <!-- SIZE:VALIDATION-EVIDENCE:START -->
 ## Validation Evidence Summary
 
-- Focused public MCP/terrain suite: 130 runs, 924 assertions, 0 failures, 31 skips.
-- Full Ruby test suite: 783 runs, 3884 assertions, 0 failures, 36 skips.
-- Ruby lint: 204 files inspected, no offenses.
+- Focused public MCP/terrain suite: 132 runs, 936 assertions, 0 failures, 31 skips.
+- Full Ruby test suite: 785 runs, 3896 assertions, 0 failures, 36 skips.
+- Ruby lint: 205 files inspected, no offenses.
 - Package verification: produced `dist/su_mcp-0.25.0.rbz`.
 - Final PAL/Grok-4.20 review after refactor: no critical, high, or required medium findings.
 - Hosted public MCP validation passed for local edit, repeated corrected edit, regional multi-point edit, invalid/missing inputs, out-of-bounds, outside support, contradictory points, duplicate identical points, preserve-zone conflict, fixed-control conflict, unsafe regional distortion, excessive delta, no-leak evidence, `persistentId` targeting, invalid target handling, transformed owner placement, circle support, blend shoulder support, off-grid bilinear points, boundary points, tiny tolerance, fixed controls inside regional support, preserve-near-influence, sample evidence, and output sanity.
 - Performance validation passed on `80x80` regional support: edit wall time `0.666s`, `2809` changed samples, all residuals `0.0`, evidence capped at `20`, digest matched state, runtime ping passed.
 - Complex hosted regional validation passed on `100x100` varied terrain: edit wall time `1.48s`, `6552` changed samples, eight residuals `0.0`, preserve drift `0.0`, regional coherence satisfied, evidence capped at `25`, runtime ping passed, all faces/edges marked derived, and no normal issues.
+- Redeployed regional planar validation passed for planar redirection and crowned/breakline complete-grid cases after targeted seed fixes.
+- Planar matrix validation passed `19/20`; the remaining complex-terrain-to-plane case was reclassified as future explicit replacement semantics rather than current survey-correction behavior.
 <!-- SIZE:VALIDATION-EVIDENCE:END -->
 
 ---
@@ -206,20 +211,20 @@
 ### Delta Summary
 
 - Predicted risk was directionally correct: public contract breadth, regional validation, evidence no-leak behavior, and hosted performance were the main risks.
-- Actual implementation friction was lower than predicted because MTA-14 was strong enough to promote directly for the local solver and existing terrain edit/storage/output flows handled the new mode cleanly.
-- Actual validation burden remained high, but the extra hosted checks increased confidence rather than creating rework.
-- No post-deploy implementation changes were needed after hosted public MCP validation.
+- Actual implementation friction was lower than worst-case prediction because MTA-14 was strong enough to promote directly for the local solver and existing terrain edit/storage/output flows handled the new mode cleanly.
+- Actual validation burden remained high and produced useful rework: hosted checks exposed regional interpolation gaps that unit/contract tests had not covered.
+- Post-deploy implementation changes were needed, but they were targeted to regional correction-field seed selection and did not affect public contract, storage schema, command routing, or output ownership.
 
 ### Calibration Takeaways
 
-- MTA-14-style solver research materially reduced MTA-13 implementation risk and should be counted as a strong risk reducer when the spike includes reusable code shape, thresholds, refusal taxonomy, and oracle tests.
+- MTA-14-style solver research materially reduced MTA-13 local-solver implementation risk, but it did not cover regional field interpolation. Future estimates should keep separate risk buckets for local solver promotion and regional field modeling.
 - A public MCP contract expansion can still be high-surface without high rework when validator, loader schema, command routing, evidence builder, fixture, and README updates are kept synchronized.
 - Hosted performance risk was overestimated for clean scenes up to the tested `100x100` varied terrain case; full mesh regeneration plus bounded evidence stayed interactive.
-- The maintainability issue was not algorithmic correctness but production code shape. Future estimates should include explicit refactor budget when a numerical kernel is promoted from an evaluation harness.
+- The maintainability issue was production code shape, while the algorithmic issue was regional interpolation semantics. Future estimates should include explicit refactor budget and targeted planar/piecewise-planar regional fixture budget when promoting a numerical kernel.
 
 ### Updated Estimate Bias
 
-- For similar terrain-domain tasks with completed solver research and existing command/output plumbing, keep validation burden high but reduce implementation-friction and rework assumptions by one level unless new persisted schema or new geometry ownership rules are introduced.
+- For similar terrain-domain tasks with completed solver research and existing command/output plumbing, keep validation burden high. Reduce implementation-friction assumptions only for the covered solver family; keep rework risk at medium when regional interpolation or detail-replacement semantics are part of the task.
 <!-- SIZE:DELTA:END -->
 
 ---

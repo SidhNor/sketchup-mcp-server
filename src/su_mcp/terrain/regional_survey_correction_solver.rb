@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require_relative 'survey_grid_residual_field'
+
 module SU_MCP
   module Terrain
     # Bounded regional survey correction over an explicit terrain support region.
@@ -20,6 +22,10 @@ module SU_MCP
       attr_reader :context
 
       def coherent_seed
+        seed = SurveyGridResidualField.new(context: context, residuals: survey_residuals).seed ||
+               affine_seed
+        return seed if seed
+
         residuals = survey_residuals
         context.state.elevations.each_with_index.map do |height, index|
           sample = context.sample_for(index)
@@ -27,6 +33,63 @@ module SU_MCP
 
           height + inverse_distance_weighted_residual(sample.fetch(:coordinate), residuals)
         end
+      end
+
+      def affine_seed
+        model = affine_residual_model
+        return nil unless model
+
+        context.state.elevations.each_with_index.map do |height, index|
+          sample = context.sample_for(index)
+          next height unless context.mutable_sample?(sample)
+
+          height + affine_value(model, sample.fetch(:coordinate))
+        end
+      end
+
+      def affine_residual_model
+        rows = survey_residuals.map do |residual|
+          point = residual.fetch(:point)
+          [1.0, point.fetch('x').to_f, point.fetch('y').to_f]
+        end
+        values = survey_residuals.map { |residual| residual.fetch(:residual) }
+        model = solve_least_squares(rows, values)
+        return nil unless model && affine_model_exact?(model)
+
+        model
+      end
+
+      def affine_model_exact?(model)
+        survey_residuals.all? do |residual|
+          point = residual.fetch(:point)
+          error = affine_value(model, point) - residual.fetch(:residual)
+          error.abs <= residual_tolerance_for(point)
+        end
+      end
+
+      def residual_tolerance_for(point)
+        survey_point = context.survey_points.find do |candidate|
+          context.point_for(candidate) == point
+        end
+        [context.tolerance_for(survey_point), 1e-6].max
+      end
+
+      def affine_value(model, point)
+        model.fetch(0) + (model.fetch(1) * point.fetch('x')) + (model.fetch(2) * point.fetch('y'))
+      end
+
+      def solve_least_squares(rows, values)
+        return nil if rows.length < 3
+
+        normal = rows.first.length.times.map do |column|
+          rows.first.length.times.map do |other_column|
+            rows.sum { |row| row.fetch(column) * row.fetch(other_column) }
+          end
+        end
+        rhs = rows.first.length.times.map do |column|
+          rows.each_with_index.sum { |row, index| row.fetch(column) * values.fetch(index) }
+        end
+        solve_linear_system(normal, rhs)
       end
 
       def inverse_distance_weighted_residual(coordinate, residuals)

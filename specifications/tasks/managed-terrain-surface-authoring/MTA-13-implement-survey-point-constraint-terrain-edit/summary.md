@@ -12,7 +12,7 @@
 - Reused rectangle and circle terrain edit regions as explicit correction support geometry.
 - Reused existing fixed controls and rectangle/circle preserve zones for survey edits.
 - Added local survey correction using promoted MTA-14 base/detail solver behavior under `src/su_mcp/terrain/`.
-- Added bounded regional survey correction using an explicit support-region correction field plus minimum-norm projection.
+- Added bounded regional survey correction using explicit support-region correction fields plus minimum-norm projection.
 - Added structured refusals for out-of-bounds points, no-data states, points outside support, contradictory points, preserve-zone conflicts, fixed-control conflicts, unsafe sample delta, unsafe regional distortion, and empty affected support.
 - Added compact `evidence.survey` output with per-point requested/before/after/residual/tolerance/status rows and correction summary evidence.
 
@@ -23,6 +23,12 @@ The proven MTA-14 base/detail solver was promoted into production terrain-domain
 The production implementation imports no `test/support` solver code. `test/support/terrain_survey_correction_evaluation.rb` remains an oracle harness, and the MTA-13 test suite compares production local correction with the MTA-14 base/detail oracle for residual, changed sample count, detail retention, and detail suppression.
 
 Regional correction remains intentionally separate because MTA-14 did not model explicit bounded regional support. The regional path is guarded by explicit `correctionScope: "regional"`, request support geometry, and distortion/coherence evidence.
+
+Post-verification regional fixes added:
+
+- affine residual correction for survey points that exactly define a planar correction field;
+- complete survey-grid residual correction for piecewise bilinear or breakline-style correction fields;
+- inverse-distance residual correction remains the fallback for under-specified or non-grid regional survey inputs.
 
 ## Contract And Docs
 
@@ -40,18 +46,19 @@ Regional correction remains intentionally separate because MTA-14 did not model 
 - `SurveyPointInputRefusals`: pre-solve refusal checks.
 - `SurveyBilinearStencil`: bilinear survey interpolation weights.
 - `SurveyCorrectionSolver`: promoted local base/detail correction solver.
-- `RegionalSurveyCorrectionSolver`: bounded regional correction field and projection.
+- `RegionalSurveyCorrectionSolver`: bounded regional correction field selection and projection.
+- `SurveyGridResidualField`: complete survey-grid residual interpolation for piecewise bilinear and breakline-style regional fields.
 - `SurveyCorrectionMetrics`: max delta, slope, curvature, regional coherence, detail evidence, and preserve drift metrics.
 - `SurveyCorrectionEvidence`: public diagnostics and post-correction refusals.
 
 ## Validation Evidence
 
 - Focused public MCP/terrain suite:
-  - 130 runs, 924 assertions, 0 failures, 0 errors, 31 skips.
+  - 132 runs, 936 assertions, 0 failures, 0 errors, 31 skips.
 - Full Ruby test suite:
-  - 783 runs, 3884 assertions, 0 failures, 0 errors, 36 skips.
+  - 785 runs, 3896 assertions, 0 failures, 0 errors, 36 skips.
 - Ruby lint:
-  - 204 files inspected, no offenses detected.
+  - 205 files inspected, no offenses detected.
 - Package verification:
   - produced `dist/su_mcp-0.25.0.rbz`.
 
@@ -62,6 +69,7 @@ Regional correction remains intentionally separate because MTA-14 did not model 
 - A user review finding identified excessive production lint disables on `SurveyPointConstraintEdit`; the editor was split into focused collaborators and the broad disable block was removed.
 - Fresh Step 10 PAL/Grok-4.20 review after the split found no critical, high, or required medium findings.
 - Remaining review notes are non-blocking maintainability/documentation suggestions only.
+- Hosted validation later exposed two regional interpolation defects; both were fixed and covered by regression tests.
 
 ## Live SketchUp Verification Status
 
@@ -117,8 +125,34 @@ Behavior clarifications from hosted validation:
 - Preserve-zone point overlap takes precedence over no-mutable-samples refusal.
 - Unsafe regional requests can fail through either `required_sample_delta_exceeds_threshold` for very large corrections or `regional_correction_unsafe` for smaller steep/distorting corrections.
 
+Post-fix hosted verification on redeployed extension:
+
+- Full-region planar crossfall redirection now matches the target plane at edge and midline samples.
+- Full-region crowned/breakline correction with a complete `3x3` survey grid now matches the expected piecewise planar crowned surface without ringing or edge bowing.
+- Planar matrix verification passed `19/20` scenarios:
+  - rotate crossfall 90 degrees;
+  - reverse same-axis crossfall;
+  - flatten crossfall;
+  - uniform lift preserving plane;
+  - steepen existing crossfall;
+  - diagonal NE-high and NW-high planes;
+  - non-zero base plane;
+  - partial planar patch;
+  - flat core with blend shoulder;
+  - non-square terrain;
+  - non-uniform spacing;
+  - non-zero state origin;
+  - fractional off-grid constraints;
+  - repeated planar edits chain;
+  - undo planar edit;
+  - fixed controls satisfied;
+  - fixed-control conflict;
+  - preserve zone inside planar region.
+- Most planar cases landed at numerical precision, typically around max error `4.44e-16`.
+- P20, complex terrain to planar replacement from four corner points, was reclassified as an explicit product-boundary case rather than an MTA-13 defect. Current `survey_point_constraint` satisfies survey constraints while preserving existing terrain detail; forcing complete interior replacement with an implied plane needs a future explicit plane/replacement mode or policy.
+
 ## Conclusion
 
 MTA-13 is implemented through the public MCP terrain edit surface with contract, runtime, terrain-domain, evidence, docs, and package validation in sync.
 
-The MTA-14 base/detail solver was meaningfully promoted into production for local survey correction, while regional survey adjustment remains bounded and explicit instead of inferred from sparse points.
+The MTA-14 base/detail solver was meaningfully promoted into production for local survey correction, while regional survey adjustment remains bounded and explicit instead of inferring destructive terrain replacement from sparse points.

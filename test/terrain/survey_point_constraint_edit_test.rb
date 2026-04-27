@@ -94,6 +94,75 @@ class SurveyPointConstraintEditTest < Minitest::Test # rubocop:disable Metrics/C
     assert_operator(correction.dig(:distortion, :slopeProxy, :maxIncrease), :>=, 0.0)
   end
 
+  def test_regional_full_support_replaces_planar_crossfall_without_edge_bowing
+    result = editor.apply(
+      state: crossfall_state,
+      request: survey_request(
+        correction_scope: 'regional',
+        region: {
+          'type' => 'rectangle',
+          'bounds' => { 'minX' => 0.0, 'minY' => 0.0, 'maxX' => 30.0, 'maxY' => 30.0 },
+          'blend' => { 'distance' => 0.0, 'falloff' => 'none' }
+        },
+        points: [
+          survey_point(id: 'sw', x: 0.0, y: 0.0, z: 1.0, tolerance: 0.0),
+          survey_point(id: 'se', x: 30.0, y: 0.0, z: 1.0, tolerance: 0.0),
+          survey_point(id: 'nw', x: 0.0, y: 30.0, z: 2.2, tolerance: 0.0),
+          survey_point(id: 'ne', x: 30.0, y: 30.0, z: 2.2, tolerance: 0.0)
+        ]
+      )
+    )
+
+    assert_equal('edited', result.fetch(:outcome))
+    state = result.fetch(:state)
+    assert_in_delta(1.0, elevation_at(state, 15, 0), 1e-9)
+    assert_in_delta(2.2, elevation_at(state, 15, 30), 1e-9)
+    assert_in_delta(1.6, elevation_at(state, 0, 15), 1e-9)
+    assert_in_delta(1.6, elevation_at(state, 30, 15), 1e-9)
+    assert_in_delta(0.0, elevation_at(state, 30, 15) - elevation_at(state, 0, 15), 1e-9)
+    assert_in_delta(1.2, elevation_at(state, 15, 30) - elevation_at(state, 15, 0), 1e-9)
+  end
+
+  def test_regional_full_support_respects_piecewise_planar_crowned_breakline
+    result = editor.apply(
+      state: crossfall_state,
+      request: survey_request(
+        correction_scope: 'regional',
+        region: {
+          'type' => 'rectangle',
+          'bounds' => { 'minX' => 0.0, 'minY' => 0.0, 'maxX' => 30.0, 'maxY' => 30.0 },
+          'blend' => { 'distance' => 0.0, 'falloff' => 'none' }
+        },
+        points: crowned_breakline_points
+      )
+    )
+
+    assert_equal('edited', result.fetch(:outcome))
+    state = result.fetch(:state)
+    assert_in_delta(1.0, elevation_at(state, 0, 8), 1e-9)
+    assert_in_delta(1.6, elevation_at(state, 15, 8), 1e-9)
+    assert_in_delta(1.0, elevation_at(state, 30, 8), 1e-9)
+    assert_in_delta(0.0, max_crowned_error(state), 1e-9)
+  end
+
+  def crowned_breakline_points
+    [0.0, 15.0, 30.0].flat_map do |y|
+      [
+        survey_point(id: "w-#{y}", x: 0.0, y: y, z: 1.0, tolerance: 0.0),
+        survey_point(id: "c-#{y}", x: 15.0, y: y, z: 1.6, tolerance: 0.0),
+        survey_point(id: "e-#{y}", x: 30.0, y: y, z: 1.0, tolerance: 0.0)
+      ]
+    end
+  end
+
+  def max_crowned_error(state)
+    state.elevations.each_index.map do |index|
+      column = index % state.dimensions.fetch('columns')
+      row = index / state.dimensions.fetch('columns')
+      (elevation_at(state, column, row) - (1.0 + (0.04 * [column, 30 - column].min))).abs
+    end.max
+  end
+
   def test_production_solver_matches_mta14_base_detail_oracle_for_representative_local_detail
     survey_points = [survey_point(id: 'center', x: 2.0, y: 2.0, z: 2.0)]
     oracle = SU_MCP::Terrain::SurveyCorrectionEvaluation.run(
@@ -308,6 +377,13 @@ class SurveyPointConstraintEditTest < Minitest::Test # rubocop:disable Metrics/C
       columns: 5,
       rows: 5
     )
+  end
+
+  def crossfall_state
+    elevations = (0...31).flat_map do |_row|
+      (0...31).map { |column| 1.0 + (0.04 * column) }
+    end
+    state(elevations: elevations, columns: 31, rows: 31)
   end
 
   def mta14_default_parameters
