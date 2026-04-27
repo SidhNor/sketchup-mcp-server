@@ -2,6 +2,22 @@
 
 <!-- version list -->
 
+## v0.26.0 (2026-04-27)
+
+### Bug Fixes
+
+- **MTA-13**: Terrain solver planar corrections
+  ([`78c0436`](https://github.com/SidhNor/sketchup-mcp-server/commit/78c0436f58fb20b671530a98db4a515ba76d716d))
+
+### Features
+
+- **MTA-13**: Terrain edit by elevation points for local and regional corrections
+  ([`a7b9134`](https://github.com/SidhNor/sketchup-mcp-server/commit/a7b91340cbac5173bc55db0fc46e9476854910f6))
+
+- **MTA-14**: Detail preserving terrain solver
+  ([`d56438d`](https://github.com/SidhNor/sketchup-mcp-server/commit/d56438dfbae15a732c3652fa341b5b01ba8f8eb0))
+
+
 ## v0.25.0 (2026-04-26)
 
 ### Documentation
