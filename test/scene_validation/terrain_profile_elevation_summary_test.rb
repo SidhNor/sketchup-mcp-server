@@ -9,7 +9,7 @@ class TerrainProfileElevationSummaryTest < Minitest::Test
     @summary = SU_MCP::TerrainProfileElevationSummary.new
   end
 
-  def test_all_hit_profile_returns_complete_elevation_summary # rubocop:disable Metrics/MethodLength
+  def test_all_hit_profile_returns_complete_elevation_summary
     result = @summary.measure(
       [
         sample(0, elevation: 1.0, distance: 0.0, progress: 0.0),

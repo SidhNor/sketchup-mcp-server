@@ -26,7 +26,6 @@ class ToolResponseTest < Minitest::Test
     )
   end
 
-  # rubocop:disable Metrics/MethodLength
   def test_exposes_a_shared_refusal_builder_with_optional_allowed_values
     assert(defined?(SU_MCP::ToolResponse), 'Expected SU_MCP::ToolResponse to be defined')
 
@@ -57,7 +56,6 @@ class ToolResponseTest < Minitest::Test
       result
     )
   end
-  # rubocop:enable Metrics/MethodLength
 
   def test_can_wrap_existing_refusal_payloads_from_lower_level_collaborators
     assert(defined?(SU_MCP::ToolResponse), 'Expected SU_MCP::ToolResponse to be defined')

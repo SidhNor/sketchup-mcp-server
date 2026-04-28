@@ -9,7 +9,6 @@ require_relative '../../src/su_mcp/terrain/terrain_output_plan'
 
 # rubocop:disable Metrics/AbcSize
 class TerrainMeshGeneratorTest < Minitest::Test # rubocop:disable Metrics/ClassLength
-  # rubocop:disable Metrics/MethodLength
   include SemanticTestSupport
 
   TERRAIN_GEOMETRY_TOLERANCE = 1e-9
@@ -786,6 +785,5 @@ class TerrainMeshGeneratorTest < Minitest::Test # rubocop:disable Metrics/ClassL
   class EdgeWithFaces
     attr_accessor :faces
   end
-  # rubocop:enable Metrics/MethodLength
 end
 # rubocop:enable Metrics/AbcSize

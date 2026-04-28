@@ -10,7 +10,6 @@ class SceneQueryCommandsAdapterTest < Minitest::Test
   class RecordingAdapter
     attr_reader :calls
 
-    # rubocop:disable Metrics/ParameterLists
     def initialize(
       model:,
       top_level_entities:,
@@ -29,7 +28,6 @@ class SceneQueryCommandsAdapterTest < Minitest::Test
       @all_entity_paths_recursive = all_entity_paths_recursive
       @calls = []
     end
-    # rubocop:enable Metrics/ParameterLists
 
     def active_model!
       @calls << :active_model!

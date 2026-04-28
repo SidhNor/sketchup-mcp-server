@@ -107,7 +107,6 @@ class McpRuntimeLoaderTest < Minitest::Test
     )
   end
 
-  # rubocop:disable Metrics/MethodLength
   def test_build_transport_handles_initialize_and_ping_over_stateless_http
     skip_unless_staged_vendor_runtime!
 
@@ -146,7 +145,6 @@ class McpRuntimeLoaderTest < Minitest::Test
     assert_equal({ 'success' => true, 'entities' => [{ 'id' => 101 }] },
                  scene_response[:body].dig('result', 'structuredContent'))
   end
-  # rubocop:enable Metrics/MethodLength
 
   # rubocop:disable Metrics/AbcSize, Metrics/MethodLength
   # rubocop:disable Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity
@@ -1199,7 +1197,6 @@ class McpRuntimeLoaderTest < Minitest::Test
     assert_equal('', response[:raw_body])
   end
 
-  # rubocop:disable Metrics/MethodLength
   def test_build_transport_calls_a_representative_migrated_handler_from_the_handler_map
     skip_unless_staged_vendor_runtime!
 
@@ -1226,9 +1223,7 @@ class McpRuntimeLoaderTest < Minitest::Test
       response[:body].dig('result', 'structuredContent')
     )
   end
-  # rubocop:enable Metrics/MethodLength
 
-  # rubocop:disable Metrics/MethodLength
   def test_build_transport_deeply_stringifies_nested_semantic_payload_keys
     skip_unless_staged_vendor_runtime!
 
@@ -1318,7 +1313,6 @@ class McpRuntimeLoaderTest < Minitest::Test
       captured_arguments
     )
   end
-  # rubocop:enable Metrics/MethodLength
 
   def test_tool_catalog_exposes_the_canonical_native_tool_inventory
     catalog = @loader.tool_catalog
@@ -1351,7 +1345,7 @@ class McpRuntimeLoaderTest < Minitest::Test
   end
 
   # rubocop:disable Metrics/AbcSize, Metrics/CyclomaticComplexity
-  # rubocop:disable Metrics/MethodLength, Metrics/PerceivedComplexity
+  # rubocop:disable Metrics/PerceivedComplexity
   def test_tool_catalog_exposes_representative_metadata_and_schema
     catalog = @loader.tool_catalog
 
@@ -1405,7 +1399,7 @@ class McpRuntimeLoaderTest < Minitest::Test
     assert_equal(:eval_ruby, eval_ruby.fetch(:handler_key))
   end
   # rubocop:enable Metrics/AbcSize, Metrics/CyclomaticComplexity
-  # rubocop:enable Metrics/MethodLength, Metrics/PerceivedComplexity
+  # rubocop:enable Metrics/PerceivedComplexity
 
   def test_tool_catalog_tracks_the_runtime_handler_key_for_representative_tools
     catalog = @loader.tool_catalog
@@ -1440,7 +1434,7 @@ class McpRuntimeLoaderTest < Minitest::Test
     )
   end
 
-  # rubocop:disable Metrics/AbcSize, Metrics/MethodLength
+  # rubocop:disable Metrics/AbcSize
   def test_list_entities_tool_schema_exposes_scope_selector_and_output_options
     list_entities_tool = @loader.tool_catalog.find do |tool|
       tool.fetch(:name) == 'list_entities'
@@ -1543,7 +1537,7 @@ class McpRuntimeLoaderTest < Minitest::Test
                   .fetch(:enum)
     )
   end
-  # rubocop:enable Metrics/AbcSize, Metrics/MethodLength
+  # rubocop:enable Metrics/AbcSize
 
   def test_eval_ruby_is_the_only_escape_hatch_tool_definition
     catalog = @loader.tool_catalog
@@ -1649,7 +1643,6 @@ class McpRuntimeLoaderTest < Minitest::Test
 
   private
 
-  # rubocop:disable Metrics/MethodLength
   def perform_json_request(transport, id:, method:, params:)
     require 'rack/mock_request'
 
@@ -1677,7 +1670,6 @@ class McpRuntimeLoaderTest < Minitest::Test
   ensure
     body.close if body.respond_to?(:close)
   end
-  # rubocop:enable Metrics/MethodLength
 
   def perform_raw_json_request(transport, payload)
     require 'rack/mock_request'
@@ -1735,7 +1727,6 @@ class McpRuntimeLoaderTest < Minitest::Test
     end
   end
 
-  # rubocop:disable Metrics/MethodLength
   def with_stubbed_mcp_tool
     previous_mcp = Object.const_get(:MCP) if Object.const_defined?(:MCP)
     Object.send(:remove_const, :MCP) if Object.const_defined?(:MCP)
@@ -1768,6 +1759,5 @@ class McpRuntimeLoaderTest < Minitest::Test
     Object.send(:remove_const, :MCP) if Object.const_defined?(:MCP)
     Object.const_set(:MCP, previous_mcp) if previous_mcp
   end
-  # rubocop:enable Metrics/MethodLength
 end
 # rubocop:enable Metrics/ClassLength

@@ -1,7 +1,5 @@
 # frozen_string_literal: true
 
-# rubocop:disable Metrics/MethodLength, Metrics/ClassLength
-
 require_relative '../test_helper'
 require_relative '../support/semantic_test_support'
 require_relative '../../src/su_mcp/semantic/builder_refusal'
@@ -320,7 +318,6 @@ class TreeProxyBuilderTest < Minitest::Test
     coordinates.max - coordinates.min
   end
 
-  # rubocop:disable Metrics/AbcSize
   def assert_three_lobe_profile(radii)
     peak_indices = local_extrema_indices(radii, :>)
     valley_indices = local_extrema_indices(radii, :<)
@@ -338,7 +335,6 @@ class TreeProxyBuilderTest < Minitest::Test
     assert_operator(peak_radii.max / peak_radii.min, :<, 1.1)
     assert_operator(valley_radii.max, :<, peak_radii.min)
   end
-  # rubocop:enable Metrics/AbcSize
 
   def local_extrema_indices(values, operator)
     values.each_index.select do |index|
@@ -349,4 +345,3 @@ class TreeProxyBuilderTest < Minitest::Test
     end
   end
 end
-# rubocop:enable Metrics/MethodLength, Metrics/ClassLength

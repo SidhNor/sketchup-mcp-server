@@ -3,7 +3,6 @@
 module SU_MCP
   module Terrain
     # SketchUp-free owner-local heightmap/grid terrain state.
-    # rubocop:disable Metrics/ClassLength
     class HeightmapState
       PAYLOAD_KIND = 'heightmap_grid'
       SCHEMA_VERSION = 1
@@ -261,7 +260,6 @@ module SU_MCP
         normalized
       end
 
-      # rubocop:disable Metrics/CyclomaticComplexity, Metrics/MethodLength
       def validate_json_safe!(value, field)
         case value
         when Hash
@@ -282,7 +280,6 @@ module SU_MCP
           raise ArgumentError, "#{field} contains non-JSON-safe value"
         end
       end
-      # rubocop:enable Metrics/CyclomaticComplexity, Metrics/MethodLength
 
       def validate_orthonormal_basis(vectors)
         BASIS_KEYS.each do |key|
@@ -316,6 +313,5 @@ module SU_MCP
         raise ArgumentError, "elevations must contain #{expected} values"
       end
     end
-    # rubocop:enable Metrics/ClassLength
   end
 end

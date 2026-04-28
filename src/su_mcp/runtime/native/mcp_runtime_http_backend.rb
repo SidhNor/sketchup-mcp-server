@@ -5,7 +5,6 @@ require 'stringio'
 
 module SU_MCP
   # Local HTTP listener for the staged Ruby-native MCP runtime.
-  # rubocop:disable Metrics/ClassLength
   class McpRuntimeHttpBackend
     DEFAULT_POLL_INTERVAL = 0.1
 
@@ -215,5 +214,4 @@ module SU_MCP
       }.fetch(status, 'OK')
     end
   end
-  # rubocop:enable Metrics/ClassLength
 end

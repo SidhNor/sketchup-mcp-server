@@ -14,7 +14,6 @@ module SU_MCP
     CREATE_GROUP_OPERATION_NAME = 'Create Group'
     REPARENT_ENTITIES_OPERATION_NAME = 'Reparent Entities'
 
-    # rubocop:disable Metrics/ParameterLists
     def initialize(
       model: Sketchup.active_model,
       target_resolver: TargetReferenceResolver.new,
@@ -30,7 +29,6 @@ module SU_MCP
       @metadata_writer = metadata_writer
       @scene_properties = scene_properties
     end
-    # rubocop:enable Metrics/ParameterLists
 
     def create_group(params)
       validation = validate_create_group_request(params)

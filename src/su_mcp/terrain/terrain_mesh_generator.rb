@@ -8,8 +8,7 @@ require_relative 'terrain_output_plan'
 module SU_MCP
   module Terrain
     # Regenerates disposable SketchUp mesh output from authoritative terrain state.
-    # rubocop:disable Metrics/AbcSize, Metrics/ClassLength, Metrics/CyclomaticComplexity
-    # rubocop:disable Metrics/MethodLength, Metrics/ParameterLists
+    # rubocop:disable Metrics/AbcSize, Metrics/ClassLength
     class TerrainMeshGenerator
       DERIVED_OUTPUT_DICTIONARY = 'su_mcp_terrain'
       DERIVED_OUTPUT_KEY = 'derivedOutput'
@@ -435,7 +434,6 @@ module SU_MCP
         }
       end
     end
-    # rubocop:enable Metrics/AbcSize, Metrics/ClassLength, Metrics/CyclomaticComplexity
-    # rubocop:enable Metrics/MethodLength, Metrics/ParameterLists
+    # rubocop:enable Metrics/AbcSize, Metrics/ClassLength
   end
 end

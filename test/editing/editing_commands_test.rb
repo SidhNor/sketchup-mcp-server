@@ -5,7 +5,6 @@ require_relative '../support/scene_query_test_support'
 require_relative '../support/semantic_test_support'
 require_relative '../../src/su_mcp/editing/editing_commands'
 
-# rubocop:disable Metrics/ClassLength
 class EditingCommandsTest < Minitest::Test
   include SceneQueryTestSupport
   include SemanticTestSupport
@@ -86,7 +85,6 @@ class EditingCommandsTest < Minitest::Test
     assert_equal(%i[all_entities_recursive active_model!], @adapter.calls)
   end
 
-  # rubocop:disable Metrics/MethodLength
   def test_delete_entities_deletes_a_supported_component_instance
     model = build_mutation_model
     layer = model.layers.first
@@ -113,8 +111,6 @@ class EditingCommandsTest < Minitest::Test
     assert_equal('4001', result.dig(:affectedEntities, :deleted, 0, :persistentId))
   end
 
-  # rubocop:enable Metrics/MethodLength
-
   def test_delete_entities_allows_managed_scene_objects_backed_by_supported_targets
     @entity.set_attribute('su_mcp', 'sourceElementId', 'shed-001')
 
@@ -124,7 +120,6 @@ class EditingCommandsTest < Minitest::Test
     assert_equal('shed-001', result.dig(:affectedEntities, :deleted, 0, :sourceElementId))
   end
 
-  # rubocop:disable Metrics/MethodLength
   def test_delete_entities_refuses_unsupported_target_types
     model = build_mutation_model
     layer = model.layers.first
@@ -150,7 +145,6 @@ class EditingCommandsTest < Minitest::Test
     assert_equal('refused', result[:outcome])
     assert_equal('unsupported_target_type', result.dig(:refusal, :code))
   end
-  # rubocop:enable Metrics/MethodLength
 
   def test_delete_entities_refuses_missing_targets
     resolver = FakeTargetResolver.new(result: { resolution: 'none' })
@@ -338,4 +332,3 @@ class EditingCommandsTest < Minitest::Test
     assert_equal('conflicting_target_selectors', result.dig(:refusal, :code))
   end
 end
-# rubocop:enable Metrics/ClassLength

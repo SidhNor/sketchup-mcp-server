@@ -12,7 +12,6 @@ require_relative 'version'
 # Namespace for the SketchUp MCP extension runtime.
 module SU_MCP
   # SketchUp-facing entrypoint for booting and controlling the MCP server.
-  # rubocop:disable Metrics/ModuleLength
   module Main
     # Main extension bootstrap and menu wiring.
     MENU_NAME = 'SketchUp MCP'
@@ -162,5 +161,4 @@ module SU_MCP
     Main.activate
     file_loaded(__FILE__)
   end
-  # rubocop:enable Metrics/ModuleLength
 end

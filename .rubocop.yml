@@ -16,9 +16,6 @@ AllCops:
 Layout/LineLength:
   Max: 100
 
-Lint/RedundantCopDisableDirective:
-  Enabled: false
-
 Metrics/BlockLength:
   Max: 40
   Exclude:

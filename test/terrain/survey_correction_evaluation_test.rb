@@ -8,7 +8,7 @@ rescue LoadError
   # Skeleton-first TDD: the private evaluation harness is introduced after this surface exists.
 end
 
-class SurveyCorrectionEvaluationTest < Minitest::Test # rubocop:disable Metrics/ClassLength
+class SurveyCorrectionEvaluationTest < Minitest::Test
   BASIS = {
     'xAxis' => [1.0, 0.0, 0.0],
     'yAxis' => [0.0, 1.0, 0.0],
@@ -125,7 +125,7 @@ class SurveyCorrectionEvaluationTest < Minitest::Test # rubocop:disable Metrics/
     assert_in_delta(0.0, result.dig('metrics', 'preserveZoneDrift', 'max'), 1e-9)
   end
 
-  def test_refuses_no_data_out_of_bounds_contradictory_preserve_and_fixed_conflicts # rubocop:disable Metrics/AbcSize, Metrics/MethodLength
+  def test_refuses_no_data_out_of_bounds_contradictory_preserve_and_fixed_conflicts
     no_data = flat_with_local_detail_state.elevations.dup
     no_data[12] = nil
     assert_refusal(
@@ -202,7 +202,7 @@ class SurveyCorrectionEvaluationTest < Minitest::Test # rubocop:disable Metrics/
     assert_equal('satisfied', workflow.fetch('recommendationInputs').fetch('status'))
   end
 
-  def test_recommendation_selects_base_detail_tuple_from_parameter_matrix # rubocop:disable Metrics/MethodLength
+  def test_recommendation_selects_base_detail_tuple_from_parameter_matrix
     result = SU_MCP::Terrain::SurveyCorrectionEvaluation.compare_strategies(
       state: flat_with_local_detail_state,
       survey_points: [survey_point(id: 'center', x: 2.0, y: 2.0, z: 2.0)],
@@ -280,7 +280,7 @@ class SurveyCorrectionEvaluationTest < Minitest::Test # rubocop:disable Metrics/
     assert_equal(code, result.fetch('refusals').fetch(0).fetch('code'))
   end
 
-  def survey_point(id:, x:, y:, z:, tolerance: 0.01) # rubocop:disable Naming/MethodParameterName
+  def survey_point(id:, x:, y:, z:, tolerance: 0.01)
     { 'id' => id, 'point' => { 'x' => x, 'y' => y, 'z' => z }, 'tolerance' => tolerance }
   end
 

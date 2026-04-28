@@ -11,9 +11,7 @@ require_relative 'create_terrain_surface_request'
 module SU_MCP
   module Terrain
     # Converts one supported explicit source surface into sampled terrain-state input.
-    # rubocop:disable Metrics/ClassLength
     class TerrainSurfaceAdoptionSampler
-      # rubocop:disable Metrics/ParameterLists
       def initialize(
         sample_query: nil,
         target_resolver: nil,
@@ -32,7 +30,6 @@ module SU_MCP
         )
         @length_converter = length_converter
       end
-      # rubocop:enable Metrics/ParameterLists
 
       def derive(target_reference)
         return derive_from_profile_evidence(target_reference) if test_profile_query?
@@ -391,6 +388,5 @@ module SU_MCP
         CreateTerrainSurfaceRequest::MIN_TERRAIN_ROWS
       end
     end
-    # rubocop:enable Metrics/ClassLength
   end
 end

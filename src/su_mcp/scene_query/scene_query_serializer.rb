@@ -14,7 +14,6 @@ module SU_MCP
   }.freeze
 
   # Normalizes SketchUp entities and bounds into MCP-safe hashes.
-  # rubocop:disable Metrics/ClassLength
   class SceneQuerySerializer
     def bounds_to_h(bounds)
       return nil unless bounds&.valid?
@@ -270,5 +269,4 @@ module SU_MCP
       entity.is_a?(Sketchup::Group) || entity.is_a?(Sketchup::ComponentInstance)
     end
   end
-  # rubocop:enable Metrics/ClassLength
 end

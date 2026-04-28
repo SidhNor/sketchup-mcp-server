@@ -7,7 +7,6 @@ module SU_MCP
     REQUIRED_ANNOTATION_KEYS = %i[read_only_hint destructive_hint].freeze
 
     class << self
-      # rubocop:disable Metrics/MethodLength, Metrics/ParameterLists
       def build(
         name:,
         title:,
@@ -40,7 +39,6 @@ module SU_MCP
           }
         }.freeze
       end
-      # rubocop:enable Metrics/MethodLength, Metrics/ParameterLists
 
       private
 

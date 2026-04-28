@@ -1,7 +1,5 @@
 # frozen_string_literal: true
 
-# rubocop:disable Metrics/AbcSize, Metrics/MethodLength
-
 require_relative '../test_helper'
 require_relative '../../src/su_mcp/terrain/heightmap_state'
 require_relative '../support/terrain_survey_correction_evaluation'
@@ -11,7 +9,7 @@ rescue LoadError
   # Skeleton-first TDD: production survey editor is introduced by MTA-13.
 end
 
-class SurveyPointConstraintEditTest < Minitest::Test # rubocop:disable Metrics/ClassLength
+class SurveyPointConstraintEditTest < Minitest::Test
   BASIS = {
     'xAxis' => [1.0, 0.0, 0.0],
     'yAxis' => [0.0, 1.0, 0.0],
@@ -335,7 +333,7 @@ class SurveyPointConstraintEditTest < Minitest::Test # rubocop:disable Metrics/C
     }
   end
 
-  def survey_point(id:, x:, y:, z:, tolerance: 0.01) # rubocop:disable Naming/MethodParameterName
+  def survey_point(id:, x:, y:, z:, tolerance: 0.01)
     { 'id' => id, 'point' => { 'x' => x, 'y' => y, 'z' => z }, 'tolerance' => tolerance }
   end
 
@@ -418,4 +416,3 @@ class SurveyPointConstraintEditTest < Minitest::Test # rubocop:disable Metrics/C
     state.elevations.fetch((row * state.dimensions.fetch('columns')) + column)
   end
 end
-# rubocop:enable Metrics/AbcSize, Metrics/MethodLength

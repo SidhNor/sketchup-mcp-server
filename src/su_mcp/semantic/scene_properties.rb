@@ -35,8 +35,7 @@ module SU_MCP
         material || group.material
       end
 
-      # rubocop:disable Metrics/AbcSize, Metrics/CyclomaticComplexity
-      # rubocop:disable Metrics/PerceivedComplexity
+      # rubocop:disable Metrics/CyclomaticComplexity
       def layer_for(model, group, tag_name)
         layers = model.respond_to?(:layers) ? model.layers : nil
         return group.layer.class.new(tag_name) unless layers
@@ -53,8 +52,7 @@ module SU_MCP
         layers << fallback_layer if layers.respond_to?(:<<)
         fallback_layer
       end
-      # rubocop:enable Metrics/AbcSize, Metrics/CyclomaticComplexity
-      # rubocop:enable Metrics/PerceivedComplexity
+      # rubocop:enable Metrics/CyclomaticComplexity
     end
   end
 end

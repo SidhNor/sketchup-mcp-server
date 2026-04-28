@@ -23,16 +23,13 @@ require_relative 'terrain_surface_state_builder'
 module SU_MCP
   module Terrain
     # Public terrain command target for create_terrain_surface and edit_terrain_surface.
-    # rubocop:disable Metrics/AbcSize, Metrics/ClassLength, Metrics/CyclomaticComplexity
-    # rubocop:disable Metrics/MethodLength
-    # rubocop:disable Metrics/PerceivedComplexity
+    # rubocop:disable Metrics/ClassLength
     class TerrainSurfaceCommands
       OPERATION_NAME = 'Create Terrain Surface'
       EDIT_OPERATION_NAME = 'Edit Terrain Surface'
       SEMANTIC_TYPE = 'managed_terrain_surface'
       SCHEMA_VERSION = 1
 
-      # rubocop:disable Metrics/ParameterLists
       def initialize(
         model: Sketchup.active_model,
         validator: nil,
@@ -70,7 +67,6 @@ module SU_MCP
         @target_resolver = target_resolver || TargetReferenceResolver.new
         @edit_evidence_builder = edit_evidence_builder
       end
-      # rubocop:enable Metrics/ParameterLists
 
       def create_terrain_surface(params)
         validation = validate(params)
@@ -538,7 +534,6 @@ module SU_MCP
         sampled_source[:source_entity]&.erase!
       end
 
-      # rubocop:disable Metrics/ParameterLists
       def success_response(
         outcome:,
         lifecycle_mode:,
@@ -562,7 +557,6 @@ module SU_MCP
           sampling_summary: sampling_summary
         )
       end
-      # rubocop:enable Metrics/ParameterLists
 
       def owner_reference(owner, params)
         {
@@ -626,8 +620,6 @@ module SU_MCP
         result.is_a?(Hash) && result[:outcome] == 'refused'
       end
     end
-    # rubocop:enable Metrics/AbcSize, Metrics/ClassLength, Metrics/CyclomaticComplexity
-    # rubocop:enable Metrics/MethodLength
-    # rubocop:enable Metrics/PerceivedComplexity
+    # rubocop:enable Metrics/ClassLength
   end
 end

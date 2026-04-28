@@ -5,7 +5,6 @@ require_relative '../runtime/tool_response'
 module SU_MCP
   module Semantic
     # Owns the Managed Scene Object metadata contract and mutation policy.
-    # rubocop:disable Metrics/ClassLength
     class ManagedObjectMetadata
       DICTIONARY = 'su_mcp'
       # Empty managed containers need a hidden internal entity so SketchUp keeps
@@ -256,6 +255,5 @@ module SU_MCP
           .reject { |key, _value| key == :success }
       end
     end
-    # rubocop:enable Metrics/ClassLength
   end
 end

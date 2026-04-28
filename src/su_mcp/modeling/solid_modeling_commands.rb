@@ -6,7 +6,6 @@ require_relative '../runtime/tool_response'
 module SU_MCP
   # Grouped command surface for solid-modeling operations.
   # rubocop:disable Metrics/AbcSize, Metrics/CyclomaticComplexity
-  # rubocop:disable Metrics/MethodLength, Metrics/PerceivedComplexity
   class SolidModelingCommands
     VALID_BOOLEAN_OPERATIONS = %w[union difference intersection].freeze
 
@@ -162,5 +161,4 @@ module SU_MCP
     end
   end
   # rubocop:enable Metrics/AbcSize, Metrics/CyclomaticComplexity
-  # rubocop:enable Metrics/MethodLength, Metrics/PerceivedComplexity
 end

@@ -86,7 +86,6 @@ class EntityRelocatorTest < Minitest::Test
     assert_equal(@material.display_name, result.first.material.display_name)
   end
 
-  # rubocop:disable Metrics/MethodLength
   def test_returns_relocated_entities_in_input_order
     first = build_sample_surface_group(
       entity_id: 401,
@@ -116,7 +115,6 @@ class EntityRelocatorTest < Minitest::Test
       result.map { |entity| entity.get_attribute('su_mcp', 'sourceElementId') }
     )
   end
-  # rubocop:enable Metrics/MethodLength
 
   def test_preserves_source_element_id_when_runtime_ids_refresh
     child_group = build_sample_surface_group(
@@ -137,7 +135,6 @@ class EntityRelocatorTest < Minitest::Test
     refute_nil(result.first.persistent_id)
   end
 
-  # rubocop:disable Metrics/AbcSize
   def test_preserves_nested_group_contents_when_relocating_group_wrappers
     child_group = @model.active_entities.add_group
     child_group.set_attribute('su_mcp', 'sourceElementId', 'nested-wrapper-001')
@@ -161,7 +158,6 @@ class EntityRelocatorTest < Minitest::Test
       relocated_group.entities.groups.first.get_attribute('su_mcp', 'sourceElementId')
     )
   end
-  # rubocop:enable Metrics/AbcSize
 
   def test_relocates_nested_contents_without_calling_collection_each
     child_group = @model.active_entities.add_group

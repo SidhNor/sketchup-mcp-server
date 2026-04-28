@@ -6,7 +6,6 @@ module SU_MCP
   module Terrain
     # Builds JSON-safe edit_terrain_surface success evidence.
     class TerrainEditEvidenceBuilder
-      # rubocop:disable Metrics/ParameterLists
       def build_success(
         owner_reference:,
         terrain_state_summary:,
@@ -26,7 +25,6 @@ module SU_MCP
           evidence: evidence_summary(edit_summary, diagnostics, sample_limit)
         )
       end
-      # rubocop:enable Metrics/ParameterLists
 
       private
 
@@ -49,7 +47,7 @@ module SU_MCP
         summary
       end
 
-      def evidence_summary(edit_summary, diagnostics, sample_limit) # rubocop:disable Metrics/AbcSize, Metrics/MethodLength
+      def evidence_summary(edit_summary, diagnostics, sample_limit)
         samples = diagnostics.fetch(:samples, [])
         summary = {
           editRegion: edit_summary.fetch(:region, {}),

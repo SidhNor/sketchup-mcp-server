@@ -8,7 +8,6 @@ module SU_MCP
   module Semantic
     # Builds the lightweight surface-drape ribbon for path hosting without
     # modifying the terrain or conforming width-wise to the terrain mesh.
-    # rubocop:disable Metrics/ClassLength
     class PathDrapeBuilder
       DEFAULT_CLEARANCE_METERS = 0.02
       DEFAULT_STATION_SPACING_METERS = 1.0
@@ -76,7 +75,6 @@ module SU_MCP
         end.compact
       end
 
-      # rubocop:disable Metrics/AbcSize
       def build_sections(stations:, width:, sample_context:)
         half_width = width.to_f / 2.0
         tangents = stations.each_index.map { |index| tangent_for(stations, index) }
@@ -93,7 +91,6 @@ module SU_MCP
           )
         end
       end
-      # rubocop:enable Metrics/AbcSize
 
       def smooth_section_zs(raw_zs)
         return raw_zs if raw_zs.length <= 2
@@ -146,7 +143,6 @@ module SU_MCP
         emit_faces(group.entities, sections, thickness.to_f)
       end
 
-      # rubocop:disable Metrics/AbcSize
       def intermediate_stations_for_segment(start_point, end_point)
         segment_vector = [end_point[0] - start_point[0], end_point[1] - start_point[1]]
         segment_length = Math.hypot(*segment_vector)
@@ -164,7 +160,6 @@ module SU_MCP
           ]
         end
       end
-      # rubocop:enable Metrics/AbcSize
 
       def raw_section_zs(stations, normals, width, sample_context)
         stations.each_index.map do |index|
@@ -380,6 +375,5 @@ module SU_MCP
         )
       end
     end
-    # rubocop:enable Metrics/ClassLength
   end
 end

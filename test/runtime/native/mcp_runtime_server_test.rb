@@ -142,7 +142,6 @@ class McpRuntimeServerTest < Minitest::Test
     assert_equal('/repo/vendor/ruby', status[:vendor_root])
   end
 
-  # rubocop:disable Metrics/MethodLength
   def test_start_registers_representative_migrated_native_handlers
     runtime_loader = RecordingRuntimeLoader.new
     backend = RecordingBackend.new
@@ -170,5 +169,4 @@ class McpRuntimeServerTest < Minitest::Test
       backend.start_calls.first.fetch(:handlers).keys
     )
   end
-  # rubocop:enable Metrics/MethodLength
 end

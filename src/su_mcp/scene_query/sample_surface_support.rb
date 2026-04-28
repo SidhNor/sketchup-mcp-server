@@ -2,7 +2,6 @@
 
 module SU_MCP
   # Extracted sample-surface traversal, visibility, and clustering mechanics.
-  # rubocop:disable Metrics/ClassLength
   class SampleSurfaceSupport
     def initialize(serializer:, cluster_tolerance_meters: 0.001)
       @serializer = serializer
@@ -22,7 +21,6 @@ module SU_MCP
       )
     end
 
-    # rubocop:disable Metrics/MethodLength
     def sampleable_faces_for_type(entity, entity_type, visible_only, transform_chain,
                                   ancestor_chain)
       case entity_type
@@ -46,7 +44,6 @@ module SU_MCP
         raise "Target type #{entity_type} is not supported by sample_surface_z"
       end
     end
-    # rubocop:enable Metrics/MethodLength
     private :sampleable_faces_for_type
 
     def blocking_faces_for(scene_entities, target_entity:, ignore_entities:, xy_bounds: nil)
@@ -107,7 +104,6 @@ module SU_MCP
       end
     end
 
-    # rubocop:disable Metrics/MethodLength
     def collect_faces_for_entity(entity, visible_only:, transform_chain:, ancestor_chain:)
       entity_chain = ancestor_chain + [entity]
       return [] unless visible_entity_chain?(entity_chain, visible_only)
@@ -133,7 +129,6 @@ module SU_MCP
         []
       end
     end
-    # rubocop:enable Metrics/MethodLength
 
     def visible_entity_chain?(entity_chain, visible_only)
       return true unless visible_only
@@ -181,7 +176,6 @@ module SU_MCP
       end
     end
 
-    # rubocop:disable Metrics/AbcSize, Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity
     def entity_overlaps_xy_bounds?(entity, xy_bounds)
       return true if xy_bounds.nil?
 
@@ -195,7 +189,5 @@ module SU_MCP
     rescue StandardError
       true
     end
-    # rubocop:enable Metrics/AbcSize, Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity
   end
-  # rubocop:enable Metrics/ClassLength
 end

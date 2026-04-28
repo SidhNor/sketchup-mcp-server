@@ -5,7 +5,6 @@ require_relative '../../src/su_mcp/scene_query/sample_surface_evidence'
 require_relative '../../src/su_mcp/scene_query/scene_query_serializer'
 
 class SampleSurfaceEvidenceTest < Minitest::Test
-  # rubocop:disable Metrics/MethodLength
   def test_serializer_shapes_profile_evidence_without_extra_transport_fields
     evidence = SU_MCP::SampleSurfaceEvidence::Sample.new(
       index: 1,
@@ -31,7 +30,6 @@ class SampleSurfaceEvidenceTest < Minitest::Test
       serialized
     )
   end
-  # rubocop:enable Metrics/MethodLength
 
   def test_serializer_does_not_fabricate_hit_point_for_non_hit_evidence
     evidence = SU_MCP::SampleSurfaceEvidence::Sample.new(

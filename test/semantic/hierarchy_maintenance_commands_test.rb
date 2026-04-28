@@ -5,7 +5,6 @@ require_relative '../support/semantic_test_support'
 require_relative '../support/scene_query_test_support'
 require_relative '../../src/su_mcp/semantic/hierarchy_maintenance_commands'
 
-# rubocop:disable Metrics/ClassLength
 class HierarchyMaintenanceCommandsTest < Minitest::Test
   include SemanticTestSupport
   include SceneQueryTestSupport
@@ -453,4 +452,3 @@ class HierarchyMaintenanceCommandsTest < Minitest::Test
     group
   end
 end
-# rubocop:enable Metrics/ClassLength

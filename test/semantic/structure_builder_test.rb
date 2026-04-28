@@ -101,7 +101,6 @@ class StructureBuilderTest < Minitest::Test
     assert_equal(1, @model.active_entities.groups.length)
   end
 
-  # rubocop:disable Metrics/MethodLength
   def test_build_consumes_sectioned_structure_definition_and_scene_properties
     group = @builder.build(
       model: @model,
@@ -129,7 +128,6 @@ class StructureBuilderTest < Minitest::Test
     assert_equal('Structures', group.layer.name)
     assert_equal('Wood', group.material.name)
   end
-  # rubocop:enable Metrics/MethodLength
 
   def test_build_terrain_anchored_structure_uses_centroid_sampled_planar_base
     host_target = Object.new

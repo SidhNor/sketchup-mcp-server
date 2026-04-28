@@ -5,7 +5,6 @@ require_relative 'terrain_profile_elevation_summary'
 
 module SU_MCP
   # Performs low-level geometry measurements for measure_scene.
-  # rubocop:disable Metrics/ClassLength
   class MeasurementService
     def initialize(serializer: nil, result_builder: nil, terrain_profile_summary: nil)
       @serializer = serializer
@@ -194,5 +193,4 @@ module SU_MCP
       result_builder.square_meters(value)
     end
   end
-  # rubocop:enable Metrics/ClassLength
 end

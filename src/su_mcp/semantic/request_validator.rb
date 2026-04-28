@@ -53,7 +53,7 @@ module SU_MCP
         matched_rule&.last&.call
       end
 
-      # rubocop:disable Metrics/AbcSize, Metrics/MethodLength
+      # rubocop:disable Metrics/AbcSize
       def sectioned_validation_rules(params)
         lifecycle_mode = params.dig('lifecycle', 'mode').to_s
 
@@ -247,7 +247,7 @@ module SU_MCP
           ]
         ]
       end
-      # rubocop:enable Metrics/AbcSize, Metrics/MethodLength
+      # rubocop:enable Metrics/AbcSize
 
       def supported_element_type?(element_type)
         SUPPORTED_ELEMENT_TYPES.include?(element_type.to_s)

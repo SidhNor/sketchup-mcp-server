@@ -1,7 +1,5 @@
 # frozen_string_literal: true
 
-# rubocop:disable Metrics/MethodLength
-
 require_relative '../test_helper'
 require_relative '../support/semantic_test_support'
 require_relative '../support/scene_query_test_support'
@@ -211,4 +209,3 @@ class PathBuilderTest < Minitest::Test
     assert_equal('hosting', error.details[:section])
   end
 end
-# rubocop:enable Metrics/MethodLength

@@ -3,7 +3,6 @@
 require_relative '../test_helper'
 require_relative '../../src/su_mcp/runtime/tool_dispatcher'
 
-# rubocop:disable Metrics/ClassLength
 class ToolDispatcherTest < Minitest::Test
   class CommandTarget
     attr_reader :calls
@@ -257,7 +256,6 @@ class ToolDispatcherTest < Minitest::Test
     )
   end
 
-  # rubocop:disable Metrics/MethodLength
   def test_dispatches_validate_scene_update_surface_offset_payload_to_the_validation_command
     result = @dispatcher.call(
       'validate_scene_update',
@@ -348,7 +346,6 @@ class ToolDispatcherTest < Minitest::Test
     )
     assert_equal([[:edit_terrain_surface, payload]], @target.calls.last(1))
   end
-  # rubocop:enable Metrics/MethodLength
 
   def test_dispatches_curate_staged_asset_to_the_staged_asset_command
     payload = {
@@ -437,7 +434,6 @@ class ToolDispatcherTest < Minitest::Test
     )
   end
 
-  # rubocop:disable Metrics/MethodLength
   def test_dispatches_create_group_to_the_hierarchy_command
     result = @dispatcher.call(
       'create_group',
@@ -462,9 +458,7 @@ class ToolDispatcherTest < Minitest::Test
       @target.calls.last(1)
     )
   end
-  # rubocop:enable Metrics/MethodLength
 
-  # rubocop:disable Metrics/MethodLength
   def test_dispatches_create_group_with_managed_container_arguments_to_the_hierarchy_command
     result = @dispatcher.call(
       'create_group',
@@ -501,9 +495,7 @@ class ToolDispatcherTest < Minitest::Test
       @target.calls.last(1)
     )
   end
-  # rubocop:enable Metrics/MethodLength
 
-  # rubocop:disable Metrics/MethodLength
   def test_dispatches_reparent_entities_to_the_hierarchy_command
     result = @dispatcher.call(
       'reparent_entities',
@@ -532,9 +524,7 @@ class ToolDispatcherTest < Minitest::Test
       @target.calls.last(1)
     )
   end
-  # rubocop:enable Metrics/MethodLength
 
-  # rubocop:disable Metrics/MethodLength
   def test_dispatches_sample_surface_z_to_the_scene_query_command
     result = @dispatcher.call(
       'sample_surface_z',
@@ -565,9 +555,7 @@ class ToolDispatcherTest < Minitest::Test
       @target.calls
     )
   end
-  # rubocop:enable Metrics/MethodLength
 
-  # rubocop:disable Metrics/MethodLength
   def test_dispatches_create_site_element_to_the_semantic_command
     result = @dispatcher.call(
       'create_site_element',
@@ -596,9 +584,7 @@ class ToolDispatcherTest < Minitest::Test
       @target.calls.last(1)
     )
   end
-  # rubocop:enable Metrics/MethodLength
 
-  # rubocop:disable Metrics/MethodLength
   def test_dispatches_set_entity_metadata_to_the_semantic_command
     result = @dispatcher.call(
       'set_entity_metadata',
@@ -627,7 +613,6 @@ class ToolDispatcherTest < Minitest::Test
       @target.calls.last(1)
     )
   end
-  # rubocop:enable Metrics/MethodLength
 
   def test_raises_for_unknown_tool
     error = assert_raises(RuntimeError) do
@@ -637,4 +622,3 @@ class ToolDispatcherTest < Minitest::Test
     assert_equal('Unknown tool: unknown_tool', error.message)
   end
 end
-# rubocop:enable Metrics/ClassLength

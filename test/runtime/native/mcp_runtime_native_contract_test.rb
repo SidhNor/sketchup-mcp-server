@@ -511,7 +511,7 @@ class McpRuntimeNativeContractTest < Minitest::Test
     end
   end
 
-  def test_native_transport_preserves_edit_terrain_surface_contract_shapes # rubocop:disable Metrics/MethodLength
+  def test_native_transport_preserves_edit_terrain_surface_contract_shapes
     skip_unless_staged_vendor_runtime!
 
     %w[

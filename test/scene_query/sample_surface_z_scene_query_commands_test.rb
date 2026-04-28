@@ -35,7 +35,6 @@ class SampleSurfaceZSceneQueryCommandsTest < Minitest::Test
     attr_reader :entity_id, :bounds, :layer, :material, :name, :persistent_id, :details,
                 :vertices_calls, :classify_point_calls
 
-    # rubocop:disable Metrics/AbcSize, Metrics/MethodLength, Metrics/ParameterLists
     def initialize(entity_id:, persistent_id:, x_range:, y_range:, z_value:, layer:, material:)
       super()
       @entity_id = entity_id
@@ -64,8 +63,6 @@ class SampleSurfaceZSceneQueryCommandsTest < Minitest::Test
       @vertices_calls = 0
       @classify_point_calls = 0
     end
-    # rubocop:enable Metrics/AbcSize, Metrics/MethodLength, Metrics/ParameterLists
-
     # rubocop:disable Naming/MethodName
     define_method(:entityID) { entity_id }
     # rubocop:enable Naming/MethodName
@@ -534,7 +531,6 @@ class SampleSurfaceZSceneQueryCommandsTest < Minitest::Test
     assert_equal(3.0, result.dig(:results, 0, :hitPoint, :z))
   end
 
-  # rubocop:disable Metrics/MethodLength
   def test_returns_ordered_profile_results_with_distance_progress_and_summary
     result = @commands.sample_surface_z(
       profile_request(
@@ -587,7 +583,6 @@ class SampleSurfaceZSceneQueryCommandsTest < Minitest::Test
       result[:summary]
     )
   end
-  # rubocop:enable Metrics/MethodLength
 
   def test_profile_non_hits_do_not_fabricate_hit_points
     result = @commands.sample_surface_z(
@@ -757,7 +752,7 @@ class SampleSurfaceZSceneQueryCommandsTest < Minitest::Test
     assert_equal(0, faces.last.classify_point_calls)
   end
 
-  def test_profile_evidence_prunes_visible_blockers_outside_profile_corridor # rubocop:disable Metrics/MethodLength
+  def test_profile_evidence_prunes_visible_blockers_outside_profile_corridor
     terrain, off_corridor_blocker, on_corridor_blocker = corridor_pruning_entities
     serializer = SU_MCP::SceneQuerySerializer.new
     support = CountingSampleSurfaceSupport.new(serializer: serializer)
@@ -787,7 +782,7 @@ class SampleSurfaceZSceneQueryCommandsTest < Minitest::Test
 
   private
 
-  def corridor_pruning_entities # rubocop:disable Metrics/MethodLength
+  def corridor_pruning_entities
     terrain = build_sample_surface_face(
       entity_id: 501,
       persistent_id: 5001,

@@ -3,7 +3,6 @@
 require_relative '../test_helper'
 require_relative '../../src/su_mcp/semantic/request_normalizer'
 
-# rubocop:disable Metrics/ClassLength
 class SemanticRequestNormalizerTest < Minitest::Test
   METERS_TO_INTERNAL = 39.37007874015748
 
@@ -37,7 +36,7 @@ class SemanticRequestNormalizerTest < Minitest::Test
     assert_equal('cherry', normalized.dig('definition', 'speciesHint'))
   end
 
-  # rubocop:disable Metrics/AbcSize, Metrics/MethodLength
+  # rubocop:disable Metrics/AbcSize
   def test_normalizes_remaining_family_geometry_fields_to_internal_lengths
     pad = @normalizer.normalize_create_site_element_params(sectioned_pad_request)
     retaining_edge = @normalizer.normalize_create_site_element_params(
@@ -71,7 +70,7 @@ class SemanticRequestNormalizerTest < Minitest::Test
       1e-9
     )
   end
-  # rubocop:enable Metrics/AbcSize, Metrics/MethodLength
+  # rubocop:enable Metrics/AbcSize
 
   def test_defaults_tree_proxy_canopy_diameter_y_from_canopy_diameter_x
     normalized = @normalizer.normalize_create_site_element_params(
@@ -140,8 +139,6 @@ class SemanticRequestNormalizerTest < Minitest::Test
   end
 
   private
-
-  # rubocop:disable Metrics/MethodLength
 
   def v2_terrain_path_request
     {
@@ -345,7 +342,4 @@ class SemanticRequestNormalizerTest < Minitest::Test
       left.is_a?(Hash) && right.is_a?(Hash) ? deep_merge(left, right) : right
     end
   end
-
-  # rubocop:enable Metrics/MethodLength
 end
-# rubocop:enable Metrics/ClassLength

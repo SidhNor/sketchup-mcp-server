@@ -1,7 +1,5 @@
 # frozen_string_literal: true
 
-# rubocop:disable Metrics/AbcSize, Metrics/MethodLength
-
 require_relative '../test_helper'
 require_relative '../support/semantic_test_support'
 require_relative '../../src/su_mcp/terrain/heightmap_state'
@@ -256,7 +254,7 @@ class TerrainSurfaceCommandsTest < Minitest::Test # rubocop:disable Metrics/Clas
     assert_equal([:regenerate], mesh_generator.calls)
   end
 
-  def test_local_fairing_dispatches_to_local_fairing_editor_and_reuses_regeneration_flow # rubocop:disable Metrics/AbcSize, Metrics/MethodLength
+  def test_local_fairing_dispatches_to_local_fairing_editor_and_reuses_regeneration_flow
     model = build_semantic_model
     managed_terrain_owner(model)
     repository = EditRepository.new(state)
@@ -441,7 +439,6 @@ class TerrainSurfaceCommandsTest < Minitest::Test # rubocop:disable Metrics/Clas
     )
   end
 
-  # rubocop:disable Metrics/ParameterLists
   def build_edit_commands(model:, repository: EditRepository.new(state),
                           mesh_generator: RecordingRegeneratingMeshGenerator.new,
                           edit_request_validator: AcceptingEditValidator.new,
@@ -470,7 +467,6 @@ class TerrainSurfaceCommandsTest < Minitest::Test # rubocop:disable Metrics/Clas
 
     SU_MCP::Terrain::TerrainSurfaceCommands.new(**options)
   end
-  # rubocop:enable Metrics/ParameterLists
 
   def create_request
     { 'metadata' => { 'sourceElementId' => 'terrain-main', 'status' => 'existing' },
@@ -971,4 +967,3 @@ class TerrainSurfaceCommandsTest < Minitest::Test # rubocop:disable Metrics/Clas
     end
   end
 end
-# rubocop:enable Metrics/AbcSize, Metrics/MethodLength

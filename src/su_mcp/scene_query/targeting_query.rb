@@ -2,8 +2,6 @@
 
 module SU_MCP
   # Ruby-owned query validation and exact-match filtering for entity targeting.
-  # rubocop:disable Metrics/AbcSize, Metrics/CyclomaticComplexity
-  # rubocop:disable Metrics/MethodLength, Metrics/PerceivedComplexity
   class TargetingQuery
     SECTION_KEYS = %w[identity attributes metadata].freeze
     IDENTITY_KEYS = %w[sourceElementId persistentId entityId].freeze
@@ -131,6 +129,4 @@ module SU_MCP
       metadata_selector.all? { |key, value| metadata_summary[key.to_sym] == value }
     end
   end
-  # rubocop:enable Metrics/AbcSize, Metrics/CyclomaticComplexity
-  # rubocop:enable Metrics/MethodLength, Metrics/PerceivedComplexity
 end

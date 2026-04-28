@@ -46,7 +46,6 @@ class TargetReferenceResolverTest < Minitest::Test
 
   private
 
-  # rubocop:disable Metrics/MethodLength
   def build_metadata_target_model
     layer = FakeLayer.new('Structures')
     material = FakeMaterial.new('Timber')
@@ -111,5 +110,4 @@ class TargetReferenceResolverTest < Minitest::Test
       details: { options: default_options }
     )
   end
-  # rubocop:enable Metrics/MethodLength
 end

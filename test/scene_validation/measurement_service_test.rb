@@ -5,7 +5,6 @@ require_relative '../support/scene_query_test_support'
 require_relative '../../src/su_mcp/scene_query/sample_surface_evidence'
 require_relative '../../src/su_mcp/scene_validation/measurement_service'
 
-# rubocop:disable Metrics/ClassLength
 class MeasurementServiceTest < Minitest::Test
   include SceneQueryTestSupport
 
@@ -139,7 +138,7 @@ class MeasurementServiceTest < Minitest::Test
     assert_equal('invalid_bounds', result.dig(:measurement, :reason))
   end
 
-  def test_dispatches_terrain_profile_elevation_summary_to_profile_reducer # rubocop:disable Metrics/MethodLength
+  def test_dispatches_terrain_profile_elevation_summary_to_profile_reducer
     samples = [
       SU_MCP::SampleSurfaceEvidence::Sample.new(
         index: 0,
@@ -262,4 +261,3 @@ class MeasurementServiceTest < Minitest::Test
     end
   end
 end
-# rubocop:enable Metrics/ClassLength

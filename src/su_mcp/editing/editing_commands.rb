@@ -11,13 +11,11 @@ require_relative '../scene_query/target_reference_resolver'
 
 module SU_MCP
   # Grouped command surface for generic editing operations.
-  # rubocop:disable Metrics/ClassLength
   class EditingCommands
     DELETE_OPERATION_NAME = 'Delete Entities'
     TRANSFORM_OPERATION_NAME = 'Transform Entities'
     SET_MATERIAL_OPERATION_NAME = 'Set Entity Material'
 
-    # rubocop:disable Metrics/ParameterLists
     def initialize(model_adapter:, logger: nil, material_resolver: nil, serializer: nil,
                    target_resolver: nil, managed_mutation_helper: nil, length_converter: nil)
       @model_adapter = model_adapter
@@ -36,9 +34,7 @@ module SU_MCP
       )
       @length_converter = length_converter || Semantic::LengthConverter.new
     end
-    # rubocop:enable Metrics/ParameterLists
 
-    # rubocop:disable Metrics/MethodLength
     def delete_entities(params)
       validate_delete_entities_params!(params)
 
@@ -64,7 +60,6 @@ module SU_MCP
         )
       end
     end
-    # rubocop:enable Metrics/MethodLength
 
     def transform_entities(params)
       mutation_target = resolve_mutation_target(params)
@@ -232,5 +227,4 @@ module SU_MCP
       logger&.call(message)
     end
   end
-  # rubocop:enable Metrics/ClassLength
 end

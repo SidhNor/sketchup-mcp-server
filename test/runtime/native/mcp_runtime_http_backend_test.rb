@@ -77,7 +77,7 @@ class McpRuntimeHttpBackendTest < Minitest::Test
     assert_equal(1, started_timers.length)
   end
 
-  # rubocop:disable Metrics/AbcSize, Metrics/MethodLength
+  # rubocop:disable Metrics/AbcSize
   def test_process_client_translates_http_into_a_rack_call_and_writes_a_response
     app_calls = []
     app = lambda do |env|
@@ -104,7 +104,7 @@ class McpRuntimeHttpBackendTest < Minitest::Test
     assert_includes(client.writes.join, '{"ok":true}')
     assert_equal(true, client.closed)
   end
-  # rubocop:enable Metrics/AbcSize, Metrics/MethodLength
+  # rubocop:enable Metrics/AbcSize
 
   def test_process_client_reads_lowercase_content_length_headers
     app_calls = []

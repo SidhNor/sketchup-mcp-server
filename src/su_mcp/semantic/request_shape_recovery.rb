@@ -57,7 +57,6 @@ module SU_MCP
         recovered
       end
 
-      # rubocop:disable Metrics/MethodLength
       def misnested_definition_leaf_refusal(params)
         return unless params.is_a?(Hash)
         return unless params['definition'].is_a?(Hash)
@@ -80,7 +79,6 @@ module SU_MCP
           }
         )
       end
-      # rubocop:enable Metrics/MethodLength
 
       def canonical_non_definition_sections_present?(params)
         (CANONICAL_TOP_LEVEL_SECTIONS - ['definition']).all? { |section| params.key?(section) }

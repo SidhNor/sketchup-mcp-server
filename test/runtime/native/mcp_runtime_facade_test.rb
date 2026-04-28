@@ -8,7 +8,6 @@ require_relative '../../../src/su_mcp/scene_query/scene_query_commands'
 require_relative '../../../src/su_mcp/runtime/native/mcp_runtime_facade'
 require_relative '../../../src/su_mcp/runtime/runtime_command_factory'
 
-# rubocop:disable Metrics/ClassLength
 class McpRuntimeFacadeTest < Minitest::Test
   include SceneQueryTestSupport
   include SemanticTestSupport
@@ -328,7 +327,7 @@ class McpRuntimeFacadeTest < Minitest::Test
     assert_equal(expected, result)
   end
 
-  # rubocop:disable Metrics/MethodLength, Layout/LineLength
+  # rubocop:disable Layout/LineLength
   def test_validate_scene_update_surface_offset_payload_dispatches_through_the_shared_runtime_command_factory
     expected = { success: true, outcome: 'passed', errors: [], warnings: [], summary: {} }
     validation_commands = RecordingValidationCommands.new(result: expected)
@@ -368,7 +367,7 @@ class McpRuntimeFacadeTest < Minitest::Test
     )
     assert_equal(expected, result)
   end
-  # rubocop:enable Metrics/MethodLength, Layout/LineLength
+  # rubocop:enable Layout/LineLength
 
   def test_create_group_dispatches_through_the_real_runtime_command_factory
     Sketchup.active_model_override = build_semantic_model
@@ -383,4 +382,3 @@ class McpRuntimeFacadeTest < Minitest::Test
     assert_equal('group', result.dig(:group, :type))
   end
 end
-# rubocop:enable Metrics/ClassLength

@@ -6,7 +6,7 @@ module SU_MCP
   module Terrain
     # Validates and normalizes the public edit_terrain_surface request.
     # rubocop:disable Metrics/AbcSize, Metrics/ClassLength, Metrics/CyclomaticComplexity
-    # rubocop:disable Metrics/MethodLength, Metrics/PerceivedComplexity
+    # rubocop:disable Metrics/PerceivedComplexity
     class EditTerrainSurfaceRequest
       SUPPORTED_OPERATION_MODES = %w[
         target_height corridor_transition local_fairing survey_point_constraint
@@ -623,6 +623,6 @@ module SU_MCP
       end
     end
     # rubocop:enable Metrics/AbcSize, Metrics/ClassLength, Metrics/CyclomaticComplexity
-    # rubocop:enable Metrics/MethodLength, Metrics/PerceivedComplexity
+    # rubocop:enable Metrics/PerceivedComplexity
   end
 end

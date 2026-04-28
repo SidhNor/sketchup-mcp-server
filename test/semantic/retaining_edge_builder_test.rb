@@ -12,7 +12,6 @@ class RetainingEdgeBuilderTest < Minitest::Test
     @builder = SU_MCP::Semantic::RetainingEdgeBuilder.new
   end
 
-  # rubocop:disable Metrics/MethodLength
   def test_build_creates_a_retaining_edge_mass_from_polyline_height_and_thickness
     group = @builder.build(
       model: @model,
@@ -39,7 +38,6 @@ class RetainingEdgeBuilderTest < Minitest::Test
     assert_equal([0.45], group.entities.faces.first.pushpull_calls)
     assert_equal('Edges', group.layer.name)
   end
-  # rubocop:enable Metrics/MethodLength
 
   def test_build_creates_retaining_edge_into_supplied_destination_collection
     parent_group = @model.active_entities.add_group

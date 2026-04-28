@@ -170,7 +170,6 @@ module SU_MCP
       end
     end
 
-    # rubocop:disable Metrics/MethodLength, Metrics/ParameterLists
     def build_tool(
       name:,
       title:,
@@ -205,7 +204,6 @@ module SU_MCP
         )
       end
     end
-    # rubocop:enable Metrics/MethodLength, Metrics/ParameterLists
 
     def stringify_keys(value)
       case value
@@ -249,7 +247,6 @@ module SU_MCP
       result
     end
 
-    # rubocop:disable Metrics/MethodLength
     def primary_tool_catalog
       [
         tool_entry(
@@ -349,7 +346,7 @@ module SU_MCP
       ]
     end
 
-    def scene_tool_catalog # rubocop:disable Metrics/AbcSize
+    def scene_tool_catalog
       [
         tool_entry(
           name: 'sample_surface_z',
@@ -584,9 +581,7 @@ module SU_MCP
         )
       ]
     end
-    # rubocop:enable Metrics/MethodLength
 
-    # rubocop:disable Metrics/ParameterLists
     def tool_entry(
       name:,
       title:,
@@ -606,7 +601,6 @@ module SU_MCP
         classification: classification
       )
     end
-    # rubocop:enable Metrics/ParameterLists
 
     def translate_tool_failure(exception, tool_name:)
       RuntimeError.new("Native MCP tool #{tool_name} failed: #{exception.message}")
@@ -981,7 +975,6 @@ module SU_MCP
       }
     end
 
-    # rubocop:disable Metrics/MethodLength
     def sample_surface_sampling_schema
       {
         type: 'object',
@@ -1001,7 +994,6 @@ module SU_MCP
         additionalProperties: false
       }
     end
-    # rubocop:enable Metrics/MethodLength
 
     def xy_point_array_schema
       {
@@ -1101,7 +1093,6 @@ module SU_MCP
       }
     end
 
-    # rubocop:disable Metrics/MethodLength
     def geometry_requirement_schema
       {
         type: 'object',
@@ -1125,7 +1116,6 @@ module SU_MCP
         additionalProperties: false
       }
     end
-    # rubocop:enable Metrics/MethodLength
 
     def validation_core_expectations_schema
       {
@@ -1185,7 +1175,6 @@ module SU_MCP
       }
     end
 
-    # rubocop:disable Metrics/MethodLength
     def measure_scene_schema
       {
         type: 'object',
@@ -1224,7 +1213,6 @@ module SU_MCP
         additionalProperties: false
       }
     end
-    # rubocop:enable Metrics/MethodLength
 
     def measure_scene_target_reference_schema(description)
       described_schema(
@@ -1246,7 +1234,7 @@ module SU_MCP
       }
     end
 
-    def measure_scene_terrain_sampling_schema # rubocop:disable Metrics/MethodLength
+    def measure_scene_terrain_sampling_schema
       described_schema(
         {
           type: 'object',
@@ -1449,7 +1437,7 @@ module SU_MCP
       }
     end
 
-    def edit_terrain_operation_properties # rubocop:disable Metrics/MethodLength
+    def edit_terrain_operation_properties
       {
         mode: described_schema(
           enum_schema(SU_MCP::Terrain::EditTerrainSurfaceRequest::SUPPORTED_OPERATION_MODES),
@@ -1591,7 +1579,7 @@ module SU_MCP
       }
     end
 
-    def edit_terrain_constraints_schema # rubocop:disable Metrics/MethodLength
+    def edit_terrain_constraints_schema
       {
         type: 'object',
         properties: {
@@ -1715,7 +1703,6 @@ module SU_MCP
       }
     end
 
-    # rubocop:disable Metrics/MethodLength
     def tree_proxy_payload_schema
       {
         type: 'object',
@@ -1745,7 +1732,6 @@ module SU_MCP
       SU_MCP::Semantic::RequestShapeContract::CANONICAL_TOP_LEVEL_SECTIONS
     end
 
-    # rubocop:disable Metrics/AbcSize
     def create_site_element_definition_properties
       {
         mode: described_schema(
@@ -1784,17 +1770,15 @@ module SU_MCP
         speciesHint: string_schema
       }
     end
-    # rubocop:enable Metrics/AbcSize
 
-    # rubocop:disable Metrics/AbcSize
     def create_site_element_canonical_properties
       {
         elementType: described_schema(
           enum_schema(
             SU_MCP::Semantic::RequestValidator::SUPPORTED_ELEMENT_TYPES
           ),
-          'Semantic element type to create. This selects the valid definition, hosting, ' \
-          'representation, and lifecycle modes for the request.'
+          'Semantic element type to create. This selects the valid definition, ' \
+          'hosting, representation, and lifecycle modes for the request.'
         ),
         metadata: described_schema(
           {
@@ -1906,7 +1890,6 @@ module SU_MCP
         )
       }
     end
-    # rubocop:enable Metrics/AbcSize
 
     def create_site_element_schema
       {
@@ -1997,8 +1980,6 @@ module SU_MCP
         additionalProperties: false
       }
     end
-
-    # rubocop:enable Metrics/MethodLength
 
     def runtime_input_schema(schema)
       runtime_input_schema_class.new(schema)

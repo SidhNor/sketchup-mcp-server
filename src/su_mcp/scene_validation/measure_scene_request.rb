@@ -4,7 +4,6 @@ require_relative '../runtime/tool_response'
 
 module SU_MCP
   # Normalizes and validates the public measure_scene request shape.
-  # rubocop:disable Metrics/ClassLength
   class MeasureSceneRequest
     MODE_KINDS = {
       'bounds' => ['world_bounds'],
@@ -318,5 +317,4 @@ module SU_MCP
       ToolResponse.refusal(code: 'invalid_request', message: message, details: details)
     end
   end
-  # rubocop:enable Metrics/ClassLength
 end

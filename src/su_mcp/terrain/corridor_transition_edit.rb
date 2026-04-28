@@ -8,7 +8,6 @@ require_relative 'sample_window'
 module SU_MCP
   module Terrain
     # SketchUp-free corridor transition terrain edit kernel.
-    # rubocop:disable Metrics/ClassLength, Metrics/MethodLength
     class CorridorTransitionEdit
       DEFAULT_FIXED_CONTROL_TOLERANCE = 0.01
 
@@ -265,6 +264,5 @@ module SU_MCP
         }
       end
     end
-    # rubocop:enable Metrics/ClassLength, Metrics/MethodLength
   end
 end

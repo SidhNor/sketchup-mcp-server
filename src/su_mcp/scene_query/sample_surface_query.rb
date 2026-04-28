@@ -9,7 +9,6 @@ require_relative '../runtime/tool_response'
 module SU_MCP
   # Ruby-owned explicit target resolution and compact surface sampling.
   # rubocop:disable Metrics/AbcSize, Metrics/ClassLength, Metrics/CyclomaticComplexity
-  # rubocop:disable Metrics/MethodLength, Metrics/ParameterLists, Metrics/PerceivedComplexity
   class SampleSurfaceQuery
     TARGET_REFERENCE_KEYS = %w[sourceElementId persistentId entityId].freeze
     SAMPLE_Z_CLUSTER_TOLERANCE_METERS = 0.001
@@ -905,5 +904,4 @@ module SU_MCP
     end
   end
   # rubocop:enable Metrics/AbcSize, Metrics/ClassLength, Metrics/CyclomaticComplexity
-  # rubocop:enable Metrics/MethodLength, Metrics/ParameterLists, Metrics/PerceivedComplexity
 end

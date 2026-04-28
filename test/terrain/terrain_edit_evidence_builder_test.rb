@@ -1,15 +1,13 @@
 # frozen_string_literal: true
 
-# rubocop:disable Metrics/AbcSize, Metrics/MethodLength
-
 require_relative '../test_helper'
 require_relative '../support/terrain_output_planning_diagnostics'
 require_relative '../../src/su_mcp/terrain/terrain_edit_evidence_builder'
 
-class TerrainEditEvidenceBuilderTest < Minitest::Test # rubocop:disable Metrics/ClassLength
+class TerrainEditEvidenceBuilderTest < Minitest::Test
   include TerrainOutputPlanningDiagnostics
 
-  def test_builds_edit_success_payload_with_capped_json_safe_evidence # rubocop:disable Metrics/AbcSize
+  def test_builds_edit_success_payload_with_capped_json_safe_evidence
     result = SU_MCP::Terrain::TerrainEditEvidenceBuilder.new.build_success(
       owner_reference: { sourceElementId: 'terrain-main', persistentId: '5001' },
       terrain_state_summary: terrain_state_summary,
@@ -256,4 +254,3 @@ class TerrainEditEvidenceBuilderTest < Minitest::Test # rubocop:disable Metrics/
     private_output_planning_diagnostics
   end
 end
-# rubocop:enable Metrics/AbcSize, Metrics/MethodLength

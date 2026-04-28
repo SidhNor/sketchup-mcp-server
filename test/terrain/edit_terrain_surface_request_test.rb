@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-# rubocop:disable Metrics/AbcSize, Metrics/MethodLength
+# rubocop:disable Metrics/AbcSize
 
 require_relative '../test_helper'
 require_relative '../../src/su_mcp/terrain/edit_terrain_surface_request'
@@ -136,7 +136,7 @@ class EditTerrainSurfaceRequestTest < Minitest::Test # rubocop:disable Metrics/C
     assert_equal(['corridor'], result.dig(:refusal, :details, :allowedValues))
   end
 
-  def test_mode_specific_required_fields_are_runtime_validated # rubocop:disable Metrics/MethodLength
+  def test_mode_specific_required_fields_are_runtime_validated
     missing_target_height = minimal_request
     missing_target_height['operation'].delete('targetElevation')
     assert_refusal(
@@ -469,4 +469,4 @@ class EditTerrainSurfaceRequestTest < Minitest::Test # rubocop:disable Metrics/C
     }
   end
 end
-# rubocop:enable Metrics/AbcSize, Metrics/MethodLength
+# rubocop:enable Metrics/AbcSize

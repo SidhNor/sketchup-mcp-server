@@ -4,7 +4,6 @@ require_relative '../test_helper'
 require_relative '../support/semantic_test_support'
 require_relative '../../src/su_mcp/semantic/managed_object_metadata'
 
-# rubocop:disable Metrics/ClassLength
 class SemanticMetadataTest < Minitest::Test
   include SemanticTestSupport
 
@@ -70,7 +69,6 @@ class SemanticMetadataTest < Minitest::Test
     assert_equal(true, metadata.managed_object?(entity))
   end
 
-  # rubocop:disable Metrics/MethodLength
   def test_reads_existing_semantic_attributes_for_managed_objects
     entity = build_semantic_model.active_entities.add_group
     metadata = SU_MCP::Semantic::ManagedObjectMetadata.new
@@ -97,9 +95,7 @@ class SemanticMetadataTest < Minitest::Test
       metadata.attributes_for(entity)
     )
   end
-  # rubocop:enable Metrics/MethodLength
 
-  # rubocop:disable Metrics/MethodLength
   def test_reads_existing_semantic_attributes_from_host_like_attribute_dictionaries
     metadata = SU_MCP::Semantic::ManagedObjectMetadata.new
     entity = HostLikeAttributeEntity.new(
@@ -125,7 +121,6 @@ class SemanticMetadataTest < Minitest::Test
       metadata.attributes_for(entity)
     )
   end
-  # rubocop:enable Metrics/MethodLength
 
   def test_updates_supported_status_metadata_in_place
     entity = build_semantic_model.active_entities.add_group
@@ -367,4 +362,3 @@ class SemanticMetadataTest < Minitest::Test
     assert_equal('speciesHint', result.dig(:refusal, :details, :field))
   end
 end
-# rubocop:enable Metrics/ClassLength

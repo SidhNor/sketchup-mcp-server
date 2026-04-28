@@ -6,7 +6,6 @@ require_relative 'release_support'
 
 namespace :package do
   # Shared archive assertions for both package targets.
-  # rubocop:disable Metrics/MethodLength
   def build_archive(destination:, entries:, relative_path_builder:)
     FileUtils.mkdir_p(destination.dirname)
     FileUtils.rm_f(destination)
@@ -38,8 +37,6 @@ namespace :package do
       raise 'RBZ archive layout is invalid. Expected su_mcp.rb and files under su_mcp/.'
     end
   end
-  # rubocop:enable Metrics/MethodLength
-
   desc 'Remove generated RBZ artifacts'
   task :clean do
     ReleaseSupport.clean_dist!

@@ -6,7 +6,6 @@ require_relative '../../src/su_mcp/terrain/sample_window'
 require_relative '../../src/su_mcp/terrain/terrain_output_cell_window'
 require_relative '../../src/su_mcp/terrain/terrain_output_plan'
 
-# rubocop:disable Metrics/MethodLength
 class TerrainOutputPlanTest < Minitest::Test
   BASIS = {
     'xAxis' => [1.0, 0.0, 0.0],
@@ -107,4 +106,3 @@ class TerrainOutputPlanTest < Minitest::Test
     )
   end
 end
-# rubocop:enable Metrics/MethodLength

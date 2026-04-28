@@ -5,7 +5,6 @@ require_relative '../runtime/tool_response'
 module SU_MCP
   module Terrain
     # Validates the public create_terrain_surface request before model mutation.
-    # rubocop:disable Metrics/ClassLength
     class CreateTerrainSurfaceRequest
       SUPPORTED_LIFECYCLE_MODES = %w[create adopt].freeze
       SUPPORTED_DEFINITION_KINDS = %w[heightmap_grid].freeze
@@ -324,6 +323,5 @@ module SU_MCP
         ToolResponse.refusal(code: code, message: message, details: details)
       end
     end
-    # rubocop:enable Metrics/ClassLength
   end
 end

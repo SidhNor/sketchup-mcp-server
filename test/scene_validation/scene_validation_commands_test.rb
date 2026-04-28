@@ -417,7 +417,6 @@ class SceneValidationCommandsTest < Minitest::Test
     assert_match(/tolerance/, result.dig(:refusal, :message))
   end
 
-  # rubocop:disable Metrics/MethodLength
   def test_refuses_unsupported_surface_offset_anchor_selector_and_echoes_allowed_values
     commands = build_commands
 
@@ -450,7 +449,6 @@ class SceneValidationCommandsTest < Minitest::Test
       result.dig(:refusal, :details, :allowedValues)
     )
   end
-  # rubocop:enable Metrics/MethodLength
 
   def test_reports_none_resolution_as_a_validation_error_for_target_references
     target_resolver = FakeTargetReferenceResolver.new({ resolution: 'none' })
@@ -467,7 +465,6 @@ class SceneValidationCommandsTest < Minitest::Test
     assert_equal(1, result[:errors].length)
   end
 
-  # rubocop:disable Metrics/MethodLength
   def test_target_reference_results_still_respect_public_surface_filtering
     placeholder_group = build_scene_query_group(
       entity_id: 303,
@@ -503,7 +500,6 @@ class SceneValidationCommandsTest < Minitest::Test
     assert_equal('failed', result[:outcome])
     assert_equal('none', result.dig(:errors, 0, :details, :resolution))
   end
-  # rubocop:enable Metrics/MethodLength
 
   def test_reports_ambiguous_resolution_as_a_validation_error_for_target_selectors
     targeting_query = FakeTargetingQuery.new(matches: [@group], resolution: 'ambiguous')
@@ -648,7 +644,6 @@ class SceneValidationCommandsTest < Minitest::Test
     assert_equal('missing-walk', result.dig(:errors, 0, :expectationId))
   end
 
-  # rubocop:disable Metrics/MethodLength
   def test_surface_offset_passes_when_approximate_bottom_bounds_corners_match_expected_offset
     terrain_layer = FakeLayer.new('Terrain')
     terrain_material = FakeMaterial.new('Soil')
@@ -687,9 +682,7 @@ class SceneValidationCommandsTest < Minitest::Test
     assert_equal(true, result[:success])
     assert_equal('passed', result[:outcome])
   end
-  # rubocop:enable Metrics/MethodLength
 
-  # rubocop:disable Metrics/MethodLength
   def test_surface_offset_reports_failed_anchors_for_offset_mismatch
     terrain_layer = FakeLayer.new('Terrain')
     terrain_material = FakeMaterial.new('Soil')
@@ -737,7 +730,6 @@ class SceneValidationCommandsTest < Minitest::Test
       result.dig(:errors, 0, :details, :failedAnchors, 0, :anchorSelector, :anchor)
     )
   end
-  # rubocop:enable Metrics/MethodLength
 
   def test_surface_offset_reports_surface_sampling_failures_as_validation_errors
     commands = build_commands(
@@ -852,7 +844,6 @@ class SceneValidationCommandsTest < Minitest::Test
     assert_equal(1, result[:errors].length)
   end
 
-  # rubocop:disable Metrics/MethodLength
   def test_geometry_requirements_refuse_unsupported_target_types
     face = build_scene_query_face(
       entity_id: 222,
@@ -882,7 +873,6 @@ class SceneValidationCommandsTest < Minitest::Test
     assert_equal('refused', result[:outcome])
     assert_equal('unsupported_target_type', result.dig(:refusal, :code))
   end
-  # rubocop:enable Metrics/MethodLength
 
   private
 

@@ -90,7 +90,6 @@ class RequestShapeRecoveryTest < Minitest::Test
 
   private
 
-  # rubocop:disable Metrics/MethodLength
   def sectioned_terrain_path_request(overrides = {})
     deep_merge(
       {
@@ -147,7 +146,6 @@ class RequestShapeRecoveryTest < Minitest::Test
       overrides
     )
   end
-  # rubocop:enable Metrics/MethodLength
 
   def deep_merge(base, overrides)
     return base unless overrides.is_a?(Hash)

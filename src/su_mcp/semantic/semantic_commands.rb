@@ -28,7 +28,6 @@ module SU_MCP
       'tree_proxy' => ['terrain_anchored']
     }.freeze
 
-    # rubocop:disable Metrics/ParameterLists
     def initialize(
       model: Sketchup.active_model,
       registry: Semantic::BuilderRegistry.new,
@@ -50,7 +49,6 @@ module SU_MCP
       @target_resolver = target_resolver
       @destination_resolver = destination_resolver
     end
-    # rubocop:enable Metrics/ParameterLists
 
     def create_site_element(params)
       recovered_params = request_shape_recovery.recover_create_site_element_params(params)
@@ -103,7 +101,6 @@ module SU_MCP
       nil
     end
 
-    # rubocop:disable Metrics/MethodLength
     def apply_metadata_update(entity, params)
       operation_started = false
       prepared_update = metadata_writer.prepare_update(entity, **metadata_mutation_params(params))
@@ -123,7 +120,6 @@ module SU_MCP
       model.abort_operation if operation_started && model.respond_to?(:abort_operation)
       raise
     end
-    # rubocop:enable Metrics/MethodLength
 
     def missing_metadata_change_refusal(params)
       set_attributes = params.fetch('set', {})

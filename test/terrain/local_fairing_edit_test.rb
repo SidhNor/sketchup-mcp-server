@@ -9,7 +9,7 @@ rescue LoadError
   # Skeleton-first TDD: implementation file is introduced after this failing surface exists.
 end
 
-class LocalFairingEditTest < Minitest::Test # rubocop:disable Metrics/ClassLength
+class LocalFairingEditTest < Minitest::Test
   BASIS = {
     'xAxis' => [1.0, 0.0, 0.0],
     'yAxis' => [0.0, 1.0, 0.0],

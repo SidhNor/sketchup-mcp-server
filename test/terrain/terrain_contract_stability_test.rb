@@ -1,7 +1,5 @@
 # frozen_string_literal: true
 
-# rubocop:disable Metrics/MethodLength
-
 require_relative '../test_helper'
 require_relative '../support/terrain_output_planning_diagnostics'
 require_relative '../../src/su_mcp/terrain/heightmap_state'
@@ -51,7 +49,7 @@ class TerrainContractStabilityTest < Minitest::Test
     refute_internal_output_vocabulary(result)
   end
 
-  def test_public_fairing_evidence_does_not_expose_output_or_generated_entity_internals # rubocop:disable Metrics/MethodLength
+  def test_public_fairing_evidence_does_not_expose_output_or_generated_entity_internals
     result = edit_evidence_result(
       diagnostics: edit_diagnostics.merge(
         private_output_planning_diagnostics,
@@ -193,4 +191,3 @@ class TerrainContractStabilityTest < Minitest::Test
     }
   end
 end
-# rubocop:enable Metrics/MethodLength

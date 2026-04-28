@@ -2,7 +2,6 @@
 
 module SU_MCP
   # Generates ordered profile sample stations before host-surface evaluation.
-  # rubocop:disable Metrics/MethodLength
   class SampleSurfaceProfileGenerator
     DEFAULT_SAMPLE_CAP = 200
 
@@ -151,5 +150,4 @@ module SU_MCP
       value.round(6)
     end
   end
-  # rubocop:enable Metrics/MethodLength
 end

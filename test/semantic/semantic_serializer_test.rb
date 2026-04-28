@@ -1,7 +1,5 @@
 # frozen_string_literal: true
 
-# rubocop:disable Metrics/AbcSize
-
 require_relative '../test_helper'
 require_relative '../support/semantic_test_support'
 require_relative '../../src/su_mcp/semantic/managed_object_metadata'
@@ -103,4 +101,3 @@ class SemanticSerializerTest < Minitest::Test
     )
   end
 end
-# rubocop:enable Metrics/AbcSize

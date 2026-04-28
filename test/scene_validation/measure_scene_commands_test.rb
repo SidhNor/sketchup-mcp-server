@@ -5,7 +5,6 @@ require_relative '../support/scene_query_test_support'
 require_relative '../../src/su_mcp/scene_query/sample_surface_evidence'
 require_relative '../../src/su_mcp/scene_validation/measure_scene_commands'
 
-# rubocop:disable Metrics/ClassLength
 class MeasureSceneCommandsTest < Minitest::Test
   include SceneQueryTestSupport
 
@@ -404,4 +403,3 @@ class MeasureSceneCommandsTest < Minitest::Test
     assert_equal(code, result.dig(:refusal, :code))
   end
 end
-# rubocop:enable Metrics/ClassLength

@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-# rubocop:disable Metrics/MethodLength, Metrics/ClassLength
+# rubocop:disable Metrics/ClassLength
 
 require_relative '../test_helper'
 require_relative '../support/semantic_test_support'
@@ -343,7 +343,6 @@ class SemanticCommandsTest < Minitest::Test
     assert_equal([], registry.calls)
   end
 
-  # rubocop:disable Metrics/AbcSize
   def test_create_site_element_recovers_wrapped_misnested_geometry_into_canonical_builder_execution
     built_entity = FakeManagedEntity.new(parent: Object.new)
     builder = Object.new
@@ -373,7 +372,6 @@ class SemanticCommandsTest < Minitest::Test
     assert_equal('centerline', captured_params.dig('definition', 'mode'))
     refute(captured_params.key?('mode'))
   end
-  # rubocop:enable Metrics/AbcSize
 
   def test_create_site_element_refuses_ambiguous_wrapped_misnested_geometry_before_builder_execution
     built_entity = FakeManagedEntity.new(parent: Object.new)
@@ -2195,4 +2193,4 @@ class SemanticCommandsTest < Minitest::Test
     @model.active_entities.add_instance(definition)
   end
 end
-# rubocop:enable Metrics/MethodLength, Metrics/ClassLength
+# rubocop:enable Metrics/ClassLength

@@ -11,7 +11,6 @@ class RuntimePackageVendorStagerTest < Minitest::Test
            'expected ReleaseSupport::RuntimePackageVendorStager to be defined'
   end
 
-  # rubocop:disable Metrics/AbcSize, Metrics/MethodLength
   def test_vendor_stager_fetches_verifies_and_prunes_gems
     skip unless defined?(ReleaseSupport::RuntimePackageVendorStager)
 
@@ -39,7 +38,6 @@ class RuntimePackageVendorStagerTest < Minitest::Test
       refute(File.exist?(File.join(vendor_root, 'demo-1.2.3', 'test')))
     end
   end
-  # rubocop:enable Metrics/AbcSize, Metrics/MethodLength
 
   def test_vendor_stager_fails_on_checksum_mismatch
     skip unless defined?(ReleaseSupport::RuntimePackageVendorStager)

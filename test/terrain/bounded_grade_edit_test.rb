@@ -5,7 +5,7 @@ require_relative '../../src/su_mcp/terrain/bounded_grade_edit'
 require_relative '../../src/su_mcp/terrain/heightmap_state'
 require_relative '../../src/su_mcp/terrain/sample_window'
 
-class BoundedGradeEditTest < Minitest::Test # rubocop:disable Metrics/ClassLength
+class BoundedGradeEditTest < Minitest::Test
   def test_target_height_changes_only_samples_inside_hard_rectangle
     result = apply_edit(
       region: rectangle_region(min: [1.0, 1.0], max: [2.0, 2.0]),
@@ -105,7 +105,7 @@ class BoundedGradeEditTest < Minitest::Test # rubocop:disable Metrics/ClassLengt
     assert_empty(result.dig(:diagnostics, :fixedControls, :violations))
   end
 
-  def test_fixed_controls_support_implicit_and_explicit_tolerance # rubocop:disable Metrics/MethodLength
+  def test_fixed_controls_support_implicit_and_explicit_tolerance
     fixed_controls = [
       {
         'id' => 'implicit-control',

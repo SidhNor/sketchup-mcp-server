@@ -8,7 +8,6 @@ module SU_MCP
   module Semantic
     # Builds the SEM-02 `tree_proxy` geometry slice from an accepted stepped proxy
     # silhouette while keeping the public payload parametric.
-    # rubocop:disable Metrics/ClassLength
     class TreeProxyBuilder
       include PlanarGeometryHelper
 
@@ -165,7 +164,6 @@ module SU_MCP
         )
       end
 
-      # rubocop:disable Metrics/MethodLength
       def canopy_ring(definition:, payload:, trunk_rings:)
         return trunk_rings.fetch(:anchor) if definition.fetch(:kind) == :trunk_anchor
         return trunk_rings.fetch(:top) if definition.fetch(:kind) == :trunk_top
@@ -186,7 +184,6 @@ module SU_MCP
           lobe_strength: definition.fetch(:lobe_strength)
         )
       end
-      # rubocop:enable Metrics/MethodLength
 
       def radius_for_axis(canopy_radius:, trunk_radius:, definition:)
         [
@@ -199,7 +196,6 @@ module SU_MCP
         tree_position(payload)[:z] + (tree_height(payload) * z_ratio.to_f)
       end
 
-      # rubocop:disable Metrics/AbcSize
       def build_ring(center:, z_height:, radius_x:, radius_y:, lobe_strength: 0.0)
         Array.new(SEGMENTS) do |index|
           angle = ROTATION_RADIANS + ((Math::PI * 2.0 * index) / SEGMENTS.to_f)
@@ -211,7 +207,6 @@ module SU_MCP
           ]
         end
       end
-      # rubocop:enable Metrics/AbcSize
 
       def lobed_radius_scale(angle, lobe_strength)
         wave = Math.cos(3.0 * (angle - LOBE_PHASE_RADIANS))
@@ -301,6 +296,5 @@ module SU_MCP
         vector.all? { |value| value.abs <= tolerance }
       end
     end
-    # rubocop:enable Metrics/ClassLength
   end
 end

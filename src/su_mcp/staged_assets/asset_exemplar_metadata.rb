@@ -5,7 +5,6 @@ require 'json'
 module SU_MCP
   module StagedAssets
     # Owns the Asset Exemplar metadata contract for staged-asset reuse.
-    # rubocop:disable Metrics/ClassLength
     class AssetExemplarMetadata
       DICTIONARY = 'su_mcp'
       SCHEMA_VERSION = 1
@@ -271,6 +270,5 @@ module SU_MCP
         present?(attributes[key])
       end
     end
-    # rubocop:enable Metrics/ClassLength
   end
 end

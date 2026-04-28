@@ -49,7 +49,6 @@ module SU_MCP
       surfaceOffset
     ].freeze
 
-    # rubocop:disable Metrics/ParameterLists
     def initialize(adapter: nil, serializer: nil, targeting_query: nil,
                    target_reference_resolver: nil, geometry_health: nil,
                    sample_surface_query: nil)
@@ -66,9 +65,7 @@ module SU_MCP
         serializer: @serializer
       )
     end
-    # rubocop:enable Metrics/ParameterLists
 
-    # rubocop:disable Metrics/MethodLength
     def validate_scene_update(params)
       refusal = refusal_for_request(params)
       return refusal if refusal
@@ -90,14 +87,12 @@ module SU_MCP
     rescue RuntimeError => e
       ToolResponse.refusal(code: 'invalid_request', message: e.message)
     end
-    # rubocop:enable Metrics/MethodLength
 
     private
 
     attr_reader :adapter, :serializer, :targeting_query, :target_reference_resolver,
                 :geometry_health, :sample_surface_query
 
-    # rubocop:disable Metrics/MethodLength
     def refusal_for_request(params)
       unless expectations_hash?(params)
         return ToolResponse.refusal(
@@ -124,13 +119,11 @@ module SU_MCP
 
       validate_expectations_shape(expectations)
     end
-    # rubocop:enable Metrics/MethodLength
 
     def expectations_hash?(params)
       params.is_a?(Hash) && params['expectations'].is_a?(Hash)
     end
 
-    # rubocop:disable Metrics/CyclomaticComplexity, Metrics/MethodLength
     def validate_expectations_shape(expectations)
       unsupported_families = expectations.keys.map(&:to_s) - EXPECTATION_FAMILIES
       unless unsupported_families.empty?
@@ -159,10 +152,8 @@ module SU_MCP
 
       nil
     end
-    # rubocop:enable Metrics/CyclomaticComplexity, Metrics/MethodLength
 
-    # rubocop:disable Metrics/AbcSize, Metrics/CyclomaticComplexity
-    # rubocop:disable Metrics/MethodLength, Metrics/PerceivedComplexity
+    # rubocop:disable Metrics/CyclomaticComplexity
     def validate_expectation_item(family, item)
       unless item.is_a?(Hash)
         return ToolResponse.refusal(
@@ -201,8 +192,7 @@ module SU_MCP
         message: "Missing required #{family} field: #{missing_required_fields.first}"
       )
     end
-    # rubocop:enable Metrics/MethodLength, Metrics/PerceivedComplexity
-    # rubocop:enable Metrics/AbcSize, Metrics/CyclomaticComplexity
+    # rubocop:enable Metrics/CyclomaticComplexity
 
     def geometry_expectation_refusal(item)
       return nil unless item['kind'] == 'surfaceOffset'
@@ -289,8 +279,6 @@ module SU_MCP
       end
     end
 
-    # rubocop:disable Metrics/MethodLength
-    # rubocop:disable Metrics/CyclomaticComplexity
     def evaluate_expectation(family, expectation, index)
       resolved_target = resolve_target(expectation)
       unless resolved_target[:resolution] == 'unique'
@@ -329,8 +317,6 @@ module SU_MCP
         geometry_outcome(expectation, entity, family, index)
       end
     end
-    # rubocop:enable Metrics/CyclomaticComplexity
-    # rubocop:enable Metrics/MethodLength
 
     def resolve_target(expectation)
       resolution = if expectation['targetReference']
@@ -391,7 +377,6 @@ module SU_MCP
       )
     end
 
-    # rubocop:disable Metrics/ParameterLists
     def attribute_error(expectation, entity, family, index, key:, actual:)
       expected = expectation[key]
       return nil if expected.to_s == actual.to_s
@@ -406,9 +391,7 @@ module SU_MCP
         details: { expected: expected, actual: actual }
       )
     end
-    # rubocop:enable Metrics/ParameterLists
 
-    # rubocop:disable Metrics/MethodLength
     def geometry_outcome(expectation, entity, family, index)
       unless geometry_target?(entity)
         return {
@@ -463,9 +446,7 @@ module SU_MCP
               end
       { error: error }
     end
-    # rubocop:enable Metrics/MethodLength
 
-    # rubocop:disable Metrics/MethodLength
     def surface_offset_error(expectation, entity, family, index)
       failed_anchors = build_failed_surface_offset_anchors(expectation, entity)
       return nil if failed_anchors.empty?
@@ -496,7 +477,6 @@ module SU_MCP
         }
       )
     end
-    # rubocop:enable Metrics/MethodLength
 
     def build_failed_surface_offset_anchors(expectation, entity)
       anchor_selector = normalize_hash(expectation['anchorSelector'])
@@ -539,7 +519,6 @@ module SU_MCP
       end
     end
 
-    # rubocop:disable Metrics/AbcSize, Metrics/MethodLength
     def failed_anchor(anchor, sample_result, constraints, anchor_selector, anchor_index)
       status = sample_result.fetch(:status)
       unless status == 'hit'
@@ -566,7 +545,6 @@ module SU_MCP
         offsetDelta: offset_delta
       }
     end
-    # rubocop:enable Metrics/AbcSize, Metrics/MethodLength
 
     def non_hit_failed_anchor(anchor, sample_result, anchor_selector, anchor_index)
       {
@@ -607,7 +585,6 @@ module SU_MCP
       end
     end
 
-    # rubocop:disable Metrics/AbcSize
     def approximate_bottom_bounds_corners(bounds)
       [
         derived_anchor('min_min', bounds.min.x, bounds.min.y, bounds.min.z),
@@ -616,9 +593,7 @@ module SU_MCP
         derived_anchor('max_max', bounds.max.x, bounds.max.y, bounds.min.z)
       ]
     end
-    # rubocop:enable Metrics/AbcSize
 
-    # rubocop:disable Metrics/AbcSize
     def approximate_top_bounds_corners(bounds)
       [
         derived_anchor('min_min', bounds.min.x, bounds.min.y, bounds.max.z),
@@ -627,7 +602,6 @@ module SU_MCP
         derived_anchor('max_max', bounds.max.x, bounds.max.y, bounds.max.z)
       ]
     end
-    # rubocop:enable Metrics/AbcSize
 
     def approximate_bottom_bounds_center(bounds)
       [derived_anchor('center', bounds.center.x, bounds.center.y, bounds.min.z)]
@@ -644,7 +618,6 @@ module SU_MCP
       false
     end
 
-    # rubocop:disable Metrics/ParameterLists
     def build_geometry_error(passed, expectation, entity, family, index, geometry)
       return nil if passed
 
@@ -658,7 +631,6 @@ module SU_MCP
         details: geometry
       )
     end
-    # rubocop:enable Metrics/ParameterLists
 
     def geometry_target?(entity)
       entity.is_a?(Sketchup::Group) || entity.is_a?(Sketchup::ComponentInstance)
@@ -707,7 +679,6 @@ module SU_MCP
       end
     end
 
-    # rubocop:disable Metrics/ParameterLists
     def error(type:, family:, expectation:, index:, message:, details:, entity: nil)
       payload = {
         type: type,
@@ -720,7 +691,6 @@ module SU_MCP
       payload[:target] = serializer.serialize_target_match(entity) if entity
       payload
     end
-    # rubocop:enable Metrics/ParameterLists
   end
   # rubocop:enable Metrics/ClassLength
 end

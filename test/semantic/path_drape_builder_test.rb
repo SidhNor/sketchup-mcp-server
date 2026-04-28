@@ -1,12 +1,9 @@
 # frozen_string_literal: true
 
-# rubocop:disable Metrics/MethodLength
-
 require_relative '../test_helper'
 require_relative '../support/semantic_test_support'
 require_relative '../../src/su_mcp/semantic/path_drape_builder'
 
-# rubocop:disable Metrics/ClassLength
 class PathDrapeBuilderTest < Minitest::Test
   include SemanticTestSupport
 
@@ -299,6 +296,3 @@ class PathDrapeBuilderTest < Minitest::Test
     assert_equal(1, @group.entities.build_calls)
   end
 end
-
-# rubocop:enable Metrics/MethodLength
-# rubocop:enable Metrics/ClassLength

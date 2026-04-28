@@ -13,7 +13,6 @@ class HierarchyEntitySerializerTest < Minitest::Test
     @serializer = SU_MCP::Semantic::HierarchyEntitySerializer.new
   end
 
-  # rubocop:disable Metrics/MethodLength
   def test_serializes_managed_group_summary_with_children_count
     group = build_scene_query_group(
       entity_id: 101,
@@ -42,7 +41,6 @@ class HierarchyEntitySerializerTest < Minitest::Test
       @serializer.serialize(group)
     )
   end
-  # rubocop:enable Metrics/MethodLength
 
   def test_serializes_unmanaged_component_summary_without_source_element_id
     component = build_scene_query_component(

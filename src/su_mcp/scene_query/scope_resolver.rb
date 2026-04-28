@@ -14,7 +14,6 @@ module SU_MCP
       @target_resolver = target_resolver || TargetReferenceResolver.new(adapter: adapter)
     end
 
-    # rubocop:disable Metrics/MethodLength
     def resolve(scope_selector:, output_options: nil)
       selector = normalized_scope_selector(scope_selector)
       include_hidden = include_hidden?(output_options)
@@ -35,14 +34,11 @@ module SU_MCP
         limit: limit_from(output_options)
       }
     end
-    # rubocop:enable Metrics/MethodLength
 
     private
 
     attr_reader :adapter, :target_resolver
 
-    # rubocop:disable Metrics/AbcSize, Metrics/CyclomaticComplexity
-    # rubocop:disable Metrics/MethodLength, Metrics/PerceivedComplexity
     def normalized_scope_selector(raw_scope_selector)
       raise 'scopeSelector is required' unless raw_scope_selector.is_a?(Hash)
 
@@ -68,8 +64,6 @@ module SU_MCP
       end
       selector
     end
-    # rubocop:enable Metrics/AbcSize, Metrics/CyclomaticComplexity
-    # rubocop:enable Metrics/MethodLength, Metrics/PerceivedComplexity
 
     def filtered_entities(entities, include_hidden:)
       return Array(entities) if include_hidden

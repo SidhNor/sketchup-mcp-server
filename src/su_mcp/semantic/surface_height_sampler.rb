@@ -7,7 +7,6 @@ module SU_MCP
   module Semantic
     # Samples target surface height in SketchUp internal units for semantic
     # builders that need local terrain-aware geometry.
-    # rubocop:disable Metrics/ClassLength
     class SurfaceHeightSampler
       def initialize(serializer: SceneQuerySerializer.new, support: nil)
         @serializer = serializer
@@ -255,6 +254,5 @@ module SU_MCP
         false
       end
     end
-    # rubocop:enable Metrics/ClassLength
   end
 end

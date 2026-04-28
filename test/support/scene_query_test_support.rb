@@ -930,7 +930,6 @@ module SceneQueryTestSupport
                            details: { name: 'Nested Face', persistent_id: 2001 })
   end
 
-  # rubocop:disable Metrics/ParameterLists
   def build_sample_surface_face(entity_id:, persistent_id:, name:, layer:, material:, x_range:,
                                 y_range:, z_value:, source_element_id: nil, hidden: false,
                                 slope_x: 0.0, slope_y: 0.0)
@@ -954,9 +953,7 @@ module SceneQueryTestSupport
       }
     )
   end
-  # rubocop:enable Metrics/ParameterLists
 
-  # rubocop:disable Metrics/ParameterLists
   def build_sample_surface_group(entity_id:, persistent_id:, name:, layer:, material:, child_faces:,
                                  source_element_id: nil, transformation: nil, hidden: false)
     FakeGroup.new(
@@ -974,9 +971,7 @@ module SceneQueryTestSupport
       }
     )
   end
-  # rubocop:enable Metrics/ParameterLists
 
-  # rubocop:disable Metrics/ParameterLists
   def build_sample_surface_component(
     entity_id:,
     persistent_id:,
@@ -1004,9 +999,7 @@ module SceneQueryTestSupport
       }
     )
   end
-  # rubocop:enable Metrics/ParameterLists
 
-  # rubocop:disable Metrics/ParameterLists
   def build_sample_surface_edge(entity_id:, persistent_id:, name:, layer:, material:, x_range:,
                                 y_range:, z_value:, source_element_id: nil)
     FakeEdge.new(
@@ -1021,7 +1014,6 @@ module SceneQueryTestSupport
       }
     )
   end
-  # rubocop:enable Metrics/ParameterLists
 
   def build_sample_surface_bounds(x_range:, y_range:, z_value:)
     min = FakePoint.new(x_range.first, y_range.first, z_value)

@@ -8,7 +8,6 @@ require_relative 'heightmap_state'
 module SU_MCP
   module Terrain
     # Serializes terrain state into canonical JSON with schema and integrity checks.
-    # rubocop:disable Metrics/ClassLength
     class TerrainStateSerializer
       CURRENT_SCHEMA_VERSION = HeightmapState::SCHEMA_VERSION
       DIGEST_ALGORITHM = 'sha256'
@@ -205,6 +204,5 @@ module SU_MCP
         value.is_a?(Hash) && value[:outcome] == 'refused'
       end
     end
-    # rubocop:enable Metrics/ClassLength
   end
 end

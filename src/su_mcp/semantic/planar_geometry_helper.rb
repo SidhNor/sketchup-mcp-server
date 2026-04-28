@@ -3,7 +3,6 @@
 module SU_MCP
   module Semantic
     # Shared helpers for simple planar semantic geometry builders.
-    # rubocop:disable Metrics/ModuleLength
     module PlanarGeometryHelper
       private
 
@@ -54,7 +53,6 @@ module SU_MCP
         ]
       end
 
-      # rubocop:disable Metrics/AbcSize, Metrics/MethodLength
       def offset_polyline(points, offset)
         normalized = points.map { |point| [point[0].to_f, point[1].to_f] }
         normalized.each_index.map do |index|
@@ -82,7 +80,6 @@ module SU_MCP
           end
         end
       end
-      # rubocop:enable Metrics/AbcSize, Metrics/MethodLength
 
       def offset_endpoint(point:, direction_start:, direction_end:, offset:)
         direction = normalize_vector(vector(direction_start, direction_end))
@@ -93,7 +90,6 @@ module SU_MCP
         ]
       end
 
-      # rubocop:disable Metrics/AbcSize, Metrics/MethodLength
       def offset_joint(prev_point:, point:, next_point:, offset:)
         prev_direction = normalize_vector(vector(prev_point, point))
         next_direction = normalize_vector(vector(point, next_point))
@@ -116,7 +112,6 @@ module SU_MCP
           point[1] + (miter[1] * scale)
         ]
       end
-      # rubocop:enable Metrics/AbcSize, Metrics/MethodLength
 
       def vector(start_point, end_point)
         [
@@ -144,6 +139,5 @@ module SU_MCP
         vector.all? { |value| value.abs < 1e-6 }
       end
     end
-    # rubocop:enable Metrics/ModuleLength
   end
 end

@@ -3,7 +3,6 @@
 require_relative '../test_helper'
 require_relative '../../src/su_mcp/semantic/request_validator'
 
-# rubocop:disable Metrics/ClassLength
 class SemanticRequestValidatorTest < Minitest::Test
   def setup
     @validator = SU_MCP::Semantic::RequestValidator.new
@@ -259,8 +258,6 @@ class SemanticRequestValidatorTest < Minitest::Test
 
   private
 
-  # rubocop:disable Metrics/MethodLength
-
   def v2_terrain_path_request
     {
       'contractVersion' => 2,
@@ -477,7 +474,4 @@ class SemanticRequestValidatorTest < Minitest::Test
       left.is_a?(Hash) && right.is_a?(Hash) ? deep_merge(left, right) : right
     end
   end
-
-  # rubocop:enable Metrics/MethodLength
 end
-# rubocop:enable Metrics/ClassLength

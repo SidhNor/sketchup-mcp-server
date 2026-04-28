@@ -8,7 +8,6 @@ require_relative 'sample_window'
 module SU_MCP
   module Terrain
     # SketchUp-free bounded local terrain fairing kernel.
-    # rubocop:disable Metrics/ClassLength, Metrics/MethodLength
     # rubocop:disable Metrics/ParameterLists
     class LocalFairingEdit
       DEFAULT_FIXED_CONTROL_TOLERANCE = 0.01
@@ -301,7 +300,6 @@ module SU_MCP
         }
       end
     end
-    # rubocop:enable Metrics/ClassLength, Metrics/MethodLength
     # rubocop:enable Metrics/ParameterLists
   end
 end
