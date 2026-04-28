@@ -2,352 +2,86 @@
 
 [![Quality Gate Status](https://sonarcloud.io/api/project_badges/measure?project=SidhNor_sketchup-mcp-server&metric=alert_status)](https://sonarcloud.io/summary/new_code?id=SidhNor_sketchup-mcp-server)
 
+SketchUp MCP is an open-source **SketchUp extension + MCP server** that gives AI assistants and automation clients a reliable way to explore, measure, and edit 3D scenes.
 
-This repository ships an MCP server inside a SketchUp extension.
+If you are building agentic design workflows, planning tools, or model-aware copilots, this project provides a practical bridge between **MCP clients** and **real SketchUp production models**.
 
-- The extension code lives under `src/`.
-- MCP tool registration and SketchUp behavior are both owned in Ruby.
-- The packaged artifact is a single staged RBZ built from the vendored support tree.
+## Why people use it
 
-## Repo Structure
+SketchUp MCP is built for teams that want structured 3D workflows instead of brittle one-off scripts.
 
-```text
-.
-├── .github/
-│   └── workflows/
-├── config/
-│   └── runtime_package_manifest.json
-├── rakelib/
-│   ├── package.rake
-│   ├── release_support.rb
-│   ├── ruby.rake
-│   ├── version.rake
-│   └── release_support/
-├── specifications/
-│   ├── adrs/
-│   ├── guidelines/
-│   ├── hlds/
-│   ├── prds/
-│   └── tasks/
-├── src/
-│   ├── su_mcp.rb
-│   └── su_mcp/
-│       ├── adapters/
-│       ├── developer/
-│       ├── editing/
-│       ├── modeling/
-│       ├── runtime/
-│       │   └── native/
-│       ├── scene_query/
-│       └── semantic/
-└── test/
-    ├── adapters/
-    ├── editing/
-    ├── modeling/
-    ├── release_support/
-    ├── runtime/
-    │   └── native/
-    ├── scene_query/
-    ├── semantic/
-    └── support/
-```
+Typical usage patterns include:
 
-Key root files:
+- Site and model discovery through structured scene-query tools
+- Option exploration and rapid 3D concept iteration
+- Semantic authoring for domain elements (paths, structures, terrain-linked objects)
+- Managed terrain lifecycle workflows (create, adopt, edit)
+- Model measurement and validation checks in iterative design loops
 
-- `Rakefile`: canonical local validation and packaging entrypoints
-- `releaserc.toml`: CI-owned semantic-release configuration
-- `VERSION`: release version source of truth
-- `AGENTS.md`: contributor/repo operating guidance
+## What you can do with it
 
-## Local Development
+- Interrogate scene state with explicit inventory, targeting, and measurement tools
+- Author and update semantic site elements through stable MCP contracts
+- Build and edit managed terrain surfaces with create/adopt/edit flows
+- Orchestrate structured model edits (grouping, reparenting, transforms, materials, boolean ops)
+- Integrate SketchUp into iterative, agent-assisted planning and design workflows
 
-Install Ruby tooling:
+## Who this is for
+
+- Engineers building MCP clients for design/construction workflows
+- Teams experimenting with AI-assisted 3D planning and authoring
+- Contributors interested in SketchUp automation, runtime design, and tool contracts
+
+## Project status
+
+This repository is actively developed and includes runtime code plus product/architecture documentation.
+
+Current direction lives in:
+
+- Platform HLD: [`specifications/hlds/hld-platform-architecture-and-repo-structure.md`](specifications/hlds/hld-platform-architecture-and-repo-structure.md)
+- Domain analysis: [`specifications/domain-analysis.md`](specifications/domain-analysis.md)
+- Capability HLDs and tasks: [`specifications/hlds/`](specifications/hlds/) and [`specifications/tasks/`](specifications/tasks/)
+
+## Documentation map
+
+Start here, then branch by need:
+
+1. Project orientation + setup: this README
+2. MCP contract and payload details: [`docs/mcp-tool-reference.md`](docs/mcp-tool-reference.md)
+3. Contributor operating guidance: [`AGENTS.md`](AGENTS.md)
+4. Architecture and roadmap context: [`specifications/`](specifications/)
+
+> A dedicated docs site may be added later; currently, authoritative docs are versioned in this repository.
+
+## Quick start (local development)
+
+Install dependencies:
 
 ```bash
 bundle install
 ```
 
-The extension entrypoint is `src/su_mcp.rb`, which registers `src/su_mcp/main.rb` with SketchUp. On load, the extension installs menu actions for the MCP server and attempts to start it automatically when the staged vendored support tree is present.
+The extension loader is `src/su_mcp.rb`, which registers `src/su_mcp/main.rb` with SketchUp.
 
-For local development, load the extension from this repository by symlinking or copying the `src/` contents into SketchUp's `Plugins` directory.
+For local development, load the extension from this repository by symlinking or copying `src/` into SketchUp's `Plugins` directory.
 
-Build the canonical RBZ package:
+Build the RBZ package:
 
 ```bash
 bundle exec rake package:rbz
 ```
 
-Verify the staged package layout:
+Verify staged package layout:
 
 ```bash
 bundle exec rake package:verify
 ```
 
-The package output is `dist/su_mcp-<version>.rbz`, where the version comes from `VERSION`.
+Package output: `dist/su_mcp-<version>.rbz` (`<version>` comes from `VERSION`).
 
-## Current Tool Surface
+## Validation and release
 
-The current MCP surface includes scene inspection, semantic scene modeling, and editing helpers such as:
-
-- `get_scene_info`
-- `list_entities`
-- `get_entity_info`
-- `find_entities`
-- `validate_scene_update`
-- `measure_scene`
-- `sample_surface_z`
-- `create_terrain_surface`
-- `edit_terrain_surface`
-- `curate_staged_asset`
-- `list_staged_assets`
-- `create_site_element`
-- `set_entity_metadata`
-- `create_group`
-- `reparent_entities`
-- `delete_entities`
-- `transform_entities`
-- `set_material`
-- `boolean_operation`
-- `eval_ruby`
-
-Public geometric dimensions for `create_site_element` are interpreted and returned in meters, independent of the active SketchUp model unit display settings.
-The public `create_site_element` request is sectioned: `elementType`, `metadata`, `definition`, `hosting`, `placement`, `representation`, and `lifecycle`, with optional `sceneProperties` for wrapper `name` and `tag`.
-The sectioned shape remains the only canonical public contract. The runtime now has bounded recovery-only handling for two common caller mistakes: wrapping the whole request under top-level `definition`, and lifting family-owned geometry leaf fields to top level instead of keeping them inside `definition`. Ambiguous or wrong-family requests still refuse with structured correction details instead of acting like a second supported create shape.
-For `elementType: "path"` with `hosting.mode: "surface_drape"`, the runtime now creates a terrain-following top ribbon that stays level across each cross-section, smooths along the path length, keeps the top surface slightly above terrain to avoid visual overlap, and still applies any `thickness` downward for visual grounding.
-The hierarchy-maintenance surface is intentionally narrow: `create_group` creates either a plain group container or, when `metadata.sourceElementId` and `metadata.status` are supplied, a managed `grouped_feature` container with optional `sceneProperties.name` and `sceneProperties.tag`. `reparent_entities` explicitly reparents supported groups or component instances using the same compact target-reference contract (`sourceElementId`, `persistentId`, `entityId`).
-`list_entities` is an explicit inventory tool that now requires `scopeSelector` (`top_level`, `selection`, or `children_of_target`) plus optional `outputOptions`.
-`find_entities` is an exact-match targeting tool that now requires `targetSelector` with nested `identity`, `attributes`, and `metadata` sections.
-`sample_surface_z` is an explicit-host surface interrogation tool. It requires `target` plus a canonical `sampling` object: use `sampling.type: "points"` with `sampling.points` for XY point batches, or `sampling.type: "profile"` with `sampling.path` plus exactly one of `sampleCount` or `intervalMeters` for ordered profile evidence. It returns structured hit, miss, or ambiguous sample results; overlapping host surfaces with multiple surviving z-clusters are reported as `ambiguous`. It does not perform broad scene probing or terrain validation.
-`create_terrain_surface` creates or adopts a repository-backed Managed Terrain Surface. Use it for managed terrain state and owned derived terrain mesh output, not for semantic hardscape or general site-element creation. Create mode requires `lifecycle.mode: "create"` plus `definition.kind: "heightmap_grid"` and a simple `definition.grid`; adopt mode requires `lifecycle.mode: "adopt"` plus `lifecycle.target` using the compact target-reference shape. Runtime refusals echo finite choices such as `lifecycle.mode` and `definition.kind` through `allowedValues`, and adoption refuses caller `definition` or `placement` in this slice.
-`edit_terrain_surface` applies bounded edits to an existing Managed Terrain Surface. It requires `targetReference`, `operation.mode`, and `region.type`. `operation.mode: "target_height"` pairs with `region.type: "rectangle"` or `"circle"` and requires `operation.targetElevation`; rectangle bounds use terrain-state meter fields `minX`, `minY`, `maxX`, and `maxY`, while circles use `center.x`, `center.y`, and `radius`. `operation.mode: "corridor_transition"` pairs with `region.type: "corridor"` and requires `startControl`, `endControl`, `width`, and optional `sideBlend`. Corridor `width` is the full-weight center corridor width in meters, while `sideBlend.distance` is an additional lateral shoulder distance on each side in meters. `operation.mode: "local_fairing"` pairs with `region.type: "rectangle"` or `"circle"` and requires `operation.strength` and `operation.neighborhoodRadiusSamples`, with optional `operation.iterations`. Local fairing applies bounded neighborhood-average terrain fairing over stored heightmap state and reports `mean_absolute_neighborhood_residual` before/after evidence. `operation.mode: "survey_point_constraint"` pairs with `region.type: "rectangle"` or `"circle"` and requires `operation.correctionScope: "local"` or `"regional"` plus non-empty `constraints.surveyPoints`; each survey point supplies public-meter `point.x`, `point.y`, `point.z`, optional `id`, and optional `tolerance` defaulting to `0.01`. Local survey correction is for isolated point corrections. Regional survey correction applies a bounded coherent correction field over the explicit support `region`; sparse points do not imply broad reshaping without that regional scope and support geometry. Optional local-area `region.blend.falloff` supports `none`, `linear`, and `smooth`; corridor `region.sideBlend.falloff` supports `none` and `cosine`, with positive side-blend distance requiring `cosine`. Optional `constraints.fixedControls` and rectangle or circle `constraints.preserveZones` protect existing grades for `target_height`, `local_fairing`, and `survey_point_constraint`; `corridor_transition` supports rectangle preserve zones only. Unsupported options refuse with `field`, `value`, and `allowedValues`. Edits mutate stored heightmap state, increment the terrain revision, and regenerate disposable derived mesh output; the runtime may replace only safely owned affected output faces and falls back to full derived-mesh regeneration when ownership cannot be proven. Unexpected child content under the terrain owner refuses before deletion.
-`curate_staged_asset` marks an existing in-model group or component instance as an approved Asset Exemplar by writing metadata in the `su_mcp` dictionary. It uses compact `targetReference` resolution, requires `metadata.sourceElementId`, `metadata.category`, `metadata.displayName`, `approval.state: "approved"`, and `staging.mode: "metadata_only"`, and returns one JSON-safe `asset` summary. SAR-01 curation is metadata-only: it does not import, move, reparent, tag, layer, lock, duplicate, delete, or otherwise mutate source geometry.
-`list_staged_assets` discovers approved complete Asset Exemplars. It supports `filters.category`, `filters.tags`, `filters.attributes`, `filters.approvalState: "approved"`, and `outputOptions.limit` plus `outputOptions.includeBounds`. The default limit is 25 and the maximum returned count is capped at 100. SAR-01 refuses unapproved discovery overrides and returns finite-option refusals with `field`, `value`, and `allowedValues`.
-
-| `operation.mode` | Supported `region.type` | Required operation fields | Required region fields |
-| --- | --- | --- | --- |
-| `target_height` | `rectangle`, `circle` | `targetElevation` | `bounds` for rectangle; `center`, `radius` for circle |
-| `corridor_transition` | `corridor` | none beyond `mode` | `startControl`, `endControl`, `width` |
-| `local_fairing` | `rectangle`, `circle` | `strength`, `neighborhoodRadiusSamples` | `bounds` for rectangle; `center`, `radius` for circle |
-| `survey_point_constraint` | `rectangle`, `circle` | `correctionScope`, `constraints.surveyPoints` | `bounds` for rectangle; `center`, `radius` for circle |
-All public terrain coordinates and elevations are meters. In create mode, `placement.origin` is a world-space meter point, while `definition.grid.origin`, `definition.grid.spacing`, and `definition.grid.baseElevation` are terrain-state meter values used to build the persisted terrain state and derived mesh. In adopt mode, terrain state origin is derived from the sampled source bounds, so edit regions and fixed-control points should be expressed in the stored terrain state's XY frame rather than assumed to start at zero.
-
-```json
-{
-  "targetReference": { "sourceElementId": "curatable-source-001" },
-  "metadata": {
-    "sourceElementId": "asset-tree-oak-001",
-    "category": "tree",
-    "displayName": "Oak Tree Exemplar",
-    "tags": ["tree", "deciduous"],
-    "attributes": {
-      "species": "oak",
-      "detailLevel": "high"
-    }
-  },
-  "approval": { "state": "approved" },
-  "staging": { "mode": "metadata_only" },
-  "outputOptions": { "includeBounds": true }
-}
-```
-
-```json
-{
-  "filters": {
-    "category": "tree",
-    "tags": ["deciduous"],
-    "attributes": { "species": "oak" },
-    "approvalState": "approved"
-  },
-  "outputOptions": {
-    "limit": 25,
-    "includeBounds": true
-  }
-}
-```
-
-```json
-{
-  "metadata": { "sourceElementId": "terrain-main", "status": "existing" },
-  "lifecycle": { "mode": "create" },
-  "placement": { "origin": { "x": 120.0, "y": 80.0, "z": 0.0 } },
-  "sceneProperties": { "name": "Managed Terrain", "tag": "Terrain" },
-  "definition": {
-    "kind": "heightmap_grid",
-    "grid": {
-      "origin": { "x": 0.0, "y": 0.0, "z": 0.0 },
-      "spacing": { "x": 1.0, "y": 1.0 },
-      "dimensions": { "columns": 10, "rows": 10 },
-      "baseElevation": 0.0
-    }
-  }
-}
-```
-
-```json
-{
-  "metadata": { "sourceElementId": "terrain-main", "status": "existing" },
-  "lifecycle": {
-    "mode": "adopt",
-    "target": { "sourceElementId": "existing-terrain" }
-  },
-  "sceneProperties": { "name": "Managed Terrain", "tag": "Terrain" }
-}
-```
-
-```json
-{
-  "targetReference": { "sourceElementId": "terrain-main" },
-  "operation": {
-    "mode": "target_height",
-    "targetElevation": 1.25
-  },
-  "region": {
-    "type": "rectangle",
-    "bounds": { "minX": 0.0, "minY": 0.0, "maxX": 10.0, "maxY": 8.0 },
-    "blend": { "distance": 1.0, "falloff": "smooth" }
-  },
-  "constraints": {
-    "fixedControls": [
-      {
-        "id": "threshold",
-        "point": { "x": 2.0, "y": 3.0 },
-        "tolerance": 0.01
-      }
-    ],
-    "preserveZones": [
-      {
-        "id": "tree-root-zone",
-        "type": "rectangle",
-        "bounds": { "minX": 4.0, "minY": 4.0, "maxX": 5.0, "maxY": 5.0 }
-      }
-    ]
-  },
-  "outputOptions": { "includeSampleEvidence": false, "sampleEvidenceLimit": 20 }
-}
-```
-
-```json
-{
-  "targetReference": { "sourceElementId": "terrain-main" },
-  "operation": {
-    "mode": "target_height",
-    "targetElevation": 1.1
-  },
-  "region": {
-    "type": "circle",
-    "center": { "x": 5.0, "y": 4.0 },
-    "radius": 2.0,
-    "blend": { "distance": 1.0, "falloff": "smooth" }
-  },
-  "constraints": {
-    "fixedControls": [],
-    "preserveZones": [
-      {
-        "id": "tree-root-zone",
-        "type": "circle",
-        "center": { "x": 5.0, "y": 4.0 },
-        "radius": 0.75
-      }
-    ]
-  },
-  "outputOptions": { "includeSampleEvidence": true, "sampleEvidenceLimit": 8 }
-}
-```
-
-```json
-{
-  "targetReference": { "sourceElementId": "terrain-main" },
-  "operation": {
-    "mode": "local_fairing",
-    "strength": 0.35,
-    "neighborhoodRadiusSamples": 2,
-    "iterations": 2
-  },
-  "region": {
-    "type": "rectangle",
-    "bounds": { "minX": 2.0, "minY": 2.0, "maxX": 8.0, "maxY": 8.0 },
-    "blend": { "distance": 1.0, "falloff": "smooth" }
-  },
-  "constraints": {
-    "fixedControls": [],
-    "preserveZones": [
-      {
-        "id": "tree-root-zone",
-        "type": "rectangle",
-        "bounds": { "minX": 4.0, "minY": 4.0, "maxX": 5.0, "maxY": 5.0 }
-      }
-    ]
-  },
-  "outputOptions": { "includeSampleEvidence": true, "sampleEvidenceLimit": 8 }
-}
-```
-
-```json
-{
-  "targetReference": { "sourceElementId": "terrain-main" },
-  "operation": {
-    "mode": "survey_point_constraint",
-    "correctionScope": "regional"
-  },
-  "region": {
-    "type": "rectangle",
-    "bounds": { "minX": 0.0, "minY": 0.0, "maxX": 20.0, "maxY": 10.0 },
-    "blend": { "distance": 2.0, "falloff": "smooth" }
-  },
-  "constraints": {
-    "surveyPoints": [
-      { "id": "left-1", "point": { "x": 0.0, "y": 0.0, "z": 1.1 }, "tolerance": 0.01 },
-      { "id": "right-1", "point": { "x": 20.0, "y": 0.0, "z": 0.7 }, "tolerance": 0.01 }
-    ],
-    "fixedControls": [],
-    "preserveZones": []
-  },
-  "outputOptions": { "includeSampleEvidence": false, "sampleEvidenceLimit": 20 }
-}
-```
-
-```json
-{
-  "targetReference": { "sourceElementId": "terrain-main" },
-  "operation": {
-    "mode": "corridor_transition"
-  },
-  "region": {
-    "type": "corridor",
-    "startControl": {
-      "point": { "x": 1.0, "y": 2.0 },
-      "elevation": 0.5
-    },
-    "endControl": {
-      "point": { "x": 8.0, "y": 2.0 },
-      "elevation": 1.5
-    },
-    "width": 3.0,
-    "sideBlend": { "distance": 1.0, "falloff": "cosine" }
-  },
-  "constraints": {
-    "fixedControls": [],
-    "preserveZones": []
-  },
-  "outputOptions": { "includeSampleEvidence": true, "sampleEvidenceLimit": 8 }
-}
-```
-
-Successful terrain creation and adoption return `success: true`, `outcome`, `operation`, `managedTerrain`, `terrainState`, `output.derivedMesh`, and `evidence`. The response includes terrain-state digest and mesh-count evidence, and adoption includes source replacement and sampling summaries. It does not expose raw SketchUp objects or durable generated face or vertex identifiers.
-Successful terrain edits return `success: true`, `outcome: "edited"`, `operation`, `managedTerrain`, before/after `terrainState`, `output.derivedMesh`, derived-output evidence, compact changed-sample evidence when requested, fixed-control evidence, preserve-zone evidence, and always-present `warnings`. Corridor transitions also include compact `evidence.transition` with normalized controls, width, side-blend settings, endpoint deltas, and changed-delta summary. Local fairing also includes compact `evidence.fairing` with residual metric, before/after residuals, improvement status, request controls, actual iterations, changed sample count, and fairing warnings. Survey point constraints also include compact `evidence.survey` with per-point requested/before/after/residual/tolerance/status rows and a correction summary with correction scope, support region type, changed sample count, max sample delta, detail-preservation summary, distortion summary, and warnings. No raw SketchUp objects, generated face/vertex identifiers, solver matrices, or survey solver internals are returned.
-If adoption cannot sample every derived grid point, the `source_sampling_incomplete` refusal includes public diagnostics such as sample count, hit/miss/ambiguous counts, extent, dimensions, spacing, and the first incomplete sample points.
-`validate_scene_update` is the first public validation surface. It accepts a top-level `expectations` object and currently supports `mustExist`, `mustPreserve`, `metadataRequirements`, `tagRequirements`, `materialRequirements`, and `geometryRequirements`, with each expectation using exactly one of `targetReference` or `targetSelector`. `metadataRequirements` is currently a presence-style check for managed object metadata keys such as `sourceElementId`, `semanticType`, `status`, `state`, and `structureCategory`; it is not the public dimension-validation path for values like `width`, `height`, or `thickness`. `geometryRequirements` now also supports `kind: "surfaceOffset"` for approximate bounds-derived anchor checks against an explicit `surfaceReference`, using `anchorSelector.anchor`, `constraints.expectedOffset`, and `constraints.tolerance`. The MVP anchor selectors are intentionally approximate and suitable only for simple rectangular or slab-like forms.
-`measure_scene` is the direct structured measurement surface. It supports `bounds/world_bounds`, `height/bounds_z`, `distance/bounds_center_to_bounds_center`, `area/surface`, `area/horizontal_bounds`, and `terrain_profile/elevation_summary`, using compact references (`sourceElementId`, `persistentId`, or compatibility `entityId`). Terrain profile measurements require `sampling.type: "profile"` with `sampling.path` plus exactly one of `sampleCount` or `intervalMeters`; `samplingPolicy.visibleOnly` and `samplingPolicy.ignoreTargets` mirror explicit surface sampling policy. It returns meter or square-meter quantities with `outcome: "measured"`, returns `outcome: "unavailable"` when measurable evidence is absent, and uses `no_unambiguous_profile_hits` when profile samples encountered only ambiguous surface stacks. It refuses unsupported modes, kinds, or sampling types with `allowedValues`. It is not a validation verdict tool and does not expose slope, grade, clearance-to-terrain, trench/hump, fairness, terrain editing, or raw dictionary inspection.
-Managed objects may persist additional semantic properties such as path width or planting height in the `su_mcp` dictionary, but those stored values are not yet a first-class public inspection or validation contract.
-`delete_entities` replaces `delete_component` and deletes one explicitly referenced supported group or component instance, returning structured `operation` and `affectedEntities.deleted` data.
-`transform_entities` and `set_material` now accept either legacy `id` or compact `targetReference` (`sourceElementId`, `persistentId`, `entityId`), refuse requests that provide both or neither, and return additive mutation envelopes with `outcome`, `id`, and `managedObject`.
-`set_entity_metadata` remains the semantic metadata path and now supports approved soft-field updates for `status`, `structureCategory`, `plantingCategory`, and `speciesHint` while continuing to refuse protected managed-object identity fields. `structureCategory` currently uses the approved values `main_building`, `outbuilding`, and `extension`, and invalid or non-clearable metadata requests now return `allowedValues` when the runtime owns the finite or contextual set.
-`create_site_element` keeps `hosting.mode` contextual by `elementType` rather than flattening it into one misleading global enum. The currently shipped hosting pairs are `path -> surface_drape`, `pad -> surface_snap`, `retaining_edge -> edge_clamp`, `tree_proxy -> terrain_anchored`, and `structure -> terrain_anchored`, and unsupported requests return the narrowed `allowedValues` for the requested element type. Terrain-anchored `tree_proxy` creation samples the terrain host at `definition.position.x/y` and replaces caller `position.z`; terrain-anchored `structure` creation samples one arithmetic-mean footprint point and keeps the built form planar rather than draping individual vertices.
-`boolean_operation` currently accepts only `union`, `difference`, or `intersection`, and unsupported requests return a structured refusal with the rejected value and `allowedValues`.
-
-## Local Validation
-
-Run the local CI task set:
+Run local CI-equivalent checks:
 
 ```bash
 bundle exec rake ci
@@ -360,9 +94,7 @@ This runs:
 - `ruby:test`
 - `package:verify`
 
-## Release Automation
-
-Release automation is CI-owned and uses `python-semantic-release` from the standalone [`releaserc.toml`](./releaserc.toml) configuration. Normal development, testing, and package verification do not require a repo-local Python environment.
+Release automation is CI-owned and configured in [`releaserc.toml`](releaserc.toml) using `python-semantic-release`.
 
 Prepare a local versioned artifact:
 
@@ -370,13 +102,26 @@ Prepare a local versioned artifact:
 NEW_VERSION=0.1.1 bundle exec rake release:prepare
 ```
 
-This syncs the version files and verifies the canonical RBZ package.
+## Repository layout
 
-## VS Code Tasks
+```text
+.
+├── src/                  # SketchUp extension runtime and MCP server
+├── test/                 # Runtime and packaging tests
+├── specifications/       # HLDs, PRDs, tasks, and engineering guidance
+├── rakelib/              # Packaging, release, and project rake tasks
+├── config/               # Runtime package assembly configuration
+└── docs/                 # User-facing reference material
+```
 
-The workspace includes tasks for:
+## Contributing
 
-- `bundle install`
-- `bundle exec rake ci`
-- `bundle exec rake package:verify`
-- launching SketchUp via the `SKETCHUP_EXECUTABLE` environment variable
+Contributions are welcome—runtime features, contract hardening, tests, and docs all help.
+
+Before opening a PR, review:
+
+- [`AGENTS.md`](AGENTS.md) for repository working agreements
+- [`specifications/guidelines/ryby-coding-guidelines.md`](specifications/guidelines/ryby-coding-guidelines.md) for Ruby coding expectations
+- [`docs/mcp-tool-reference.md`](docs/mcp-tool-reference.md) when changing tool contracts
+
+When public tool behavior changes, update runtime code, tests, and user-facing docs in the same change.
