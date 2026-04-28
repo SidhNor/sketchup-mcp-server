@@ -2,9 +2,9 @@
 
 **Task ID**: `MTA-13`  
 **Title**: Implement Survey Point Constraint Terrain Edit  
-**Status**: `completed`  
+**Status**: `calibrated`  
 **Created**: 2026-04-26  
-**Last Updated**: 2026-04-27  
+**Last Updated**: 2026-04-28  
 
 **Related Task**: [task.md](./task.md)  
 **Related Plan**: [plan.md](./plan.md)  
@@ -199,7 +199,7 @@
 - Hosted public MCP validation passed for local edit, repeated corrected edit, regional multi-point edit, invalid/missing inputs, out-of-bounds, outside support, contradictory points, duplicate identical points, preserve-zone conflict, fixed-control conflict, unsafe regional distortion, excessive delta, no-leak evidence, `persistentId` targeting, invalid target handling, transformed owner placement, circle support, blend shoulder support, off-grid bilinear points, boundary points, tiny tolerance, fixed controls inside regional support, preserve-near-influence, sample evidence, and output sanity.
 - Performance validation passed on `80x80` regional support: edit wall time `0.666s`, `2809` changed samples, all residuals `0.0`, evidence capped at `20`, digest matched state, runtime ping passed.
 - Complex hosted regional validation passed on `100x100` varied terrain: edit wall time `1.48s`, `6552` changed samples, eight residuals `0.0`, preserve drift `0.0`, regional coherence satisfied, evidence capped at `25`, runtime ping passed, all faces/edges marked derived, and no normal issues.
-- Redeployed regional planar validation passed for planar redirection and crowned/breakline complete-grid cases after targeted seed fixes.
+- Redeployed regional planar validation passed for planar redirection and crowned/breakline complete-grid cases after targeted seed fixes and repeated live monkey-patch/redeploy verification.
 - Planar matrix validation passed `19/20`; the remaining complex-terrain-to-plane case was reclassified as future explicit replacement semantics rather than current survey-correction behavior.
 <!-- SIZE:VALIDATION-EVIDENCE:END -->
 
@@ -214,6 +214,7 @@
 - Actual implementation friction was lower than worst-case prediction because MTA-14 was strong enough to promote directly for the local solver and existing terrain edit/storage/output flows handled the new mode cleanly.
 - Actual validation burden remained high and produced useful rework: hosted checks exposed regional interpolation gaps that unit/contract tests had not covered.
 - Post-deploy implementation changes were needed, but they were targeted to regional correction-field seed selection and did not affect public contract, storage schema, command routing, or output ownership.
+- Dominant actual failure mode: regional correction-field interpolation could satisfy survey residuals while producing unacceptable unconstrained edge/interior shape between points.
 
 ### Calibration Takeaways
 
@@ -221,10 +222,12 @@
 - A public MCP contract expansion can still be high-surface without high rework when validator, loader schema, command routing, evidence builder, fixture, and README updates are kept synchronized.
 - Hosted performance risk was overestimated for clean scenes up to the tested `100x100` varied terrain case; full mesh regeneration plus bounded evidence stayed interactive.
 - The maintainability issue was production code shape, while the algorithmic issue was regional interpolation semantics. Future estimates should include explicit refactor budget and targeted planar/piecewise-planar regional fixture budget when promoting a numerical kernel.
+- Underweighted early signal: "regional coherent-field proof" needed fixtures that asserted unconstrained sample shape, not only residual satisfaction, coherence status, or output mesh integrity.
 
 ### Updated Estimate Bias
 
 - For similar terrain-domain tasks with completed solver research and existing command/output plumbing, keep validation burden high. Reduce implementation-friction assumptions only for the covered solver family; keep rework risk at medium when regional interpolation or detail-replacement semantics are part of the task.
+- Retrieve this task for future work involving public terrain-edit contracts, numerical interpolation kernels, hosted MCP matrix validation, repeated live fix loops, and product-boundary decisions between constraint satisfaction and explicit replacement modes.
 <!-- SIZE:DELTA:END -->
 
 ---
@@ -249,6 +252,8 @@
 - `validation:undo`
 - `validation:regression`
 - `host:routine-matrix`
+- `host:repeated-fix-loop`
+- `host:redeploy-restart`
 - `host:undo`
 - `host:performance`
 - `contract:public-tool`
@@ -258,6 +263,7 @@
 - `contract:docs-examples`
 - `contract:finite-options`
 - `risk:contract-drift`
+- `risk:regression-breadth`
 - `risk:partial-state`
 - `risk:performance-scaling`
 - `risk:schema-requiredness`
