@@ -2,6 +2,28 @@
 
 <!-- version list -->
 
+## v1.0.0 (2026-04-28)
+
+### Documentation
+
+- **MTA-13**: Correct staus drift
+  ([`5a964a8`](https://github.com/SidhNor/sketchup-mcp-server/commit/5a964a8884dfa0e27fd4fbdd14018487cb8bb423))
+
+- **PLAT-17**: Update planning for MCP contract
+  ([`31d100c`](https://github.com/SidhNor/sketchup-mcp-server/commit/31d100cc132f9a1ea1f7bc38e9de2418591ae362))
+
+- **platform**: Align PLAT-17 plan with breaking contract posture
+  ([`0a289af`](https://github.com/SidhNor/sketchup-mcp-server/commit/0a289afc393552259f7dd2e3d78302991755606e))
+
+- **readme**: Replace weak highlights with capability-focused value
+  ([`821c48f`](https://github.com/SidhNor/sketchup-mcp-server/commit/821c48f47e3795115a8b97be010d1a280e1066d4))
+
+### Features
+
+- **PLAT-17**: Contract updates for the tools and cleanup
+  ([`58eae3c`](https://github.com/SidhNor/sketchup-mcp-server/commit/58eae3cae822ae71550d70a36234f6931c7f7273))
+
+
 ## v0.26.0 (2026-04-27)
 
 ### Bug Fixes
