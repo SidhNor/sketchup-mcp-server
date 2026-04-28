@@ -4,7 +4,7 @@ require_relative '../runtime/tool_response'
 
 module SU_MCP
   module Editing
-    # Resolves the additive id-or-targetReference target contract for editing mutations.
+    # Resolves canonical targetReference mutation targets and refuses legacy selector fields.
     class MutationTargetResolver
       def initialize(model_adapter:, target_resolver:, supported_target:)
         @model_adapter = model_adapter
@@ -16,12 +16,9 @@ module SU_MCP
         selection = mutation_target_selection(params)
         return selection if refusal_response?(selection)
 
-        case selection.fetch(:selector)
-        when :id
-          resolve_by_id(selection.fetch(:id))
-        when :target_reference
-          resolve_by_reference(selection.fetch(:target_reference))
-        end
+        resolve_by_reference(selection.fetch(:target_reference))
+      rescue TargetReferenceResolver::InvalidReference => e
+        ToolResponse.refusal(code: e.code, message: e.message, details: e.details)
       end
 
       private
@@ -34,19 +31,10 @@ module SU_MCP
         has_id = !id.nil?
         has_target_reference = !target_reference.empty?
 
-        return conflicting_target_selectors_refusal if has_id && has_target_reference
-        return missing_target_refusal unless has_id || has_target_reference
-        return { selector: :id, id: id } if has_id
+        return unsupported_request_field_refusal('id') if has_id
+        return missing_target_refusal unless has_target_reference
 
-        { selector: :target_reference, target_reference: target_reference }
-      end
-
-      def resolve_by_id(id)
-        model = model_adapter.active_model!
-        entity = model_adapter.find_entity!(id)
-        return unsupported_target_type_refusal unless supported_target.call(entity)
-
-        { model: model, entity: entity }
+        { target_reference: target_reference }
       end
 
       def resolve_by_reference(target_reference)
@@ -66,14 +54,19 @@ module SU_MCP
       def missing_target_refusal
         ToolResponse.refusal(
           code: 'missing_target',
-          message: 'Exactly one target selector is required.'
+          message: 'targetReference is required.',
+          details: {
+            field: 'targetReference',
+            allowedFields: TargetReferenceResolver::TARGET_REFERENCE_KEYS
+          }
         )
       end
 
-      def conflicting_target_selectors_refusal
+      def unsupported_request_field_refusal(field)
         ToolResponse.refusal(
-          code: 'conflicting_target_selectors',
-          message: 'Exactly one target selector is required.'
+          code: 'unsupported_request_field',
+          message: 'Unsupported request field.',
+          details: { field: field, allowedFields: ['targetReference'] }
         )
       end
 

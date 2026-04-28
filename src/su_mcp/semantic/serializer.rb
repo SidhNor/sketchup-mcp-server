@@ -110,19 +110,9 @@ module SU_MCP
         return nil unless bounds
 
         {
-          min: convert_point_to_public_meters(bounds[:min]),
-          max: convert_point_to_public_meters(bounds[:max])
+          min: bounds[:min],
+          max: bounds[:max]
         }
-      end
-
-      def convert_point_to_public_meters(point)
-        return nil unless point
-
-        point.map do |value|
-          next nil if value.nil?
-
-          @length_converter.internal_to_public_meters(value)
-        end
       end
     end
   end

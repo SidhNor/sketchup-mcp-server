@@ -328,7 +328,7 @@ module SceneQueryTestSupport
     end
 
     def find_entity_by_id(id)
-      (@entities + @active_entities).find { |entity| entity.entityID == id }
+      collect_entities(@entities + @active_entities).find { |entity| entity.entityID == id }
     end
 
     def save(path)
@@ -353,6 +353,26 @@ module SceneQueryTestSupport
 
     def abort_operation
       @operations << [:abort_operation]
+    end
+
+    private
+
+    def collect_entities(entities)
+      Array(entities).flat_map do |entity|
+        next [] unless entity.respond_to?(:entityID)
+
+        [entity] + child_entities_for(entity)
+      end
+    end
+
+    def child_entities_for(entity)
+      if entity.is_a?(Sketchup::Group)
+        collect_entities(entity.entities)
+      elsif entity.is_a?(Sketchup::ComponentInstance)
+        collect_entities(entity.definition.entities)
+      else
+        []
+      end
     end
   end
 

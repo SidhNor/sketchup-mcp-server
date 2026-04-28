@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require_relative '../adapters/model_adapter'
+require_relative '../runtime/tool_response'
 require_relative 'sample_surface_query'
 require_relative 'scene_query_serializer'
 require_relative 'scope_resolver'
@@ -32,7 +33,7 @@ module SU_MCP
     def list_resources
       adapter.top_level_entities(include_hidden: true).map do |entity|
         {
-          id: entity.entityID,
+          entityId: entity.entityID.to_s,
           type: serializer.entity_type_key(entity)
         }
       end
@@ -72,10 +73,20 @@ module SU_MCP
     end
 
     def get_entity_info(params)
+      return unsupported_request_field_refusal('id') if params.key?('id') || params.key?(:id)
+      return missing_target_refusal('targetReference') unless params['targetReference'].is_a?(Hash)
+
+      resolution = target_reference_resolver.resolve(params.fetch('targetReference'))
+      unless resolution[:resolution] == 'unique'
+        return invalid_target_reference_refusal('targetReference')
+      end
+
       {
         success: true,
-        entity: serializer.serialize_entity(adapter.find_entity!(params['id']))
+        entity: serializer.serialize_entity(resolution.fetch(:entity))
       }
+    rescue TargetReferenceResolver::InvalidReference => e
+      target_reference_error_refusal(e)
     end
 
     def find_entities(params)
@@ -119,17 +130,17 @@ module SU_MCP
       {
         title: model.title,
         path: model.path,
-        active_path_depth: model.active_path ? model.active_path.length : 0
+        activePathDepth: model.active_path ? model.active_path.length : 0
       }
     end
 
     def scene_counts(model, entities)
       {
-        top_level_entities: entities.length,
-        selected_entities: model.selection.length,
+        topLevelEntities: entities.length,
+        selectedEntities: model.selection.length,
         materials: model.materials.length,
         layers: model.layers.length,
-        by_type: serializer.entity_type_counts(entities)
+        byType: serializer.entity_type_counts(entities)
       }
     end
 
@@ -148,6 +159,42 @@ module SU_MCP
 
     def log(message)
       @logger&.call(message)
+    end
+
+    def unsupported_request_field_refusal(field)
+      ToolResponse.refusal(
+        code: 'unsupported_request_field',
+        message: 'Unsupported request field.',
+        details: { field: field, allowedFields: ['targetReference'] }
+      )
+    end
+
+    def missing_target_refusal(field)
+      ToolResponse.refusal(
+        code: 'missing_target',
+        message: 'targetReference is required.',
+        details: {
+          field: field,
+          allowedFields: TargetReferenceResolver::TARGET_REFERENCE_KEYS
+        }
+      )
+    end
+
+    def invalid_target_reference_refusal(field)
+      ToolResponse.refusal(
+        code: 'invalid_target_reference',
+        message: 'Target reference must resolve to one entity.',
+        details: { field: field }
+      )
+    end
+
+    def target_reference_error_refusal(error)
+      code = error.code == 'missing_target' ? 'missing_target' : error.code
+      ToolResponse.refusal(
+        code: code,
+        message: error.message,
+        details: error.details
+      )
     end
   end
 end

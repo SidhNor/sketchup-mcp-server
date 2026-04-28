@@ -215,11 +215,19 @@ class McpRuntimeFacadeTest < Minitest::Test
     factory = RecordingRuntimeCommandFactory.new(targets: [editing_commands])
     facade = SU_MCP::McpRuntimeFacade.new(runtime_command_factory: factory)
 
-    result = facade.transform_entities('id' => '301', 'position' => [1, 2, 3])
+    payload = { 'targetReference' => { 'entityId' => '301' }, 'position' => [1, 2, 3] }
+
+    result = facade.transform_entities(payload)
 
     assert_equal(1, factory.calls)
-    assert_equal([{ 'id' => '301', 'position' => [1, 2, 3] }], editing_commands.calls)
+    assert_equal([payload], editing_commands.calls)
     assert_equal(expected, result)
+  end
+
+  def test_boolean_operation_is_not_exposed_on_the_facade
+    facade = SU_MCP::McpRuntimeFacade.new(command_targets: [])
+
+    refute_respond_to(facade, :boolean_operation)
   end
 
   def test_real_runtime_command_factory_includes_the_validation_command_target

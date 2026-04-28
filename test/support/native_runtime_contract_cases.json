@@ -350,34 +350,32 @@
       }
     },
     {
-      "case_id": "boolean_operation_invalid_operation_refused",
+      "case_id": "get_entity_info_target_reference_success",
       "request": {
         "jsonrpc": "2.0",
         "method": "tools/call",
         "params": {
-          "name": "boolean_operation",
+          "name": "get_entity_info",
           "arguments": {
-            "target_id": "101",
-            "tool_id": "202",
-            "operation": "slice"
+            "targetReference": {
+              "sourceElementId": "garden-shed-001"
+            }
           }
         },
-        "id": "boolean-operation-invalid-operation-refused"
+        "id": "get-entity-info-target-reference-success"
       },
       "response": {
         "jsonrpc": "2.0",
-        "id": "boolean-operation-invalid-operation-refused",
+        "id": "get-entity-info-target-reference-success",
         "result": {
           "success": true,
-          "outcome": "refused",
-          "refusal": {
-            "code": "unsupported_option",
-            "message": "Boolean operation is not supported.",
-            "details": {
-              "field": "operation",
-              "value": "slice",
-              "allowedValues": ["union", "difference", "intersection"]
-            }
+          "entity": {
+            "sourceElementId": "garden-shed-001",
+            "persistentId": "7002",
+            "entityId": "702",
+            "type": "group",
+            "name": "Garden Shed",
+            "childrenCount": 0
           }
         }
       }
@@ -701,7 +699,8 @@
         "result": {
           "success": true,
           "outcome": "transformed",
-          "id": "301",
+          "entityId": "301",
+          "persistentId": "1001",
           "managedObject": {
             "sourceElementId": "shed-001",
             "persistentId": "1001",
@@ -735,7 +734,8 @@
         "result": {
           "success": true,
           "outcome": "material_applied",
-          "id": "301",
+          "entityId": "301",
+          "persistentId": "1001",
           "managedObject": {
             "sourceElementId": "shed-001",
             "persistentId": "1001",
@@ -744,36 +744,6 @@
             "status": "existing",
             "state": "Created",
             "material": "Walnut"
-          }
-        }
-      }
-    },
-    {
-      "case_id": "transform_entities_conflicting_target_selectors_refused",
-      "request": {
-        "jsonrpc": "2.0",
-        "method": "tools/call",
-        "params": {
-          "name": "transform_entities",
-          "arguments": {
-            "id": "301",
-            "targetReference": {
-              "entityId": "301"
-            },
-            "position": [1.0, 2.0, 3.0]
-          }
-        },
-        "id": "transform-conflicting-target-selectors-refused"
-      },
-      "response": {
-        "jsonrpc": "2.0",
-        "id": "transform-conflicting-target-selectors-refused",
-        "result": {
-          "success": true,
-          "outcome": "refused",
-          "refusal": {
-            "code": "conflicting_target_selectors",
-            "message": "Exactly one target selector is required."
           }
         }
       }

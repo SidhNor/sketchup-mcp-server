@@ -49,6 +49,11 @@ class SceneQueryCommandsAdapterTest < Minitest::Test
       @entity
     end
 
+    def find_entity_by_id(id)
+      @calls << [:find_entity_by_id, id]
+      @entity
+    end
+
     def queryable_entities
       @calls << :queryable_entities
       @queryable_entities
@@ -89,7 +94,8 @@ class SceneQueryCommandsAdapterTest < Minitest::Test
       'outputOptions' => { 'limit' => 10 }
     )
 
-    assert_equal([101], result[:entities].map { |entity| entity[:id] })
+    assert_equal(['101'], result[:entities].map { |entity| entity[:entityId] })
+    assert(result[:entities].none? { |entity| entity.key?(:id) })
     assert_includes(@adapter.calls, :active_model!)
     assert_includes(@adapter.calls, [:top_level_entities, false])
   end
@@ -99,7 +105,7 @@ class SceneQueryCommandsAdapterTest < Minitest::Test
 
     result = commands.list_entities('scopeSelector' => { 'mode' => 'selection' })
 
-    assert_equal([101], result[:entities].map { |entity| entity[:id] })
+    assert_equal(['101'], result[:entities].map { |entity| entity[:entityId] })
     assert_includes(@adapter.calls, :selected_entities)
   end
 
@@ -108,17 +114,18 @@ class SceneQueryCommandsAdapterTest < Minitest::Test
 
     result = commands.selection_info
 
-    assert_equal([101], result[:entities].map { |entity| entity[:id] })
+    assert_equal(['101'], result[:entities].map { |entity| entity[:entityId] })
     assert_includes(@adapter.calls, :selected_entities)
   end
 
   def test_get_entity_info_delegates_entity_resolution_to_the_adapter
     commands = SU_MCP::SceneQueryCommands.new(adapter: @adapter)
 
-    result = commands.get_entity_info('id' => '"101"')
+    result = commands.get_entity_info('targetReference' => { 'entityId' => '"101"' })
 
-    assert_equal(101, result.dig(:entity, :id))
-    assert_includes(@adapter.calls, [:find_entity!, '"101"'])
+    assert_equal('101', result.dig(:entity, :entityId))
+    refute_includes(result.fetch(:entity).keys, :id)
+    assert_includes(@adapter.calls, [:find_entity_by_id, '"101"'])
   end
 
   def test_find_entities_uses_adapter_owned_entity_enumeration

@@ -179,9 +179,9 @@ class EditingCommandsTest < Minitest::Test
     assert_equal('Unsupported ambiguityPolicy: pick_first', error.message)
   end
 
-  def test_transform_entities_uses_the_shared_adapter_for_entity_lookup
+  def test_transform_entities_uses_canonical_target_reference_lookup
     result = @commands.transform_entities(
-      'id' => '301',
+      'targetReference' => { 'entityId' => '301' },
       'position' => [1, 2, 3],
       'rotation' => [0, 0, 0],
       'scale' => [1, 1, 1]
@@ -189,9 +189,11 @@ class EditingCommandsTest < Minitest::Test
 
     assert_equal(true, result[:success])
     assert_equal('transformed', result[:outcome])
-    assert_equal(301, result[:id])
+    refute_includes(result.keys, :id)
+    assert_equal('301', result[:entityId])
+    assert_equal('1001', result[:persistentId])
     assert_nil(result[:managedObject])
-    assert_equal([:active_model!, [:find_entity!, '301']], @adapter.calls)
+    assert_equal(%i[all_entities_recursive active_model!], @adapter.calls)
     assert_equal(
       [[:start_operation, 'Transform Entities', true], [:commit_operation]],
       @mutation_model.operations
@@ -207,7 +209,7 @@ class EditingCommandsTest < Minitest::Test
     )
 
     result = commands.transform_entities(
-      'id' => '301',
+      'targetReference' => { 'entityId' => '301' },
       'position' => [1.0, 2.0, 3.0]
     )
 
@@ -216,15 +218,20 @@ class EditingCommandsTest < Minitest::Test
     refute_empty(@entity.transformations)
   end
 
-  def test_apply_material_uses_the_shared_adapter_for_entity_lookup
-    result = @commands.apply_material('id' => '301', 'material' => 'Walnut')
+  def test_apply_material_uses_canonical_target_reference_lookup
+    result = @commands.apply_material(
+      'targetReference' => { 'entityId' => '301' },
+      'material' => 'Walnut'
+    )
 
     assert_equal(true, result[:success])
     assert_equal('material_applied', result[:outcome])
-    assert_equal(301, result[:id])
+    refute_includes(result.keys, :id)
+    assert_equal('301', result[:entityId])
+    assert_equal('1001', result[:persistentId])
     assert_nil(result[:managedObject])
     assert_equal('Walnut', @entity.material.display_name)
-    assert_equal([:active_model!, [:find_entity!, '301']], @adapter.calls)
+    assert_equal(%i[all_entities_recursive active_model!], @adapter.calls)
     assert_equal(
       [[:start_operation, 'Set Entity Material', true], [:commit_operation]],
       @mutation_model.operations
@@ -244,7 +251,9 @@ class EditingCommandsTest < Minitest::Test
 
     assert_equal(true, result[:success])
     assert_equal('transformed', result[:outcome])
-    assert_equal(301, result[:id])
+    refute_includes(result.keys, :id)
+    assert_equal('301', result[:entityId])
+    assert_equal('1001', result[:persistentId])
     assert_equal('shed-001', result.dig(:managedObject, :sourceElementId))
     assert_equal('structure', result.dig(:managedObject, :semanticType))
     assert_equal(%i[all_entities_recursive active_model!], @adapter.calls)
@@ -260,18 +269,20 @@ class EditingCommandsTest < Minitest::Test
     assert_equal(true, result[:success])
     assert_equal('refused', result[:outcome])
     assert_equal('missing_target', result.dig(:refusal, :code))
+    assert_equal('targetReference', result.dig(:refusal, :details, :field))
   end
 
-  def test_transform_entities_refuses_conflicting_target_selectors
+  def test_transform_entities_refuses_legacy_top_level_id
     result = @commands.transform_entities(
       'id' => '301',
-      'targetReference' => { 'entityId' => '301' },
       'position' => [1, 2, 3]
     )
 
     assert_equal(true, result[:success])
     assert_equal('refused', result[:outcome])
-    assert_equal('conflicting_target_selectors', result.dig(:refusal, :code))
+    assert_equal('unsupported_request_field', result.dig(:refusal, :code))
+    assert_equal('id', result.dig(:refusal, :details, :field))
+    assert_equal(['targetReference'], result.dig(:refusal, :details, :allowedFields))
   end
 
   def test_transform_entities_refuses_ambiguous_target_references
@@ -302,7 +313,9 @@ class EditingCommandsTest < Minitest::Test
 
     assert_equal(true, result[:success])
     assert_equal('material_applied', result[:outcome])
-    assert_equal(301, result[:id])
+    refute_includes(result.keys, :id)
+    assert_equal('301', result[:entityId])
+    assert_equal('1001', result[:persistentId])
     assert_equal('shed-001', result.dig(:managedObject, :sourceElementId))
     assert_equal('Walnut', @entity.material.display_name)
     assert_equal(%i[all_entities_recursive active_model!], @adapter.calls)
@@ -318,17 +331,32 @@ class EditingCommandsTest < Minitest::Test
     assert_equal(true, result[:success])
     assert_equal('refused', result[:outcome])
     assert_equal('missing_target', result.dig(:refusal, :code))
+    assert_equal('targetReference', result.dig(:refusal, :details, :field))
   end
 
-  def test_apply_material_refuses_conflicting_target_selectors
+  def test_apply_material_refuses_legacy_top_level_id
     result = @commands.apply_material(
       'id' => '301',
-      'targetReference' => { 'entityId' => '301' },
       'material' => 'Walnut'
     )
 
     assert_equal(true, result[:success])
     assert_equal('refused', result[:outcome])
-    assert_equal('conflicting_target_selectors', result.dig(:refusal, :code))
+    assert_equal('unsupported_request_field', result.dig(:refusal, :code))
+    assert_equal('id', result.dig(:refusal, :details, :field))
+  end
+
+  def test_transform_entities_refuses_unsupported_target_reference_fields
+    result = @commands.transform_entities(
+      'targetReference' => { 'legacyId' => '301' },
+      'position' => [1, 2, 3]
+    )
+
+    assert_equal(true, result[:success])
+    assert_equal('refused', result[:outcome])
+    assert_equal('unsupported_request_field', result.dig(:refusal, :code))
+    assert_equal('targetReference.legacyId', result.dig(:refusal, :details, :field))
+    assert_equal(%w[sourceElementId persistentId entityId],
+                 result.dig(:refusal, :details, :allowedFields))
   end
 end

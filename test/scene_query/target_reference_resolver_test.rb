@@ -8,7 +8,8 @@ class TargetReferenceResolverTest < Minitest::Test
   include SceneQueryTestSupport
 
   def setup
-    Sketchup.active_model_override = build_metadata_target_model
+    @model = build_metadata_target_model
+    Sketchup.active_model_override = @model
     @resolver = SU_MCP::TargetReferenceResolver.new
   end
 
@@ -30,6 +31,52 @@ class TargetReferenceResolverTest < Minitest::Test
     assert_equal(7002, result.fetch(:entity).persistent_id)
   end
 
+  def test_resolves_entity_id_with_direct_model_lookup_without_recursive_traversal
+    entity = build_scene_query_group(
+      entity_id: 812,
+      origin_x: 0,
+      layer: FakeLayer.new('Structures'),
+      material: FakeMaterial.new('Timber'),
+      details: { persistent_id: 8812 }
+    )
+    adapter = FastLookupAdapter.new(entity_by_id: entity)
+    resolver = SU_MCP::TargetReferenceResolver.new(adapter: adapter)
+
+    result = resolver.resolve('entityId' => '812')
+
+    assert_equal('unique', result[:resolution])
+    assert_same(entity, result.fetch(:entity))
+    assert_equal([[:find_entity_by_id, '812']], adapter.calls)
+  end
+
+  def test_resolves_persistent_id_with_native_lookup_without_recursive_traversal
+    entity = build_scene_query_group(
+      entity_id: 813,
+      origin_x: 0,
+      layer: FakeLayer.new('Structures'),
+      material: FakeMaterial.new('Timber'),
+      details: { persistent_id: 8813 }
+    )
+    adapter = FastLookupAdapter.new(entity_by_persistent_id: entity)
+    resolver = SU_MCP::TargetReferenceResolver.new(adapter: adapter)
+
+    result = resolver.resolve('persistentId' => '8813')
+
+    assert_equal('unique', result[:resolution])
+    assert_same(entity, result.fetch(:entity))
+    assert_equal([[:find_entity_by_persistent_id, '8813']], adapter.calls)
+  end
+
+  def test_uses_recursive_metadata_lookup_for_source_element_id
+    adapter = FastLookupAdapter.new(entity_by_source_element_id: @model.entities.last)
+    resolver = SU_MCP::TargetReferenceResolver.new(adapter: adapter)
+
+    result = resolver.resolve('sourceElementId' => 'duplicate-managed-001')
+
+    assert_equal('unique', result[:resolution])
+    assert_equal([:all_entities_recursive], adapter.calls)
+  end
+
   def test_returns_none_when_no_entity_matches
     result = @resolver.resolve('sourceElementId' => 'missing-element-001')
 
@@ -44,7 +91,47 @@ class TargetReferenceResolverTest < Minitest::Test
     refute_includes(result.keys, :entity)
   end
 
+  def test_raises_field_aware_error_for_unsupported_reference_fields
+    error = assert_raises(SU_MCP::TargetReferenceResolver::InvalidReference) do
+      @resolver.resolve('legacyId' => '702')
+    end
+
+    assert_equal('unsupported_request_field', error.code)
+    assert_equal('targetReference.legacyId', error.details.fetch(:field))
+    assert_equal(%w[sourceElementId persistentId entityId], error.details.fetch(:allowedFields))
+  end
+
   private
+
+  class FastLookupAdapter
+    attr_reader :calls
+
+    def initialize(
+      entity_by_id: nil,
+      entity_by_persistent_id: nil,
+      entity_by_source_element_id: nil
+    )
+      @entity_by_id = entity_by_id
+      @entity_by_persistent_id = entity_by_persistent_id
+      @entity_by_source_element_id = entity_by_source_element_id
+      @calls = []
+    end
+
+    def find_entity_by_id(id)
+      @calls << [:find_entity_by_id, id]
+      @entity_by_id
+    end
+
+    def find_entity_by_persistent_id(persistent_id)
+      @calls << [:find_entity_by_persistent_id, persistent_id]
+      @entity_by_persistent_id
+    end
+
+    def all_entities_recursive
+      @calls << :all_entities_recursive
+      [@entity_by_source_element_id].compact
+    end
+  end
 
   def build_metadata_target_model
     layer = FakeLayer.new('Structures')

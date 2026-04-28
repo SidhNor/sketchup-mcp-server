@@ -24,7 +24,6 @@ Current tools include:
 - `delete_entities`
 - `transform_entities`
 - `set_material`
-- `boolean_operation`
 - `eval_ruby`
 
 ## Contract conventions
@@ -33,6 +32,7 @@ Current tools include:
 - Public geometry values are expressed in meters (or square meters for areas).
 - Finite-option refusals use structured fields such as `field`, `value`, and `allowedValues`.
 - Compact entity targeting uses `targetReference` (`sourceElementId`, `persistentId`, or compatibility `entityId`) unless a tool explicitly requires `targetSelector`.
+- Public SketchUp entity identity is returned as `entityId` and, when available, `persistentId`; entity summaries do not expose a parallel `id` alias for SketchUp `entityID`.
 
 ## Core behavior notes by tool area
 
@@ -230,11 +230,18 @@ Profile sampling requires `sampling.type: "profile"`, `sampling.path`, and exact
 
 Returns `outcome: "measured"` when evidence exists, `outcome: "unavailable"` otherwise. Uses `no_unambiguous_profile_hits` when profile results are only ambiguous.
 
-#### `delete_entities`, `transform_entities`, `set_material`, `boolean_operation`
+#### `get_entity_info`
+
+- Returns one explicitly referenced entity summary.
+- Requires canonical `targetReference` with `sourceElementId`, `persistentId`, or compatibility `entityId`.
+- Public geometry-bearing response values, including bounds and instance origins, are meters.
+
+#### `delete_entities`, `transform_entities`, `set_material`
 
 - `delete_entities` deletes one explicitly referenced supported group/component instance.
-- `transform_entities` and `set_material` accept either legacy `id` or compact `targetReference` (not both).
-- `boolean_operation` accepts only `union`, `difference`, or `intersection`.
+- `transform_entities` transforms one explicitly referenced supported group/component instance; `position` values are meters.
+- `set_material` applies a material to one explicitly referenced supported group/component instance.
+- All three tools use canonical `targetReference` with `sourceElementId`, `persistentId`, or compatibility `entityId`.
 
 ## Example payloads
 

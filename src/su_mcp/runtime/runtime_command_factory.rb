@@ -3,7 +3,6 @@
 require_relative '../adapters/model_adapter'
 require_relative '../developer/developer_commands'
 require_relative '../editing/editing_commands'
-require_relative '../modeling/modeling_support'
 require_relative '../scene_query/scene_query_commands'
 require_relative '../scene_validation/measure_scene_commands'
 require_relative '../scene_validation/scene_validation_commands'
@@ -11,7 +10,6 @@ require_relative '../semantic/hierarchy_maintenance_commands'
 require_relative '../semantic/semantic_commands'
 require_relative '../staged_assets/staged_asset_commands'
 require_relative '../terrain/terrain_surface_commands'
-require_relative '../modeling/solid_modeling_commands'
 
 module SU_MCP
   # Builds the shared Ruby command collaborators used by both runtime paths.
@@ -31,7 +29,6 @@ module SU_MCP
         semantic_commands,
         hierarchy_maintenance_commands,
         editing_commands,
-        solid_modeling_commands,
         developer_commands
       ]
     end
@@ -77,14 +74,6 @@ module SU_MCP
       )
     end
 
-    def solid_modeling_commands
-      @solid_modeling_commands ||= SolidModelingCommands.new(
-        model_provider: -> { Sketchup.active_model },
-        logger: logger,
-        support: modeling_support
-      )
-    end
-
     def developer_commands
       @developer_commands ||= DeveloperCommands.new(logger: logger)
     end
@@ -92,10 +81,6 @@ module SU_MCP
     private
 
     attr_reader :logger
-
-    def modeling_support
-      @modeling_support ||= ModelingSupport.new
-    end
 
     def model_adapter
       @model_adapter ||= Adapters::ModelAdapter.new

@@ -18,7 +18,6 @@ module SU_MCP
     JSON_SCHEMA_SPEC = 'json-schema'
     POST_ACCEPT_TYPES = ['application/json', 'text/event-stream'].freeze
     REQUIRED_GEMS = %w[public_suffix addressable rack mcp json-schema].freeze
-    BOOLEAN_OPERATION_VALUES = %w[union difference intersection].freeze
     BASE_DIR = begin
       dir = __dir__.dup
       dir.force_encoding('UTF-8') if dir.respond_to?(:force_encoding)
@@ -427,15 +426,15 @@ module SU_MCP
         tool_entry(
           name: 'get_entity_info',
           title: 'Get Entity Information',
-          description: 'Get structured information for a specific SketchUp entity by id.',
+          description: 'Get structured information for one explicitly referenced SketchUp entity.',
           handler_key: :get_entity_info,
           annotations: { read_only_hint: true, destructive_hint: false },
           classification: 'first_class',
           input_schema: {
             type: 'object',
-            required: ['id'],
+            required: ['targetReference'],
             properties: {
-              id: string_schema
+              targetReference: target_reference_schema
             },
             additionalProperties: false
           }
@@ -536,27 +535,6 @@ module SU_MCP
           annotations: { read_only_hint: false, destructive_hint: false },
           classification: 'first_class',
           input_schema: set_material_schema
-        ),
-        tool_entry(
-          name: 'boolean_operation',
-          title: 'Run Boolean Operation',
-          description: 'Run union, difference, or intersection between two explicit ' \
-                       'SketchUp groups/components. Use for solid-modeling composition, ' \
-                       'not semantic replacement or broad cleanup.',
-          handler_key: :boolean_operation,
-          annotations: { read_only_hint: false, destructive_hint: false },
-          classification: 'first_class',
-          input_schema: {
-            type: 'object',
-            required: %w[target_id tool_id operation],
-            properties: {
-              target_id: string_schema,
-              tool_id: string_schema,
-              operation: enum_schema(BOOLEAN_OPERATION_VALUES),
-              delete_originals: boolean_schema
-            },
-            additionalProperties: false
-          }
         )
       ]
     end
@@ -936,8 +914,8 @@ module SU_MCP
     def transform_entities_schema
       {
         type: 'object',
+        required: ['targetReference'],
         properties: {
-          id: string_schema,
           targetReference: target_reference_schema,
           position: numeric_array_schema,
           rotation: numeric_array_schema,
@@ -950,9 +928,8 @@ module SU_MCP
     def set_material_schema
       {
         type: 'object',
-        required: ['material'],
+        required: %w[targetReference material],
         properties: {
-          id: string_schema,
           targetReference: target_reference_schema,
           material: string_schema
         },

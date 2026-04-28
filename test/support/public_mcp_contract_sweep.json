@@ -1,0 +1,53 @@
+{
+  "task_id": "PLAT-17",
+  "first_class_tools": [
+    "ping",
+    "get_scene_info",
+    "list_entities",
+    "find_entities",
+    "validate_scene_update",
+    "measure_scene",
+    "sample_surface_z",
+    "create_terrain_surface",
+    "edit_terrain_surface",
+    "curate_staged_asset",
+    "list_staged_assets",
+    "get_entity_info",
+    "create_site_element",
+    "set_entity_metadata",
+    "create_group",
+    "reparent_entities",
+    "delete_entities",
+    "transform_entities",
+    "get_selection",
+    "set_material"
+  ],
+  "removed_tools": [
+    {
+      "name": "boolean_operation",
+      "reason": "legacy public selector and response posture removed instead of modernized"
+    }
+  ],
+  "direct_reference_tools": {
+    "get_entity_info": ["targetReference"],
+    "delete_entities": ["targetReference"],
+    "transform_entities": ["targetReference"],
+    "set_material": ["targetReference"],
+    "curate_staged_asset": ["targetReference"],
+    "edit_terrain_surface": ["targetReference"]
+  },
+  "role_reference_tools": {
+    "sample_surface_z": ["target", "ignoreTargets"],
+    "set_entity_metadata": ["target"],
+    "create_group": ["parent", "children"],
+    "reparent_entities": ["parent", "entities"],
+    "validate_scene_update": ["targetReference", "targetSelector", "surfaceReference"],
+    "measure_scene": ["target", "from", "to"]
+  },
+  "predicate_selector_tools": {
+    "find_entities": ["targetSelector"],
+    "validate_scene_update": ["targetSelector"]
+  },
+  "response_vocabulary": "public response fields use camelCase for equivalent concepts",
+  "geometry_units": "public geometry-bearing request and response values are meters unless documented as square meters"
+}
