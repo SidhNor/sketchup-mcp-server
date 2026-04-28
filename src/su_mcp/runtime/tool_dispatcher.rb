@@ -23,7 +23,6 @@ module SU_MCP
       'transform_entities' => :transform_entities,
       'get_selection' => :selection_info,
       'set_material' => :apply_material,
-      'boolean_operation' => :boolean_operation,
       'eval_ruby' => :eval_ruby
     }.freeze
 

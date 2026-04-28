@@ -31,7 +31,6 @@ class McpRuntimeLoaderTest < Minitest::Test
     transform_entities
     get_selection
     set_material
-    boolean_operation
     eval_ruby
   ].freeze
 
@@ -112,7 +111,7 @@ class McpRuntimeLoaderTest < Minitest::Test
 
     transport = @loader.build_transport(
       ping_handler: -> { { success: true, message: 'pong' } },
-      scene_info_handler: ->(_params) { { success: true, entities: [{ id: 101 }] } }
+      scene_info_handler: ->(_params) { { success: true, entities: [{ entityId: '101' }] } }
     )
 
     initialize_response = perform_json_request(
@@ -142,7 +141,7 @@ class McpRuntimeLoaderTest < Minitest::Test
     assert_equal(200, ping_response[:status])
     assert_equal({ 'success' => true, 'message' => 'pong' },
                  ping_response[:body].dig('result', 'structuredContent'))
-    assert_equal({ 'success' => true, 'entities' => [{ 'id' => 101 }] },
+    assert_equal({ 'success' => true, 'entities' => [{ 'entityId' => '101' }] },
                  scene_response[:body].dig('result', 'structuredContent'))
   end
 
@@ -153,7 +152,7 @@ class McpRuntimeLoaderTest < Minitest::Test
 
     transport = @loader.build_transport(
       ping_handler: -> { { success: true, message: 'pong' } },
-      scene_info_handler: ->(_params) { { success: true, entities: [{ id: 101 }] } }
+      scene_info_handler: ->(_params) { { success: true, entities: [{ entityId: '101' }] } }
     )
 
     response = perform_raw_json_request(transport, batched_tools_list_payload)
@@ -476,11 +475,11 @@ class McpRuntimeLoaderTest < Minitest::Test
 
     get_entity_info_tool = tools.find { |tool| tool.fetch('name') == 'get_entity_info' }
     assert_equal(
-      ['id'],
+      ['targetReference'],
       get_entity_info_tool.fetch('inputSchema').fetch('required')
     )
     assert_equal(
-      ['id'],
+      ['targetReference'],
       get_entity_info_tool.fetch('inputSchema').fetch('properties').keys
     )
 
@@ -568,9 +567,12 @@ class McpRuntimeLoaderTest < Minitest::Test
     )
 
     transform_entities_tool = tools.find { |tool| tool.fetch('name') == 'transform_entities' }
-    refute(transform_entities_tool.fetch('inputSchema').key?('required'))
     assert_equal(
-      %w[id position rotation scale targetReference],
+      ['targetReference'],
+      transform_entities_tool.fetch('inputSchema').fetch('required')
+    )
+    assert_equal(
+      %w[position rotation scale targetReference],
       transform_entities_tool.fetch('inputSchema').fetch('properties').keys.sort
     )
     assert_equal(
@@ -582,21 +584,6 @@ class McpRuntimeLoaderTest < Minitest::Test
         .fetch('properties')
         .keys
         .map(&:to_s)
-        .sort
-    )
-
-    boolean_operation_tool = tools.find { |tool| tool.fetch('name') == 'boolean_operation' }
-    assert_equal(
-      %w[target_id tool_id operation],
-      boolean_operation_tool.fetch('inputSchema').fetch('required')
-    )
-    assert_equal(
-      %w[difference intersection union],
-      boolean_operation_tool
-        .fetch('inputSchema')
-        .fetch('properties')
-        .fetch('operation')
-        .fetch('enum')
         .sort
     )
 
@@ -1017,16 +1004,16 @@ class McpRuntimeLoaderTest < Minitest::Test
     )
   end
 
-  def test_set_material_tool_schema_supports_compact_target_references_alongside_id
+  def test_set_material_tool_schema_requires_compact_target_references
     set_material_tool = @loader.tool_catalog.find do |tool|
       tool.fetch(:name) == 'set_material'
     end
     refute_nil(set_material_tool)
     input_schema = set_material_tool.fetch(:input_schema)
 
-    assert_equal(['material'], input_schema.fetch(:required))
+    assert_equal(%w[targetReference material], input_schema.fetch(:required))
     assert_equal(
-      %w[id material targetReference],
+      %w[material targetReference],
       input_schema.fetch(:properties).keys.map(&:to_s).sort
     )
     assert_equal(
@@ -1134,15 +1121,11 @@ class McpRuntimeLoaderTest < Minitest::Test
   end
 
   def test_mutation_tool_descriptions_expose_usage_boundaries_without_long_examples
-    boolean_operation = @loader.tool_catalog.find do |entry|
-      entry.fetch(:name) == 'boolean_operation'
-    end
     transform_entities = @loader.tool_catalog.find do |entry|
       entry.fetch(:name) == 'transform_entities'
     end
     set_material = @loader.tool_catalog.find { |entry| entry.fetch(:name) == 'set_material' }
 
-    assert_includes(boolean_operation.fetch(:description), 'not semantic replacement')
     assert_includes(transform_entities.fetch(:description), 'not semantic hosting')
     assert_includes(set_material.fetch(:description), 'Do not use for semantic metadata changes')
   end
@@ -1182,7 +1165,7 @@ class McpRuntimeLoaderTest < Minitest::Test
 
     transport = @loader.build_transport(
       ping_handler: -> { { success: true, message: 'pong' } },
-      scene_info_handler: ->(_params) { { success: true, entities: [{ id: 101 }] } }
+      scene_info_handler: ->(_params) { { success: true, entities: [{ entityId: '101' }] } }
     )
 
     response = perform_raw_json_request(
@@ -1203,9 +1186,9 @@ class McpRuntimeLoaderTest < Minitest::Test
     transport = @loader.build_transport(
       handlers: {
         ping: -> { { success: true, message: 'pong' } },
-        get_scene_info: ->(_params) { { success: true, entities: [{ id: 101 }] } },
+        get_scene_info: ->(_params) { { success: true, entities: [{ entityId: '101' }] } },
         transform_entities: lambda do |arguments|
-          { success: true, id: arguments.fetch('id') }
+          { success: true, entityId: arguments.fetch('targetReference').fetch('entityId') }
         end
       }
     )
@@ -1214,12 +1197,15 @@ class McpRuntimeLoaderTest < Minitest::Test
       transport,
       id: 4,
       method: 'tools/call',
-      params: { name: 'transform_entities', arguments: { 'id' => '301' } }
+      params: {
+        name: 'transform_entities',
+        arguments: { 'targetReference' => { 'entityId' => '301' } }
+      }
     )
 
     assert_equal(200, response[:status])
     assert_equal(
-      { 'success' => true, 'id' => '301' },
+      { 'success' => true, 'entityId' => '301' },
       response[:body].dig('result', 'structuredContent')
     )
   end
@@ -1356,7 +1342,6 @@ class McpRuntimeLoaderTest < Minitest::Test
     create_site_element = catalog.find { |tool| tool.fetch(:name) == 'create_site_element' }
     set_entity_metadata = catalog.find { |tool| tool.fetch(:name) == 'set_entity_metadata' }
     transform_entities = catalog.find { |tool| tool.fetch(:name) == 'transform_entities' }
-    boolean_operation = catalog.find { |tool| tool.fetch(:name) == 'boolean_operation' }
     get_selection = catalog.find { |tool| tool.fetch(:name) == 'get_selection' }
     eval_ruby = catalog.find { |tool| tool.fetch(:name) == 'eval_ruby' }
 
@@ -1382,18 +1367,17 @@ class McpRuntimeLoaderTest < Minitest::Test
     assert_equal(%i[entityId persistentId sourceElementId],
                  sample_surface_z.dig(:input_schema, :properties, :target, :properties).keys.sort)
     assert_equal('Get Entity Information', get_entity_info.dig(:metadata, :title))
-    assert_equal(['id'], get_entity_info.dig(:input_schema, :required))
+    assert_equal(['targetReference'], get_entity_info.dig(:input_schema, :required))
     assert_equal('Create Semantic Site Element', create_site_element.dig(:metadata, :title))
     assert_equal(false, create_site_element[:input_schema].key?(:anyOf))
     assert_equal('Set Entity Metadata', set_entity_metadata.dig(:metadata, :title))
     assert_equal(['target'], set_entity_metadata.dig(:input_schema, :required))
     assert_equal('Transform Entities', transform_entities.dig(:metadata, :title))
-    refute(transform_entities[:input_schema].key?(:required))
+    assert_equal(['targetReference'], transform_entities.dig(:input_schema, :required))
     assert_equal(
-      %i[id position rotation scale targetReference],
+      %i[position rotation scale targetReference],
       transform_entities.dig(:input_schema, :properties).keys.sort
     )
-    assert_equal(%w[target_id tool_id operation], boolean_operation.dig(:input_schema, :required))
     assert_equal(true, get_selection.dig(:metadata, :annotations, :read_only_hint))
     assert_equal(['code'], eval_ruby.dig(:input_schema, :required))
     assert_equal(:eval_ruby, eval_ruby.fetch(:handler_key))
@@ -1432,6 +1416,23 @@ class McpRuntimeLoaderTest < Minitest::Test
       CANONICAL_NATIVE_TOOL_NAMES.length,
       catalog.count { |tool| %w[first_class escape_hatch].include?(tool.fetch(:classification)) }
     )
+  end
+
+  def test_public_catalog_removes_legacy_boolean_operation
+    refute(@loader.tool_catalog.any? { |tool| tool.fetch(:name) == 'boolean_operation' })
+  end
+
+  def test_direct_reference_tool_schemas_do_not_advertise_legacy_top_level_ids
+    %w[get_entity_info transform_entities set_material].each do |tool_name|
+      tool = @loader.tool_catalog.find { |entry| entry.fetch(:name) == tool_name }
+      properties = tool.fetch(:input_schema).fetch(:properties)
+
+      assert_includes(tool.fetch(:input_schema).fetch(:required), 'targetReference')
+      assert_includes(properties.keys.map(&:to_s), 'targetReference')
+      refute_includes(properties.keys.map(&:to_s), 'id')
+      refute_includes(properties.keys.map(&:to_s), 'target_id')
+      refute_includes(properties.keys.map(&:to_s), 'tool_id')
+    end
   end
 
   # rubocop:disable Metrics/AbcSize

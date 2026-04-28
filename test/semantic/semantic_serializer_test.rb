@@ -78,7 +78,38 @@ class SemanticSerializerTest < Minitest::Test
     assert_equal([4.0, 2.0, 1.8], payload.dig(:bounds, :max))
   end
 
+  def test_does_not_double_convert_scene_query_bounds_that_are_already_public_meters
+    entity = build_semantic_model.active_entities.add_group
+    metadata = SU_MCP::Semantic::ManagedObjectMetadata.new
+    serializer = SU_MCP::Semantic::Serializer.new(
+      bounds_serializer: PublicMeterBoundsSerializer.new
+    )
+
+    metadata.write!(
+      entity,
+      'sourceElementId' => 'hedge-001',
+      'semanticType' => 'planting_mass',
+      'status' => 'proposed',
+      'state' => 'Created',
+      'schemaVersion' => 1
+    )
+
+    payload = serializer.serialize(entity)
+
+    assert_equal([0.0, 0.0, 0.0], payload.dig(:bounds, :min))
+    assert_equal([4.0, 2.0, 1.8], payload.dig(:bounds, :max))
+  end
+
   private
+
+  class PublicMeterBoundsSerializer
+    def bounds_to_h(_bounds)
+      {
+        min: [0.0, 0.0, 0.0],
+        max: [4.0, 2.0, 1.8]
+      }
+    end
+  end
 
   def planting_mass_bounds_in_internal_units
     SceneQueryTestSupport::FakeBounds.new(

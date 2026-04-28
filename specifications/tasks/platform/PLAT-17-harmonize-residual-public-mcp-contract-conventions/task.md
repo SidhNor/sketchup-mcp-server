@@ -1,7 +1,7 @@
 # Task: PLAT-17 Harmonize Residual Public MCP Contract Conventions
 **Task ID**: PLAT-17
 **Title**: Harmonize Residual Public MCP Contract Conventions
-**Status**: planned
+**Status**: `completed`
 **Priority**: P1
 **Date**: 2026-04-28
 

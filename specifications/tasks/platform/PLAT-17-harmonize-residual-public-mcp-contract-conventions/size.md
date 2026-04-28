@@ -2,13 +2,13 @@
 
 **Task ID**: PLAT-17  
 **Title**: Harmonize Residual Public MCP Contract Conventions  
-**Status**: challenged  
+**Status**: calibrated  
 **Created**: 2026-04-28  
 **Last Updated**: 2026-04-28  
 
 **Related Task**: [task.md](./task.md)  
 **Related Plan**: [plan.md](./plan.md)  
-**Related Summary**: none yet  
+**Related Summary**: [summary.md](./summary.md)  
 
 ---
 
@@ -169,21 +169,25 @@
 
 | Dimension | Score (0-4) | Notes |
 |---|---:|---|
-| Functional Scope | <0-4> | <short note> |
-| Technical Change Surface | <0-4> | <short note> |
-| Actual Implementation Friction | <0-4> | <short note> |
-| Actual Validation Burden | <0-4> | <short note> |
-| Actual Dependency Drag | <0-4> | <short note> |
-| Actual Discovery Encountered | <0-4> | <short note> |
-| Actual Scope Volatility | <0-4> | <short note> |
-| Actual Rework | <0-4> | <short note> |
-| Final Confidence in Completeness | <0-4> | <short note> |
+| Functional Scope | 2 | Moderate behavior-visible contract convergence: removed one public tool, tightened direct-reference inputs, normalized response identity/casing, and clarified meter-unit semantics without adding a new workflow. |
+| Technical Change Surface | 3 | Touched loader schema, dispatcher/facade expectations, command factory assembly, scene-query commands/serialization, editing mutation payloads, target resolution, docs, native fixtures, and contract posture tests. |
+| Actual Implementation Friction | 2 | Mostly followed established contract-test and command patterns; friction came from resolver hardening, compatibility-safe persistent ID access, and response identity cleanup rather than new architecture. |
+| Actual Validation Burden | 3 | Required focused contract suites, full CI, package verification, JSON fixture checks, PAL code review, and an external MCP-client matrix with one follow-up cleanup loop. |
+| Actual Dependency Drag | 1 | No upstream dependency or replacement capability was needed; only coordination was user/external-client feedback during final contract verification. |
+| Actual Discovery Encountered | 2 | Found schema/RPC required-field behavior, response `id` remnants, a stale mutation resolver comment, source-absence guard needs, and SketchUp compatibility lint for direct `persistent_id` dispatch. |
+| Actual Scope Volatility | 2 | Scope expanded within the planned contract-convergence boundary to remove response `id` aliases after hosted validation feedback; no product-boundary redesign or new tool family was added. |
+| Actual Rework | 2 | Review and external validation caused bounded follow-up edits to docs, comments, source absence tests, identity payloads, fixtures, and tests; one CI lint fix was required. |
+| Final Confidence in Completeness | 3 | Full CI and contract checks are green and external MCP validation covered the main matrix; confidence is high for code, with a remaining optional live re-run to confirm the final no-`id` payload after cleanup. |
 
 ### Actual Signals
-- Not filled yet.
+- `boolean_operation` deletion remained a removal task rather than turning into a replacement solid-modeling capability.
+- Canonical `targetReference` changes propagated through schema, command validation, dispatcher/facade tests, docs, and native fixtures.
+- Public scene-query and mutation response identity cleanup was needed after external MCP validation surfaced remaining `id` echoes.
+- Meter conversion was contained to scene-query serialization plus semantic double-conversion protection.
+- External MCP matrix found schema/RPC invalid-params behavior for exact missing required fields; this matched the planned canonical-schema posture and did not require code changes.
 
 ### Actual Notes
-- Not filled yet.
+- The original prediction was directionally accurate: high technical surface and validation burden, moderate implementation friction, and low dependency drag. The one material late adjustment was not hidden architecture; it was a public-contract purity decision to remove response `id` aliases after seeing how an external client would interpret them.
 <!-- SIZE:ACTUAL:END -->
 
 ---
@@ -194,22 +198,31 @@
 > Fill only the sections that are relevant. Say `not applicable` where needed.
 
 ### Automated Validation
-- Not filled yet.
+- Focused PLAT-17 subset passed before final review: 165 runs, 688 assertions, 0 failures, 31 skips.
+- Full pre-review validation passed: `bundle exec rake ruby:test`, `bundle exec rake ruby:lint`, `bundle exec rake package:verify`, `bundle exec rake ci`, and JSON fixture parse checks.
+- Post-review focused validation passed after code-review fixes: 31 runs, 140 assertions, 0 failures, 0 skips; focused RuboCop with cache disabled inspected 3 files with no offenses.
+- After response identity cleanup, focused affected suite passed: 139 runs, 661 assertions, 0 failures, 30 skips.
+- Final `bundle exec rake ci` passed: 202 files inspected with no RuboCop offenses; 790 runs, 3990 assertions, 0 failures, 35 skips; package verification produced `dist/su_mcp-0.26.0.rbz`.
+- `git diff --check` passed.
 
 ### Hosted / Manual Validation
-- Not filled yet.
+- External MCP-client scenario matrix ran after code review and confirmed tool inventory, removed `boolean_operation`, canonical `targetReference` schemas, sourceElementId/persistentId/entityId resolution, camelCase scene summary fields, meter-unit geometry, transform by `+1 m`, material application, delete by `targetReference.entityId`, predicate `targetSelector` behavior, and raw JSON-RPC `structuredContent`.
+- The external matrix found two contract interpretation points: exact missing required fields are rejected by MCP schema/RPC validation before command-level structured refusals, and public responses still exposed `id` aliases. The schema/RPC behavior was accepted as aligned with the canonical-schema posture; the response `id` aliases were removed in follow-up code.
+- The final no-`id` response payloads have not been re-run through the external MCP matrix after the cleanup; automated contract and full CI coverage are green.
 
 ### Performance Validation
-- Not filled yet.
+- No separate performance benchmark was needed.
+- Resolver tests assert native `entityId` and `persistentId` fast lookup paths avoid recursive traversal; metadata-backed `sourceElementId` remains traversal-backed by design.
 
 ### Migration / Compatibility Validation
 - Not applicable (intentional breaking change; no compatibility window).
 
 ### Operational / Rollout Validation
-- Not filled yet.
+- Package verification ran through `bundle exec rake ci` and produced `dist/su_mcp-0.26.0.rbz`.
+- Public contract break is documented in `docs/mcp-tool-reference.md` and guarded by loader/schema, command, fixture, and posture tests.
 
 ### Validation Notes
-- Not filled yet.
+- Validation burden was high because proof had to align runtime schema, runtime behavior, docs, fixtures, response vocabulary, unit semantics, and external MCP-client behavior. It did not reach very high because the host/client validation produced one bounded cleanup loop rather than repeated redeploy/restart/rerun debugging.
 <!-- SIZE:VALIDATION-EVIDENCE:END -->
 
 ---
@@ -219,14 +232,14 @@
 
 > Filled during final calibration. Compare prediction to actual behavior.
 
-- **Most Underestimated Dimension**: <dimension + why>
-- **Most Overestimated Dimension**: <dimension + why>
-- **Signal Present Early But Underweighted**: <note>
-- **Genuinely Unknowable Factor**: <note or `none identified`>
-- **Future Similar Tasks Should Assume**: <note>
+- **Most Underestimated Dimension**: Rework. The prediction expected moderate rework, but the external MCP matrix made the response `id` aliases more clearly problematic and forced an additional contract cleanup after the main review.
+- **Most Overestimated Dimension**: None materially; predicted implementation friction and validation burden were close. Dependency drag stayed low as expected because no replacement capability or external upstream change was required.
+- **Signal Present Early But Underweighted**: The plan focused on request selector aliases and snake_case response keys, but equivalent identity aliases in response payloads (`id` beside `entityId`) deserved the same contract-sweep scrutiny from the start.
+- **Genuinely Unknowable Factor**: External MCP schema validation behavior for exact missing required fields was only fully visible during client-matrix verification, but it aligned with the planned canonical-schema posture.
+- **Future Similar Tasks Should Assume**: Public-contract convergence should inventory both input aliases and response aliases, and should include an external-client smoke before final summary wording is treated as stable.
 
 ### Calibration Notes
-- <short note>
+- Dominant actual failure mode: residual public-contract aliases surviving outside the most obvious schema fields. Future analog retrieval should use `contract:public-tool`, `contract:response-shape`, `risk:contract-drift`, `risk:schema-requiredness`, `validation:contract`, and `validation:public-client-smoke`.
 <!-- SIZE:DELTA:END -->
 
 ---
@@ -252,7 +265,7 @@ Use canonical values from the repo task-estimation taxonomy when present. Prefer
 - `validation:docs-check`
 - `validation:public-client-smoke`
 - `validation:regression`
-- `host:not-run-gap`
+- `host:single-fix-loop`
 - `contract:public-tool`
 - `contract:loader-schema`
 - `contract:runtime-dispatch`
@@ -262,8 +275,8 @@ Use canonical values from the repo task-estimation taxonomy when present. Prefer
 - `risk:schema-requiredness`
 - `risk:unit-conversion`
 - `risk:regression-breadth`
-- `volatility:high`
-- `friction:high`
+- `volatility:medium`
+- `friction:medium`
 - `rework:medium`
 - `confidence:medium`
 <!-- SIZE:TAGS:END -->

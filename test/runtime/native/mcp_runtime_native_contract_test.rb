@@ -97,22 +97,12 @@ class McpRuntimeNativeContractTest < Minitest::Test
     )
   end
 
-  def test_native_transport_preserves_boolean_operation_invalid_option_refusal_details
-    skip_unless_staged_vendor_runtime!
-
-    contract_case = contract_case('boolean_operation_invalid_operation_refused')
-    transport = @loader.build_transport(
-      handlers: {
-        boolean_operation: ->(_arguments) { contract_case.fetch('response').fetch('result') }
-      }
-    )
-
-    response = perform_raw_json_request(transport, contract_case.fetch('request'))
-
-    assert_equal(200, response[:status])
-    assert_equal(
-      contract_case.dig('response', 'result'),
-      response[:body].dig('result', 'structuredContent')
+  def test_native_contract_fixtures_do_not_include_removed_boolean_operation
+    refute(contract_cases_by_id.key?('boolean_operation_invalid_operation_refused'))
+    refute(
+      contract_cases_by_id
+        .values
+        .any? { |entry| entry.dig('request', 'params', 'name') == 'boolean_operation' }
     )
   end
 
@@ -339,13 +329,13 @@ class McpRuntimeNativeContractTest < Minitest::Test
     )
   end
 
-  def test_native_transport_preserves_managed_material_success_shape_from_shared_contract
+  def test_native_transport_preserves_get_entity_info_target_reference_shape
     skip_unless_staged_vendor_runtime!
 
-    contract_case = contract_case('set_material_managed_target_updated')
+    contract_case = contract_case('get_entity_info_target_reference_success')
     transport = @loader.build_transport(
       handlers: {
-        set_material: ->(_arguments) { contract_case.fetch('response').fetch('result') }
+        get_entity_info: ->(_arguments) { contract_case.fetch('response').fetch('result') }
       }
     )
 
@@ -358,13 +348,13 @@ class McpRuntimeNativeContractTest < Minitest::Test
     )
   end
 
-  def test_native_transport_preserves_conflicting_selector_refusal_for_transform_entities
+  def test_native_transport_preserves_managed_material_success_shape_from_shared_contract
     skip_unless_staged_vendor_runtime!
 
-    contract_case = contract_case('transform_entities_conflicting_target_selectors_refused')
+    contract_case = contract_case('set_material_managed_target_updated')
     transport = @loader.build_transport(
       handlers: {
-        transform_entities: ->(_arguments) { contract_case.fetch('response').fetch('result') }
+        set_material: ->(_arguments) { contract_case.fetch('response').fetch('result') }
       }
     )
 

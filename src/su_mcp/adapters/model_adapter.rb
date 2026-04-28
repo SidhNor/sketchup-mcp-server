@@ -18,10 +18,35 @@ module SU_MCP
         id_str = id.to_s.delete('"')
         raise 'Entity id is required' if id_str.empty?
 
-        entity = active_model!.find_entity_by_id(id_str.to_i)
+        entity = find_entity_by_id(id_str)
         raise 'Entity not found' unless entity
 
         entity
+      end
+
+      def find_entity_by_id(id)
+        id_str = id.to_s.delete('"')
+        return nil if id_str.empty?
+
+        active_model!.find_entity_by_id(id_str.to_i)
+      end
+
+      def find_entity_by_persistent_id(persistent_id)
+        persistent_id_str = persistent_id.to_s.delete('"')
+        return nil if persistent_id_str.empty?
+
+        model = active_model!
+        if model.respond_to?(:find_entity_by_persistent_id)
+          return model.method(:find_entity_by_persistent_id).call(persistent_id_str.to_i)
+        end
+        if model.respond_to?(:find_entity_by_persistentID)
+          return model.method(:find_entity_by_persistentID).call(persistent_id_str.to_i)
+        end
+
+        all_entities_recursive.find do |entity|
+          entity.respond_to?(:persistent_id) &&
+            entity.method(:persistent_id).call.to_s == persistent_id_str
+        end
       end
 
       def top_level_entities(include_hidden: false)

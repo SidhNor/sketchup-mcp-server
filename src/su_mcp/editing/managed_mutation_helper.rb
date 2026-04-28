@@ -18,9 +18,10 @@ module SU_MCP
 
       def success_payload(entity)
         {
-          id: entity.entityID,
+          entityId: entity.entityID.to_s,
+          persistentId: persistent_id_for(entity),
           managedObject: managed_object?(entity) ? serializer.serialize(entity) : nil
-        }
+        }.compact
       end
 
       private
@@ -29,6 +30,12 @@ module SU_MCP
 
       def managed_object?(entity)
         metadata.managed_object?(entity)
+      end
+
+      def persistent_id_for(entity)
+        return nil unless entity.respond_to?(:persistent_id)
+
+        entity.method(:persistent_id).call.to_s
       end
     end
   end

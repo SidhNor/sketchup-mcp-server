@@ -21,7 +21,7 @@ class ToolDispatcherTest < Minitest::Test
       {
         success: true,
         outcome: 'transformed',
-        id: args['id'] || args.dig('targetReference', 'entityId'),
+        entityId: args.dig('targetReference', 'entityId'),
         managedObject: nil
       }
     end
@@ -146,7 +146,7 @@ class ToolDispatcherTest < Minitest::Test
       {
         success: true,
         outcome: 'material_applied',
-        id: args['id'] || args.dig('targetReference', 'entityId'),
+        entityId: args.dig('targetReference', 'entityId'),
         managedObject: nil
       }
     end
@@ -175,13 +175,23 @@ class ToolDispatcherTest < Minitest::Test
   end
 
   def test_dispatches_transform_entities_to_the_editing_command
-    result = @dispatcher.call('transform_entities', { 'id' => '301', 'position' => [1, 2, 3] })
+    payload = { 'targetReference' => { 'entityId' => '301' }, 'position' => [1, 2, 3] }
+
+    result = @dispatcher.call('transform_entities', payload)
 
     assert_equal(
-      { success: true, outcome: 'transformed', id: '301', managedObject: nil },
+      { success: true, outcome: 'transformed', entityId: '301', managedObject: nil },
       result
     )
-    assert_equal([[:transform_entities, { 'id' => '301', 'position' => [1, 2, 3] }]], @target.calls)
+    assert_equal([[:transform_entities, payload]], @target.calls)
+  end
+
+  def test_boolean_operation_is_not_a_public_dispatch_target
+    error = assert_raises(RuntimeError) do
+      @dispatcher.call('boolean_operation', {})
+    end
+
+    assert_includes(error.message, 'Unknown tool')
   end
 
   def test_dispatches_transform_entities_with_target_reference_to_the_editing_command
@@ -191,7 +201,7 @@ class ToolDispatcherTest < Minitest::Test
     )
 
     assert_equal(
-      { success: true, outcome: 'transformed', id: '301', managedObject: nil },
+      { success: true, outcome: 'transformed', entityId: '301', managedObject: nil },
       result
     )
     assert_equal(
@@ -422,7 +432,7 @@ class ToolDispatcherTest < Minitest::Test
     )
 
     assert_equal(
-      { success: true, outcome: 'material_applied', id: '301', managedObject: nil },
+      { success: true, outcome: 'material_applied', entityId: '301', managedObject: nil },
       result
     )
     assert_equal(

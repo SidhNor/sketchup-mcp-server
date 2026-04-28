@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require_relative '../semantic/managed_object_metadata'
+require_relative '../semantic/length_converter'
 
 module SU_MCP
   SCENE_QUERY_TYPE_KEYS = {
@@ -15,6 +16,10 @@ module SU_MCP
 
   # Normalizes SketchUp entities and bounds into MCP-safe hashes.
   class SceneQuerySerializer
+    def initialize(length_converter: Semantic::LengthConverter.new)
+      @length_converter = length_converter
+    end
+
     def bounds_to_h(bounds)
       return nil unless bounds&.valid?
 
@@ -103,10 +108,12 @@ module SU_MCP
 
     private
 
+    attr_reader :length_converter
+
     def base_entity_data(entity)
       {
-        id: entity.entityID,
-        persistent_id: persistent_id_for(entity),
+        entityId: stringify_identifier(entity.entityID),
+        persistentId: stringify_identifier(persistent_id_for(entity)),
         type: entity_type_key(entity),
         name: entity_name(entity),
         layer: layer_name(entity), material: material_name_for(entity),
@@ -119,7 +126,7 @@ module SU_MCP
     def safe_float(value)
       return value unless value.respond_to?(:to_f)
 
-      rounded_float(value.to_f)
+      rounded_float(length_converter.internal_to_public_meters(value.to_f))
     end
 
     def point_to_a(point)
@@ -183,8 +190,8 @@ module SU_MCP
 
     def instance_details(entity)
       details = {
-        definition_name: component_instance_definition_name(entity),
-        children_count: entity_children_count(entity)
+        definitionName: component_instance_definition_name(entity),
+        childrenCount: entity_children_count(entity)
       }
       if entity.respond_to?(:transformation)
         details[:origin] = point_to_a(entity.transformation.origin)

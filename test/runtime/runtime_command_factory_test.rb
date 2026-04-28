@@ -28,4 +28,10 @@ class RuntimeCommandFactoryTest < Minitest::Test
     assert(targets.any? { |target| target.respond_to?(:curate_staged_asset, true) })
     assert(targets.any? { |target| target.respond_to?(:list_staged_assets, true) })
   end
+
+  def test_does_not_build_a_boolean_operation_command_target
+    targets = SU_MCP::RuntimeCommandFactory.new.build_command_targets
+
+    refute(targets.any? { |target| target.respond_to?(:boolean_operation, true) })
+  end
 end
