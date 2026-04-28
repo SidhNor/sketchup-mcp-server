@@ -172,10 +172,10 @@
 | Implementation Friction | 3 | Solver promotion and regional support were substantial, but MTA-14 evidence and existing terrain edit flows kept the implementation controlled. |
 | Validation Burden | 4 | Required automated contract/kernel/evidence coverage plus hosted public MCP validation for targeting, transforms, regions, constraints, output sanity, and performance. |
 | Dependency / Coordination | 3 | Depended on MTA-06, MTA-12, MTA-14, and hosted MCP access, but no cross-repo or external service dependency was introduced. |
-| Discovery / Ambiguity | 3 | Contract was stable, but hosted validation clarified regional interpolation semantics and the boundary between survey correction and forced planar replacement. |
+| Discovery / Ambiguity | 3 | Contract was stable, but hosted validation clarified regional interpolation semantics, normalized safety semantics, and the boundary between survey correction and forced planar replacement. |
 | Scope Volatility | 2 | The implementation stayed within the planned local/regional contract and did not escalate to localized detail zones or public solver knobs. |
-| Rework | 2 | Post-implementation review changed code organization, and hosted validation required targeted regional-kernel fixes. No public contract redesign or output-layer rework was needed. |
-| Confidence | 4 | Automated tests, final code review, broad hosted public MCP checks, redeployed regional planar checks, and complex `100x100` regional validation all passed. |
+| Rework | 3 | Post-implementation review changed code organization, hosted validation required targeted regional-kernel fixes, and a later safety-threshold follow-up changed regional coherence evidence. No command routing or output-layer rework was needed. |
+| Confidence | 4 | Automated tests, final code review, broad hosted public MCP checks, redeployed regional planar checks, complex `100x100` regional validation, and normalized-safety regression coverage all passed. |
 
 ### Actual Notes
 
@@ -183,6 +183,7 @@
 - The MTA-14 base/detail solver was promoted into production terrain-domain code and remained isolated from `test/support`.
 - Regional correction stayed bounded and explicit, with no need for localized detail zones, public solver knobs, or a stronger optimizer in this slice.
 - Hosted validation required targeted regional seed fixes: affine residual fields for planar replacement and complete survey-grid residual fields for crowned/breakline-style surfaces.
+- Hosted validation later required a regional safety refinement: absolute survey residual range is now normalized by mutable support footprint length and reported as `normalizedSurveyResidualRange`.
 - Complex terrain plus four planar corner points remains a deliberate product boundary: MTA-13 survey correction should not infer full interior terrain-detail replacement from sparse points.
 <!-- SIZE:ACTUAL:END -->
 
@@ -192,15 +193,19 @@
 ## Validation Evidence Summary
 
 - Focused public MCP/terrain suite: 132 runs, 936 assertions, 0 failures, 31 skips.
-- Full Ruby test suite: 785 runs, 3896 assertions, 0 failures, 36 skips.
-- Ruby lint: 205 files inspected, no offenses.
+- Focused survey point edit regression suite after normalized regional safety: 11 runs, 65 assertions, 0 failures.
+- Full Ruby test suite: 791 runs, 4000 assertions, 0 failures, 35 skips.
+- Ruby lint: 202 files inspected, no offenses.
 - Package verification: produced `dist/su_mcp-0.25.0.rbz`.
 - Final PAL/Grok-4.20 review after refactor: no critical, high, or required medium findings.
+- Final PAL/Grok-4.20 review after normalized regional safety: no findings.
 - Hosted public MCP validation passed for local edit, repeated corrected edit, regional multi-point edit, invalid/missing inputs, out-of-bounds, outside support, contradictory points, duplicate identical points, preserve-zone conflict, fixed-control conflict, unsafe regional distortion, excessive delta, no-leak evidence, `persistentId` targeting, invalid target handling, transformed owner placement, circle support, blend shoulder support, off-grid bilinear points, boundary points, tiny tolerance, fixed controls inside regional support, preserve-near-influence, sample evidence, and output sanity.
 - Performance validation passed on `80x80` regional support: edit wall time `0.666s`, `2809` changed samples, all residuals `0.0`, evidence capped at `20`, digest matched state, runtime ping passed.
 - Complex hosted regional validation passed on `100x100` varied terrain: edit wall time `1.48s`, `6552` changed samples, eight residuals `0.0`, preserve drift `0.0`, regional coherence satisfied, evidence capped at `25`, runtime ping passed, all faces/edges marked derived, and no normal issues.
 - Redeployed regional planar validation passed for planar redirection and crowned/breakline complete-grid cases after targeted seed fixes and repeated live monkey-patch/redeploy verification.
 - Planar matrix validation passed `19/20`; the remaining complex-terrain-to-plane case was reclassified as future explicit replacement semantics rather than current survey-correction behavior.
+- Normalized regional safety regression passed for the reported `5x5` non-zero-origin, non-uniform-spacing planar grade case: `8.0m` survey residual range over `12.8889m` support footprint, normalized residual range about `0.6207`, slope increase below `1.0`, curvature near zero.
+- Live SketchUp runtime was monkey patched with the normalized safety logic via `eval_ruby`; exact hosted MCP rerun of the repro is still pending user-side verification.
 <!-- SIZE:VALIDATION-EVIDENCE:END -->
 
 ---
@@ -215,6 +220,7 @@
 - Actual validation burden remained high and produced useful rework: hosted checks exposed regional interpolation gaps that unit/contract tests had not covered.
 - Post-deploy implementation changes were needed, but they were targeted to regional correction-field seed selection and did not affect public contract, storage schema, command routing, or output ownership.
 - Dominant actual failure mode: regional correction-field interpolation could satisfy survey residuals while producing unacceptable unconstrained edge/interior shape between points.
+- Second actual failure mode: regional safety used an absolute residual-range threshold that was blind to support footprint, rejecting coherent planar grade corrections that were safe by slope and curvature.
 
 ### Calibration Takeaways
 
@@ -223,11 +229,12 @@
 - Hosted performance risk was overestimated for clean scenes up to the tested `100x100` varied terrain case; full mesh regeneration plus bounded evidence stayed interactive.
 - The maintainability issue was production code shape, while the algorithmic issue was regional interpolation semantics. Future estimates should include explicit refactor budget and targeted planar/piecewise-planar regional fixture budget when promoting a numerical kernel.
 - Underweighted early signal: "regional coherent-field proof" needed fixtures that asserted unconstrained sample shape, not only residual satisfaction, coherence status, or output mesh integrity.
+- Underweighted safety signal: absolute elevation deltas need dimensional context. Regional safety thresholds should be normalized by support footprint or compared to resulting grade/curvature instead of relying on raw meters.
 
 ### Updated Estimate Bias
 
 - For similar terrain-domain tasks with completed solver research and existing command/output plumbing, keep validation burden high. Reduce implementation-friction assumptions only for the covered solver family; keep rework risk at medium when regional interpolation or detail-replacement semantics are part of the task.
-- Retrieve this task for future work involving public terrain-edit contracts, numerical interpolation kernels, hosted MCP matrix validation, repeated live fix loops, and product-boundary decisions between constraint satisfaction and explicit replacement modes.
+- Retrieve this task for future work involving public terrain-edit contracts, numerical interpolation kernels, normalized terrain safety thresholds, hosted MCP matrix validation, repeated live fix loops, and product-boundary decisions between constraint satisfaction and explicit replacement modes.
 <!-- SIZE:DELTA:END -->
 
 ---

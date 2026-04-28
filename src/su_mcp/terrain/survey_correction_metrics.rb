@@ -4,9 +4,9 @@ module SU_MCP
   module Terrain
     # Computes terrain-shape metrics used by public survey correction evidence.
     class SurveyCorrectionMetrics
+      REGIONAL_NORMALIZED_RESIDUAL_RANGE_LIMIT = 2.0
       REGIONAL_SLOPE_INCREASE_LIMIT = 6.0
       REGIONAL_CURVATURE_INCREASE_LIMIT = 12.0
-      REGIONAL_SURVEY_RESIDUAL_RANGE_LIMIT = 6.0
 
       def initialize(context:, after_elevations:, solver_metrics:)
         @context = context
@@ -53,18 +53,23 @@ module SU_MCP
         return { status: 'not_applicable' } unless context.regional?
 
         residual_range = survey_residual_range
+        footprint_length = support_footprint_length
+        normalized_range = normalized_residual_range_for(residual_range, footprint_length)
         slope = shape.fetch(:slope_proxy)
         curvature = shape.fetch(:curvature_proxy)
+        safe = regional_safe?(normalized_range, slope, curvature)
         {
-          status: regional_safe?(residual_range, slope, curvature) ? 'satisfied' : 'unsafe',
+          status: safe ? 'satisfied' : 'unsafe',
           surveyResidualRange: residual_range,
+          supportFootprintLength: footprint_length,
+          normalizedSurveyResidualRange: normalized_range,
           slopeMaxIncrease: slope.fetch(:maxIncrease),
           curvatureMaxIncrease: curvature.fetch(:maxIncrease)
         }
       end
 
-      def regional_safe?(residual_range, slope, curvature)
-        residual_range <= REGIONAL_SURVEY_RESIDUAL_RANGE_LIMIT &&
+      def regional_safe?(normalized_residual_range, slope, curvature)
+        normalized_residual_range <= REGIONAL_NORMALIZED_RESIDUAL_RANGE_LIMIT &&
           slope.fetch(:maxIncrease) <= REGIONAL_SLOPE_INCREASE_LIMIT &&
           curvature.fetch(:maxIncrease) <= REGIONAL_CURVATURE_INCREASE_LIMIT
       end
@@ -77,6 +82,28 @@ module SU_MCP
         return 0.0 if residuals.empty?
 
         residuals.max - residuals.min
+      end
+
+      def support_footprint_length
+        samples = context.each_sample.select { |sample| context.mutable_sample?(sample) }
+        x_values = samples.map { |sample| sample.fetch(:coordinate).fetch('x').to_f }
+        y_values = samples.map { |sample| sample.fetch(:coordinate).fetch('y').to_f }
+        [
+          axis_range(x_values),
+          axis_range(y_values),
+          context.state.spacing.fetch('x'),
+          context.state.spacing.fetch('y')
+        ].max
+      end
+
+      def normalized_residual_range_for(residual_range, footprint_length)
+        residual_range / footprint_length
+      end
+
+      def axis_range(values)
+        return 0.0 if values.empty?
+
+        values.max - values.min
       end
 
       def max_sample_delta

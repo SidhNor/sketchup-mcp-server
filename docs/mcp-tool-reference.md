@@ -156,6 +156,11 @@ Additional terrain edit constraints:
 - `constraints.preserveZones`:
   - rectangle/circle support for `target_height`, `local_fairing`, `survey_point_constraint`
   - rectangle-only support for `corridor_transition`
+- Regional `survey_point_constraint` safety is judged from resulting terrain shape and normalized
+  correction scale. `evidence.survey.correction.regionalCoherence` reports
+  `surveyResidualRange`, `supportFootprintLength`, `normalizedSurveyResidualRange`,
+  `slopeMaxIncrease`, and `curvatureMaxIncrease`. Large absolute residual ranges can be valid
+  when they span a large support footprint and produce acceptable grade/curvature.
 
 Terrain coordinate notes:
 

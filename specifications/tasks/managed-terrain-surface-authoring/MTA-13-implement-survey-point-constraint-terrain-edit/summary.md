@@ -2,7 +2,7 @@
 
 **Task ID**: `MTA-13`
 **Status**: `completed`
-**Date**: `2026-04-27`
+**Date**: `2026-04-28`
 
 ## Shipped Runtime Behavior
 
@@ -29,6 +29,9 @@ Post-verification regional fixes added:
 - affine residual correction for survey points that exactly define a planar correction field;
 - complete survey-grid residual correction for piecewise bilinear or breakline-style correction fields;
 - inverse-distance residual correction remains the fallback for under-specified or non-grid regional survey inputs.
+- normalized regional residual-range safety, so large absolute survey residual ranges are judged
+  relative to the mutable support footprint and resulting grade/curvature rather than by a
+  footprint-blind meter threshold.
 
 ## Contract And Docs
 
@@ -37,6 +40,8 @@ Post-verification regional fixes added:
 - Updated command routing so survey edits use `SurveyPointConstraintEdit`.
 - Updated evidence shaping so `diagnostics[:survey]` is returned as public `evidence.survey`.
 - Updated README mode matrix, request example, and terrain edit response description.
+- Updated `docs/mcp-tool-reference.md` to document regional coherence evidence fields
+  `supportFootprintLength` and `normalizedSurveyResidualRange`.
 - Added no-leak coverage preventing solver internals, generated face/vertex IDs, matrices, stencils, and MTA-14 harness names from public response evidence.
 
 ## Production Shape
@@ -48,17 +53,19 @@ Post-verification regional fixes added:
 - `SurveyCorrectionSolver`: promoted local base/detail correction solver.
 - `RegionalSurveyCorrectionSolver`: bounded regional correction field selection and projection.
 - `SurveyGridResidualField`: complete survey-grid residual interpolation for piecewise bilinear and breakline-style regional fields.
-- `SurveyCorrectionMetrics`: max delta, slope, curvature, regional coherence, detail evidence, and preserve drift metrics.
+- `SurveyCorrectionMetrics`: max delta, slope, curvature, normalized residual-range regional coherence, detail evidence, and preserve drift metrics.
 - `SurveyCorrectionEvidence`: public diagnostics and post-correction refusals.
 
 ## Validation Evidence
 
 - Focused public MCP/terrain suite:
   - 132 runs, 936 assertions, 0 failures, 0 errors, 31 skips.
+- Focused survey point edit regression suite after normalized regional safety:
+  - 11 runs, 65 assertions, 0 failures, 0 errors, 0 skips.
 - Full Ruby test suite:
-  - 785 runs, 3896 assertions, 0 failures, 0 errors, 36 skips.
+  - 791 runs, 4000 assertions, 0 failures, 0 errors, 35 skips.
 - Ruby lint:
-  - 205 files inspected, no offenses detected.
+  - 202 files inspected, no offenses detected.
 - Package verification:
   - produced `dist/su_mcp-0.25.0.rbz`.
 
@@ -70,6 +77,7 @@ Post-verification regional fixes added:
 - Fresh Step 10 PAL/Grok-4.20 review after the split found no critical, high, or required medium findings.
 - Remaining review notes are non-blocking maintainability/documentation suggestions only.
 - Hosted validation later exposed two regional interpolation defects; both were fixed and covered by regression tests.
+- Follow-up Step 10 PAL/Grok-4.20 review for normalized regional residual-range safety found no findings.
 
 ## Live SketchUp Verification Status
 
@@ -151,8 +159,22 @@ Post-fix hosted verification on redeployed extension:
 - Most planar cases landed at numerical precision, typically around max error `4.44e-16`.
 - P20, complex terrain to planar replacement from four corner points, was reclassified as an explicit product-boundary case rather than an MTA-13 defect. Current `survey_point_constraint` satisfies survey constraints while preserving existing terrain detail; forcing complete interior replacement with an implied plane needs a future explicit plane/replacement mode or policy.
 
+Post-calibration regional safety follow-up:
+
+- A hosted repro showed that the absolute `surveyResidualRange` threshold rejected a valid planar
+  regional edit: `8.0m` correction range over a `~12.89m` footprint, slope increase about `0.62`,
+  and effectively zero curvature.
+- Regional coherence now reports `supportFootprintLength` and
+  `normalizedSurveyResidualRange`, and safety uses normalized residual range plus slope and
+  curvature rather than an absolute meter range alone.
+- Regression coverage accepts the reported non-zero-origin, non-uniform-spacing `5x5` planar site
+  grade and still refuses a concentrated `10m` spike/trench correction with
+  `normalizedSurveyResidualRange > 2.0`.
+- The live SketchUp runtime was monkey patched with the same normalized safety logic via
+  `eval_ruby`. Exact hosted MCP rerun of the repro remains pending user-side verification.
+
 ## Conclusion
 
-MTA-13 is implemented through the public MCP terrain edit surface with contract, runtime, terrain-domain, evidence, docs, and package validation in sync.
+MTA-13 is implemented through the public MCP terrain edit surface with contract, runtime, terrain-domain, evidence, docs, and validation in sync.
 
 The MTA-14 base/detail solver was meaningfully promoted into production for local survey correction, while regional survey adjustment remains bounded and explicit instead of inferring destructive terrain replacement from sparse points.

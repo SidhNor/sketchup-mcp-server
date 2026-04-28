@@ -143,6 +143,40 @@ class SurveyPointConstraintEditTest < Minitest::Test
     assert_in_delta(0.0, max_crowned_error(state), 1e-9)
   end
 
+  def test_regional_planar_site_grade_uses_shape_safety_not_absolute_residual_range
+    result = editor.apply(
+      state: footprint_grade_state,
+      request: survey_request(
+        correction_scope: 'regional',
+        region: {
+          'type' => 'rectangle',
+          'bounds' => {
+            'minX' => 140.0,
+            'minY' => 0.0,
+            'maxX' => 146.0,
+            'maxY' => 12.8888888888
+          },
+          'blend' => { 'distance' => 0.5, 'falloff' => 'smooth' }
+        },
+        points: [
+          survey_point(id: 'sw', x: 140.01, y: 0.01, z: 7.304),
+          survey_point(id: 'se', x: 145.99, y: 0.01, z: 7.304),
+          survey_point(id: 'nw', x: 140.01, y: 12.8788888888, z: -0.696),
+          survey_point(id: 'ne', x: 145.99, y: 12.8788888888, z: -0.696)
+        ]
+      )
+    )
+
+    assert_equal('edited', result.fetch(:outcome))
+    coherence = result.dig(:diagnostics, :survey, :correction, :regionalCoherence)
+    assert_equal('satisfied', coherence.fetch(:status))
+    assert_in_delta(8.0, coherence.fetch(:surveyResidualRange), 1e-9)
+    assert_in_delta(12.8888888888, coherence.fetch(:supportFootprintLength), 1e-9)
+    assert_in_delta(0.6206896552, coherence.fetch(:normalizedSurveyResidualRange), 1e-9)
+    assert_operator(coherence.fetch(:slopeMaxIncrease), :<, 1.0)
+    assert_in_delta(0.0, coherence.fetch(:curvatureMaxIncrease), 1e-9)
+  end
+
   def crowned_breakline_points
     [0.0, 15.0, 30.0].flat_map do |y|
       [
@@ -304,6 +338,7 @@ class SurveyPointConstraintEditTest < Minitest::Test
     )
 
     assert_refusal(result, 'regional_correction_unsafe')
+    assert_operator(result.dig(:refusal, :details, :normalizedSurveyResidualRange), :>, 2.0)
   end
 
   private
@@ -384,6 +419,16 @@ class SurveyPointConstraintEditTest < Minitest::Test
     state(elevations: elevations, columns: 31, rows: 31)
   end
 
+  def footprint_grade_state
+    state(
+      elevations: Array.new(25, 3.304),
+      columns: 5,
+      rows: 5,
+      origin: { 'x' => 140.0, 'y' => 0.0, 'z' => 0.0 },
+      spacing: { 'x' => 1.5, 'y' => 3.2222222222 }
+    )
+  end
+
   def mta14_default_parameters
     {
       'radiusSamples' => 1,
@@ -400,11 +445,11 @@ class SurveyPointConstraintEditTest < Minitest::Test
     }
   end
 
-  def state(elevations:, columns:, rows:)
+  def state(elevations:, columns:, rows:, origin: nil, spacing: nil)
     SU_MCP::Terrain::HeightmapState.new(
       basis: BASIS,
-      origin: { 'x' => 0.0, 'y' => 0.0, 'z' => 0.0 },
-      spacing: { 'x' => 1.0, 'y' => 1.0 },
+      origin: origin || { 'x' => 0.0, 'y' => 0.0, 'z' => 0.0 },
+      spacing: spacing || { 'x' => 1.0, 'y' => 1.0 },
       dimensions: { 'columns' => columns, 'rows' => rows },
       elevations: elevations,
       revision: 1,
