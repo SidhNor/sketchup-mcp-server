@@ -20,16 +20,20 @@
 - **Likely Systems Touched**:
   - systems:loader-schema
   - systems:public-contract
+  - systems:runtime-dispatch
   - systems:scene-query
   - systems:scene-mutation
+  - systems:target-resolution
   - systems:serialization
+  - systems:tool-response
   - systems:docs
   - systems:native-contract-fixtures
-- **Validation Modes**: validation:contract, validation:docs-check, validation:regression
+- **Validation Modes**: validation:contract, validation:docs-check, validation:regression, validation:public-client-smoke
 - **Likely Analog Class**: cross-family-public-contract-convergence
 
 ### Identity Notes
 - This task follows PLAT-14/15/16 and is shaped as a bounded public contract convergence pass rather than a net-new capability build.
+- Planning rebaseline adds complete deletion of legacy `boolean_operation`, a full first-class shape/vocabulary sweep, and explicit meter-unit convergence at the MCP boundary.
 <!-- SIZE:IDENTITY:END -->
 
 ---
@@ -41,21 +45,22 @@
 
 | Dimension | Seed (0-4) | Notes |
 |---|---:|---|
-| Functional Scope | 2 | Behavior is mostly contract convergence and discoverability hardening rather than a new capability family. |
-| Technical Change Surface | 3 | Likely spans runtime schema, command validation paths, serializers, docs, and native contract fixtures. |
-| Hidden Complexity Suspicion | 3 | Existing mixed legacy selector and error semantics may hide coupling across multiple command families. |
-| Validation Burden Suspicion | 3 | Requires cross-family contract verification and docs/runtime/schema/fixture sync checks. |
+| Functional Scope | 3 | Behavior remains contract convergence rather than new capability, but it removes a public tool and changes selector, response, and unit semantics across first-class surfaces. |
+| Technical Change Surface | 4 | Likely spans runtime schema, public routing, command validation paths, target resolution, serializers, docs, README, native fixtures, and owning tests. |
+| Hidden Complexity Suspicion | 3 | Existing mixed legacy selector, response, error, and unit semantics may hide coupling across command families and reused serializers. |
+| Validation Burden Suspicion | 4 | Requires cross-family contract inventory, schema/runtime/docs/fixture parity, unit proof, and likely hosted smoke for target/transform/unit semantics. |
 | Dependency / Coordination Suspicion | 2 | Platform-owned work with moderate coupling to existing capability seams and prior PLAT conventions. |
-| Scope Volatility Suspicion | 2 | Bounded by convergence goals but could expand if additional residual drift is discovered. |
+| Scope Volatility Suspicion | 3 | Bounded by convergence goals, but the required full public sweep may surface additional equivalent-concept drift that must be included or explicitly split. |
 | Confidence | 2 | Good source context exists, but exact breadth of residual inconsistencies needs implementation-time confirmation. |
 
 ### Early Signals
 - Prior tasks explicitly scoped out full cross-family harmonization, leaving a plausible residual convergence slice.
-- Known public-surface seams include mixed selector contracts, mixed response casing, and mixed invalid-input handling posture.
-- Discoverability synchronization requires touching docs and contract fixtures in lockstep with runtime behavior.
+- Known public-surface seams include mixed selector contracts, mixed response casing, mixed invalid-input handling posture, and scene-query unit ambiguity.
+- The refined plan deletes legacy `boolean_operation` rather than modernizing it with one-off `toolReference` vocabulary.
+- Discoverability synchronization requires touching docs, README, runtime catalog, dispatch, and contract fixtures in lockstep with runtime behavior.
 
 ### Early Estimate Notes
-- Seed suggests medium-high technical and validation shape with moderate volatility; confidence remains medium-low until full implementation inventory confirms affected seams.
+- Seed suggests high technical and validation shape with moderate-high volatility; confidence remains medium-low until the full first-class sweep confirms affected seams.
 <!-- SIZE:INITIAL-SHAPE:END -->
 
 ---
@@ -67,36 +72,40 @@
 
 | Dimension | Score (0-4) | Notes |
 |---|---:|---|
-| Functional Scope | 2 | Converges existing public MCP contract behavior and discoverability rather than adding a new tool family. |
-| Technical Change Surface | 3 | Likely spans loader schema, scene-query serialization, mutation selectors, refusal pathways, docs, and native contract fixtures. |
-| Implementation Friction Risk | 3 | Removing mixed legacy shapes across commands requires coordinated breaking-change updates and careful sequencing. |
-| Validation Burden Risk | 3 | Needs cross-family contract tests plus docs/schema/runtime parity checks to avoid partial convergence drift. |
-| Dependency / Coordination Risk | 2 | Platform-owned but coupled to scene-query, editing, modeling, and native runtime boundaries. |
-| Discovery / Ambiguity Risk | 2 | Canonical contract direction is clear, but exact touched seam inventory still needs disciplined implementation-time confirmation. |
-| Scope Volatility Risk | 2 | Task is bounded, but discovery may reveal additional residual inconsistencies that pressure scope growth. |
-| Rework Risk | 3 | Inconsistent client-facing contracts can trigger iterative revisions if deltas are not harmonized end-to-end. |
-| Confidence | 2 | Strong problem framing exists, but full breadth of residual drift still requires implementation-time inventorying. |
+| Functional Scope | 2 | Converges and removes existing public MCP contract behavior, but does not add a new product workflow or modeling capability. |
+| Technical Change Surface | 3 | Spans loader schema, public routing/facade/server exposure, command assembly, command validation, scene-query serialization, unit conversion, docs, README, and native fixtures, but changes are concentrated in established contract seams. |
+| Implementation Friction Risk | 2 | Work is mostly mechanical contract convergence and public removal, using existing command, response, resolver, and contract-test patterns. |
+| Validation Burden Risk | 3 | Needs a full public sweep, cross-family contract tests, docs/schema/runtime/fixture parity, and meter-unit proof, but existing contract tests and fixtures reduce the proof cost. |
+| Dependency / Coordination Risk | 1 | Platform-owned work with no expected external dependency or product replacement requirement. |
+| Discovery / Ambiguity Risk | 2 | Canonical direction is clear; the sweep can still uncover additional equivalent-concept drift, but the plan defines split criteria for product redesign. |
+| Scope Volatility Risk | 2 | "No residuals" can add equivalent-concept fixes, but the task explicitly excludes new capability design and replacement solid-modeling behavior. |
+| Rework Risk | 2 | Rework pressure is moderate because inventory-first tests should catch stale docs, fixtures, legacy selectors, and unit leaks before broad edits settle. |
+| Confidence | 3 | The refined plan, existing contract-test posture, and explicit non-goals support a more stable estimate. |
 
 ### Top Assumptions
-- The task remains a bounded convergence pass and does not expand into semantic capability redesign.
-- A canonical selector and response vocabulary can be adopted without introducing a second runtime path.
-- First-class caller-recoverable invalid input paths can be normalized to structured refusals on touched surfaces.
-- Runtime catalog, docs, and fixtures can be kept in lockstep within one implementation sequence.
+- The task remains a public contract convergence pass and does not expand into new solid-modeling or semantic capability design.
+- `boolean_operation` can be deleted from public catalog/routing/docs, command assembly, and implementation code without a hidden public dependency requiring replacement in the same task.
+- A first-class public sweep can distinguish equivalent-concept drift from genuine role-specific vocabulary without product redesign.
+- Runtime catalog, docs, fixtures, command validation, and meter conversion can be kept in lockstep within one implementation sequence.
+- Shared selector work stays limited to direct-reference normalization, lookup strategy selection, and refusal mapping; it does not become a new targeting subsystem.
 
 ### Estimate Breakers
-- Breaking-change removal of legacy selectors (`id`, `target_id`, `tool_id`) exposes additional undocumented dependencies outside currently scoped tools.
-- Cross-family response vocabulary convergence exposes deeper serializer coupling than expected.
-- Error-path harmonization reveals transport-boundary assumptions that require larger refactors.
-- Unit semantics correction uncovers hidden dependency on existing client assumptions or stale fixtures.
+- Deleting `boolean_operation` exposes current product or test expectations that require a replacement public solid-modeling capability.
+- The full shape/vocabulary sweep finds broad mixed conventions that cannot be harmonized without redesigning semantic or hierarchy tool boundaries.
+- Unit semantics correction reveals deeper internal-unit leakage across shared serializers or stored data than scene-query bounds/origin changes.
+- Public routing removal proves more coupled to runtime command assembly than expected, forcing larger factory/server changes.
+- Selector reuse expands beyond direct-reference lookup into a broader targeting/query redesign.
+- Hosted SketchUp smoke finds target-resolution, persistent-id, or transform-unit behavior that contradicts plain Ruby tests.
 
 ### Predicted Signals
-- Existing catalog/schema already shows mixed selector and naming patterns across tool families.
-- Scene-query serializer currently exposes snake_case fields while other first-class surfaces are camelCase oriented.
-- Public docs inventory and unit semantics are currently susceptible to runtime drift.
+- Existing catalog/schema shows mixed selector patterns and a legacy public `boolean_operation` entry.
+- Scene-query serializer exposes snake_case fields while other first-class surfaces are camelCase oriented.
+- Scene-query `bounds_to_h` returns SketchUp numeric lengths while public docs and HLDs require meter semantics at the MCP boundary.
+- Public docs inventory currently advertises `boolean_operation` and legacy selector acceptance.
 - Prior PLAT tasks intentionally deferred full cross-family harmonization, suggesting known residual complexity.
 
 ### Predicted Estimate Notes
-- Predicted profile is moderate-to-high due to cross-family contract coupling and validation burden, while functional expansion remains intentionally limited.
+- Predicted profile is moderate-high on technical surface and validation burden because the task intentionally removes residual public-contract drift rather than preserving compatibility aliases. Functional scope is moderate rather than high because this is contract convergence and public removal, not new capability work.
 <!-- SIZE:PREDICTED:END -->
 
 ---
@@ -107,27 +116,34 @@
 > Filled when the estimate is pressure-tested through external review, premortem, or controlled consensus.
 
 ### Agreed Drivers
-- Validation burden is a primary driver because schema, runtime behavior, docs, and fixtures must ship together for every touched public seam.
-- Implementation friction is likely moderate-high because selector, response, and refusal conventions are uneven across command families.
-- Functional scope should stay moderate because the task converges existing behavior rather than introducing new capability surfaces.
+- Validation burden remains a primary driver because the finalized plan requires a checked-in full first-class public sweep plus schema/runtime/docs/native-fixture parity for every included seam.
+- Technical change surface is meaningful because the task touches public catalog removal, runtime dispatch/facade/server exposure, command assembly, command validation, serialization, docs, README, and native fixtures.
+- Implementation friction is bounded by existing command, response, resolver, and contract-test patterns; the task is mostly contract convergence rather than new runtime architecture.
+- Functional scope is moderate because the task removes and converges public contracts rather than adding new product workflows or modeling capabilities.
 
 ### Contested Drivers
-- Whether any additional public tools beyond the current touched set must be included immediately to avoid partial selector convergence.
-- Whether response-vocabulary convergence should be full immediate normalization or staged normalization across touched seams.
+- Whether the full first-class sweep will reveal additional direct-reference or response-vocabulary drift broad enough to force a follow-on split.
+- Whether hosted SketchUp validation is needed for confidence, given that this task changes MCP contracts and serialization rather than core SketchUp behavior.
+- Whether retaining any role-specific vocabulary after the sweep will be viewed as deliberate clarity or as residual mixed selector convention.
 
 ### Missing Evidence
-- Focused implementation inventory confirming exact touched commands and serializers.
-- Finalized removed-field refusal codes/messages for touched mutation and modeling tools.
-- Hosted/runtime validation evidence if any touched behavior depends on real SketchUp lifecycle semantics.
-- Implementation-time confirmation that staged response-vocabulary normalization does not leak mixed casing into untouched public paths.
+- Implementation of the finalized plan's checked-in sweep table or fixture, confirming the exact included and ruled-out public tools, reference fields, response families, and geometry-bearing surfaces.
+- Implementation evidence that complete `boolean_operation` deletion leaves no hidden public routing, command assembly, implementation code, stale docs, stale fixtures, or product expectation requiring replacement in this task.
+- Implementation meter-conversion evidence for scene-query bounds/origin and public serializers that reuse `SceneQuerySerializer#bounds_to_h`.
+- Native transport evidence that current-schema nuanced invalid requests still reach runtime validation where full structured refusal details are required.
+- Hosted/runtime validation evidence for target references, persistent IDs, transforms, and scene-query geometry units.
 
 ### Recommendation
-- confirm estimate
+- confirm tightened revised profile
 
 ### Challenge Notes
-- Independent review and premortem both indicate no blocking Tigers when convergence is phased through explicit contract artifact synchronization and strict breaking-change guardrails.
-- Challenge pass tested three contested drivers (selector removal scope, normalization sequencing, and parity gate strictness) and retained the predicted profile.
-- No predicted-score revision is justified yet; contested items remain sequencing and evidence-gathering controls rather than signs of wider functional scope.
+- Premortem initially exposed a Tiger around an under-specified sweep: generic direct-reference fields such as `sample_surface_z.target` could survive as residual mixed vocabulary. The finalized plan mitigates this by requiring a checked-in sweep table and naming known candidates.
+- User challenge surfaced concrete downward evidence: there is no new functional capability, `boolean_operation` removal avoids a one-off modernization path, and existing contract tests/fixtures already cover much of the intended proof style.
+- Predicted scores were revised downward for functional scope, technical change surface, implementation friction, validation burden, dependency, discovery, volatility, and rework. Confidence increased because the refined plan is bounded and explicitly excludes compatibility, replacement capability design, and residual mixed-unit behavior.
+- Follow-up selector investigation keeps the estimate stable: the plan now asks for a small reusable direct-reference facility that preserves native lookup fast paths, not a broad selector framework.
+- Plan tightening after the complete boolean-deletion decision keeps the score profile stable. The plan is shorter and less ambiguous, but the touched runtime/docs/test surfaces are materially the same; complete deletion replaces the previous public-removal-plus-possible-internal-residual posture without adding a new capability.
+- Validation burden remains `3` because proof still depends on full-catalog public contract inventory, unit semantics, docs/schema/runtime parity, and representative native transport cases. It is no longer `4` because the repository already has contract-test scaffolding and this is not expected to require broad hosted retest loops.
+- Recommendation is to implement with the inventory-first phase and split only if the sweep reveals product-boundary redesign rather than equivalent-concept contract drift.
 <!-- SIZE:CHALLENGE:END -->
 
 ---
@@ -224,24 +240,30 @@ Use canonical values from the repo task-estimation taxonomy when present. Prefer
 - `scope:platform`
 - `systems:loader-schema`
 - `systems:public-contract`
+- `systems:runtime-dispatch`
 - `systems:scene-query`
 - `systems:scene-mutation`
+- `systems:target-resolution`
 - `systems:serialization`
+- `systems:tool-response`
 - `systems:native-contract-fixtures`
 - `systems:docs`
 - `validation:contract`
 - `validation:docs-check`
+- `validation:public-client-smoke`
 - `validation:regression`
-- `host:not-needed`
+- `host:not-run-gap`
 - `contract:public-tool`
 - `contract:loader-schema`
+- `contract:runtime-dispatch`
 - `contract:response-shape`
 - `contract:docs-examples`
 - `risk:contract-drift`
 - `risk:schema-requiredness`
+- `risk:unit-conversion`
 - `risk:regression-breadth`
-- `volatility:medium`
-- `friction:medium`
+- `volatility:high`
+- `friction:high`
 - `rework:medium`
 - `confidence:medium`
 <!-- SIZE:TAGS:END -->

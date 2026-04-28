@@ -90,3 +90,4 @@ Scenario: Public tool discoverability and unit semantics are synchronized
 - Reviewers can compare representative tools across query, mutation, semantic, terrain, and modeling families without encountering contradictory selector or response conventions for the same contract concept.
 - Contract tests fail when runtime behavior, schema discoverability, and docs diverge on the touched contract seams.
 - Client-facing invalid input handling is consistently recoverable through structured refusal payloads for caller-correctable errors on touched first-class tools.
+- The related technical plan records the concrete implementation controls for the public sweep, legacy `boolean_operation` removal, and meter-unit convergence required to satisfy these product-level outcomes.
