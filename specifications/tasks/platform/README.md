@@ -70,13 +70,17 @@ The current post-seeding breakdown is intentionally smaller than the recovered 1
 
 14. [PLAT-16 Align Residual Public Contract Discoverability With Runtime Constraints](PLAT-16-align-residual-public-contract-discoverability-with-runtime-constraints/task.md)
 
+### Cross-Family Public Contract Convergence
+
+15. [PLAT-17 Harmonize Residual Public MCP Contract Conventions](PLAT-17-harmonize-residual-public-mcp-contract-conventions/task.md)
+
 ### Deferred Low-Priority Tasks
 
-15. [PLAT-06 Add SketchUp-Hosted Smoke and Fixture Coverage](PLAT-06-add-sketchup-hosted-smoke-and-fixture-coverage/task.md)
+16. [PLAT-06 Add SketchUp-Hosted Smoke and Fixture Coverage](PLAT-06-add-sketchup-hosted-smoke-and-fixture-coverage/task.md)
 
 ### Architecture Spikes
 
-16. [PLAT-07 Spike Ruby-Native MCP Runtime In SketchUp](PLAT-07-spike-ruby-native-mcp-runtime-in-sketchup/task.md)
+17. [PLAT-07 Spike Ruby-Native MCP Runtime In SketchUp](PLAT-07-spike-ruby-native-mcp-runtime-in-sketchup/task.md)
 
 ## Dependency Summary
 
@@ -96,6 +100,7 @@ The current post-seeding breakdown is intentionally smaller than the recovered 1
 | `PLAT-14` | `PLAT-10`, `PLAT-13` | shared native tool declaration and response conventions for future MCP surface cleanup |
 | `PLAT-15` | `STI-01`, `SEM-03`, `PLAT-14` | clearer public targeting, inventory, and generic deletion boundaries |
 | `PLAT-16` | `PLAT-14`, `PLAT-15`, `SEM-11`, `SEM-13` | residual public contract discoverability cleanup for shipped finite option sets |
+| `PLAT-17` | `PLAT-14`, `PLAT-15`, `PLAT-16` | cross-family public MCP contract convergence for selector policy, response vocabulary, refusal posture, and discoverability sync |
 | `PLAT-06` | `PLAT-01`, `PLAT-02` | deferred runtime-hosted confidence work |
 | `PLAT-07` | `PLAT-01`, `PLAT-02`, `PLAT-03`, ADR 2026-04-16 | future packaging decision and any decision to demote Python from the canonical MCP runtime |
 
@@ -119,4 +124,5 @@ The current post-seeding breakdown is intentionally smaller than the recovered 1
 - `PLAT-14` is a bounded post-retirement contract-hardening task. It is intended to establish shared native tool declaration and response conventions without turning the effort into a broader selector redesign or full-catalog conformance program.
 - `PLAT-15` remains the focused public-boundary cleanup task for targeting, inventory, and generic deletion semantics after the shared native declaration work in `PLAT-14`.
 - `PLAT-16` is the bounded follow-on cleanup task for residual discoverability drift where shipped public runtime constraints are still not surfaced coherently through schema, refusal behavior, contract coverage, or docs.
+- `PLAT-17` is the bounded convergence follow-on for residual cross-family public contract inconsistencies that remain after `PLAT-16`, especially selector policy alignment, response vocabulary consistency, caller-recoverable refusal posture, and runtime/docs discoverability synchronization.
 - Tasks remain requirements-focused. They define what must be true when the task is complete, not how the implementation must be coded.
