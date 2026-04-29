@@ -2,6 +2,25 @@
 
 <!-- version list -->
 
+## v1.1.0 (2026-04-29)
+
+### Bug Fixes
+
+- **MTA-13**: Normalized regional residual-range safety
+  ([`2086fff`](https://github.com/SidhNor/sketchup-mcp-server/commit/2086fff028948b3dfbe4ca78e51b6e547d646aaf))
+
+### Features
+
+- **MTA-15**: Improve tooling wording for better discoverability
+  ([`39d79a3`](https://github.com/SidhNor/sketchup-mcp-server/commit/39d79a3c0a3241a84057d12c63c4caff2446cfad))
+
+- **MTA-16**: Add coplanar surface terrain edits
+  ([`cafcaa8`](https://github.com/SidhNor/sketchup-mcp-server/commit/cafcaa81f5d84fbd3fff8b0ab37799b2b4a834bc))
+
+- **PLAT-18**: Expose MCP prompts for reusable workflows
+  ([`22a709a`](https://github.com/SidhNor/sketchup-mcp-server/commit/22a709a18d082f5ab8d880956546ebd5a9c8bfdb))
+
+
 ## v1.0.0 (2026-04-28)
 
 ### Documentation
