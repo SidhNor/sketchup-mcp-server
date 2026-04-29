@@ -2,7 +2,7 @@
 doc_type: hld
 title: Managed Terrain Surface Authoring
 status: draft
-last_updated: 2026-04-25
+last_updated: 2026-04-28
 ---
 
 # HLD: Managed Terrain Surface Authoring
@@ -48,6 +48,8 @@ The core architectural move is to stop treating the live SketchUp TIN as the nor
 
 This directly addresses the current failure mode where fallback `eval_ruby` scripts drag vertices, delete faces, cut live triangulation, and attempt local topology repair. Those operations can remain outside the managed capability as unsupported fallback behavior, but they should not be the architecture for supported terrain workflows.
 
+Recent terrain modelling feedback adds a second architectural pressure: callers must be able to choose terrain edits by explicit geometric intent rather than by guessing solver behavior. The terrain edit engine may grow internal or public intent modes such as planar regional fit, profile-grade correction, or boundary-preserving patch behavior, but those modes belong inside the managed terrain edit domain. They should not move profile sampling ownership into terrain authoring and should not turn terrain evidence into validation policy.
+
 ### Storage Posture
 
 The heightmap or equivalent materialized terrain state must not be stored in the existing `su_mcp` metadata dictionary.
@@ -85,8 +87,10 @@ Sidecar files are deferred. They may be reconsidered only if model-embedded payl
 The main slippage risks are:
 
 - Terrain evidence becoming validation policy. Terrain authoring should report changed regions, before/after samples, control preservation, and warnings; validation decides whether those are acceptable.
+- Terrain edit intent becoming implicit solver folklore. Public and internal terrain edit contracts should state whether an operation is a target-height edit, corridor grade, local fairing pass, smooth survey correction field, or an explicit future planar/profile intent.
 - Terrain constraints mutating hardscape. A `path`, `pad`, or `retaining_edge` may be read as an explicit constraint when product rules allow it, but it must not become part of terrain source state or be silently rewritten by terrain editing.
 - Sampling becoming adoption ownership. Existing surface sampling should inform adoption and evidence, but the terrain slice owns conversion from source surface to managed terrain state.
+- Profile QA becoming terrain mutation. Terrain authoring can recommend or produce evidence for profile review, but ordered profile sampling remains owned by scene targeting/interrogation and acceptance interpretation remains owned by scene validation/review.
 - Storage leaking into domain math. Terrain edit internals should operate on in-memory terrain state and should not know whether persistence is an attribute dictionary, chunked payload, or future sidecar.
 - Generated mesh becoming source of truth. The output mesh is replaceable derived geometry. The stored terrain state is the source of truth after adoption.
 
@@ -99,12 +103,14 @@ The main slippage risks are:
 - Route terrain capability entrypoints through the MCP runtime boundary to isolated terrain commands when public contracts are later defined.
 - Keep public requests routed to coherent terrain commands rather than chatty low-level geometry operations.
 - Normalize transport-facing results into JSON-serializable envelopes.
+- Expose baseline-safe terrain operation semantics in tool and field descriptions, especially when the server does not yet expose MCP prompts or resources for richer recipes.
 
 **Must Not Own**
 
 - Terrain edit math.
 - Raw SketchUp geometry mutation.
 - Exact HLD-level commitment to public tool names or fine-grained Unreal-style operations.
+- Long-form workflow playbooks that can live in docs or future MCP prompts/resources.
 
 ### Terrain Command And Use-Case Layer
 
@@ -191,6 +197,8 @@ The main slippage risks are:
 - Implement internal grade, transition, ramp-like, smoothing, and fairing kernels as domain behavior rather than public tool boundaries.
 - Respect fixed controls, preserve zones, blend zones, and supported hardscape-derived constraints.
 - Produce dirty-region summaries and edit diagnostics for evidence assembly.
+- Keep future geometric-intent behavior such as planar region fitting, monotonic profile correction, or boundary-preserving patch behavior explicit in the terrain domain rather than inferred from sparse controls.
+- Refuse or warn when the current materialized state cannot represent tight or contradictory controls at its spacing.
 
 **Must Not Own**
 
@@ -198,6 +206,7 @@ The main slippage risks are:
 - Storage backends.
 - Public MCP contract naming.
 - Validation pass/fail decisions.
+- Ordered surface-profile sampling as a scene interrogation capability.
 
 ### Terrain Region And Constraint Model
 
@@ -221,12 +230,14 @@ The main slippage risks are:
 - Keep output JSON-safe and compact by default.
 - Provide evidence in a shape validation and review workflows can consume without treating command success as correctness.
 - Prefer terrain-domain references such as sample coordinates, grid indices, regions, or stable terrain owner identity over raw generated face or vertex references.
+- Include enough metric-level evidence for post-edit review, such as changed regions, maximum sample deltas, survey residuals, preserve-zone drift, and slope or curvature proxy changes where the owning edit can compute them.
 
 **Must Not Own**
 
 - Validation acceptance thresholds beyond raw evidence and terrain-owned tolerances.
 - Long-lived storage of bulky historical evidence unless a later PRD or HLD introduces that concept.
 - Raw SketchUp objects in responses.
+- Long-form solver traces or generated mesh identifiers as public contract data.
 
 ### SketchUp Terrain Model Adapter
 
@@ -264,6 +275,8 @@ The main slippage risks are:
 - Let terrain commands depend on existing targeting, sampling, measurement, and validation capabilities through explicit collaborator boundaries.
 - Keep terrain evidence compatible with validation and review without absorbing those slices.
 - Let validation primarily consume terrain evidence, with resampling of regenerated output reserved for independent verification of final SketchUp geometry.
+- Let `sample_surface_z` and `measure_scene` own ordered profile evidence used to review terrain behavior between controls.
+- Keep profile diagnostics and acceptance findings outside terrain mutation unless a later validation task explicitly defines shared diagnostic helpers.
 
 **Must Not Own**
 
@@ -515,7 +528,17 @@ Terrain authoring returns terrain-edit evidence and warnings. Scene validation a
 
 This preserves the current product split: terrain commands are responsible for what changed and what was observed; validation is responsible for whether that satisfies expectations.
 
-### 8. HLD Uses Conceptual Components Rather Than Final Class Names
+### 8. Terrain Intent Modes Stay In The Terrain Domain
+
+**Decision**
+
+Future planar, monotonic profile, crossfall, or boundary-preserving terrain behavior should be expressed as explicit terrain edit intent inside the managed terrain domain and public terrain edit contract. Sparse survey controls should not silently imply a plane or monotonic grade.
+
+**Reason**
+
+The live terrain modelling signal showed that regional correction can be useful while still being mistaken for planar fitting. Keeping intent explicit avoids solver folklore and lets unsupported terrain goals refuse clearly when the current heightmap spacing or edit mode cannot represent them.
+
+### 9. HLD Uses Conceptual Components Rather Than Final Class Names
 
 **Decision**
 
@@ -525,7 +548,7 @@ This HLD defines component responsibilities and boundaries without committing ex
 
 The implementation should fit the codebase at task time. Naming and file layout are lower-level design choices, while the HLD should stabilize responsibilities, data ownership, and integration boundaries.
 
-### 9. Unreal-Inspired Operations Are Internal References, Not Public Architecture
+### 10. Unreal-Inspired Operations Are Internal References, Not Public Architecture
 
 **Decision**
 
@@ -535,7 +558,7 @@ Grade, ramp-like transitions, smoothing, and fairing may inform internal terrain
 
 The curated UE research note preserves useful terrain-edit references, but this repository already has MCP authoring guidance, command boundaries, and domain ownership rules. Public tool shape should be designed through product and contract work, not imported from Unreal terminology.
 
-### 10. Terrain State Uses Stable Owner-Local Coordinates
+### 11. Terrain State Uses Stable Owner-Local Coordinates
 
 **Decision**
 
@@ -576,3 +599,6 @@ SketchUp groups and components can be transformed or scaled. Keeping state in a 
 11. Does terrain evidence require its own versioning contract so validation and review can evolve independently?
 12. Should terrain evidence ever reference regenerated face or vertex identifiers, or should it remain coordinate, region, and sample-index based to avoid stale references after regeneration?
 13. How should commands detect and recover from manually deleted, exploded, or edited derived terrain output when the stable terrain owner and terrain-state payload still exist?
+14. Should planar region fitting be a new terrain edit operation, a nested survey correction intent, or a distinct internal strategy selected by explicit request fields?
+15. Which profile QA and bump or valley diagnostics are terrain-owned evidence versus validation-owned findings?
+16. Which richer terrain edit recipes should seed the initial MCP prompts catalog without bloating tool descriptions?

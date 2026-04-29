@@ -9,6 +9,7 @@
 /test/tmp/
 /test/version_tmp/
 /tmp/
+.fastembed_cache
 
 # Used by dotenv library to load environment variables.
 # .env

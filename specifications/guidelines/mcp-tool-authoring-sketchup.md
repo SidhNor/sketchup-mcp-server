@@ -378,7 +378,41 @@ Important constraints should be visible where the decision is made.
 
 ---
 
-## 17. Default outputs should be compact and chainable
+## 17. Split discoverable guidance by client need
+
+Put in the MCP-exposed tool definition anything that should remain true regardless of which client consumes the server:
+
+- tool purpose
+- when to use it
+- when not to use it
+- input schema
+- critical field ownership rules
+- important safety semantics
+- output shape or output expectations
+- brief micro-examples only when they materially reduce misuse
+
+Use this decision test:
+
+> If a completely different MCP client connected tomorrow, would it still need this information to use the tool correctly?
+
+If yes, it belongs in the discoverable tool contract. If it is a richer workflow pattern or reusable playbook, prefer MCP prompts/resources or server companion docs. If it is only a particular client agent's orchestration strategy, keep it in client docs.
+
+### Guidance placement
+
+| Guidance type | Preferred home |
+| --- | --- |
+| Baseline-safe purpose, use/do-not-use boundaries, field ownership, safety semantics, output expectations | Tool descriptions and input-schema field descriptions |
+| Compact shape examples for tricky fields or modes | Tool or field descriptions when short enough |
+| End-to-end examples, good/bad comparisons, multi-step recipes, troubleshooting, validation playbooks | MCP prompts/resources when available, otherwise server companion docs |
+| Tool preference order, retry strategy, context-loading strategy, UI-specific behavior | Client docs or client-side prompting |
+
+Do not leave core usage semantics to clients. Leave orchestration strategy to clients.
+
+The current runtime may not expose MCP prompts/resources yet. In that case, baseline-safe semantics still belong in the tool definitions, and richer reusable guidance should live in server docs until a prompt/resource surface exists.
+
+---
+
+## 18. Default outputs should be compact and chainable
 
 Default outputs should contain enough information for the next reasoning step, but should not dump excessive data.
 
@@ -402,7 +436,7 @@ Support heavier results through explicit output options such as:
 
 ---
 
-## 18. Mutation tools should return structured result envelopes
+## 19. Mutation tools should return structured result envelopes
 
 Mutating tools should return more than success or failure.
 
@@ -441,7 +475,7 @@ This makes results more useful, more debuggable, and easier to build on.
 
 ---
 
-## 19. Make safety and ambiguity policies explicit
+## 20. Make safety and ambiguity policies explicit
 
 Do not rely on implicit safety behavior.
 
@@ -460,7 +494,7 @@ Destructive or safety-relevant tools should also be clearly marked in metadata a
 
 ---
 
-## 20. Prefer additive evolution and stable vocabulary
+## 21. Prefer additive evolution and stable vocabulary
 
 Stable public vocabulary is a major source of clarity.
 
@@ -486,7 +520,7 @@ A schema can grow safely when its vocabulary remains stable and well-owned.
 
 ---
 
-## 21. Avoid exposing raw internals as the public contract
+## 22. Avoid exposing raw internals as the public contract
 
 The public schema should reflect domain semantics, not the accident of how the backend happens to implement them.
 
@@ -501,7 +535,7 @@ The public tool surface should teach the domain, not the backend.
 
 ---
 
-## 22. Keep escape hatches visibly second-class
+## 23. Keep escape hatches visibly second-class
 
 If an escape hatch such as `eval_ruby` exists, it should remain clearly exceptional.
 
@@ -511,7 +545,7 @@ Escape hatches are useful for rare cases and debugging, but they should remain e
 
 ---
 
-## 23. Prefer examples for complex or highly nested tools
+## 24. Prefer examples for complex or highly nested tools
 
 Any tool with nested sections, conditional fields, or multiple semantic modes should have examples near the contract definition or in adjacent guidance.
 

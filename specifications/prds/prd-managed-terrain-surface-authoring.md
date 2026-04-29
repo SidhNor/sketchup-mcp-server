@@ -2,7 +2,7 @@
 doc_type: prd
 title: Managed Terrain Surface Authoring
 status: draft
-last_updated: 2026-04-25
+last_updated: 2026-04-28
 ---
 
 # PRD: Managed Terrain Surface Authoring
@@ -15,6 +15,8 @@ When a workflow needs to reshape ground, it falls back to `eval_ruby`. Those fal
 
 The product needs a managed terrain-authoring capability that lets users adopt existing SketchUp terrain, apply bounded terrain edits, preserve controls and protected areas, and review terrain-edit evidence without treating live TIN surgery as the normal authoring path.
 
+Recent terrain modelling feedback sharpened the authoring need beyond raw terrain mutation. Agents need the terrain edit surface to expose the intended geometric behavior of each operation: when an operation creates a smooth correction field, when it expresses a corridor grade, when it only fairs local roughness, and when planar or monotonic intent is not currently supported. Without that discoverable intent layer, a technically successful edit can still create a valley, ridge, crossfall error, or boundary drift that only appears after profile sampling.
+
 This product slice is separate from semantic hardscape creation. Existing `path`, `pad`, and `retaining_edge` objects are Managed Scene Objects that may relate to terrain, but they are not part of terrain source state.
 
 ## Goals
@@ -25,6 +27,7 @@ This product slice is separate from semantic hardscape creation. Existing `path`
 4. Support fixed controls, preserve zones, grade regions, and blend zones as first-class terrain-authoring concepts.
 5. Return structured terrain-edit evidence that downstream validation and review workflows can use.
 6. Keep semantic hardscape objects such as paths, pads, and retaining edges separate from terrain state.
+7. Make operation intent, solver guardrails, and post-edit QA expectations discoverable through the public MCP contract.
 
 ## Success Metrics & KPI
 
@@ -35,6 +38,7 @@ This product slice is separate from semantic hardscape creation. Existing `path`
 | Supported terrain edits preserving fixed controls and preserve zones | No first-class support for control or preserve-zone preservation during terrain modification | >= 95% pass within documented tolerance | Before/after sample and constraint checks over curated fixed-control and preserve-zone scenarios | Within first managed terrain authoring release cycle |
 | Supported terrain edits returning usable before/after evidence | Current before/after terrain sampling is manual and inconsistent | >= 90% of supported terrain-edit workflows | Contract and scenario checks for structured before/after samples, changed-area evidence, and relevant warnings | Within first managed terrain authoring release cycle |
 | Curated topology and fairness defect cases surfaced before acceptance | Current defect detection is visual, manual, and incomplete | >= 80% of curated defect cases surfaced through terrain evidence or downstream validation | Shared terrain defect scenario set covering holes, seam defects, slope spikes, humps, trenches, and abrupt transitions | Within two releases after managed terrain authoring MVP |
+| Terrain edit intent and QA guidance discoverable in MCP contract | Current tool descriptions expose shape better than terrain-edit semantics | Representative generic MCP client can distinguish correction-field, corridor, target-height, and fairing intents without external prompt stuffing | Runtime tool schema/description review plus docs parity checks | Before adding further terrain edit modes |
 
 **Primary KPI**
 
@@ -92,6 +96,14 @@ This product slice is separate from semantic hardscape creation. Existing `path`
 3. The workflow accepts the result, performs another terrain edit, or requests further validation or visual review.
 4. Review remains evidence-driven; command completion alone is not treated as correctness.
 
+### Flow 6: Apply Intent-Aware Terrain Corrections
+
+1. The user or agent names the visible terrain defect or intent, such as valley, bump, edge sag, crossfall, planar fall, or boundary-protected outside patch.
+2. The user or agent chooses the supported terrain operation whose documented semantics match that intent.
+3. The system refuses unsupported intent clearly instead of implying that regional correction is planar fitting or that fairing can express grade logic.
+4. The edit result includes enough evidence to inspect changed region, survey residuals, preserve-zone drift, slope or curvature proxy changes, and maximum sample movement.
+5. The user or downstream workflow samples profiles through the edited area and nearby diagonals before accepting the terrain shape.
+
 ## Functional Requirements
 
 | Requirement | User Story | Acceptance Criteria | Priority |
@@ -105,6 +117,9 @@ This product slice is separate from semantic hardscape creation. Existing `path`
 | Support ramp or transition terrain workflows | As a designer or agent, I want to create controlled terrain transitions between conditions so that access routes, thresholds, and grade changes do not require manual TIN editing | Supported terrain-transition workflows can be completed from explicit controls and constraints, return structured evidence, and avoid manual topology repair in representative cases | P0 |
 | Support local smoothing or fairing workflows | As a designer or reviewer, I want to improve local terrain roughness and abrupt transitions so that terrain remains plausible after grade edits or adoption | Supported smoothing or fairing workflows can act on a bounded region, respect fixed controls and preserve zones, and return before/after evidence and warnings | P1 |
 | Return terrain-edit evidence for downstream validation and review | As a reviewer or downstream agent, I want terrain edit results to include structured evidence so that acceptance is not inferred from command completion alone | Supported terrain edits return structured evidence such as changed-area summary, before/after samples, preserved-control results, warnings, and defect indicators where available | P0 |
+| Make terrain operation intent discoverable | As an agent, I want each terrain edit mode to state its geometric behavior so that I do not infer planar, monotonic, or boundary-preserving semantics from a generic mode name | Public tool descriptions, field descriptions, and reference docs distinguish target-height, corridor, fairing, and survey correction behavior, including that regional survey correction is a smooth correction field unless an explicit planar mode exists | P0 |
+| Support profile-based terrain QA guidance | As a reviewer, I want terrain workflows to treat profile samples as the normal way to verify shape between controls so that point satisfaction does not hide bumps, valleys, or crossfall errors | Public guidance and task acceptance criteria require profile checks after non-trivial regional edits, boundary edits, smoothing/fairing, tight control clusters, and bump/valley/crossfall corrections | P0 |
+| Surface heightmap spacing limits | As an agent, I want tight or contradictory control sets to report representational limits so that I can refine terrain spacing or relax targets instead of repeatedly issuing impossible edits | Supported terrain edit documentation and refusals explain when grid spacing, shared sample influence, or close controls make independent constraints unsafe or impossible | P0 |
 | Surface topology and fairness concerns as structured warnings or evidence | As a technical reviewer, I want topology or fairness concerns to be visible before acceptance so that terrain failures do not depend only on manual inspection | Representative terrain defect scenarios such as holes, loose edges, seam defects, slope spikes, humps, trenches, or abrupt transitions produce structured warnings, evidence, or downstream validation findings | P1 |
 | Keep semantic hardscape objects separate from terrain state | As a workflow author, I want paths, pads, and retaining edges to remain independent managed objects so that terrain editing does not silently absorb or corrupt hardscape semantics | Terrain authoring does not create, absorb, or mutate `path`, `pad`, or `retaining_edge` managed-object state as part of terrain source state; any use of those objects as references or constraints remains explicit and non-destructive | P0 |
 | Support terrain edits that can reference existing managed objects as constraints where product rules allow | As an agent, I want to use existing scene objects as controls or preserve references so that terrain edits can respect the modeled context without changing those objects | Supported terrain edits can reference eligible existing objects as controls or constraints and return structured refusal when a referenced object cannot safely be used for that purpose | P1 |
@@ -121,6 +136,7 @@ Domain alignment: Managed Terrain Surface is represented in [`domain-analysis.md
 - Supported terrain edits should complete quickly enough for iterative design workflows on representative site models.
 - Terrain requests must refuse ambiguous or unsafe inputs rather than guessing silently.
 - Terrain authoring must remain compatible with existing scene targeting, interrogation, semantic modeling, and validation workflows.
+- Discoverable MCP tool definitions must expose baseline-safe operation semantics, guardrails, and output expectations; richer examples may live in docs or future MCP prompts/resources.
 
 ## Constraints
 
@@ -130,12 +146,16 @@ Domain alignment: Managed Terrain Surface is represented in [`domain-analysis.md
 - Existing terrain interrogation and validation capabilities remain separate slices; terrain authoring consumes or produces evidence for them rather than redefining all targeting or validation behavior.
 - Terrain mutation must not depend on `eval_ruby` as the normal path for supported workflows.
 - Undo-safe mutation behavior is required for supported terrain authoring workflows where SketchUp supports it.
+- Current `heightmap_grid` spacing limits the spatial detail that can be represented. Tight point clusters or contradictory controls inside one grid cell may need structured refusal, smaller spacing, localized detail, or relaxed targets.
+- Built levels such as slabs, platforms, wells, or house floors are verification context unless the request explicitly models pads, cuts, or built-surface terrain effects.
 
 ## Out of Scope
 
 - Creating or modifying semantic hardscape objects such as paths, pads, retaining edges, decks, or platform-like pads
 - Making `path`, `pad`, or `retaining_edge` part of terrain source state
 - Public Unreal-style terrain tools such as flatten, smooth, or ramp as separate MCP tool commitments
+- Treating regional survey correction as implicit planar fitting before an explicit planar contract is designed
+- Treating fairing as a grade-intent operation rather than a finishing/smoothing operation
 - Interactive SketchUp sculpt tools, brush UI, or mouse-driven terrain editing
 - Erosion, weathering, procedural terrain generation, or broad terrain simulation
 - General-purpose mesh repair or unrestricted TIN surgery
@@ -152,6 +172,9 @@ Domain alignment: Managed Terrain Surface is represented in [`domain-analysis.md
 - Which existing managed object types may be referenced as fixed controls or preserve constraints in the first release?
 - How should terrain edits report possible impacts on terrain-dependent hardscape without mutating that hardscape state?
 - What tolerance defaults should govern fixed controls, preserve zones, and before/after terrain evidence?
+- Should planar region fitting be added as a new `edit_terrain_surface` operation or as an explicit nested intent under survey correction?
+- Which profile diagnostics belong in scene validation and review rather than terrain mutation?
+- Should MCP prompts/resources be exposed so richer server-owned terrain recipes can be discovered without bloating tool descriptions?
 
 ## Risks and Mitigation
 
@@ -162,6 +185,9 @@ Domain alignment: Managed Terrain Surface is represented in [`domain-analysis.md
 | Hardscape semantics blur into terrain state | Medium | High | Keep `path`, `pad`, and `retaining_edge` as separate Managed Scene Objects and require any use as terrain constraints to be explicit and non-destructive |
 | Terrain evidence duplicates validation and interrogation responsibilities | Medium | Medium | Treat terrain authoring as producer of terrain-edit evidence and depend on targeting/interrogation and validation slices for shared lookup and acceptance semantics |
 | Fairness and visual plausibility are too subjective to validate consistently | High | Medium | Use curated defect cases and measurable proxies such as slope spikes, humps, trenches, seam quality, and before/after samples |
+| Tool descriptions teach parameter shape but not terrain-edit semantics | High | High | Treat discoverable tool descriptions and field descriptions as part of the public contract, and verify them against runtime behavior and docs |
+| Regional correction is mistaken for planar fitting | High | Medium | Explicitly document regional correction as a smooth correction field and add a separate planar-fit task before changing behavior |
+| Coarse grid spacing creates misleading control expectations | Medium | Medium | Document spacing limits, refuse impossible tight-control sets clearly, and use localized detail or finer spacing as escalation paths |
 | Existing SketchUp terrain sources vary too widely for reliable adoption | Medium | High | Define supported source-surface expectations, return structured refusals for unsupported cases, and track adoption failure reasons |
 | Users still prefer `eval_ruby` for complex terrain work | Medium | Medium | Keep first-class scope focused on the repeated workflows that caused the strongest fallback pressure and track unsupported-request patterns |
 
@@ -172,6 +198,7 @@ Domain alignment: Managed Terrain Surface is represented in [`domain-analysis.md
 - [`prd-scene-validation-and-review.md`](./prd-scene-validation-and-review.md)
 - [`prd-semantic-scene-modeling.md`](./prd-semantic-scene-modeling.md)
 - [`../signals/2026-04-24-partial-terrain-authoring-session-reveals-stable-patch-editing-contract.md`](../signals/2026-04-24-partial-terrain-authoring-session-reveals-stable-patch-editing-contract.md)
+- [`../signals/2026-04-28-terrain-modelling-session-reveals-planar-intent-and-profile-qa-gaps.md`](../signals/2026-04-28-terrain-modelling-session-reveals-planar-intent-and-profile-qa-gaps.md)
 - Shared workflow identity conventions for `sourceElementId`, `persistentId`, and compatibility `entityId`
 - Existing explicit surface sampling and terrain profile evidence capabilities
 - Existing Managed Scene Object boundaries for hardscape and semantic site elements
@@ -182,3 +209,4 @@ Domain alignment: Managed Terrain Surface is represented in [`domain-analysis.md
 | --- | --- |
 | 2026-04-24 | Initial draft created for managed terrain adoption and bounded terrain authoring after reviewing the terrain guide, current terrain-adjacent product slices, and the April 24 terrain-authoring signal. |
 | 2026-04-25 | Updated domain-alignment language after Managed Terrain Surface was added to the shared domain analysis. |
+| 2026-04-28 | Added intent-aware terrain correction, profile QA, grid-spacing guardrails, and discoverable MCP contract expectations from the April 28 terrain modelling signal expansion. |

@@ -352,8 +352,9 @@ module SU_MCP
           title: 'Sample Target Surface Elevation',
           description: 'Sample world-space surface elevation from an explicit target using ' \
                        'a canonical sampling object. Use sampling.type points for explicit ' \
-                       'XY points or profile for ordered path samples. This is not broad ' \
-                       'scene discovery and does not return terrain validation verdicts.',
+                       'XY control checks or profile for terrain-shape review between ' \
+                       'controls. This is not broad scene discovery and does not return ' \
+                       'terrain validation verdicts.',
           handler_key: :sample_surface_z,
           annotations: { read_only_hint: true, destructive_hint: false },
           classification: 'first_class',
@@ -386,15 +387,13 @@ module SU_MCP
         tool_entry(
           name: 'edit_terrain_surface',
           title: 'Edit Managed Terrain Surface',
-          description: 'Apply bounded edits to a repository-backed Managed Terrain Surface. ' \
-                       'Supports target_height with rectangle or circle regions, ' \
-                       'corridor_transition ' \
-                       'with corridor regions, controls, width, and optional sideBlend, or ' \
-                       'local_fairing with rectangle or circle regions; ' \
-                       'survey_point_constraint with local or regional correction scope; ' \
-                       'not for arbitrary ' \
-                       'TIN edits, ' \
-                       'broad sculpting, or site elements.',
+          description: 'Apply bounded intent-based edits to a repository-backed Managed ' \
+                       'Terrain Surface. Choose target_height for local area elevations, ' \
+                       'corridor_transition for linear ramp or corridor grades, ' \
+                       'local_fairing for smoothing, and survey_point_constraint for ' \
+                       'measured-point correction. Review edit evidence and profile samples; ' \
+                       'command success is not visual or grading acceptance. Not for ' \
+                       'arbitrary TIN edits, broad sculpting, or site elements.',
           handler_key: :edit_terrain_surface,
           annotations: { read_only_hint: false, destructive_hint: false },
           classification: 'first_class',
@@ -1161,7 +1160,8 @@ module SU_MCP
             enum_schema('bounds', 'height', 'distance', 'area', 'terrain_profile'),
             'Measurement family. Supported MVP combinations are bounds/world_bounds, ' \
             'height/bounds_z, distance/bounds_center_to_bounds_center, area/surface, ' \
-            'area/horizontal_bounds, and terrain_profile/elevation_summary.'
+            'area/horizontal_bounds, and terrain_profile/elevation_summary. Use terrain ' \
+            'profiles as measurement evidence for shape review, not validation verdicts.'
           ),
           kind: described_schema(
             enum_schema(
@@ -1219,7 +1219,8 @@ module SU_MCP
           properties: {
             type: described_schema(
               enum_schema('profile'),
-              'Only profile sampling is accepted for terrain_profile/elevation_summary.'
+              'Only profile sampling is accepted for terrain_profile/elevation_summary; ' \
+              'profiles review terrain shape between controls.'
             ),
             path: sample_points_schema,
             sampleCount: integer_schema,
@@ -1228,7 +1229,9 @@ module SU_MCP
           additionalProperties: false
         },
         'Profile path and spacing for terrain_profile/elevation_summary. Runtime requires ' \
-        'sampling.type profile plus exactly one of sampleCount or intervalMeters.'
+        'sampling.type profile plus exactly one of sampleCount or intervalMeters. Use after ' \
+        'non-trivial terrain edits to inspect grade, bumps, valleys, or crossfall between ' \
+        'point controls.'
       )
     end
 
@@ -1418,9 +1421,11 @@ module SU_MCP
       {
         mode: described_schema(
           enum_schema(SU_MCP::Terrain::EditTerrainSurfaceRequest::SUPPORTED_OPERATION_MODES),
-          'Edit operation mode. target_height uses a rectangle or circle; ' \
-          'corridor_transition uses a corridor; local_fairing uses a rectangle or circle; ' \
-          'survey_point_constraint uses a rectangle or circle support region.'
+          'Edit operation mode by terrain intent. target_height sets a local area or pad ' \
+          'elevation; corridor_transition expresses a linear ramp or corridor grade; ' \
+          'local_fairing smooths existing terrain without grade intent; ' \
+          'survey_point_constraint corrects measured points within a rectangle or circle ' \
+          'support region.'
         ),
         targetElevation: described_schema(
           number_schema,
@@ -1441,7 +1446,8 @@ module SU_MCP
         correctionScope: described_schema(
           enum_schema(SU_MCP::Terrain::EditTerrainSurfaceRequest::SUPPORTED_SURVEY_CORRECTION_SCOPES),
           'Required for survey_point_constraint. local applies isolated point correction; ' \
-          'regional applies a bounded coherent correction field over the support region.'
+          'regional applies a bounded smooth correction field over the support region, not ' \
+          'implicit planar fitting or best-fit replacement.'
         )
       }
     end
@@ -1564,10 +1570,15 @@ module SU_MCP
             type: 'array',
             items: edit_terrain_fixed_control_schema
           },
-          preserveZones: {
-            type: 'array',
-            items: edit_terrain_preserve_zone_schema
-          },
+          preserveZones: described_schema(
+            {
+              type: 'array',
+              items: edit_terrain_preserve_zone_schema
+            },
+            'Primary protection mechanism for known-good terrain that should not drift ' \
+            'during local or regional edits. Add preserve zones near boundaries or ' \
+            'known-good profiles outside the intended support area.'
+          ),
           surveyPoints: {
             type: 'array',
             items: edit_terrain_survey_point_schema
@@ -1620,7 +1631,10 @@ module SU_MCP
           includeSampleEvidence: boolean_schema,
           sampleEvidenceLimit: described_schema(
             integer_schema,
-            'Returned sample evidence cap, max 100.'
+            'Returned sample evidence cap, max 100. Use edit evidence such as changed ' \
+            'region, max sample delta, survey residuals, preserve-zone drift, ' \
+            'slope/curvature proxy changes, and regional coherence for post-edit review ' \
+            'where available.'
           )
         },
         additionalProperties: false

@@ -98,10 +98,13 @@ The main architectural goals are:
 - route tool requests to Ruby execution seams
 - return structured success or error responses
 - keep transport-specific concerns out of command behavior
+- expose enough tool descriptions and input-schema metadata for a generic MCP client to call first-class tools safely without client-specific prompt stuffing
+- provide a home for MCP prompts, and possibly later resources, when richer server-owned recipes, examples, or playbooks are too large for concise tool definitions
 
 **Current Baseline**
 
 - implemented primarily under `src/su_mcp/runtime/native/`
+- current runtime exposes tools with descriptions and schemas; MCP prompts/resources are not yet exposed as a server surface, with prompts now planned as the first implementation slice
 
 ### 4. Ruby Command or Use-Case Layer
 
@@ -213,3 +216,4 @@ Manual SketchUp-hosted smoke validation remains required when:
 1. Should the native MCP tool catalog and schema definitions remain inside `McpRuntimeLoader`, or should they move into smaller catalog/registration support objects as the public surface grows?
 2. What additional SketchUp-hosted smoke coverage should become mandatory for packaged runtime startup, representative MCP requests, and high-risk mutating tools?
 3. Should release automation stay on `python-semantic-release` long term, or should a repo-owned release flow eventually replace it?
+4. How many initial MCP prompts should the native runtime expose for richer workflow guidance while keeping baseline usage semantics in tool descriptions and schemas?

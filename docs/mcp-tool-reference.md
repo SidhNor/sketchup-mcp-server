@@ -112,6 +112,9 @@ Supported sampling shapes:
   - `intervalMeters`
 
 Returns structured hit/miss/ambiguous samples; overlapping surfaces with multiple surviving z-clusters are reported as `ambiguous`.
+Use point sampling to verify explicit controls or read back a known XY elevation. Use profile
+sampling to review terrain shape between controls after regional edits, boundary edits,
+fairing, or close point clusters.
 
 ### Terrain lifecycle
 
@@ -130,7 +133,9 @@ Creates or adopts a managed terrain surface.
 
 #### `edit_terrain_surface`
 
-Applies bounded edits to an existing managed terrain surface.
+Applies bounded intent-based edits to an existing managed terrain surface. A successful edit
+means the command completed and solver guardrails accepted the result; it is not visual,
+grading, or validation acceptance.
 
 Required top-level fields:
 
@@ -147,6 +152,15 @@ Supported operation/region combinations:
 | `local_fairing` | `rectangle`, `circle` | `strength`, `neighborhoodRadiusSamples` | `bounds` for rectangle; `center`, `radius` for circle |
 | `survey_point_constraint` | `rectangle`, `circle` | `correctionScope`, `constraints.surveyPoints` | `bounds` for rectangle; `center`, `radius` for circle |
 
+Operation intent:
+
+| `operation.mode` | Terrain intent |
+| --- | --- |
+| `target_height` | Impose a local area or pad-style target elevation. |
+| `corridor_transition` | Express a linear corridor, ramp, or transition grade. |
+| `local_fairing` | Smooth or finish existing terrain; do not use it to express grade intent. |
+| `survey_point_constraint` | Correct measured points through local correction or a bounded smooth regional correction field. Regional scope is not implicit planar fitting, best-fit replacement, monotonic correction, or complete interior replacement. |
+
 Additional terrain edit constraints:
 
 - Local `region.blend.falloff`: `none`, `linear`, `smooth`
@@ -156,11 +170,32 @@ Additional terrain edit constraints:
 - `constraints.preserveZones`:
   - rectangle/circle support for `target_height`, `local_fairing`, `survey_point_constraint`
   - rectangle-only support for `corridor_transition`
+  - primary protection mechanism for known-good terrain that should not drift
+  - recommended near boundaries or known-good profiles outside the intended support area
 - Regional `survey_point_constraint` safety is judged from resulting terrain shape and normalized
   correction scale. `evidence.survey.correction.regionalCoherence` reports
   `surveyResidualRange`, `supportFootprintLength`, `normalizedSurveyResidualRange`,
   `slopeMaxIncrease`, and `curvatureMaxIncrease`. Large absolute residual ranges can be valid
   when they span a large support footprint and produce acceptable grade/curvature.
+
+Safe terrain edit loop:
+
+1. Choose the operation by terrain intent.
+2. Bound the support region narrowly enough to match the intended edit.
+3. Add `constraints.preserveZones` around terrain that should not drift.
+4. Review edit evidence such as `changedRegion`, `maxSampleDelta`, survey residuals,
+   preserve-zone drift, slope/curvature proxy changes, and regional coherence when present.
+5. Verify non-trivial edits with `sample_surface_z` profiles or
+   `measure_scene terrain_profile/elevation_summary`; point samples verify controls, while
+   profiles verify shape between controls.
+
+Grid-spacing limits:
+
+- Terrain spacing limits the spatial detail that the heightmap can represent.
+- Controls closer than a grid cell can share samples and interact strongly.
+- Close points with sharp height differences may be refused or may move nearby samples.
+- If close controls must both be honored, recreate or refine terrain with smaller spacing, or
+  relax targets.
 
 Terrain coordinate notes:
 
@@ -234,6 +269,8 @@ Supported measurement modes:
 Profile sampling requires `sampling.type: "profile"`, `sampling.path`, and exactly one of `sampleCount` or `intervalMeters`.
 
 Returns `outcome: "measured"` when evidence exists, `outcome: "unavailable"` otherwise. Uses `no_unambiguous_profile_hits` when profile results are only ambiguous.
+Use `terrain_profile/elevation_summary` as measurement evidence for terrain-shape review
+between controls, not as a terrain validation verdict or pass/fail policy.
 
 #### `get_entity_info`
 
@@ -490,6 +527,10 @@ Successful terrain edits return `success: true`, `outcome: "edited"`, and includ
 - optional compact changed-sample evidence
 - fixed-control and preserve-zone evidence
 - always-present `warnings`
+
+Review edit evidence before accepting non-trivial terrain edits. Important fields include
+`changedRegion`, `maxSampleDelta`, survey residuals, preserve-zone drift, slope/curvature
+proxy changes, and regional coherence when those fields are available.
 
 Mode-specific compact evidence:
 
