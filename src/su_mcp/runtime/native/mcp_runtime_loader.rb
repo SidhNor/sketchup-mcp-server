@@ -3,6 +3,7 @@
 require 'json'
 require 'stringio'
 
+require_relative 'prompt_catalog'
 require_relative 'tool_definition'
 require_relative '../../semantic/managed_object_metadata'
 require_relative '../../semantic/request_shape_contract'
@@ -73,6 +74,10 @@ module SU_MCP
       ).freeze
     end
 
+    def prompt_catalog
+      @prompt_catalog ||= PromptCatalog.new
+    end
+
     private
 
     attr_reader :logger
@@ -81,6 +86,7 @@ module SU_MCP
       MCP::Server.new(
         name: 'sketchup_mcp_runtime',
         tools: build_tools(handlers),
+        prompts: build_prompts,
         configuration: MCP::Configuration.new(
           validate_tool_call_arguments: false,
           exception_reporter: method(:report_exception)
@@ -167,6 +173,36 @@ module SU_MCP
           &build_tool_handler(entry.fetch(:handler_key), handler_map)
         )
       end
+    end
+
+    def build_prompts
+      prompt_catalog.entries.map do |entry|
+        build_prompt(entry)
+      end
+    end
+
+    def build_prompt(entry)
+      result = entry.fetch(:result)
+      messages = result.fetch(:messages).map { |message| build_prompt_message(message) }
+
+      MCP::Prompt.define(
+        name: entry.fetch(:name),
+        title: entry.fetch(:title),
+        description: entry.fetch(:description),
+        arguments: entry.fetch(:arguments)
+      ) do |_args, **_kwargs|
+        MCP::Prompt::Result.new(
+          description: result.fetch(:description),
+          messages: messages
+        )
+      end
+    end
+
+    def build_prompt_message(message)
+      MCP::Prompt::Message.new(
+        role: message.fetch(:role).to_s,
+        content: MCP::Content::Text.new(message.fetch(:text))
+      )
     end
 
     def build_tool(

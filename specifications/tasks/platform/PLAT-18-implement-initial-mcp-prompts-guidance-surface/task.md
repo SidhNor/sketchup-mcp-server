@@ -1,7 +1,7 @@
 # Task: PLAT-18 Implement Initial MCP Prompts Guidance Surface
 **Task ID**: `PLAT-18`
 **Title**: `Implement Initial MCP Prompts Guidance Surface`
-**Status**: `draft`
+**Status**: `completed`
 **Priority**: `P1`
 **Date**: `2026-04-28`
 
@@ -86,7 +86,7 @@ Scenario: terrain recipes seed the first prompt catalog
 
 ## Related Technical Plan
 
-- none yet
+- [Technical plan](./plan.md)
 
 ## Success Metrics
 

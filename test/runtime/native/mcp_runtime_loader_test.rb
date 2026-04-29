@@ -594,6 +594,51 @@ class McpRuntimeLoaderTest < Minitest::Test
     )
   end
 
+  def test_build_transport_handles_batched_initialized_and_prompts_list_requests
+    skip_unless_staged_vendor_runtime!
+
+    transport = @loader.build_transport(
+      ping_handler: -> { { success: true, message: 'pong' } },
+      scene_info_handler: ->(_params) { { success: true, entities: [] } }
+    )
+
+    response = perform_raw_json_request(transport, batched_prompts_list_payload)
+    prompts = response[:body].fetch('result').fetch('prompts')
+
+    assert_equal(200, response[:status])
+    assert_equal(
+      %w[managed_terrain_edit_workflow terrain_profile_qa_workflow],
+      prompts.map { |prompt| prompt.fetch('name') }
+    )
+    assert(prompts.all? { |prompt| !prompt.key?('arguments') || prompt.fetch('arguments').empty? })
+  end
+
+  def test_build_transport_handles_prompts_get_requests
+    skip_unless_staged_vendor_runtime!
+
+    transport = @loader.build_transport(
+      ping_handler: -> { { success: true, message: 'pong' } },
+      scene_info_handler: ->(_params) { { success: true, entities: [] } }
+    )
+
+    %w[managed_terrain_edit_workflow terrain_profile_qa_workflow].each do |prompt_name|
+      response = perform_json_request(
+        transport,
+        id: prompt_name,
+        method: 'prompts/get',
+        params: { name: prompt_name }
+      )
+      body = response[:body].fetch('result')
+      messages = body.fetch('messages')
+
+      assert_equal(200, response[:status])
+      assert_kind_of(String, body.fetch('description'))
+      assert_equal(['user'], messages.map { |message| message.fetch('role') })
+      assert_equal(['text'], messages.map { |message| message.fetch('content').fetch('type') })
+      assert(messages.all? { |message| !message.fetch('content').fetch('text').empty? })
+    end
+  end
+
   def test_create_site_element_tool_schema_keeps_a_canonical_sectioned_branch
     create_site_element_tool = @loader.tool_catalog.find do |tool|
       tool.fetch(:name) == 'create_site_element'
@@ -1551,6 +1596,35 @@ class McpRuntimeLoaderTest < Minitest::Test
     )
   end
 
+  def test_prompt_catalog_exposes_initial_prompt_names
+    assert_equal(
+      %w[managed_terrain_edit_workflow terrain_profile_qa_workflow],
+      @loader.prompt_catalog.entries.map { |entry| entry.fetch(:name) }
+    )
+  end
+
+  def test_build_server_registers_tools_and_prompts
+    with_stubbed_mcp_runtime do
+      server = @loader.send(
+        :build_server,
+        handlers: {
+          ping: -> { { success: true, message: 'pong' } },
+          get_scene_info: ->(_params) { { success: true, entities: [] } }
+        }
+      )
+
+      assert_equal(CANONICAL_NATIVE_TOOL_NAMES, server.tools.map(&:name_value))
+      assert_equal(
+        %w[managed_terrain_edit_workflow terrain_profile_qa_workflow],
+        server.prompts.map(&:name_value)
+      )
+      assert_equal(
+        'Workflow guidance for planning, applying, and reviewing managed-terrain edits.',
+        server.prompts.first.template({}).description
+      )
+    end
+  end
+
   def test_loader_exposes_a_private_tool_failure_translation_seam
     assert_includes(@loader.private_methods, :translate_tool_failure)
   end
@@ -1711,6 +1785,21 @@ class McpRuntimeLoaderTest < Minitest::Test
     ]
   end
 
+  def batched_prompts_list_payload
+    [
+      {
+        jsonrpc: '2.0',
+        method: 'notifications/initialized'
+      },
+      {
+        jsonrpc: '2.0',
+        id: 2,
+        method: 'prompts/list',
+        params: {}
+      }
+    ]
+  end
+
   def skip_unless_staged_vendor_runtime!
     return if @loader.available?
 
@@ -1760,5 +1849,98 @@ class McpRuntimeLoaderTest < Minitest::Test
     Object.send(:remove_const, :MCP) if Object.const_defined?(:MCP)
     Object.const_set(:MCP, previous_mcp) if previous_mcp
   end
+
+  # rubocop:disable Metrics/AbcSize, Metrics/MethodLength
+  def with_stubbed_mcp_runtime
+    previous_mcp = Object.const_get(:MCP) if Object.const_defined?(:MCP)
+    Object.send(:remove_const, :MCP) if Object.const_defined?(:MCP)
+
+    response_class = Class.new do
+      attr_reader :structured_content
+
+      def initialize(_content, structured_content:)
+        @structured_content = structured_content
+      end
+    end
+    tool_module = Module.new do
+      define_singleton_method(:define) do |name:, **_kwargs, &block|
+        Class.new do
+          define_singleton_method(:name_value) { name }
+          define_method(:call) do |**kwargs|
+            self.class.instance_exec(**kwargs, &block)
+          end
+        end
+      end
+    end
+    tool_module.const_set(:InputSchema, Class.new do
+      def initialize(schema)
+        @schema = schema
+      end
+    end)
+    tool_module.const_set(:Response, response_class)
+
+    server_class = Class.new do
+      attr_reader :tools, :prompts
+
+      def initialize(name:, tools:, prompts:, configuration:)
+        @name = name
+        @tools = tools
+        @prompts = prompts
+        @configuration = configuration
+      end
+    end
+
+    configuration_class = Class.new do
+      def initialize(**_kwargs); end
+    end
+
+    prompt_module = Module.new do
+      define_singleton_method(:define) do |name:, **_kwargs, &block|
+        Class.new do
+          define_singleton_method(:name_value) { name }
+          define_singleton_method(:template) do |args, server_context: nil|
+            instance_exec(args, server_context: server_context, &block)
+          end
+        end
+      end
+    end
+
+    content_module = Module.new
+    content_module.const_set(:Text, Class.new do
+      def initialize(text)
+        @text = text
+      end
+    end)
+    message_class = Class.new do
+      def initialize(role:, content:)
+        @role = role
+        @content = content
+      end
+    end
+    result_class = Class.new do
+      attr_reader :description, :messages
+
+      def initialize(description:, messages:)
+        @description = description
+        @messages = messages
+      end
+    end
+    prompt_module.const_set(:Message, message_class)
+    prompt_module.const_set(:Result, result_class)
+
+    mcp_module = Module.new
+    mcp_module.const_set(:Tool, tool_module)
+    mcp_module.const_set(:Prompt, prompt_module)
+    mcp_module.const_set(:Content, content_module)
+    mcp_module.const_set(:Server, server_class)
+    mcp_module.const_set(:Configuration, configuration_class)
+    Object.const_set(:MCP, mcp_module)
+
+    yield
+  ensure
+    Object.send(:remove_const, :MCP) if Object.const_defined?(:MCP)
+    Object.const_set(:MCP, previous_mcp) if previous_mcp
+  end
+  # rubocop:enable Metrics/AbcSize, Metrics/MethodLength
 end
 # rubocop:enable Metrics/ClassLength

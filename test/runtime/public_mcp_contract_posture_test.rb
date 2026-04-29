@@ -63,6 +63,17 @@ class PublicMcpContractPostureTest < Minitest::Test
     )
   end
 
+  def test_user_facing_docs_describe_prompt_surface_without_full_prompt_bodies
+    docs = read_repo_file('docs/mcp-tool-reference.md')
+
+    assert_includes(docs, '## MCP prompts')
+    assert_includes(docs, 'managed_terrain_edit_workflow')
+    assert_includes(docs, 'terrain_profile_qa_workflow')
+    assert_includes(docs, 'workflow guidance')
+    assert_includes(docs, 'not required hidden context')
+    refute_includes(docs, 'Prompt body:')
+  end
+
   private
 
   def read_repo_file(relative_path)

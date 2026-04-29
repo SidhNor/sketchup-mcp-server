@@ -26,6 +26,23 @@ Current tools include:
 - `set_material`
 - `eval_ruby`
 
+## MCP prompts
+
+The native runtime also exposes MCP prompts for reusable workflow guidance. Prompts are
+workflow guidance, not required hidden context for calling ordinary tools correctly; generic
+clients should still be able to call first-class tools safely from `tools/list` descriptions
+and schemas.
+
+Current prompts include:
+
+- `managed_terrain_edit_workflow`: guidance for choosing bounded managed-terrain edit
+  operations, protecting known-good terrain with preserve zones, and reviewing edit evidence.
+- `terrain_profile_qa_workflow`: guidance for using point samples, profile samples, and
+  terrain-profile measurement evidence to review terrain shape after edits.
+
+Prompt bodies are available through `prompts/get`. This reference lists prompt availability
+and placement rules only, so the runtime-owned guidance text stays in one place.
+
 ## Contract conventions
 
 - Runtime-facing responses are JSON-serializable.
