@@ -114,6 +114,58 @@ class TerrainContractStabilityTest < Minitest::Test
     end
   end
 
+  def test_public_planar_fit_evidence_does_not_expose_solver_or_generated_entity_internals
+    result = edit_evidence_result(
+      diagnostics: edit_diagnostics.merge(
+        private_output_planning_diagnostics,
+        planarFit: {
+          plane: {
+            equation: { form: 'z = ax + by + c', a: 0.0, b: 0.1, c: 1.0 },
+            normal: { x: -0.0995, y: 0.0, z: 0.995 },
+            point: { x: 1.0, y: 1.0, z: 1.1 }
+          },
+          controls: [
+            {
+              id: 'sw',
+              index: 0,
+              point: { x: 0.0, y: 0.0 },
+              requestedElevation: 1.0,
+              beforeElevation: 0.0,
+              planeElevation: 1.0,
+              residual: 0.0,
+              tolerance: 0.03,
+              status: 'satisfied'
+            }
+          ],
+          quality: {
+            maxResidual: 0.0,
+            meanResidual: 0.0,
+            rmseResidual: 0.0,
+            normalizedMaxResidual: 0.0
+          },
+          supportRegionType: 'rectangle',
+          changedSampleCount: 1,
+          fullWeightSampleCount: 1,
+          blendSampleCount: 0,
+          preservedSampleCount: 0,
+          changedBounds: { min: { column: 0, row: 0 }, max: { column: 0, row: 0 } },
+          maxSampleDelta: 1.0,
+          grid: { warnings: [] },
+          warnings: []
+        }
+      ),
+      edit_summary: edit_summary.merge(mode: 'planar_region_fit')
+    )
+    serialized = JSON.generate(result)
+
+    assert_equal('planar_region_fit', result.dig(:operation, :mode))
+    assert_equal('z = ax + by + c', result.dig(:evidence, :planarFit, :plane, :equation, :form))
+    refute_internal_output_vocabulary(result)
+    %w[normalEquations matrix stencil outputPlan faceId vertexId MTA-13 MTA-14].each do |term|
+      refute_includes(serialized, term)
+    end
+  end
+
   private
 
   def serializer

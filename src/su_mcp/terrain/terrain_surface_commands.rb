@@ -10,6 +10,7 @@ require_relative 'corridor_transition_edit'
 require_relative 'create_terrain_surface_request'
 require_relative 'edit_terrain_surface_request'
 require_relative 'local_fairing_edit'
+require_relative 'planar_region_fit_edit'
 require_relative 'sample_window'
 require_relative 'survey_point_constraint_edit'
 require_relative 'terrain_edit_evidence_builder'
@@ -46,6 +47,7 @@ module SU_MCP
         corridor_editor: CorridorTransitionEdit.new,
         local_fairing_editor: LocalFairingEdit.new,
         survey_point_editor: SurveyPointConstraintEdit.new,
+        planar_region_fit_editor: PlanarRegionFitEdit.new,
         target_resolver: nil,
         edit_evidence_builder: TerrainEditEvidenceBuilder.new
       )
@@ -64,6 +66,7 @@ module SU_MCP
         @corridor_editor = corridor_editor
         @local_fairing_editor = local_fairing_editor
         @survey_point_editor = survey_point_editor
+        @planar_region_fit_editor = planar_region_fit_editor
         @target_resolver = target_resolver || TargetReferenceResolver.new
         @edit_evidence_builder = edit_evidence_builder
       end
@@ -94,6 +97,7 @@ module SU_MCP
                   :evidence_builder, :adoption_sampler, :metadata_writer, :scene_properties,
                   :length_converter, :edit_request_validator, :grade_editor, :target_resolver,
                   :corridor_editor, :local_fairing_editor, :survey_point_editor,
+                  :planar_region_fit_editor,
                   :edit_evidence_builder
 
       def validate(params)
@@ -137,6 +141,7 @@ module SU_MCP
         return corridor_editor if mode == 'corridor_transition'
         return local_fairing_editor if mode == 'local_fairing'
         return survey_point_editor if mode == 'survey_point_constraint'
+        return planar_region_fit_editor if mode == 'planar_region_fit'
 
         grade_editor
       end

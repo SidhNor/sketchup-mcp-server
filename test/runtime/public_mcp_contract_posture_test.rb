@@ -74,6 +74,16 @@ class PublicMcpContractPostureTest < Minitest::Test
     refute_includes(docs, 'Prompt body:')
   end
 
+  def test_user_facing_docs_describe_planar_region_fit_contract
+    docs = read_repo_file('docs/mcp-tool-reference.md')
+
+    assert_includes(docs, 'planar_region_fit')
+    assert_includes(docs, 'constraints.planarControls')
+    assert_includes(docs, 'evidence.planarFit')
+    assert_includes(docs, 'clamp(supportFootprintLength * 0.002, 0.03, 0.15)')
+    assert_includes(docs, 'Regional scope is not implicit planar fitting')
+  end
+
   private
 
   def read_repo_file(relative_path)

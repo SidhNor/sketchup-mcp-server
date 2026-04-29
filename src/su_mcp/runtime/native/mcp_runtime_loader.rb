@@ -427,7 +427,8 @@ module SU_MCP
                        'Terrain Surface. Choose target_height for local area elevations, ' \
                        'corridor_transition for linear ramp or corridor grades, ' \
                        'local_fairing for smoothing, and survey_point_constraint for ' \
-                       'measured-point correction. Review edit evidence and profile samples; ' \
+                       'measured-point correction, or planar_region_fit for bounded fitted ' \
+                       'plane replacement. Review edit evidence and profile samples; ' \
                        'command success is not visual or grading acceptance. Not for ' \
                        'arbitrary TIN edits, broad sculpting, or site elements.',
           handler_key: :edit_terrain_surface,
@@ -1461,7 +1462,7 @@ module SU_MCP
           'elevation; corridor_transition expresses a linear ramp or corridor grade; ' \
           'local_fairing smooths existing terrain without grade intent; ' \
           'survey_point_constraint corrects measured points within a rectangle or circle ' \
-          'support region.'
+          'support region; planar_region_fit replaces a bounded region with one fitted plane.'
         ),
         targetElevation: described_schema(
           number_schema,
@@ -1519,8 +1520,9 @@ module SU_MCP
       {
         type: described_schema(
           enum_schema(SU_MCP::Terrain::EditTerrainSurfaceRequest::SUPPORTED_REGION_TYPES),
-          'Edit region type. rectangle or circle pairs with target_height and local_fairing; ' \
-          'corridor pairs with corridor_transition.'
+          'Edit region type. rectangle or circle pairs with target_height, local_fairing, ' \
+          'survey_point_constraint, and planar_region_fit; corridor pairs with ' \
+          'corridor_transition.'
         ),
         bounds: edit_terrain_rectangle_bounds_schema,
         center: edit_terrain_xy_point_schema,
@@ -1612,12 +1614,21 @@ module SU_MCP
               items: edit_terrain_preserve_zone_schema
             },
             'Primary protection mechanism for known-good terrain that should not drift ' \
-            'during local or regional edits. Add preserve zones near boundaries or ' \
-            'known-good profiles outside the intended support area.'
+            'during local, regional, or planar edits. Add preserve zones near boundaries ' \
+            'or known-good profiles outside the intended support area.'
           ),
           surveyPoints: {
             type: 'array',
             items: edit_terrain_survey_point_schema
+          },
+          planarControls: {
+            type: 'array',
+            description: 'Required for planar_region_fit. Three or more terrain-state ' \
+                         'public-meter XYZ controls define one coherent fitted plane. ' \
+                         'Off-grid or hard-boundary controls can be refused with ' \
+                         'planar_fit_unsafe when the discrete heightmap surface cannot ' \
+                         'sample them back within tolerance.',
+            items: edit_terrain_planar_control_schema
           }
         },
         additionalProperties: false
@@ -1637,6 +1648,23 @@ module SU_MCP
       }
     end
 
+    def edit_terrain_planar_control_schema
+      {
+        type: 'object',
+        required: ['point'],
+        properties: {
+          id: string_schema,
+          point: edit_terrain_xyz_point_schema,
+          tolerance: described_schema(
+            number_schema,
+            'Allowed plane and sampled-surface residual in public meters. Defaults from ' \
+            'edit support footprint length.'
+          )
+        },
+        additionalProperties: false
+      }
+    end
+
     def edit_terrain_preserve_zone_schema
       {
         type: 'object',
@@ -1651,8 +1679,9 @@ module SU_MCP
         id: string_schema,
         type: described_schema(
           enum_schema(SU_MCP::Terrain::EditTerrainSurfaceRequest::SUPPORTED_PRESERVE_ZONE_TYPES),
-          'Preserve zone type. rectangle or circle for target_height and local_fairing; ' \
-          'rectangle only for corridor_transition.'
+          'Preserve zone type. rectangle or circle for target_height, local_fairing, ' \
+          'survey_point_constraint, and planar_region_fit; rectangle only for ' \
+          'corridor_transition.'
         ),
         bounds: edit_terrain_rectangle_bounds_schema,
         center: edit_terrain_xy_point_schema,
@@ -1668,9 +1697,9 @@ module SU_MCP
           sampleEvidenceLimit: described_schema(
             integer_schema,
             'Returned sample evidence cap, max 100. Use edit evidence such as changed ' \
-            'region, max sample delta, survey residuals, preserve-zone drift, ' \
-            'slope/curvature proxy changes, and regional coherence for post-edit review ' \
-            'where available.'
+            'region, max sample delta, survey residuals, planar-fit residuals, ' \
+            'preserve-zone drift, slope/curvature proxy changes, regional coherence, ' \
+            'and planar_fit_unsafe refusals for post-edit review where available.'
           )
         },
         additionalProperties: false

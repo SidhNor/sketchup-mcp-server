@@ -1,7 +1,7 @@
 # Task: MTA-16 Implement Narrow Planar Region Fit Terrain Intent
 **Task ID**: `MTA-16`
 **Title**: `Implement Narrow Planar Region Fit Terrain Intent`
-**Status**: `draft`
+**Status**: `implemented`
 **Priority**: `P1`
 **Date**: `2026-04-28`
 
@@ -83,7 +83,7 @@ Scenario: unsafe planar controls refuse or warn honestly
 
 ## Related Technical Plan
 
-- none yet
+- [Technical Plan](./plan.md)
 
 ## Success Metrics
 

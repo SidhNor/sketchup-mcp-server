@@ -308,6 +308,33 @@ class TerrainSurfaceCommandsTest < Minitest::Test # rubocop:disable Metrics/Clas
     assert_equal([:regenerate], mesh_generator.calls)
   end
 
+  def test_planar_region_fit_dispatches_to_planar_editor_and_reuses_regeneration_flow
+    model = build_semantic_model
+    managed_terrain_owner(model)
+    repository = EditRepository.new(state)
+    mesh_generator = RecordingRegeneratingMeshGenerator.new
+    grade_editor = RecordingGradeEditor.new
+    planar_editor = RecordingPlanarRegionFitEditor.new
+    commands = build_edit_commands(
+      model: model,
+      repository: repository,
+      mesh_generator: mesh_generator,
+      edit_request_validator: AcceptingPlanarRegionFitValidator.new,
+      grade_editor: grade_editor,
+      planar_region_fit_editor: planar_editor
+    )
+
+    result = commands.edit_terrain_surface(planar_region_fit_request)
+
+    assert_equal('edited', result.fetch(:outcome))
+    assert_empty(grade_editor.calls)
+    assert_equal(1, planar_editor.calls.length)
+    assert_equal('planar_region_fit',
+                 planar_editor.calls.first.fetch(:request).dig('operation', 'mode'))
+    assert_equal(2, repository.saved_state.revision)
+    assert_equal([:regenerate], mesh_generator.calls)
+  end
+
   def test_corridor_transition_refusal_happens_before_save_or_model_operation
     model = build_semantic_model
     managed_terrain_owner(model)
@@ -367,6 +394,28 @@ class TerrainSurfaceCommandsTest < Minitest::Test # rubocop:disable Metrics/Clas
 
     assert_equal('refused', result.fetch(:outcome))
     assert_equal('survey_point_outside_support_region', result.dig(:refusal, :code))
+    assert_nil(repository.saved_state)
+    assert_empty(mesh_generator.calls)
+    assert_empty(model.operations)
+  end
+
+  def test_planar_region_fit_refusal_happens_before_save_or_model_operation
+    model = build_semantic_model
+    managed_terrain_owner(model)
+    repository = EditRepository.new(state)
+    mesh_generator = RecordingRegeneratingMeshGenerator.new
+    commands = build_edit_commands(
+      model: model,
+      repository: repository,
+      mesh_generator: mesh_generator,
+      edit_request_validator: AcceptingPlanarRegionFitValidator.new,
+      planar_region_fit_editor: RefusingPlanarRegionFitEditor.new
+    )
+
+    result = commands.edit_terrain_surface(planar_region_fit_request)
+
+    assert_equal('refused', result.fetch(:outcome))
+    assert_equal('non_coplanar_controls', result.dig(:refusal, :code))
     assert_nil(repository.saved_state)
     assert_empty(mesh_generator.calls)
     assert_empty(model.operations)
@@ -446,6 +495,7 @@ class TerrainSurfaceCommandsTest < Minitest::Test # rubocop:disable Metrics/Clas
                           corridor_editor: RecordingCorridorEditor.new,
                           local_fairing_editor: nil,
                           survey_point_editor: nil,
+                          planar_region_fit_editor: nil,
                           target_resolver: RecordingTargetResolver.new,
                           edit_evidence_builder: EditEvidenceBuilder.new)
     options = {
@@ -464,6 +514,7 @@ class TerrainSurfaceCommandsTest < Minitest::Test # rubocop:disable Metrics/Clas
     }
     options[:local_fairing_editor] = local_fairing_editor if local_fairing_editor
     options[:survey_point_editor] = survey_point_editor if survey_point_editor
+    options[:planar_region_fit_editor] = planar_region_fit_editor if planar_region_fit_editor
 
     SU_MCP::Terrain::TerrainSurfaceCommands.new(**options)
   end
@@ -548,6 +599,29 @@ class TerrainSurfaceCommandsTest < Minitest::Test # rubocop:disable Metrics/Clas
       'constraints' => {
         'surveyPoints' => [
           { 'id' => 'survey-1', 'point' => { 'x' => 1.0, 'y' => 1.0, 'z' => 2.0 } }
+        ]
+      }
+    }
+  end
+
+  def planar_region_fit_request
+    {
+      'targetReference' => { 'sourceElementId' => 'terrain-main' },
+      'operation' => { 'mode' => 'planar_region_fit' },
+      'region' => {
+        'type' => 'rectangle',
+        'bounds' => {
+          'minX' => 0.0,
+          'minY' => 0.0,
+          'maxX' => 1.0,
+          'maxY' => 1.0
+        }
+      },
+      'constraints' => {
+        'planarControls' => [
+          { 'id' => 'sw', 'point' => { 'x' => 0.0, 'y' => 0.0, 'z' => 1.0 } },
+          { 'id' => 'se', 'point' => { 'x' => 1.0, 'y' => 0.0, 'z' => 1.0 } },
+          { 'id' => 'nw', 'point' => { 'x' => 0.0, 'y' => 1.0, 'z' => 1.1 } }
         ]
       }
     }
@@ -744,6 +818,17 @@ class TerrainSurfaceCommandsTest < Minitest::Test # rubocop:disable Metrics/Clas
     end
   end
 
+  class AcceptingPlanarRegionFitValidator
+    def validate(params)
+      {
+        outcome: 'ready',
+        operation_mode: 'planar_region_fit',
+        region_type: 'rectangle',
+        params: params
+      }
+    end
+  end
+
   class RefusingEditValidator
     def validate(_params)
       {
@@ -858,6 +943,52 @@ class TerrainSurfaceCommandsTest < Minitest::Test # rubocop:disable Metrics/Clas
     end
   end
 
+  class RecordingPlanarRegionFitEditor < RecordingGradeEditor
+    private
+
+    def diagnostics(request)
+      planar_controls = request.dig('constraints', 'planarControls')
+      super.merge(
+        planarFit: {
+          plane: {
+            equation: { form: 'z = ax + by + c', a: 0.0, b: 0.1, c: 1.0 },
+            normal: { x: 0.0, y: -0.0995, z: 0.995 },
+            point: { x: 0.0, y: 0.0, z: 1.0 }
+          },
+          controls: planar_controls.each_with_index.map do |control, index|
+            {
+              id: control['id'],
+              index: index,
+              point: control.fetch('point').slice('x', 'y'),
+              requestedElevation: control.dig('point', 'z'),
+              beforeElevation: 1.0,
+              planeElevation: control.dig('point', 'z'),
+              residual: 0.0,
+              tolerance: control.fetch('tolerance', 0.03),
+              status: 'satisfied'
+            }
+          end,
+          quality: {
+            maxResidual: 0.0,
+            meanResidual: 0.0,
+            rmseResidual: 0.0,
+            normalizedMaxResidual: 0.0
+          },
+          supportRegionType: request.dig('region', 'type'),
+          changedSampleCount: 4,
+          fullWeightSampleCount: 4,
+          blendSampleCount: 0,
+          preservedSampleCount: 0,
+          changedBounds: { min: { column: 0, row: 0 }, max: { column: 1, row: 1 } },
+          maxSampleDelta: 0.5,
+          grid: { warnings: [] },
+          warnings: []
+        },
+        warnings: []
+      )
+    end
+  end
+
   class RefusingCorridorEditor
     def apply(...)
       {
@@ -896,6 +1027,19 @@ class TerrainSurfaceCommandsTest < Minitest::Test # rubocop:disable Metrics/Clas
         refusal: {
           code: 'survey_point_outside_support_region',
           details: { field: 'constraints.surveyPoints[0]' }
+        }
+      }
+    end
+  end
+
+  class RefusingPlanarRegionFitEditor
+    def apply(...)
+      {
+        success: true,
+        outcome: 'refused',
+        refusal: {
+          code: 'non_coplanar_controls',
+          details: { field: 'constraints.planarControls' }
         }
       }
     end

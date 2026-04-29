@@ -59,6 +59,34 @@ class EditTerrainSurfaceRequestTest < Minitest::Test # rubocop:disable Metrics/C
     assert_equal({ 'x' => 2.0, 'y' => 2.0, 'z' => 1.75 }, point.fetch('point'))
   end
 
+  def test_accepts_planar_region_fit_rectangle_request_and_normalizes_tolerances
+    result = validate_request(planar_region_fit_request)
+
+    assert_equal('ready', result.fetch(:outcome))
+    assert_equal('planar_region_fit', result.fetch(:operation_mode))
+    assert_equal('rectangle', result.fetch(:region_type))
+    controls = result.dig(:params, 'constraints', 'planarControls')
+    assert_equal(%w[sw se nw], controls.map { |control| control.fetch('id') })
+    assert_in_delta(0.03, controls[0].fetch('tolerance'), 1e-9)
+    assert_in_delta(0.08, controls[1].fetch('tolerance'), 1e-9)
+    assert_in_delta(0.03, controls[2].fetch('tolerance'), 1e-9)
+  end
+
+  def test_accepts_planar_region_fit_circle_request_with_blend_defaults
+    request = planar_region_fit_request
+    request['region'] = circle_region
+
+    result = validate_request(request)
+
+    assert_equal('ready', result.fetch(:outcome))
+    assert_equal('planar_region_fit', result.fetch(:operation_mode))
+    assert_equal('circle', result.fetch(:region_type))
+    assert_equal(0.0, result.dig(:params, 'region', 'blend', 'distance'))
+    assert_equal('none', result.dig(:params, 'region', 'blend', 'falloff'))
+    assert_in_delta(0.03, result.dig(:params, 'constraints', 'planarControls', 0, 'tolerance'),
+                    1e-9)
+  end
+
   def test_accepts_circle_regions_for_local_area_modes_with_blend_defaults
     target_height = minimal_request
     target_height['region'] = circle_region(blend: { 'distance' => 1.5 })
@@ -124,6 +152,12 @@ class EditTerrainSurfaceRequestTest < Minitest::Test # rubocop:disable Metrics/C
     result = validate_request(survey_corridor)
     assert_refusal(result, 'unsupported_option', 'region.type')
     assert_equal(%w[rectangle circle], result.dig(:refusal, :details, :allowedValues))
+
+    planar_corridor = planar_region_fit_request
+    planar_corridor['region'] = corridor_request.fetch('region')
+    result = validate_request(planar_corridor)
+    assert_refusal(result, 'unsupported_option', 'region.type')
+    assert_equal(%w[rectangle circle], result.dig(:refusal, :details, :allowedValues))
   end
 
   def test_refuses_circle_region_for_corridor_transition_with_mode_specific_allowed_values
@@ -183,6 +217,59 @@ class EditTerrainSurfaceRequestTest < Minitest::Test # rubocop:disable Metrics/C
       validate_request(missing_points),
       'missing_required_field',
       'constraints.surveyPoints'
+    )
+
+    missing_planar_controls = planar_region_fit_request
+    missing_planar_controls['constraints'].delete('planarControls')
+    assert_refusal(
+      validate_request(missing_planar_controls),
+      'missing_required_field',
+      'constraints.planarControls'
+    )
+  end
+
+  def test_refuses_invalid_planar_control_shapes
+    missing_point = planar_region_fit_request
+    missing_point['constraints']['planarControls'] = [{ 'id' => 'bad' }]
+    assert_refusal(
+      validate_request(missing_point),
+      'invalid_edit_request',
+      'constraints.planarControls[0].point'
+    )
+
+    invalid_z = planar_region_fit_request
+    invalid_z['constraints']['planarControls'][0]['point'].delete('z')
+    assert_refusal(
+      validate_request(invalid_z),
+      'invalid_edit_request',
+      'constraints.planarControls[0].point.z'
+    )
+
+    invalid_id = planar_region_fit_request
+    invalid_id['constraints']['planarControls'][0]['id'] = { 'nested' => true }
+    assert_refusal(
+      validate_request(invalid_id),
+      'invalid_edit_request',
+      'constraints.planarControls[0].id'
+    )
+
+    negative_tolerance = planar_region_fit_request
+    negative_tolerance['constraints']['planarControls'][0]['tolerance'] = -0.01
+    assert_refusal(
+      validate_request(negative_tolerance),
+      'invalid_edit_request',
+      'constraints.planarControls[0].tolerance'
+    )
+  end
+
+  def test_refuses_insufficient_planar_controls_at_request_boundary
+    request = planar_region_fit_request
+    request['constraints']['planarControls'] = planar_controls.take(2)
+
+    assert_refusal(
+      validate_request(request),
+      'missing_required_field',
+      'constraints.planarControls'
     )
   end
 
@@ -340,6 +427,10 @@ class EditTerrainSurfaceRequestTest < Minitest::Test # rubocop:disable Metrics/C
     }
     assert_equal('ready', validate_request(local_fairing).fetch(:outcome))
 
+    planar = planar_region_fit_request
+    planar['constraints']['preserveZones'] = [circle_preserve_zone]
+    assert_equal('ready', validate_request(planar).fetch(:outcome))
+
     corridor = corridor_request
     corridor['constraints'] = {
       'preserveZones' => [circle_preserve_zone]
@@ -467,6 +558,27 @@ class EditTerrainSurfaceRequestTest < Minitest::Test # rubocop:disable Metrics/C
         ]
       }
     }
+  end
+
+  def planar_region_fit_request
+    {
+      'targetReference' => { 'sourceElementId' => 'terrain-main' },
+      'operation' => { 'mode' => 'planar_region_fit' },
+      'region' => { 'type' => 'rectangle', 'bounds' => rectangle_bounds },
+      'constraints' => { 'planarControls' => planar_controls }
+    }
+  end
+
+  def planar_controls
+    [
+      { 'id' => 'sw', 'point' => { 'x' => 1.0, 'y' => 1.0, 'z' => 1.2 } },
+      {
+        'id' => 'se',
+        'point' => { 'x' => 3.0, 'y' => 1.0, 'z' => 1.2 },
+        'tolerance' => 0.08
+      },
+      { 'id' => 'nw', 'point' => { 'x' => 1.0, 'y' => 3.0, 'z' => 1.7 } }
+    ]
   end
 end
 # rubocop:enable Metrics/AbcSize

@@ -168,6 +168,7 @@ Supported operation/region combinations:
 | `corridor_transition` | `corridor` | none beyond `mode` | `startControl`, `endControl`, `width` |
 | `local_fairing` | `rectangle`, `circle` | `strength`, `neighborhoodRadiusSamples` | `bounds` for rectangle; `center`, `radius` for circle |
 | `survey_point_constraint` | `rectangle`, `circle` | `correctionScope`, `constraints.surveyPoints` | `bounds` for rectangle; `center`, `radius` for circle |
+| `planar_region_fit` | `rectangle`, `circle` | `constraints.planarControls` | `bounds` for rectangle; `center`, `radius` for circle |
 
 Operation intent:
 
@@ -177,15 +178,16 @@ Operation intent:
 | `corridor_transition` | Express a linear corridor, ramp, or transition grade. |
 | `local_fairing` | Smooth or finish existing terrain; do not use it to express grade intent. |
 | `survey_point_constraint` | Correct measured points through local correction or a bounded smooth regional correction field. Regional scope is not implicit planar fitting, best-fit replacement, monotonic correction, or complete interior replacement. |
+| `planar_region_fit` | Fit one coherent plane from three or more controls and replace mutable full-weight samples inside the bounded support region. Blend shoulders interpolate toward the plane. |
 
 Additional terrain edit constraints:
 
 - Local `region.blend.falloff`: `none`, `linear`, `smooth`
 - Corridor `region.sideBlend.falloff`: `none`, `cosine`
 - Positive corridor side-blend distance requires `cosine`
-- `constraints.fixedControls` supported for `target_height`, `local_fairing`, `survey_point_constraint`
+- `constraints.fixedControls` supported for `target_height`, `local_fairing`, `survey_point_constraint`, `planar_region_fit`
 - `constraints.preserveZones`:
-  - rectangle/circle support for `target_height`, `local_fairing`, `survey_point_constraint`
+  - rectangle/circle support for `target_height`, `local_fairing`, `survey_point_constraint`, `planar_region_fit`
   - rectangle-only support for `corridor_transition`
   - primary protection mechanism for known-good terrain that should not drift
   - recommended near boundaries or known-good profiles outside the intended support area
@@ -194,14 +196,25 @@ Additional terrain edit constraints:
   `surveyResidualRange`, `supportFootprintLength`, `normalizedSurveyResidualRange`,
   `slopeMaxIncrease`, and `curvatureMaxIncrease`. Large absolute residual ranges can be valid
   when they span a large support footprint and produce acceptable grade/curvature.
+- `planar_region_fit` uses `constraints.planarControls` in terrain-state public-meter
+  coordinates. Controls require `point.x`, `point.y`, and `point.z`; `tolerance` is optional.
+  Default control tolerance is `clamp(supportFootprintLength * 0.002, 0.03, 0.15)`,
+  where rectangle support footprint length is the rectangle diagonal and circle support
+  footprint length is the circle diameter, not the full terrain size.
+- Planar controls must be representable by the edited discrete heightmap surface. Off-grid
+  controls on hard edit boundaries can be refused with `planar_fit_unsafe` when unchanged
+  neighboring samples would make exact public surface sampling disagree with the fitted plane.
+  Move the controls inward, align the support to grid samples, widen the full-weight support,
+  or add blend/support margin when exact sampled control satisfaction is required.
 
 Safe terrain edit loop:
 
 1. Choose the operation by terrain intent.
 2. Bound the support region narrowly enough to match the intended edit.
 3. Add `constraints.preserveZones` around terrain that should not drift.
-4. Review edit evidence such as `changedRegion`, `maxSampleDelta`, survey residuals,
-   preserve-zone drift, slope/curvature proxy changes, and regional coherence when present.
+4. Review edit evidence such as `changedRegion`, `maxSampleDelta`, planar residuals,
+   survey residuals, preserve-zone drift, slope/curvature proxy changes, and regional
+   coherence when present.
 5. Verify non-trivial edits with `sample_surface_z` profiles or
    `measure_scene terrain_profile/elevation_summary`; point samples verify controls, while
    profiles verify shape between controls.
@@ -495,6 +508,32 @@ between controls, not as a terrain validation verdict or pass/fail policy.
 }
 ```
 
+### `edit_terrain_surface` (`planar_region_fit`)
+
+```json
+{
+  "targetReference": { "sourceElementId": "terrain-main" },
+  "operation": {
+    "mode": "planar_region_fit"
+  },
+  "region": {
+    "type": "rectangle",
+    "bounds": { "minX": 0.0, "minY": 0.0, "maxX": 20.0, "maxY": 10.0 },
+    "blend": { "distance": 2.0, "falloff": "smooth" }
+  },
+  "constraints": {
+    "planarControls": [
+      { "id": "sw", "point": { "x": 0.0, "y": 0.0, "z": 1.2 } },
+      { "id": "se", "point": { "x": 20.0, "y": 0.0, "z": 1.2 } },
+      { "id": "nw", "point": { "x": 0.0, "y": 10.0, "z": 1.7 } }
+    ],
+    "fixedControls": [],
+    "preserveZones": []
+  },
+  "outputOptions": { "includeSampleEvidence": false, "sampleEvidenceLimit": 20 }
+}
+```
+
 ### `edit_terrain_surface` (`corridor_transition`)
 
 ```json
@@ -546,20 +585,21 @@ Successful terrain edits return `success: true`, `outcome: "edited"`, and includ
 - always-present `warnings`
 
 Review edit evidence before accepting non-trivial terrain edits. Important fields include
-`changedRegion`, `maxSampleDelta`, survey residuals, preserve-zone drift, slope/curvature
-proxy changes, and regional coherence when those fields are available.
+`changedRegion`, `maxSampleDelta`, planar residuals, survey residuals, preserve-zone drift,
+slope/curvature proxy changes, and regional coherence when those fields are available.
 
 Mode-specific compact evidence:
 
 - `corridor_transition`: `evidence.transition`
 - `local_fairing`: `evidence.fairing`
 - `survey_point_constraint`: `evidence.survey`
+- `planar_region_fit`: `evidence.planarFit`
 
 Adoption refusal case:
 
 - `source_sampling_incomplete` includes sample counts and first incomplete points.
 
-No terrain response returns raw SketchUp objects, durable generated face/vertex IDs, solver matrices, or survey solver internals.
+No terrain response returns raw SketchUp objects, durable generated face/vertex IDs, solver matrices, output-plan internals, or survey/planar solver internals.
 
 ### Other response notes
 

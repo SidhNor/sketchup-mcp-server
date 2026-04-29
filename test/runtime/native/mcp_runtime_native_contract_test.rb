@@ -527,6 +527,13 @@ class McpRuntimeNativeContractTest < Minitest::Test
       edit_terrain_surface_survey_missing_points_refused
       edit_terrain_surface_survey_invalid_point_refused
       edit_terrain_surface_survey_corridor_refused
+      edit_terrain_surface_planar_rectangle_edited
+      edit_terrain_surface_planar_circle_edited
+      edit_terrain_surface_planar_missing_controls_refused
+      edit_terrain_surface_planar_invalid_control_refused
+      edit_terrain_surface_planar_insufficient_controls_refused
+      edit_terrain_surface_planar_corridor_refused
+      edit_terrain_surface_planar_non_coplanar_refused
     ].each do |case_id|
       contract_case = contract_case(case_id)
       transport = @loader.build_transport(

@@ -120,6 +120,29 @@ class TerrainEditEvidenceBuilderTest < Minitest::Test
     end
   end
 
+  def test_includes_compact_planar_fit_evidence_without_solver_internals
+    result = SU_MCP::Terrain::TerrainEditEvidenceBuilder.new.build_success(
+      owner_reference: { sourceElementId: 'terrain-main' },
+      terrain_state_summary: terrain_state_summary,
+      output_summary: { derivedMesh: derived_mesh_summary },
+      edit_summary: edit_summary.merge(mode: 'planar_region_fit'),
+      diagnostics: diagnostics.merge(planarFit: planar_fit_diagnostics),
+      sample_limit: 0
+    )
+
+    planar = result.dig(:evidence, :planarFit)
+    assert_equal('z = ax + by + c', planar.dig(:plane, :equation, :form))
+    assert_equal('sw', planar.fetch(:controls).first.fetch(:id))
+    assert_equal('satisfied', planar.fetch(:controls).first.fetch(:status))
+    serialized = JSON.generate(result)
+    forbidden_terms = %w[
+      matrix normalEquations stencil outputPlan faceId vertexId SurveyCorrectionEvaluation
+    ]
+    forbidden_terms.each do |term|
+      refute_includes(serialized, term)
+    end
+  end
+
   def test_private_output_planning_diagnostics_do_not_leak_into_public_payload
     result = SU_MCP::Terrain::TerrainEditEvidenceBuilder.new.build_success(
       owner_reference: { sourceElementId: 'terrain-main' },
@@ -216,6 +239,44 @@ class TerrainEditEvidenceBuilderTest < Minitest::Test
       iterations: 3,
       actualIterations: 2,
       changedSampleCount: 8,
+      warnings: []
+    }
+  end
+
+  def planar_fit_diagnostics
+    {
+      plane: {
+        equation: { form: 'z = ax + by + c', a: 0.0, b: 0.05, c: 1.2 },
+        normal: { x: 0.0, y: -0.0499376, z: 0.998752 },
+        point: { x: 10.0, y: 5.0, z: 1.45 }
+      },
+      controls: [
+        {
+          id: 'sw',
+          index: 0,
+          point: { x: 0.0, y: 0.0 },
+          requestedElevation: 1.2,
+          beforeElevation: 1.0,
+          planeElevation: 1.2,
+          residual: 0.0,
+          tolerance: 0.03,
+          status: 'satisfied'
+        }
+      ],
+      quality: {
+        maxResidual: 0.0,
+        meanResidual: 0.0,
+        rmseResidual: 0.0,
+        normalizedMaxResidual: 0.0
+      },
+      supportRegionType: 'rectangle',
+      changedSampleCount: 4,
+      fullWeightSampleCount: 4,
+      blendSampleCount: 0,
+      preservedSampleCount: 0,
+      changedBounds: { min: { column: 1, row: 1 }, max: { column: 2, row: 2 } },
+      maxSampleDelta: 0.42,
+      grid: { warnings: [] },
       warnings: []
     }
   end

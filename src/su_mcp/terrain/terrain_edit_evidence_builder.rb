@@ -64,6 +64,7 @@ module SU_MCP
         summary[:transition] = diagnostics[:transition] if diagnostics[:transition]
         summary[:fairing] = diagnostics[:fairing] if diagnostics[:fairing]
         summary[:survey] = diagnostics[:survey] if diagnostics[:survey]
+        summary[:planarFit] = diagnostics[:planarFit] if diagnostics[:planarFit]
         summary
       end
 

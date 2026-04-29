@@ -9,7 +9,7 @@ module SU_MCP
     # rubocop:disable Metrics/PerceivedComplexity
     class EditTerrainSurfaceRequest
       SUPPORTED_OPERATION_MODES = %w[
-        target_height corridor_transition local_fairing survey_point_constraint
+        target_height corridor_transition local_fairing survey_point_constraint planar_region_fit
       ].freeze
       SUPPORTED_SURVEY_CORRECTION_SCOPES = %w[local regional].freeze
       SUPPORTED_REGION_TYPES = %w[rectangle corridor circle].freeze
@@ -20,13 +20,15 @@ module SU_MCP
         'target_height' => %w[rectangle circle],
         'corridor_transition' => %w[corridor],
         'local_fairing' => %w[rectangle circle],
-        'survey_point_constraint' => %w[rectangle circle]
+        'survey_point_constraint' => %w[rectangle circle],
+        'planar_region_fit' => %w[rectangle circle]
       }.freeze
       SUPPORTED_PRESERVE_ZONE_TYPES_BY_MODE = {
         'target_height' => %w[rectangle circle],
         'corridor_transition' => %w[rectangle],
         'local_fairing' => %w[rectangle circle],
-        'survey_point_constraint' => %w[rectangle circle]
+        'survey_point_constraint' => %w[rectangle circle],
+        'planar_region_fit' => %w[rectangle circle]
       }.freeze
 
       LOCAL_FAIRING_RADIUS_RANGE = (1..31).freeze
@@ -40,6 +42,9 @@ module SU_MCP
       DEFAULT_POSITIVE_SIDE_BLEND_FALLOFF = 'cosine'
       DEFAULT_FIXED_CONTROL_TOLERANCE = 0.01
       DEFAULT_SURVEY_POINT_TOLERANCE = 0.01
+      DEFAULT_PLANAR_TOLERANCE_RATIO = 0.002
+      MIN_PLANAR_CONTROL_TOLERANCE = 0.03
+      MAX_PLANAR_CONTROL_TOLERANCE = 0.15
       DEFAULT_INCLUDE_SAMPLE_EVIDENCE = false
       DEFAULT_SAMPLE_EVIDENCE_LIMIT = 20
       MAX_SAMPLE_EVIDENCE_LIMIT = 100
@@ -337,6 +342,9 @@ module SU_MCP
         survey_result = survey_points_refusal
         return survey_result if survey_result
 
+        planar_result = planar_controls_refusal
+        return planar_result if planar_result
+
         fixed_controls_result = fixed_controls_refusal
         return fixed_controls_result if fixed_controls_result
 
@@ -403,6 +411,45 @@ module SU_MCP
             return invalid_shape_refusal("constraints.surveyPoints[#{index}].id")
           end
         end
+        nil
+      end
+
+      def planar_controls_refusal
+        return nil unless operation['mode'] == 'planar_region_fit'
+        return missing_field_refusal('constraints.planarControls') unless constraints.key?(
+          'planarControls'
+        )
+
+        planar_controls = constraints['planarControls']
+        return invalid_shape_refusal('constraints.planarControls') unless planar_controls.is_a?(
+          Array
+        )
+
+        planar_controls.each_with_index do |control, index|
+          unless control.is_a?(Hash)
+            return invalid_shape_refusal("constraints.planarControls[#{index}]")
+          end
+
+          point = control['point']
+          unless point.is_a?(Hash)
+            return invalid_shape_refusal("constraints.planarControls[#{index}].point")
+          end
+
+          %w[x y z].each do |axis|
+            unless finite_number?(point[axis])
+              return invalid_number_refusal("constraints.planarControls[#{index}].point.#{axis}")
+            end
+          end
+          if control.key?('tolerance') &&
+             (!finite_number?(control['tolerance']) || control['tolerance'].to_f.negative?)
+            return invalid_number_refusal("constraints.planarControls[#{index}].tolerance")
+          end
+          if control.key?('id') && !json_safe_scalar?(control['id'])
+            return invalid_shape_refusal("constraints.planarControls[#{index}].id")
+          end
+        end
+        return missing_field_refusal('constraints.planarControls') if planar_controls.length < 3
+
         nil
       end
 
@@ -524,8 +571,31 @@ module SU_MCP
             ).to_f
           )
         end
+        planar_points = normalized.fetch('planarControls', [])
+        normalized['planarControls'] = planar_points.map do |point_constraint|
+          point_constraint.merge(
+            'tolerance' => point_constraint.fetch(
+              'tolerance',
+              default_planar_tolerance
+            ).to_f
+          )
+        end
         normalized['preserveZones'] = normalized.fetch('preserveZones', [])
         normalized
+      end
+
+      def default_planar_tolerance
+        raw = support_footprint_length * DEFAULT_PLANAR_TOLERANCE_RATIO
+        raw.clamp(MIN_PLANAR_CONTROL_TOLERANCE, MAX_PLANAR_CONTROL_TOLERANCE)
+      end
+
+      def support_footprint_length
+        return region.fetch('radius').to_f * 2.0 if region.fetch('type') == 'circle'
+
+        bounds = region.fetch('bounds')
+        dx = bounds.fetch('maxX').to_f - bounds.fetch('minX').to_f
+        dy = bounds.fetch('maxY').to_f - bounds.fetch('minY').to_f
+        Math.sqrt((dx * dx) + (dy * dy))
       end
 
       def normalized_output_options

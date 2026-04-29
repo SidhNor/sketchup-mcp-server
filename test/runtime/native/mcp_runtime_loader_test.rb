@@ -290,6 +290,7 @@ class McpRuntimeLoaderTest < Minitest::Test
     assert_equal(false, edit_terrain_surface_tool.fetch('annotations').fetch('readOnlyHint'))
     assert_includes(edit_terrain_surface_tool.fetch('description'), 'local_fairing')
     assert_includes(edit_terrain_surface_tool.fetch('description'), 'survey_point_constraint')
+    assert_includes(edit_terrain_surface_tool.fetch('description'), 'planar_region_fit')
     assert_equal(
       %w[targetReference operation region],
       edit_terrain_surface_tool.fetch('inputSchema').fetch('required')
@@ -353,8 +354,13 @@ class McpRuntimeLoaderTest < Minitest::Test
                             .fetch('properties')
                             .fetch('constraints')
                             .fetch('properties')
-    assert_equal(%w[fixedControls preserveZones surveyPoints],
+    assert_equal(%w[fixedControls planarControls preserveZones surveyPoints],
                  constraint_properties.keys.map(&:to_s).sort)
+    planar_control_schema = constraint_properties.fetch(:planarControls).fetch(:items)
+    assert_equal(['point'], planar_control_schema.fetch(:required))
+    assert_includes(planar_control_schema.fetch(:properties).keys, :id)
+    assert_includes(planar_control_schema.fetch(:properties).keys, :tolerance)
+    assert_equal(%w[x y z], planar_control_schema.fetch(:properties).fetch(:point).fetch(:required))
     survey_point_schema = constraint_properties.fetch(:surveyPoints).fetch(:items)
     assert_equal(['point'], survey_point_schema.fetch(:required))
     assert_includes(survey_point_schema.fetch(:properties).keys, :id)
@@ -741,6 +747,17 @@ class McpRuntimeLoaderTest < Minitest::Test
                           .fetch(:items)
     assert_equal(['point'], survey_point_schema.fetch(:required))
     assert_equal(%w[x y z], survey_point_schema.fetch(:properties).fetch(:point).fetch(:required))
+
+    planar_control_schema = input_schema
+                            .fetch(:properties)
+                            .fetch(:constraints)
+                            .fetch(:properties)
+                            .fetch(:planarControls)
+                            .fetch(:items)
+    assert_equal(['point'], planar_control_schema.fetch(:required))
+    assert_equal(%w[x y z],
+                 planar_control_schema.fetch(:properties).fetch(:point).fetch(:required))
+    assert_includes(planar_control_schema.fetch(:properties).keys, :tolerance)
 
     assert_equal(
       SU_MCP::Terrain::EditTerrainSurfaceRequest::SUPPORTED_BLEND_FALLOFFS,
