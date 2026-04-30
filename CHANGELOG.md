@@ -2,6 +2,14 @@
 
 <!-- version list -->
 
+## v1.1.1 (2026-04-30)
+
+### Refactoring
+
+- **sonar**: Fix issues and quality
+  ([`d9dc94d`](https://github.com/SidhNor/sketchup-mcp-server/commit/d9dc94d72c4abdcee738b48344b3502293bd9433))
+
+
 ## v1.1.0 (2026-04-29)
 
 ### Bug Fixes
