@@ -27,6 +27,8 @@ module SU_MCP
                      selector.fetch('targetReference'),
                      include_hidden: include_hidden
                    )
+                 else
+                   raise "Unsupported scopeSelector.mode: #{selector.fetch('mode')}"
                  end
 
       {

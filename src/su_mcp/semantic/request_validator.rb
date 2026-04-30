@@ -33,6 +33,9 @@ module SU_MCP
         adopt_existing
         replace_preserve_identity
       ].freeze
+      DEFINITION_ELEVATION_FIELD = 'definition.elevation'
+      DEFINITION_HEIGHT_FIELD = 'definition.height'
+      DEFINITION_THICKNESS_FIELD = 'definition.thickness'
       def initialize(geometry_validator: GeometryValidator.new)
         @geometry_validator = geometry_validator
       end
@@ -153,7 +156,7 @@ module SU_MCP
           ],
           [
             invalid_v2_structure_height?(params),
-            -> { invalid_numeric_value_refusal(field: 'definition.height') }
+            -> { invalid_numeric_value_refusal(field: DEFINITION_HEIGHT_FIELD) }
           ],
           [
             invalid_v2_pad_geometry?(params),
@@ -161,11 +164,11 @@ module SU_MCP
           ],
           [
             invalid_v2_pad_thickness?(params),
-            -> { invalid_numeric_value_refusal(field: 'definition.thickness') }
+            -> { invalid_numeric_value_refusal(field: DEFINITION_THICKNESS_FIELD) }
           ],
           [
             invalid_v2_pad_elevation?(params),
-            -> { invalid_numeric_value_refusal(field: 'definition.elevation') }
+            -> { invalid_numeric_value_refusal(field: DEFINITION_ELEVATION_FIELD) }
           ],
           [
             invalid_v2_path_geometry?(params),
@@ -177,11 +180,11 @@ module SU_MCP
           ],
           [
             invalid_v2_path_thickness?(params),
-            -> { invalid_numeric_value_refusal(field: 'definition.thickness') }
+            -> { invalid_numeric_value_refusal(field: DEFINITION_THICKNESS_FIELD) }
           ],
           [
             invalid_v2_path_elevation?(params),
-            -> { invalid_numeric_value_refusal(field: 'definition.elevation') }
+            -> { invalid_numeric_value_refusal(field: DEFINITION_ELEVATION_FIELD) }
           ],
           [
             invalid_v2_retaining_edge_geometry?(params),
@@ -189,15 +192,15 @@ module SU_MCP
           ],
           [
             invalid_v2_retaining_edge_height?(params),
-            -> { invalid_numeric_value_refusal(field: 'definition.height') }
+            -> { invalid_numeric_value_refusal(field: DEFINITION_HEIGHT_FIELD) }
           ],
           [
             invalid_v2_retaining_edge_thickness?(params),
-            -> { invalid_numeric_value_refusal(field: 'definition.thickness') }
+            -> { invalid_numeric_value_refusal(field: DEFINITION_THICKNESS_FIELD) }
           ],
           [
             invalid_v2_retaining_edge_elevation?(params),
-            -> { invalid_numeric_value_refusal(field: 'definition.elevation') }
+            -> { invalid_numeric_value_refusal(field: DEFINITION_ELEVATION_FIELD) }
           ],
           [
             invalid_v2_planting_mass_geometry?(params),
@@ -209,7 +212,7 @@ module SU_MCP
           ],
           [
             invalid_v2_planting_mass_elevation?(params),
-            -> { invalid_numeric_value_refusal(field: 'definition.elevation') }
+            -> { invalid_numeric_value_refusal(field: DEFINITION_ELEVATION_FIELD) }
           ],
           [
             invalid_v2_tree_proxy_position?(params),
@@ -225,7 +228,7 @@ module SU_MCP
           ],
           [
             invalid_v2_tree_proxy_height?(params),
-            -> { invalid_numeric_value_refusal(field: 'definition.height') }
+            -> { invalid_numeric_value_refusal(field: DEFINITION_HEIGHT_FIELD) }
           ],
           [
             invalid_v2_tree_proxy_trunk_diameter?(params),

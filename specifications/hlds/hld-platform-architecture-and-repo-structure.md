@@ -104,7 +104,9 @@ The main architectural goals are:
 **Current Baseline**
 
 - implemented primarily under `src/su_mcp/runtime/native/`
-- current runtime exposes tools with descriptions and schemas; MCP prompts/resources are not yet exposed as a server surface, with prompts now planned as the first implementation slice
+- `src/su_mcp/runtime/native/mcp_runtime_loader.rb` owns vendored runtime loading and assembly of the native MCP server surface
+- `src/su_mcp/runtime/native/native_tool_catalog.rb` owns public native MCP tool entries and input schemas together, intentionally keeping contract edits co-located rather than spread across many small schema files
+- focused support objects under `src/su_mcp/runtime/native/` own server object construction, prompt catalog integration, and stateless HTTP transport handling
 
 ### 4. Ruby Command or Use-Case Layer
 
@@ -213,7 +215,6 @@ Manual SketchUp-hosted smoke validation remains required when:
 
 ## Open Questions
 
-1. Should the native MCP tool catalog and schema definitions remain inside `McpRuntimeLoader`, or should they move into smaller catalog/registration support objects as the public surface grows?
-2. What additional SketchUp-hosted smoke coverage should become mandatory for packaged runtime startup, representative MCP requests, and high-risk mutating tools?
-3. Should release automation stay on `python-semantic-release` long term, or should a repo-owned release flow eventually replace it?
-4. How many initial MCP prompts should the native runtime expose for richer workflow guidance while keeping baseline usage semantics in tool descriptions and schemas?
+1. What additional SketchUp-hosted smoke coverage should become mandatory for packaged runtime startup, representative MCP requests, and high-risk mutating tools?
+2. Should release automation stay on `python-semantic-release` long term, or should a repo-owned release flow eventually replace it?
+3. How many initial MCP prompts should the native runtime expose for richer workflow guidance while keeping baseline usage semantics in tool descriptions and schemas?

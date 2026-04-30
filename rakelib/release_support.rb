@@ -161,7 +161,8 @@ module ReleaseSupport
   end
 end
 
-require_relative 'release_support/runtime_package_manifest'
-require_relative 'release_support/runtime_package_stage_builder'
-require_relative 'release_support/runtime_package_verifier'
-require_relative 'release_support/runtime_package_vendor_stager'
+# These extensions depend on ReleaseSupport constants defined above.
+require_relative 'release_support/runtime_package_manifest' # NOSONAR
+require_relative 'release_support/runtime_package_stage_builder' # NOSONAR
+require_relative 'release_support/runtime_package_verifier' # NOSONAR
+require_relative 'release_support/runtime_package_vendor_stager' # NOSONAR

@@ -31,8 +31,8 @@ module SU_MCP
     end
 
     def resolve(raw_target_reference = nil, field: 'targetReference', **raw_keywords)
-      raw_target_reference = raw_keywords unless raw_keywords.empty?
-      target_reference = normalized_target_reference(raw_target_reference, field: field)
+      target_reference_input = raw_keywords.empty? ? raw_target_reference : raw_keywords
+      target_reference = normalized_target_reference(target_reference_input, field: field)
       matches = lookup_matches(target_reference)
 
       resolution = targeting_query.resolution_for(matches)

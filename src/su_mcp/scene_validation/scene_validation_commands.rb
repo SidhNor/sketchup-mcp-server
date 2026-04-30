@@ -315,6 +315,13 @@ module SU_MCP
         }
       when 'geometryRequirements'
         geometry_outcome(expectation, entity, family, index)
+      else
+        {
+          refusal: ToolResponse.refusal(
+            code: 'unsupported_expectation_family',
+            message: "Unsupported expectation family: #{family}"
+          )
+        }
       end
     end
 
@@ -443,6 +450,8 @@ module SU_MCP
                 )
               when 'surfaceOffset'
                 surface_offset_error(expectation, entity, family, index)
+              else
+                raise ArgumentError, "Unsupported geometry kind: #{kind}"
               end
       { error: error }
     end

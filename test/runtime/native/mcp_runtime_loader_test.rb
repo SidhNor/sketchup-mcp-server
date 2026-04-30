@@ -1736,7 +1736,7 @@ class McpRuntimeLoaderTest < Minitest::Test
   private
 
   def perform_json_request(transport, id:, method:, params:)
-    require 'rack/mock_request'
+    require 'rack/mock_request' # NOSONAR - available after staged runtime paths load.
 
     env = Rack::MockRequest.env_for(
       '/mcp',
@@ -1764,7 +1764,7 @@ class McpRuntimeLoaderTest < Minitest::Test
   end
 
   def perform_raw_json_request(transport, payload)
-    require 'rack/mock_request'
+    require 'rack/mock_request' # NOSONAR - available after staged runtime paths load.
 
     env = Rack::MockRequest.env_for(
       '/mcp',

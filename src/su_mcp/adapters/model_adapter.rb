@@ -199,7 +199,8 @@ module SU_MCP
       end
 
       def build_export_path(format)
-        temp_dir = File.join(ENV['TEMP'] || ENV['TMP'] || Dir.tmpdir, 'sketchup_exports')
+        temp_root = ENV.fetch('TEMP') { ENV.fetch('TMP', Dir.tmpdir) }
+        temp_dir = File.join(temp_root, 'sketchup_exports')
         FileUtils.mkdir_p(temp_dir)
 
         timestamp = Time.now.strftime('%Y%m%d_%H%M%S')

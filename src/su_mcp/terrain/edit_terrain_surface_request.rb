@@ -16,6 +16,11 @@ module SU_MCP
       SUPPORTED_BLEND_FALLOFFS = %w[none linear smooth].freeze
       SUPPORTED_SIDE_BLEND_FALLOFFS = %w[none cosine].freeze
       SUPPORTED_PRESERVE_ZONE_TYPES = %w[rectangle circle].freeze
+      OPERATION_STRENGTH_FIELD = 'operation.strength'
+      REGION_TYPE_FIELD = 'region.type'
+      REGION_WIDTH_FIELD = 'region.width'
+      SURVEY_POINTS_FIELD = 'constraints.surveyPoints'
+      PLANAR_CONTROLS_FIELD = 'constraints.planarControls'
       SUPPORTED_REGION_TYPES_BY_MODE = {
         'target_height' => %w[rectangle circle],
         'corridor_transition' => %w[corridor],
@@ -140,14 +145,14 @@ module SU_MCP
       end
 
       def local_fairing_operation_refusal
-        return missing_field_refusal('operation.strength') unless operation.key?('strength')
-        return invalid_number_refusal('operation.strength') unless finite_number?(
+        return missing_field_refusal(OPERATION_STRENGTH_FIELD) unless operation.key?('strength')
+        return invalid_number_refusal(OPERATION_STRENGTH_FIELD) unless finite_number?(
           operation['strength']
         )
 
         strength = operation['strength'].to_f
         unless strength.positive? && strength <= 1.0
-          return invalid_number_refusal('operation.strength')
+          return invalid_number_refusal(OPERATION_STRENGTH_FIELD)
         end
 
         unless operation.key?('neighborhoodRadiusSamples')
@@ -198,10 +203,10 @@ module SU_MCP
       end
 
       def region_refusal
-        return missing_field_refusal('region.type') if blank?(region['type'])
+        return missing_field_refusal(REGION_TYPE_FIELD) if blank?(region['type'])
         unless SUPPORTED_REGION_TYPES.include?(region['type'])
           return unsupported_option_refusal(
-            field: 'region.type',
+            field: REGION_TYPE_FIELD,
             value: region['type'],
             allowed_values: SUPPORTED_REGION_TYPES,
             message: 'Region type is not supported for edit_terrain_surface.'
@@ -221,7 +226,7 @@ module SU_MCP
         return nil if allowed.include?(region['type'])
 
         unsupported_option_refusal(
-          field: 'region.type',
+          field: REGION_TYPE_FIELD,
           value: region['type'],
           allowed_values: allowed,
           message: 'Region type is not supported for this edit operation mode.'
@@ -254,9 +259,9 @@ module SU_MCP
 
       def corridor_width_refusal
         width = region['width']
-        return missing_field_refusal('region.width') unless region.key?('width')
-        return invalid_number_refusal('region.width') unless finite_number?(width)
-        return invalid_number_refusal('region.width') unless width.to_f.positive?
+        return missing_field_refusal(REGION_WIDTH_FIELD) unless region.key?('width')
+        return invalid_number_refusal(REGION_WIDTH_FIELD) unless finite_number?(width)
+        return invalid_number_refusal(REGION_WIDTH_FIELD) unless width.to_f.positive?
 
         nil
       end
@@ -379,36 +384,34 @@ module SU_MCP
 
       def survey_points_refusal
         return nil unless operation['mode'] == 'survey_point_constraint'
-        return missing_field_refusal('constraints.surveyPoints') unless constraints.key?(
+        return missing_field_refusal(SURVEY_POINTS_FIELD) unless constraints.key?(
           'surveyPoints'
         )
 
         survey_points = constraints['surveyPoints']
-        return invalid_shape_refusal('constraints.surveyPoints') unless survey_points.is_a?(Array)
-        return missing_field_refusal('constraints.surveyPoints') if survey_points.empty?
+        return invalid_shape_refusal(SURVEY_POINTS_FIELD) unless survey_points.is_a?(Array)
+        return missing_field_refusal(SURVEY_POINTS_FIELD) if survey_points.empty?
 
         survey_points.each_with_index do |point_constraint, index|
           unless point_constraint.is_a?(Hash)
-            return invalid_shape_refusal("constraints.surveyPoints[#{index}]")
+            return invalid_shape_refusal(survey_point_field(index))
           end
 
           point = point_constraint['point']
-          unless point.is_a?(Hash)
-            return invalid_shape_refusal("constraints.surveyPoints[#{index}].point")
-          end
+          return invalid_shape_refusal(survey_point_field(index, 'point')) unless point.is_a?(Hash)
 
           %w[x y z].each do |axis|
             unless finite_number?(point[axis])
-              return invalid_number_refusal("constraints.surveyPoints[#{index}].point.#{axis}")
+              return invalid_number_refusal(survey_point_field(index, "point.#{axis}"))
             end
           end
           if point_constraint.key?('tolerance') &&
              (!finite_number?(point_constraint['tolerance']) ||
               point_constraint['tolerance'].to_f.negative?)
-            return invalid_number_refusal("constraints.surveyPoints[#{index}].tolerance")
+            return invalid_number_refusal(survey_point_field(index, 'tolerance'))
           end
           if point_constraint.key?('id') && !json_safe_scalar?(point_constraint['id'])
-            return invalid_shape_refusal("constraints.surveyPoints[#{index}].id")
+            return invalid_shape_refusal(survey_point_field(index, 'id'))
           end
         end
         nil
@@ -416,39 +419,39 @@ module SU_MCP
 
       def planar_controls_refusal
         return nil unless operation['mode'] == 'planar_region_fit'
-        return missing_field_refusal('constraints.planarControls') unless constraints.key?(
+        return missing_field_refusal(PLANAR_CONTROLS_FIELD) unless constraints.key?(
           'planarControls'
         )
 
         planar_controls = constraints['planarControls']
-        return invalid_shape_refusal('constraints.planarControls') unless planar_controls.is_a?(
+        return invalid_shape_refusal(PLANAR_CONTROLS_FIELD) unless planar_controls.is_a?(
           Array
         )
 
         planar_controls.each_with_index do |control, index|
-          unless control.is_a?(Hash)
-            return invalid_shape_refusal("constraints.planarControls[#{index}]")
-          end
+          return invalid_shape_refusal(planar_control_field(index)) unless control.is_a?(Hash)
 
           point = control['point']
           unless point.is_a?(Hash)
-            return invalid_shape_refusal("constraints.planarControls[#{index}].point")
+            return invalid_shape_refusal(
+              planar_control_field(index, 'point')
+            )
           end
 
           %w[x y z].each do |axis|
             unless finite_number?(point[axis])
-              return invalid_number_refusal("constraints.planarControls[#{index}].point.#{axis}")
+              return invalid_number_refusal(planar_control_field(index, "point.#{axis}"))
             end
           end
           if control.key?('tolerance') &&
              (!finite_number?(control['tolerance']) || control['tolerance'].to_f.negative?)
-            return invalid_number_refusal("constraints.planarControls[#{index}].tolerance")
+            return invalid_number_refusal(planar_control_field(index, 'tolerance'))
           end
           if control.key?('id') && !json_safe_scalar?(control['id'])
-            return invalid_shape_refusal("constraints.planarControls[#{index}].id")
+            return invalid_shape_refusal(planar_control_field(index, 'id'))
           end
         end
-        return missing_field_refusal('constraints.planarControls') if planar_controls.length < 3
+        return missing_field_refusal(PLANAR_CONTROLS_FIELD) if planar_controls.length < 3
 
         nil
       end
@@ -686,6 +689,19 @@ module SU_MCP
             allowedValues: allowed_values
           }
         )
+      end
+
+      def survey_point_field(index, suffix = nil)
+        indexed_field(SURVEY_POINTS_FIELD, index, suffix)
+      end
+
+      def planar_control_field(index, suffix = nil)
+        indexed_field(PLANAR_CONTROLS_FIELD, index, suffix)
+      end
+
+      def indexed_field(field, index, suffix)
+        base = "#{field}[#{index}]"
+        suffix ? "#{base}.#{suffix}" : base
       end
 
       def refusal(code:, message:, details:)

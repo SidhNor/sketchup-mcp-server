@@ -6,7 +6,8 @@ def file_loaded?(_filename)
   true
 end
 
-require_relative '../../../src/su_mcp/main'
+# main.rb expects SketchUp's file_loaded? guard to exist before loading.
+require_relative '../../../src/su_mcp/main' # NOSONAR
 
 class McpRuntimeMainIntegrationTest < Minitest::Test
   class StubRuntimeServer

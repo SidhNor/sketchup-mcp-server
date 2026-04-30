@@ -15,6 +15,7 @@ module SU_MCP
       MAX_TERRAIN_ROWS = 128
       MIN_TERRAIN_COLUMNS = 2
       MIN_TERRAIN_ROWS = 2
+      LIFECYCLE_TARGET_FIELD = 'lifecycle.target'
 
       def initialize(params, identity_exists: nil)
         @params = params
@@ -108,7 +109,7 @@ module SU_MCP
         refusal(
           code: 'missing_lifecycle_target',
           message: 'Lifecycle target is required for terrain adoption.',
-          details: { field: 'lifecycle.target', lifecycleMode: lifecycle_mode }
+          details: { field: LIFECYCLE_TARGET_FIELD, lifecycleMode: lifecycle_mode }
         )
       end
 
@@ -136,7 +137,7 @@ module SU_MCP
         refusal(
           code: 'unexpected_lifecycle_target',
           message: 'Lifecycle target is not supported for terrain creation.',
-          details: { field: 'lifecycle.target', lifecycleMode: lifecycle_mode }
+          details: { field: LIFECYCLE_TARGET_FIELD, lifecycleMode: lifecycle_mode }
         )
       end
 
@@ -238,7 +239,7 @@ module SU_MCP
 
       def target_reference_refusal(target)
         keys = target.keys.map(&:to_s)
-        return missing_field_refusal('lifecycle.target') if keys.empty?
+        return missing_field_refusal(LIFECYCLE_TARGET_FIELD) if keys.empty?
 
         unsupported_key = keys.find do |key|
           !%w[sourceElementId persistentId entityId].include?(key)

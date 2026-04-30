@@ -50,6 +50,8 @@ These are architectural boundaries, not a frozen directory layout. Move code tow
 - The supported MCP boundary runs inside SketchUp.
 - Prefer one coherent command per tool call over chatty internal hops.
 - Keep transport concerns separate from command behavior and SketchUp adapter code.
+- In the Ruby-native runtime, keep public MCP tool entries and input schemas co-located in `src/su_mcp/runtime/native/native_tool_catalog.rb` so contract edits remain easy to inspect and update together.
+- Keep `src/su_mcp/runtime/native/mcp_runtime_loader.rb` focused on vendored runtime loading and runtime assembly; do not grow it back into the tool catalog, schema catalog, or transport implementation.
 - When a public MCP tool contract changes, update the tool registration, dispatcher, tests, and user-facing docs in the same change.
 
 ## Change Guidance

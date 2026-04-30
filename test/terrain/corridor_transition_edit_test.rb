@@ -3,11 +3,7 @@
 require_relative '../test_helper'
 require_relative '../../src/su_mcp/terrain/heightmap_state'
 require_relative '../../src/su_mcp/terrain/sample_window'
-begin
-  require_relative '../../src/su_mcp/terrain/corridor_transition_edit'
-rescue LoadError
-  # Skeleton-first TDD: implementation file is introduced after this failing surface exists.
-end
+require_relative '../../src/su_mcp/terrain/corridor_transition_edit'
 
 class CorridorTransitionEditTest < Minitest::Test
   BASIS = {

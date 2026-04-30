@@ -13,6 +13,7 @@ module SU_MCP
     TARGET_REFERENCE_KEYS = %w[sourceElementId persistentId entityId].freeze
     SAMPLE_Z_CLUSTER_TOLERANCE_METERS = 0.001
     SAMPLING_TYPES = %w[points profile].freeze
+    SAMPLING_POINTS_FIELD = 'sampling.points'
 
     def initialize(serializer:, support: nil, profile_generator: nil)
       @serializer = serializer
@@ -154,15 +155,15 @@ module SU_MCP
       return unsupported_request_field_refusal("sampling.#{unsupported_field}") if unsupported_field
 
       points = Array(sampling['points'] || sampling[:points])
-      return missing_field_refusal('sampling.points') if points.empty?
+      return missing_field_refusal(SAMPLING_POINTS_FIELD) if points.empty?
 
       { mode: :points, points: normalized_sample_points(points) }
     rescue RuntimeError => e
-      invalid_value_refusal('sampling.points', e.message)
+      invalid_value_refusal(SAMPLING_POINTS_FIELD, e.message)
     end
 
     def normalized_profile_sampling_or_refusal(sampling)
-      return unsupported_request_field_refusal('sampling.points') if sampling.key?('points')
+      return unsupported_request_field_refusal(SAMPLING_POINTS_FIELD) if sampling.key?('points')
 
       path = sampling['path'] || sampling[:path]
       return missing_field_refusal('sampling.path') if Array(path).empty?

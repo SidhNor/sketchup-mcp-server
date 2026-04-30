@@ -2,11 +2,7 @@
 
 require_relative '../test_helper'
 require_relative '../../src/su_mcp/terrain/heightmap_state'
-begin
-  require_relative '../support/terrain_survey_correction_evaluation'
-rescue LoadError
-  # Skeleton-first TDD: the private evaluation harness is introduced after this surface exists.
-end
+require_relative '../support/terrain_survey_correction_evaluation'
 
 class SurveyCorrectionEvaluationTest < Minitest::Test
   BASIS = {

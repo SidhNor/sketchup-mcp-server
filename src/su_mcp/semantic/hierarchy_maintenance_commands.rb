@@ -103,10 +103,18 @@ module SU_MCP
 
     def resolution_refusal(resolution, field:)
       case resolution[:resolution]
+      when 'unique'
+        nil
       when 'none'
         refusal('target_not_found', 'Target reference resolves to no entity.', { field: field })
       when 'ambiguous'
         refusal('ambiguous_target', 'Target reference resolves ambiguously.', { field: field })
+      else
+        refusal(
+          'target_resolution_failed',
+          'Target reference resolution returned an unsupported state.',
+          { field: field, resolution: resolution[:resolution] }
+        )
       end
     end
 

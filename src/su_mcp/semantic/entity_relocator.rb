@@ -106,6 +106,8 @@ module SU_MCP
           clone_component_instance(entity, target_collection)
         when Sketchup::Face
           clone_face(entity, target_collection)
+        else
+          raise ArgumentError, "Unsupported nested entity type for relocation: #{entity.class}"
         end
       end
 

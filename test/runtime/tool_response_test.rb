@@ -1,9 +1,7 @@
 # frozen_string_literal: true
 
 require_relative '../test_helper'
-
-tool_response_path = File.expand_path('../../src/su_mcp/runtime/tool_response', __dir__)
-require tool_response_path if File.exist?("#{tool_response_path}.rb")
+require_relative '../../src/su_mcp/runtime/tool_response'
 
 class ToolResponseTest < Minitest::Test
   def test_exposes_a_shared_success_builder_for_first_class_native_tools

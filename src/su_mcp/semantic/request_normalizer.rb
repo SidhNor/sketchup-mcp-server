@@ -6,33 +6,37 @@ module SU_MCP
   module Semantic
     # Normalizes public semantic create-site-element params into internal lengths.
     class RequestNormalizer
+      DEFINITION_ELEVATION_FIELD = 'definition.elevation'
+      DEFINITION_HEIGHT_FIELD = 'definition.height'
+      DEFINITION_THICKNESS_FIELD = 'definition.thickness'
+
       GEOMETRY_FIELDS_BY_TYPE = {
         'structure' => {
           'definition.footprint' => :points,
-          'definition.elevation' => :scalar,
-          'definition.height' => :scalar
+          DEFINITION_ELEVATION_FIELD => :scalar,
+          DEFINITION_HEIGHT_FIELD => :scalar
         },
         'pad' => {
           'definition.footprint' => :points,
-          'definition.elevation' => :scalar,
-          'definition.thickness' => :scalar
+          DEFINITION_ELEVATION_FIELD => :scalar,
+          DEFINITION_THICKNESS_FIELD => :scalar
         },
         'path' => {
           'definition.centerline' => :points,
           'definition.width' => :scalar,
-          'definition.elevation' => :scalar,
-          'definition.thickness' => :scalar
+          DEFINITION_ELEVATION_FIELD => :scalar,
+          DEFINITION_THICKNESS_FIELD => :scalar
         },
         'retaining_edge' => {
           'definition.polyline' => :points,
-          'definition.height' => :scalar,
-          'definition.thickness' => :scalar,
-          'definition.elevation' => :scalar
+          DEFINITION_HEIGHT_FIELD => :scalar,
+          DEFINITION_THICKNESS_FIELD => :scalar,
+          DEFINITION_ELEVATION_FIELD => :scalar
         },
         'planting_mass' => {
           'definition.boundary' => :points,
           'definition.averageHeight' => :scalar,
-          'definition.elevation' => :scalar
+          DEFINITION_ELEVATION_FIELD => :scalar
         },
         'tree_proxy' => {
           'definition.position.x' => :scalar,
@@ -40,7 +44,7 @@ module SU_MCP
           'definition.position.z' => :scalar,
           'definition.canopyDiameterX' => :scalar,
           'definition.canopyDiameterY' => :scalar,
-          'definition.height' => :scalar,
+          DEFINITION_HEIGHT_FIELD => :scalar,
           'definition.trunkDiameter' => :scalar
         }
       }.freeze

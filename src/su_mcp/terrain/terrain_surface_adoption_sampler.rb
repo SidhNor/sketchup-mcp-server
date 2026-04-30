@@ -12,6 +12,8 @@ module SU_MCP
   module Terrain
     # Converts one supported explicit source surface into sampled terrain-state input.
     class TerrainSurfaceAdoptionSampler
+      LIFECYCLE_TARGET_FIELD = 'lifecycle.target'
+
       def initialize(
         sample_query: nil,
         target_resolver: nil,
@@ -132,7 +134,7 @@ module SU_MCP
         ToolResponse.refusal(
           code: 'target_resolution_failed',
           message: e.message,
-          details: { field: 'lifecycle.target' }
+          details: { field: LIFECYCLE_TARGET_FIELD }
         )
       end
 
@@ -141,10 +143,11 @@ module SU_MCP
         when 'unique'
           resolution
         when 'ambiguous'
-          refusal('ambiguous_target', 'Lifecycle target resolves ambiguously.', 'lifecycle.target')
+          refusal('ambiguous_target', 'Lifecycle target resolves ambiguously.',
+                  LIFECYCLE_TARGET_FIELD)
         else
           refusal('target_resolution_failed', 'Lifecycle target resolves to no entity.',
-                  'lifecycle.target')
+                  LIFECYCLE_TARGET_FIELD)
         end
       end
 
@@ -322,7 +325,7 @@ module SU_MCP
 
       def incomplete_sampling_details(samples, bounds, dimensions)
         {
-          field: 'lifecycle.target',
+          field: LIFECYCLE_TARGET_FIELD,
           sampleCount: samples.length,
           hitCount: samples.count { |sample| sample_status(sample) == 'hit' },
           missCount: samples.count { |sample| sample_status(sample) == 'miss' },

@@ -3,11 +3,7 @@
 require_relative '../test_helper'
 require_relative '../../src/su_mcp/terrain/heightmap_state'
 require_relative '../support/terrain_survey_correction_evaluation'
-begin
-  require_relative '../../src/su_mcp/terrain/survey_point_constraint_edit'
-rescue LoadError
-  # Skeleton-first TDD: production survey editor is introduced by MTA-13.
-end
+require_relative '../../src/su_mcp/terrain/survey_point_constraint_edit'
 
 class SurveyPointConstraintEditTest < Minitest::Test
   BASIS = {

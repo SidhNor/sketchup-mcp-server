@@ -1,11 +1,7 @@
 # frozen_string_literal: true
 
 require_relative '../test_helper'
-begin
-  require_relative '../../src/su_mcp/terrain/region_influence'
-rescue LoadError
-  # Skeleton-first TDD: production helper is introduced after this failing surface exists.
-end
+require_relative '../../src/su_mcp/terrain/region_influence'
 
 class RegionInfluenceTest < Minitest::Test
   def test_rectangle_weight_matches_existing_linear_falloff_boundary_semantics
