@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require_relative '../../test_helper'
+require 'stringio'
 require 'tmpdir'
 require_relative '../../../src/su_mcp/runtime/tool_response'
 require_relative '../../../src/su_mcp/terrain/edit_terrain_surface_request'
@@ -1736,20 +1737,18 @@ class McpRuntimeLoaderTest < Minitest::Test
   private
 
   def perform_json_request(transport, id:, method:, params:)
-    require 'rack/mock_request' # NOSONAR - available after staged runtime paths load.
-
-    env = Rack::MockRequest.env_for(
-      '/mcp',
-      method: 'POST',
+    env = {
+      'PATH_INFO' => '/mcp',
+      'REQUEST_METHOD' => 'POST',
       'CONTENT_TYPE' => 'application/json',
       'HTTP_ACCEPT' => 'application/json, text/event-stream',
-      input: {
+      'rack.input' => StringIO.new({
         jsonrpc: '2.0',
         id: id,
         method: method,
         params: params
-      }.to_json
-    )
+      }.to_json)
+    }
 
     status, headers, body = transport.call(env)
     payload = body.each.to_a.join
@@ -1764,15 +1763,13 @@ class McpRuntimeLoaderTest < Minitest::Test
   end
 
   def perform_raw_json_request(transport, payload)
-    require 'rack/mock_request' # NOSONAR - available after staged runtime paths load.
-
-    env = Rack::MockRequest.env_for(
-      '/mcp',
-      method: 'POST',
+    env = {
+      'PATH_INFO' => '/mcp',
+      'REQUEST_METHOD' => 'POST',
       'CONTENT_TYPE' => 'application/json',
       'HTTP_ACCEPT' => 'application/json, text/event-stream',
-      input: JSON.generate(payload)
-    )
+      'rack.input' => StringIO.new(JSON.generate(payload))
+    }
 
     status, headers, body = transport.call(env)
     raw_body = body.each.to_a.join

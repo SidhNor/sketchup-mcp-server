@@ -1,13 +1,7 @@
 # frozen_string_literal: true
 
 require_relative '../../test_helper'
-
-def file_loaded?(_filename)
-  true
-end
-
-# main.rb expects SketchUp's file_loaded? guard to exist before loading.
-require_relative '../../../src/su_mcp/main' # NOSONAR
+require_relative '../../../src/su_mcp/main'
 
 class McpRuntimeMainIntegrationTest < Minitest::Test
   class StubRuntimeServer

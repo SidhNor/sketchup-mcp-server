@@ -167,37 +167,38 @@ module SU_MCP
       def point_refusal(point, field)
         return invalid_grid_refusal(field) unless point.is_a?(Hash)
 
-        %w[x y z].each do |axis|
-          return invalid_grid_refusal("#{field}.#{axis}") unless finite_number?(point[axis])
-        end
+        invalid_axis = %w[x y z].find { |axis| !finite_number?(point[axis]) }
+        return invalid_grid_refusal("#{field}.#{invalid_axis}") if invalid_axis
+
         nil
       end
 
       def spacing_refusal(spacing)
         return invalid_grid_refusal('definition.grid.spacing') unless spacing.is_a?(Hash)
 
-        %w[x y].each do |axis|
+        invalid_axis = %w[x y].find do |axis|
           value = spacing[axis]
-          unless finite_number?(value)
-            return invalid_grid_refusal("definition.grid.spacing.#{axis}")
-          end
-          return invalid_grid_refusal("definition.grid.spacing.#{axis}") unless value.to_f.positive?
+          !finite_number?(value) || !value.to_f.positive?
         end
+        return invalid_grid_refusal("definition.grid.spacing.#{invalid_axis}") if invalid_axis
+
         nil
       end
 
       def dimensions_refusal(dimensions)
         return invalid_grid_refusal('definition.grid.dimensions') unless dimensions.is_a?(Hash)
 
-        {
+        invalid_dimension = {
           'columns' => MIN_TERRAIN_COLUMNS,
           'rows' => MIN_TERRAIN_ROWS
-        }.each do |key, minimum|
+        }.find do |key, minimum|
           value = dimensions[key]
-          unless value.is_a?(Integer) && value >= minimum
-            return invalid_grid_refusal("definition.grid.dimensions.#{key}")
-          end
+          !value.is_a?(Integer) || value < minimum
         end
+        if invalid_dimension
+          return invalid_grid_refusal("definition.grid.dimensions.#{invalid_dimension.first}")
+        end
+
         nil
       end
 

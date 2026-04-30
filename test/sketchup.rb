@@ -3,6 +3,10 @@
 require 'bundler/setup'
 require 'sketchup-api-stubs'
 
+def file_loaded?(_filename)
+  true
+end
+
 class SketchupConsoleStub
   attr_reader :messages
 

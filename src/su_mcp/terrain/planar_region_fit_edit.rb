@@ -115,16 +115,16 @@ module SU_MCP
       end
 
       def control_bounds_refusal(state, controls)
-        controls.each do |control|
-          next if point_in_state_bounds?(state, control.fetch(:point))
-
-          return refusal(
-            code: 'planar_control_outside_bounds',
-            message: 'Planar control is outside terrain state bounds.',
-            details: { controlId: control[:id], index: control.fetch(:index) }.compact
-          )
+        control = controls.find do |candidate|
+          !point_in_state_bounds?(state, candidate.fetch(:point))
         end
-        nil
+        return nil unless control
+
+        refusal(
+          code: 'planar_control_outside_bounds',
+          message: 'Planar control is outside terrain state bounds.',
+          details: { controlId: control[:id], index: control.fetch(:index) }.compact
+        )
       end
 
       def point_in_state_bounds?(state, point)
@@ -137,17 +137,16 @@ module SU_MCP
       end
 
       def control_support_refusal(request, controls)
-        controls.each do |control|
-          weight = region_influence.weight_for(control.fetch(:point), request.fetch('region'))
-          next if weight.positive?
-
-          return refusal(
-            code: 'planar_control_outside_support_region',
-            message: 'Planar control is outside the planar fit support region.',
-            details: { controlId: control[:id], index: control.fetch(:index) }.compact
-          )
+        control = controls.find do |candidate|
+          !region_influence.weight_for(candidate.fetch(:point), request.fetch('region')).positive?
         end
-        nil
+        return nil unless control
+
+        refusal(
+          code: 'planar_control_outside_support_region',
+          message: 'Planar control is outside the planar fit support region.',
+          details: { controlId: control[:id], index: control.fetch(:index) }.compact
+        )
       end
 
       def contradictory_control_refusal(controls)
@@ -284,18 +283,18 @@ module SU_MCP
       end
 
       def preserve_control_refusal(state, request, controls)
-        controls.each do |control|
-          next unless preserve_zones(request).any? do |zone|
-            region_influence.preserve_zone_contains?(control.fetch(:point), zone, state.spacing)
+        control = controls.find do |candidate|
+          preserve_zones(request).any? do |zone|
+            region_influence.preserve_zone_contains?(candidate.fetch(:point), zone, state.spacing)
           end
-
-          return refusal(
-            code: 'planar_control_preserve_zone_conflict',
-            message: 'Planar control falls inside a preserve zone.',
-            details: { controlId: control[:id], index: control.fetch(:index) }.compact
-          )
         end
-        nil
+        return nil unless control
+
+        refusal(
+          code: 'planar_control_preserve_zone_conflict',
+          message: 'Planar control falls inside a preserve zone.',
+          details: { controlId: control[:id], index: control.fetch(:index) }.compact
+        )
       end
 
       def edited_elevations_for(state, weighted_samples, plane)

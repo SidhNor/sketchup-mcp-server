@@ -123,12 +123,16 @@ module SU_MCP
 
     def point_at_distance(segments, distance)
       remaining = distance
-      segments.each do |segment|
-        length = segment.fetch(:length)
-        return interpolate(segment, remaining / length) if remaining <= length
-
-        remaining -= length
+      segment = segments.find do |candidate|
+        length = candidate.fetch(:length)
+        if remaining <= length
+          true
+        else
+          remaining -= length
+          false
+        end
       end
+      return interpolate(segment, remaining / segment.fetch(:length)) if segment
 
       segments.last.fetch(:to)
     end

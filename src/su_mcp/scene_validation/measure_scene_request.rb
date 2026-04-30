@@ -25,10 +25,10 @@ module SU_MCP
       return unsupported_mode_refusal unless MODE_KINDS.key?(mode)
       return unsupported_kind_refusal unless MODE_KINDS.fetch(mode).include?(kind)
 
-      reference_fields.each do |field|
-        field_refusal = refusal_for_reference_field(field)
-        return field_refusal if field_refusal
-      end
+      field_refusal = reference_fields.lazy
+                                      .map { |field| refusal_for_reference_field(field) }
+                                      .find(&:itself)
+      return field_refusal if field_refusal
 
       terrain_profile? ? terrain_profile_refusal : generic_mode_refusal
     end

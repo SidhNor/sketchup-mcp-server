@@ -99,9 +99,8 @@ module SU_MCP
     end
 
     def entity_type_key(entity)
-      SCENE_QUERY_TYPE_KEYS.each do |klass, key|
-        return key if entity.is_a?(klass)
-      end
+      type_entry = SCENE_QUERY_TYPE_KEYS.find { |klass, _key| entity.is_a?(klass) }
+      return type_entry.last if type_entry
 
       entity.class.name.split('::').last.downcase
     end

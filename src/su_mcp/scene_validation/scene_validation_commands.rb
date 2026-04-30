@@ -144,10 +144,10 @@ module SU_MCP
           )
         end
 
-        items.each do |item|
-          refusal = validate_expectation_item(family, item)
-          return refusal if refusal
-        end
+        refusal = items.lazy
+                       .map { |item| validate_expectation_item(family, item) }
+                       .find(&:itself)
+        return refusal if refusal
       end
 
       nil
@@ -203,16 +203,15 @@ module SU_MCP
     end
 
     def missing_surface_offset_field_refusal(item)
-      %w[surfaceReference anchorSelector constraints].each do |field|
-        next if field_value_present?(item[field] || item[field.to_sym])
-
-        return ToolResponse.refusal(
-          code: 'invalid_expectation',
-          message: "Missing required geometryRequirements field: #{field}"
-        )
+      field = %w[surfaceReference anchorSelector constraints].find do |candidate|
+        !field_value_present?(item[candidate] || item[candidate.to_sym])
       end
+      return nil unless field
 
-      nil
+      ToolResponse.refusal(
+        code: 'invalid_expectation',
+        message: "Missing required geometryRequirements field: #{field}"
+      )
     end
 
     def surface_offset_anchor_selector_refusal(item)
@@ -240,29 +239,27 @@ module SU_MCP
     end
 
     def missing_surface_offset_constraint_refusal(constraints)
-      %w[expectedOffset tolerance].each do |field|
-        next if field_value_present?(constraints[field])
-
-        return ToolResponse.refusal(
-          code: 'invalid_expectation',
-          message: "Missing required geometryRequirements.constraints field: #{field}"
-        )
+      field = %w[expectedOffset tolerance].find do |candidate|
+        !field_value_present?(constraints[candidate])
       end
+      return nil unless field
 
-      nil
+      ToolResponse.refusal(
+        code: 'invalid_expectation',
+        message: "Missing required geometryRequirements.constraints field: #{field}"
+      )
     end
 
     def non_numeric_surface_offset_constraint_refusal(constraints)
-      %w[expectedOffset tolerance].each do |field|
-        next if numeric_string?(constraints.fetch(field))
-
-        return ToolResponse.refusal(
-          code: 'invalid_expectation',
-          message: "geometryRequirements.constraints.#{field} must be numeric"
-        )
+      field = %w[expectedOffset tolerance].find do |candidate|
+        !numeric_string?(constraints.fetch(candidate))
       end
+      return nil unless field
 
-      nil
+      ToolResponse.refusal(
+        code: 'invalid_expectation',
+        message: "geometryRequirements.constraints.#{field} must be numeric"
+      )
     end
 
     def evaluate_expectations(expectations)

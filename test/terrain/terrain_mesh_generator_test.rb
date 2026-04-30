@@ -307,8 +307,7 @@ class TerrainMeshGeneratorTest < Minitest::Test # rubocop:disable Metrics/ClassL
     result = identity_generator.send(
       :owned_faces_for_cell_window,
       owner.entities,
-      output_cell_window(0, 0, 1, 1),
-      terrain_state_summary
+      output_cell_window(0, 0, 1, 1)
     )
 
     assert_equal(:owned, result.fetch(:outcome))
@@ -336,8 +335,7 @@ class TerrainMeshGeneratorTest < Minitest::Test # rubocop:disable Metrics/ClassL
     result = identity_generator.send(
       :owned_faces_for_cell_window,
       owner.entities,
-      output_cell_window(0, 0, 0, 0),
-      terrain_state_summary
+      output_cell_window(0, 0, 0, 0)
     )
 
     assert_equal(:owned, result.fetch(:outcome))
@@ -353,15 +351,14 @@ class TerrainMeshGeneratorTest < Minitest::Test # rubocop:disable Metrics/ClassL
     result = identity_generator.send(
       :owned_faces_for_cell_window,
       owner.entities,
-      output_cell_window(0, 0, 0, 0),
-      { digest: 'digest-1', revision: 1 }
+      output_cell_window(0, 0, 0, 0)
     )
 
     assert_equal(:fallback, result.fetch(:outcome))
     assert_equal(:legacy_output, result.fetch(:reason))
   end
 
-  def test_owned_faces_for_cell_window_ignores_whole_state_digest_mismatch
+  def test_owned_faces_for_cell_window_accepts_stale_digest_metadata
     model = build_semantic_model
     owner = model.active_entities.add_group
     add_owned_face(owner.entities, column: 0, row: 0, triangle: 0, digest: 'old', revision: 1)
@@ -370,8 +367,7 @@ class TerrainMeshGeneratorTest < Minitest::Test # rubocop:disable Metrics/ClassL
     result = identity_generator.send(
       :owned_faces_for_cell_window,
       owner.entities,
-      output_cell_window(0, 0, 0, 0),
-      { digest: 'new', revision: 2 }
+      output_cell_window(0, 0, 0, 0)
     )
 
     assert_equal(:owned, result.fetch(:outcome))
@@ -387,8 +383,7 @@ class TerrainMeshGeneratorTest < Minitest::Test # rubocop:disable Metrics/ClassL
     duplicate = identity_generator.send(
       :owned_faces_for_cell_window,
       owner.entities,
-      output_cell_window(0, 0, 0, 0),
-      { digest: 'digest-1', revision: 1 }
+      output_cell_window(0, 0, 0, 0)
     )
 
     assert_equal(:fallback, duplicate.fetch(:outcome))
@@ -399,8 +394,7 @@ class TerrainMeshGeneratorTest < Minitest::Test # rubocop:disable Metrics/ClassL
     incomplete = identity_generator.send(
       :owned_faces_for_cell_window,
       owner.entities,
-      output_cell_window(0, 0, 0, 0),
-      { digest: 'digest-1', revision: 1 }
+      output_cell_window(0, 0, 0, 0)
     )
 
     assert_equal(:fallback, incomplete.fetch(:outcome))

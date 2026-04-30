@@ -12,11 +12,8 @@ module SU_MCP
       end
 
       def conflict_refusal
-        fixed_controls.each do |control|
-          conflict = conflict_for(control)
-          return fixed_control_refusal(conflict) if conflict
-        end
-        nil
+        conflict = fixed_controls.lazy.map { |control| conflict_for(control) }.find(&:itself)
+        conflict ? fixed_control_refusal(conflict) : nil
       end
 
       def summaries

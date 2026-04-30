@@ -37,7 +37,7 @@ module SU_MCP
           vertices,
           columns,
           rows,
-          ownership_context(state, plan)
+          ownership_context
         )
 
         generated_result(plan)
@@ -59,7 +59,7 @@ module SU_MCP
           vertices,
           columns,
           rows,
-          ownership_context(state, output_plan)
+          ownership_context
         )
         generated_result(output_plan).merge(validationOnly: true)
       end
@@ -75,7 +75,6 @@ module SU_MCP
         partial_result = regenerate_partial(
           owner: owner,
           state: state,
-          terrain_state_summary: terrain_state_summary,
           output_plan: plan
         )
         return partial_result if partial_result
@@ -130,18 +129,17 @@ module SU_MCP
         end
       end
 
-      def ownership_context(_state, _output_plan)
+      def ownership_context
         {}
       end
 
-      def regenerate_partial(owner:, state:, terrain_state_summary:, output_plan:)
+      def regenerate_partial(owner:, state:, output_plan:)
         return nil unless output_plan.intent == :dirty_window
         return nil if output_plan.cell_window.empty? || output_plan.cell_window.whole_grid?
 
         ownership = owned_faces_for_cell_window(
           owner.entities,
-          output_plan.cell_window,
-          previous_output_summary(output_plan, terrain_state_summary)
+          output_plan.cell_window
         )
         return nil unless ownership.fetch(:outcome) == :owned
 
@@ -154,19 +152,10 @@ module SU_MCP
           vertices,
           columns,
           output_plan.cell_window,
-          ownership_context(state, output_plan)
+          ownership_context
         )
         cleanup_orphan_derived_edges(owner.entities)
         generated_result(output_plan)
-      end
-
-      def previous_output_summary(output_plan, terrain_state_summary)
-        return terrain_state_summary unless output_plan.previous_state_digest
-
-        {
-          digest: output_plan.previous_state_digest,
-          revision: output_plan.previous_state_revision
-        }
       end
 
       def emit_faces_via_builder(entities, vertices, columns, rows, ownership)
@@ -282,7 +271,7 @@ module SU_MCP
         )
       end
 
-      def owned_faces_for_cell_window(entities, cell_window, _terrain_state_summary)
+      def owned_faces_for_cell_window(entities, cell_window)
         derived_faces = derived_output_entities(entities).select do |entity|
           derived_face_entity?(entity)
         end

@@ -247,9 +247,9 @@ module SU_MCP
         point = control['point']
         return invalid_shape_refusal("#{field}.point") unless point.is_a?(Hash)
 
-        %w[x y].each do |axis|
-          return invalid_number_refusal("#{field}.point.#{axis}") unless finite_number?(point[axis])
-        end
+        invalid_axis = %w[x y].find { |axis| !finite_number?(point[axis]) }
+        return invalid_number_refusal("#{field}.point.#{invalid_axis}") if invalid_axis
+
         return invalid_number_refusal("#{field}.elevation") unless finite_number?(
           control['elevation']
         )
@@ -328,11 +328,8 @@ module SU_MCP
         return missing_field_refusal("#{field}.center") unless circle.key?('center')
         return invalid_shape_refusal("#{field}.center") unless circle['center'].is_a?(Hash)
 
-        %w[x y].each do |axis|
-          return invalid_number_refusal("#{field}.center.#{axis}") unless finite_number?(
-            circle.dig('center', axis)
-          )
-        end
+        invalid_axis = %w[x y].find { |axis| !finite_number?(circle.dig('center', axis)) }
+        return invalid_number_refusal("#{field}.center.#{invalid_axis}") if invalid_axis
 
         return missing_field_refusal("#{field}.radius") unless circle.key?('radius')
         return invalid_number_refusal("#{field}.radius") unless finite_number?(circle['radius'])
@@ -400,11 +397,12 @@ module SU_MCP
           point = point_constraint['point']
           return invalid_shape_refusal(survey_point_field(index, 'point')) unless point.is_a?(Hash)
 
-          %w[x y z].each do |axis|
-            unless finite_number?(point[axis])
-              return invalid_number_refusal(survey_point_field(index, "point.#{axis}"))
-            end
+          invalid_axis = %w[x y z].find { |axis| !finite_number?(point[axis]) }
+          if invalid_axis
+            return invalid_number_refusal(survey_point_field(index,
+                                                             "point.#{invalid_axis}"))
           end
+
           if point_constraint.key?('tolerance') &&
              (!finite_number?(point_constraint['tolerance']) ||
               point_constraint['tolerance'].to_f.negative?)
@@ -438,11 +436,12 @@ module SU_MCP
             )
           end
 
-          %w[x y z].each do |axis|
-            unless finite_number?(point[axis])
-              return invalid_number_refusal(planar_control_field(index, "point.#{axis}"))
-            end
+          invalid_axis = %w[x y z].find { |axis| !finite_number?(point[axis]) }
+          if invalid_axis
+            return invalid_number_refusal(planar_control_field(index,
+                                                               "point.#{invalid_axis}"))
           end
+
           if control.key?('tolerance') &&
              (!finite_number?(control['tolerance']) || control['tolerance'].to_f.negative?)
             return invalid_number_refusal(planar_control_field(index, 'tolerance'))
@@ -492,9 +491,9 @@ module SU_MCP
       def bounds_refusal(bounds, field)
         return invalid_shape_refusal(field) unless bounds.is_a?(Hash)
 
-        %w[minX minY maxX maxY].each do |key|
-          return invalid_number_refusal("#{field}.#{key}") unless finite_number?(bounds[key])
-        end
+        invalid_key = %w[minX minY maxX maxY].find { |key| !finite_number?(bounds[key]) }
+        return invalid_number_refusal("#{field}.#{invalid_key}") if invalid_key
+
         return nil if bounds.fetch('minX') <= bounds.fetch('maxX') &&
                       bounds.fetch('minY') <= bounds.fetch('maxY')
 
