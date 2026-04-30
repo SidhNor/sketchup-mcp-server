@@ -2,6 +2,14 @@
 
 <!-- version list -->
 
+## v1.1.2 (2026-04-30)
+
+### Refactoring
+
+- **sonar**: Misplaced requires
+  ([`0f67083`](https://github.com/SidhNor/sketchup-mcp-server/commit/0f67083a64db1d937e5da78b58b10b31a80b1eba))
+
+
 ## v1.1.1 (2026-04-30)
 
 ### Refactoring
