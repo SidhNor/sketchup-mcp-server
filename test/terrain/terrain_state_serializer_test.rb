@@ -1,6 +1,8 @@
 # frozen_string_literal: true
 
 require_relative '../test_helper'
+require 'digest'
+require_relative '../../src/su_mcp/terrain/tiled_heightmap_state'
 require_relative '../../src/su_mcp/terrain/heightmap_state'
 require_relative '../../src/su_mcp/terrain/terrain_state_serializer'
 
@@ -17,10 +19,10 @@ class TerrainStateSerializerTest < Minitest::Test
     parsed = JSON.parse(serialized)
 
     assert_equal('heightmap_grid', parsed.fetch('payloadKind'))
-    assert_equal(1, parsed.fetch('schemaVersion'))
+    assert_equal(2, parsed.fetch('schemaVersion'))
     assert_equal('sha256', parsed.fetch('digestAlgorithm'))
     assert_match(/\A[0-9a-f]{64}\z/, parsed.fetch('digest'))
-    assert_equal([10.0, nil, 11.5, 12.0], parsed.fetch('elevations'))
+    assert_equal([10.0, nil, 11.5, 12.0], parsed.fetch('tiles').first.fetch('elevations'))
   end
 
   def test_canonical_digest_is_independent_of_hash_insertion_order
@@ -31,11 +33,24 @@ class TerrainStateSerializerTest < Minitest::Test
     assert_equal(first, second)
   end
 
-  def test_round_trips_through_current_version_migration_harness
+  def test_round_trips_through_current_version_dispatch
     loaded = serializer.deserialize(serializer.serialize(build_state))
 
     assert_equal('loaded', loaded.fetch(:outcome))
     assert_equal(build_state, loaded.fetch(:state))
+  end
+
+  def test_migrates_v1_heightmap_payload_to_v2_without_upsampling
+    v1_payload = serialized_v1_payload
+
+    loaded = serializer.deserialize(JSON.generate(v1_payload))
+
+    assert_equal('loaded', loaded.fetch(:outcome))
+    assert_instance_of(SU_MCP::Terrain::TiledHeightmapState, loaded.fetch(:state))
+    assert_equal('heightmap_grid', loaded.fetch(:state).payload_kind)
+    assert_equal(2, loaded.fetch(:state).schema_version)
+    assert_equal(build_v1_state.elevations, loaded.fetch(:state).elevations)
+    assert_equal(build_v1_state.spacing, loaded.fetch(:state).spacing)
   end
 
   def test_refuses_corrupt_json_and_malformed_valid_json
@@ -51,7 +66,7 @@ class TerrainStateSerializerTest < Minitest::Test
     assert_refusal('unsupported_version', serializer.deserialize(JSON.generate(unsupported)))
 
     tampered = JSON.parse(serializer.serialize(build_state))
-    tampered['elevations'][0] = 99.0
+    tampered['tiles'][0]['elevations'][0] = 99.0
     assert_refusal('integrity_failed', serializer.deserialize(JSON.generate(tampered)))
   end
 
@@ -59,7 +74,7 @@ class TerrainStateSerializerTest < Minitest::Test
     older_schema = JSON.parse(serializer.serialize(build_state))
     older_schema['schemaVersion'] = 0
 
-    assert_refusal('migration_failed', serializer.deserialize(JSON.generate(older_schema)))
+    assert_refusal('integrity_failed', serializer.deserialize(JSON.generate(older_schema)))
   end
 
   def test_reports_forced_migration_failure
@@ -67,7 +82,7 @@ class TerrainStateSerializerTest < Minitest::Test
       migration_harness: ->(_payload) { raise SU_MCP::Terrain::TerrainStateSerializer::MigrationError, 'boom' }
     )
 
-    result = failing_serializer.deserialize(serializer.serialize(build_state))
+    result = failing_serializer.deserialize(JSON.generate(serialized_v1_payload))
 
     assert_refusal('migration_failed', result)
   end
@@ -79,6 +94,23 @@ class TerrainStateSerializerTest < Minitest::Test
   end
 
   def build_state(overrides = {})
+    SU_MCP::Terrain::TiledHeightmapState.new(
+      {
+        basis: BASIS,
+        origin: { 'x' => 0.0, 'y' => 0.0, 'z' => 0.0 },
+        spacing: { 'x' => 1.0, 'y' => 1.0 },
+        dimensions: { 'columns' => 2, 'rows' => 2 },
+        elevations: [10.0, nil, 11.5, 12.0],
+        revision: 1,
+        state_id: 'terrain-state-1',
+        source_summary: nil,
+        constraint_refs: [],
+        owner_transform_signature: 'transform-a'
+      }.merge(overrides)
+    )
+  end
+
+  def build_v1_state(overrides = {})
     SU_MCP::Terrain::HeightmapState.new(
       {
         basis: BASIS,
@@ -93,6 +125,31 @@ class TerrainStateSerializerTest < Minitest::Test
         owner_transform_signature: 'transform-a'
       }.merge(overrides)
     )
+  end
+
+  def serialized_v1_payload
+    payload = build_v1_state.to_h.merge('digestAlgorithm' => 'sha256')
+    payload['digest'] = Digest::SHA256.hexdigest(canonical_json(
+                                                   payload.reject do |key, _value|
+                                                     %w[digest digestAlgorithm].include?(key)
+                                                   end
+                                                 ))
+    payload
+  end
+
+  def canonical_json(value)
+    JSON.generate(canonical_value(value))
+  end
+
+  def canonical_value(value)
+    case value
+    when Hash
+      value.keys.map(&:to_s).sort.to_h { |key| [key, canonical_value(value.fetch(key))] }
+    when Array
+      value.map { |nested| canonical_value(nested) }
+    else
+      value
+    end
   end
 
   def assert_refusal(code, result)

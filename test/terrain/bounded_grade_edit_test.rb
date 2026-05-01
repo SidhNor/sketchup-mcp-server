@@ -2,6 +2,7 @@
 
 require_relative '../test_helper'
 require_relative '../../src/su_mcp/terrain/bounded_grade_edit'
+require_relative '../../src/su_mcp/terrain/tiled_heightmap_state'
 require_relative '../../src/su_mcp/terrain/heightmap_state'
 require_relative '../../src/su_mcp/terrain/sample_window'
 
@@ -196,6 +197,32 @@ class BoundedGradeEditTest < Minitest::Test
     assert_equal([{ column: 1, row: 1 }], result.dig(:refusal, :details, :samples))
   end
 
+  def test_target_height_preserves_tiled_heightmap_state_across_tile_boundary
+    state = SU_MCP::Terrain::TiledHeightmapState.new(
+      basis: basis,
+      origin: { 'x' => 0.0, 'y' => 0.0, 'z' => 0.0 },
+      spacing: { 'x' => 1.0, 'y' => 1.0 },
+      dimensions: { 'columns' => 4, 'rows' => 2 },
+      elevations: Array.new(8, 1.0),
+      tile_size: 2,
+      revision: 1,
+      state_id: 'terrain-state-1'
+    )
+
+    result = apply_edit(
+      state: state,
+      region: rectangle_region(min: [1.0, 0.0], max: [2.0, 1.0]),
+      operation: target_height_operation(5.0)
+    )
+
+    assert_instance_of(SU_MCP::Terrain::TiledHeightmapState, result.fetch(:state))
+    assert_equal(
+      %w[tile-0-0 tile-1-0],
+      result.fetch(:state).tile_ids_for_changed_region(result.dig(:diagnostics, :changedRegion))
+    )
+    assert_equal([1.0, 5.0, 5.0, 1.0, 1.0, 5.0, 5.0, 1.0], result.fetch(:state).elevations)
+  end
+
   private
 
   def apply_edit(operation:, region:, state: flat_state, constraints: {})
@@ -269,5 +296,14 @@ class BoundedGradeEditTest < Minitest::Test
       revision: 1,
       state_id: 'terrain-state-1'
     )
+  end
+
+  def basis
+    {
+      'xAxis' => [1.0, 0.0, 0.0],
+      'yAxis' => [0.0, 1.0, 0.0],
+      'zAxis' => [0.0, 0.0, 1.0],
+      'vertical' => 'z_up'
+    }
   end
 end

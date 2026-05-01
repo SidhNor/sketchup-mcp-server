@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require_relative '../test_helper'
+require_relative '../../src/su_mcp/terrain/tiled_heightmap_state'
 require_relative '../../src/su_mcp/terrain/heightmap_state'
 require_relative '../../src/su_mcp/terrain/sample_window'
 require_relative '../../src/su_mcp/terrain/terrain_output_cell_window'
@@ -79,6 +80,38 @@ class TerrainOutputPlanTest < Minitest::Test
     end
 
     assert_match(/dirty window/i, error.message)
+  end
+
+  def test_v2_full_grid_plan_reports_adaptive_tin_summary
+    v2_state = SU_MCP::Terrain::TiledHeightmapState.new(
+      basis: BASIS,
+      origin: { 'x' => 0.0, 'y' => 0.0, 'z' => 0.0 },
+      spacing: { 'x' => 1.0, 'y' => 1.0 },
+      dimensions: { 'columns' => 4, 'rows' => 3 },
+      elevations: Array.new(12, 1.0),
+      revision: 1,
+      state_id: 'terrain-state-1'
+    )
+
+    plan = SU_MCP::Terrain::TerrainOutputPlan.full_grid(
+      state: v2_state,
+      terrain_state_summary: { digest: 'digest-v2', revision: 1 }
+    )
+
+    assert_equal(:adaptive_tin, plan.execution_strategy)
+    assert_equal(
+      {
+        meshType: 'adaptive_tin',
+        vertexCount: 4,
+        faceCount: 2,
+        derivedFromStateDigest: 'digest-v2',
+        sourceSpacing: { x: 1.0, y: 1.0 },
+        simplificationTolerance: 0.01,
+        maxSimplificationError: 0.0,
+        seamCheck: { status: 'passed', maxGap: 0.0 }
+      },
+      plan.to_summary.fetch(:derivedMesh)
+    )
   end
 
   private

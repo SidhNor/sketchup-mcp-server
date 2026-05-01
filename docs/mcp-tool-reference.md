@@ -143,6 +143,10 @@ Creates or adopts a managed terrain surface.
   - `lifecycle.mode: "create"`
   - `definition.kind: "heightmap_grid"`
   - `definition.grid` required
+  - `definition.grid.elevations` optional row-major public-meter samples; when omitted,
+    `baseElevation` fills every sample
+  - malformed elevation counts and non-finite elevation values are refused
+  - stored terrain state is migrated immediately to tiled heightmap v2
 - Adopt mode:
   - `lifecycle.mode: "adopt"`
   - `lifecycle.target` required
@@ -575,6 +579,14 @@ Successful terrain creation/adoption returns `success: true` plus structured fie
 - `terrainState`
 - `output.derivedMesh`
 - `evidence`
+
+`terrainState.payloadKind` is `heightmap_grid` for current managed terrain output.
+`definition.kind: "heightmap_grid"` remains the create request shape for now, but the persisted
+runtime state is v2. `output.derivedMesh.meshType` is `adaptive_tin`; generated face and vertex
+counts are output-dependent and may be lower than the tiled source sample count when the adaptive
+height-error tolerance allows simplification. Source sampling and terrain validation should target
+the managed heightfield state unless the workflow is explicitly validating generated SketchUp
+output geometry.
 
 Successful terrain edits return `success: true`, `outcome: "edited"`, and include:
 

@@ -3,13 +3,14 @@
 require 'digest'
 require 'json'
 
+require_relative 'tiled_heightmap_state'
 require_relative 'heightmap_state'
 
 module SU_MCP
   module Terrain
     # Serializes terrain state into canonical JSON with schema and integrity checks.
     class TerrainStateSerializer
-      CURRENT_SCHEMA_VERSION = HeightmapState::SCHEMA_VERSION
+      CURRENT_SCHEMA_VERSION = TiledHeightmapState::SCHEMA_VERSION
       DIGEST_ALGORITHM = 'sha256'
 
       class MigrationError < StandardError; end
@@ -50,9 +51,16 @@ module SU_MCP
       attr_reader :migration_harness
 
       def serialized_payload(state)
-        payload = state.to_h.merge('digestAlgorithm' => DIGEST_ALGORITHM)
+        normalized_state = serialized_state(state)
+        payload = normalized_state.to_h.merge('digestAlgorithm' => DIGEST_ALGORITHM)
         payload['digest'] = digest_for(payload)
         payload
+      end
+
+      def serialized_state(state)
+        return TiledHeightmapState.from_heightmap_state(state) if state.is_a?(HeightmapState)
+
+        state
       end
 
       def parse_payload(payload_string)
@@ -76,11 +84,18 @@ module SU_MCP
         refusal_result = validate_version(payload)
         return refusal_result if refusal_result
 
-        migrated = run_migration(payload)
-        return migrated if refusal_result?(migrated)
-        return migrated unless migrated.is_a?(Hash)
+        if payload['schemaVersion'] == CURRENT_SCHEMA_VERSION
+          validate_digest(payload) || payload
+        else
+          integrity_refusal = validate_digest(payload)
+          return integrity_refusal if integrity_refusal
 
-        validate_digest(migrated) || migrated
+          migrated = run_migration(payload)
+          return migrated if refusal_result?(migrated)
+          return migrated unless migrated.is_a?(Hash)
+
+          validate_digest(migrated) || migrated
+        end
       end
 
       def validate_version(payload)
@@ -120,7 +135,17 @@ module SU_MCP
         version = payload.fetch('schemaVersion')
         return payload if version == CURRENT_SCHEMA_VERSION
 
+        return migrate_v1_payload(payload) if version == HeightmapState::SCHEMA_VERSION
+
         raise MigrationError, "No migrator for schema version #{version}"
+      end
+
+      def migrate_v1_payload(payload)
+        state = HeightmapState.from_h(payload)
+        migrated = TiledHeightmapState.from_heightmap_state(state).to_h
+        migrated['digestAlgorithm'] = DIGEST_ALGORITHM
+        migrated['digest'] = digest_for(migrated)
+        migrated
       end
 
       def validate_digest(payload)
@@ -173,17 +198,26 @@ module SU_MCP
           schemaVersion: payload['schemaVersion'],
           revision: payload['revision'],
           dimensions: payload['dimensions'],
+          payloadKind: payload['payloadKind'],
           digestAlgorithm: payload['digestAlgorithm'],
           digest: payload['digest']
-        }
+        }.compact
       end
 
       def loaded_result(payload)
         {
           outcome: 'loaded',
-          state: HeightmapState.from_h(payload),
+          state: state_from_payload(payload),
           summary: summary_for(payload)
         }
+      end
+
+      def state_from_payload(payload)
+        if payload['schemaVersion'] == CURRENT_SCHEMA_VERSION
+          return TiledHeightmapState.from_h(payload)
+        end
+
+        raise ArgumentError, "Unsupported terrain state payload kind: #{payload['payloadKind']}"
       end
 
       def refusal(code:, message:, details: nil)

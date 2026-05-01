@@ -430,6 +430,16 @@ class McpRuntimeLoaderTest < Minitest::Test
         .fetch('description'),
       'public meters'
     )
+    grid_schema = create_terrain_schema
+                  .fetch('properties')
+                  .fetch('definition')
+                  .fetch('properties')
+                  .fetch('grid')
+    assert_includes(grid_schema.fetch('properties').keys, 'elevations')
+    assert_includes(
+      grid_schema.fetch('properties').fetch('elevations').fetch('description'),
+      'row-major grid elevations'
+    )
     assert_includes(
       create_terrain_schema.fetch('properties').fetch('placement').fetch('description'),
       'public meters'

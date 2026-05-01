@@ -1104,7 +1104,7 @@
           "terrainState": {
             "stateId": "state-1",
             "payloadKind": "heightmap_grid",
-            "schemaVersion": 1,
+            "schemaVersion": 2,
             "revision": 1,
             "origin": { "x": 0.0, "y": 0.0, "z": 0.0 },
             "spacing": { "x": 1.0, "y": 1.0 },
@@ -1115,10 +1115,14 @@
           },
           "output": {
             "derivedMesh": {
-              "meshType": "regular_grid",
+              "meshType": "adaptive_tin",
               "vertexCount": 4,
               "faceCount": 2,
-              "derivedFromStateDigest": "digest-1"
+              "derivedFromStateDigest": "digest-1",
+              "sourceSpacing": { "x": 0.55, "y": 0.55 },
+              "simplificationTolerance": 0.01,
+              "maxSimplificationError": 0.0,
+              "seamCheck": { "status": "passed", "maxGap": 0.0 }
             }
           },
           "evidence": {
@@ -1175,7 +1179,7 @@
           "terrainState": {
             "stateId": "state-1",
             "payloadKind": "heightmap_grid",
-            "schemaVersion": 1,
+            "schemaVersion": 2,
             "revision": 1,
             "origin": { "x": 0.0, "y": 0.0, "z": 0.0 },
             "spacing": { "x": 0.55, "y": 0.55 },
@@ -1186,10 +1190,14 @@
           },
           "output": {
             "derivedMesh": {
-              "meshType": "regular_grid",
+              "meshType": "adaptive_tin",
               "vertexCount": 9472,
               "faceCount": 18542,
-              "derivedFromStateDigest": "digest-1"
+              "derivedFromStateDigest": "digest-1",
+              "sourceSpacing": { "x": 1.0, "y": 1.0 },
+              "simplificationTolerance": 0.01,
+              "maxSimplificationError": 0.0,
+              "seamCheck": { "status": "passed", "maxGap": 0.0 }
             }
           },
           "evidence": {
@@ -1317,7 +1325,7 @@
           "terrainState": {
             "stateId": "state-1",
             "payloadKind": "heightmap_grid",
-            "schemaVersion": 1,
+            "schemaVersion": 2,
             "revision": 2,
             "digestAlgorithm": "sha256",
             "digest": "digest-2",
@@ -1325,10 +1333,14 @@
           },
           "output": {
             "derivedMesh": {
-              "meshType": "regular_grid",
+              "meshType": "adaptive_tin",
               "vertexCount": 16,
               "faceCount": 18,
-              "derivedFromStateDigest": "digest-2"
+              "derivedFromStateDigest": "digest-2",
+              "sourceSpacing": { "x": 1.0, "y": 1.0 },
+              "simplificationTolerance": 0.01,
+              "maxSimplificationError": 0.0,
+              "seamCheck": { "status": "passed", "maxGap": 0.0 }
             }
           },
           "evidence": {
@@ -1587,7 +1599,7 @@
           "terrainState": {
             "stateId": "state-1",
             "payloadKind": "heightmap_grid",
-            "schemaVersion": 1,
+            "schemaVersion": 2,
             "revision": 2,
             "digestAlgorithm": "sha256",
             "digest": "digest-circle-1",
@@ -1595,10 +1607,14 @@
           },
           "output": {
             "derivedMesh": {
-              "meshType": "regular_grid",
+              "meshType": "adaptive_tin",
               "vertexCount": 16,
               "faceCount": 18,
-              "derivedFromStateDigest": "digest-circle-1"
+              "derivedFromStateDigest": "digest-circle-1",
+              "sourceSpacing": { "x": 1.0, "y": 1.0 },
+              "simplificationTolerance": 0.01,
+              "maxSimplificationError": 0.0,
+              "seamCheck": { "status": "passed", "maxGap": 0.0 }
             }
           },
           "evidence": {
@@ -1677,7 +1693,7 @@
           "terrainState": {
             "stateId": "state-1",
             "payloadKind": "heightmap_grid",
-            "schemaVersion": 1,
+            "schemaVersion": 2,
             "revision": 2,
             "digestAlgorithm": "sha256",
             "digest": "digest-circle-2",
@@ -1685,10 +1701,14 @@
           },
           "output": {
             "derivedMesh": {
-              "meshType": "regular_grid",
+              "meshType": "adaptive_tin",
               "vertexCount": 16,
               "faceCount": 18,
-              "derivedFromStateDigest": "digest-circle-2"
+              "derivedFromStateDigest": "digest-circle-2",
+              "sourceSpacing": { "x": 1.0, "y": 1.0 },
+              "simplificationTolerance": 0.01,
+              "maxSimplificationError": 0.0,
+              "seamCheck": { "status": "passed", "maxGap": 0.0 }
             }
           },
           "evidence": {
@@ -1873,7 +1893,7 @@
           "terrainState": {
             "stateId": "state-1",
             "payloadKind": "heightmap_grid",
-            "schemaVersion": 1,
+            "schemaVersion": 2,
             "revision": 2,
             "digestAlgorithm": "sha256",
             "digest": "digest-4",
@@ -1881,10 +1901,14 @@
           },
           "output": {
             "derivedMesh": {
-              "meshType": "regular_grid",
+              "meshType": "adaptive_tin",
               "vertexCount": 16,
               "faceCount": 18,
-              "derivedFromStateDigest": "digest-4"
+              "derivedFromStateDigest": "digest-4",
+              "sourceSpacing": { "x": 1.0, "y": 1.0 },
+              "simplificationTolerance": 0.01,
+              "maxSimplificationError": 0.0,
+              "seamCheck": { "status": "passed", "maxGap": 0.0 }
             }
           },
           "evidence": {
@@ -2024,7 +2048,7 @@
           "terrainState": {
             "stateId": "state-1",
             "payloadKind": "heightmap_grid",
-            "schemaVersion": 1,
+            "schemaVersion": 2,
             "revision": 2,
             "digestAlgorithm": "sha256",
             "digest": "digest-circle-3",
@@ -2032,10 +2056,14 @@
           },
           "output": {
             "derivedMesh": {
-              "meshType": "regular_grid",
+              "meshType": "adaptive_tin",
               "vertexCount": 16,
               "faceCount": 18,
-              "derivedFromStateDigest": "digest-circle-3"
+              "derivedFromStateDigest": "digest-circle-3",
+              "sourceSpacing": { "x": 1.0, "y": 1.0 },
+              "simplificationTolerance": 0.01,
+              "maxSimplificationError": 0.0,
+              "seamCheck": { "status": "passed", "maxGap": 0.0 }
             }
           },
           "evidence": {
@@ -2123,7 +2151,7 @@
           "terrainState": {
             "stateId": "state-1",
             "payloadKind": "heightmap_grid",
-            "schemaVersion": 1,
+            "schemaVersion": 2,
             "revision": 2,
             "digestAlgorithm": "sha256",
             "digest": "digest-3",
@@ -2131,10 +2159,14 @@
           },
           "output": {
             "derivedMesh": {
-              "meshType": "regular_grid",
+              "meshType": "adaptive_tin",
               "vertexCount": 16,
               "faceCount": 18,
-              "derivedFromStateDigest": "digest-3"
+              "derivedFromStateDigest": "digest-3",
+              "sourceSpacing": { "x": 1.0, "y": 1.0 },
+              "simplificationTolerance": 0.01,
+              "maxSimplificationError": 0.0,
+              "seamCheck": { "status": "passed", "maxGap": 0.0 }
             }
           },
           "evidence": {
@@ -2346,16 +2378,20 @@
           "terrainState": {
             "stateId": "state-1",
             "payloadKind": "heightmap_grid",
-            "schemaVersion": 1,
+            "schemaVersion": 2,
             "revision": 2,
             "digest": "digest-survey-1"
           },
           "output": {
             "derivedMesh": {
-              "meshType": "regular_grid",
+              "meshType": "adaptive_tin",
               "vertexCount": 16,
               "faceCount": 18,
-              "derivedFromStateDigest": "digest-survey-1"
+              "derivedFromStateDigest": "digest-survey-1",
+              "sourceSpacing": { "x": 1.0, "y": 1.0 },
+              "simplificationTolerance": 0.01,
+              "maxSimplificationError": 0.0,
+              "seamCheck": { "status": "passed", "maxGap": 0.0 }
             }
           },
           "evidence": {
@@ -2437,16 +2473,20 @@
           "terrainState": {
             "stateId": "state-1",
             "payloadKind": "heightmap_grid",
-            "schemaVersion": 1,
+            "schemaVersion": 2,
             "revision": 2,
             "digest": "digest-survey-2"
           },
           "output": {
             "derivedMesh": {
-              "meshType": "regular_grid",
+              "meshType": "adaptive_tin",
               "vertexCount": 16,
               "faceCount": 18,
-              "derivedFromStateDigest": "digest-survey-2"
+              "derivedFromStateDigest": "digest-survey-2",
+              "sourceSpacing": { "x": 1.0, "y": 1.0 },
+              "simplificationTolerance": 0.01,
+              "maxSimplificationError": 0.0,
+              "seamCheck": { "status": "passed", "maxGap": 0.0 }
             }
           },
           "evidence": {

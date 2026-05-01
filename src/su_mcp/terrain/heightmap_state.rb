@@ -87,6 +87,21 @@ module SU_MCP
         other.is_a?(self.class) && to_h == other.to_h
       end
 
+      def with_elevations(new_elevations, revision: self.revision + 1)
+        self.class.new(
+          basis: basis,
+          origin: origin,
+          spacing: spacing,
+          dimensions: dimensions,
+          elevations: new_elevations,
+          revision: revision,
+          state_id: state_id,
+          source_summary: source_summary,
+          constraint_refs: constraint_refs,
+          owner_transform_signature: owner_transform_signature
+        )
+      end
+
       private
 
       def grid_payload

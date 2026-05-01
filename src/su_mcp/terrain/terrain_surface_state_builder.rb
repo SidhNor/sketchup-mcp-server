@@ -1,5 +1,6 @@
 # frozen_string_literal: true
 
+require_relative 'tiled_heightmap_state'
 require_relative 'heightmap_state'
 
 module SU_MCP
@@ -18,12 +19,12 @@ module SU_MCP
         dimensions = stringify_keys(grid.fetch('dimensions'))
         elevation_count = dimensions.fetch('columns') * dimensions.fetch('rows')
 
-        HeightmapState.new(
+        TiledHeightmapState.new(
           basis: DEFAULT_BASIS,
           origin: stringify_keys(grid.fetch('origin')),
           spacing: stringify_keys(grid.fetch('spacing')),
           dimensions: dimensions,
-          elevations: Array.new(elevation_count, grid.fetch('baseElevation').to_f),
+          elevations: elevations_for(grid, elevation_count),
           revision: 1,
           state_id: state_id,
           source_summary: nil,
@@ -34,7 +35,7 @@ module SU_MCP
 
       def build_adopted_state(sampled_source, owner_transform_signature: nil)
         state_input = sampled_source.fetch(:state_input)
-        HeightmapState.new(
+        TiledHeightmapState.new(
           basis: DEFAULT_BASIS,
           origin: stringify_keys(state_input.fetch(:origin)),
           spacing: stringify_keys(state_input.fetch(:spacing)),
@@ -56,6 +57,12 @@ module SU_MCP
 
       def stringify_keys(value)
         HeightmapState.stringify_keys(value)
+      end
+
+      def elevations_for(grid, elevation_count)
+        return grid.fetch('elevations') if grid.key?('elevations')
+
+        Array.new(elevation_count, grid.fetch('baseElevation').to_f)
       end
     end
   end

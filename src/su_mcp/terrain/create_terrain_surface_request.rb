@@ -161,6 +161,7 @@ module SU_MCP
           spacing_refusal(grid['spacing']) ||
           dimensions_refusal(grid['dimensions']) ||
           base_elevation_refusal(grid['baseElevation']) ||
+          elevations_refusal(grid) ||
           grid_cap_refusal(grid['dimensions'])
       end
 
@@ -206,6 +207,31 @@ module SU_MCP
         return nil if finite_number?(value)
 
         invalid_grid_refusal('definition.grid.baseElevation')
+      end
+
+      def elevations_refusal(grid)
+        return nil unless grid.key?('elevations')
+        unless grid['elevations'].is_a?(Array)
+          return invalid_grid_refusal('definition.grid.elevations')
+        end
+
+        unless valid_elevation_count?(grid)
+          return invalid_grid_refusal('definition.grid.elevations')
+        end
+
+        invalid_index = grid['elevations'].find_index do |value|
+          !value.nil? && !finite_number?(value)
+        end
+        return nil unless invalid_index
+
+        invalid_grid_refusal("definition.grid.elevations[#{invalid_index}]")
+      end
+
+      def valid_elevation_count?(grid)
+        dimensions = grid.fetch('dimensions')
+        expected_count = dimensions.fetch('columns') * dimensions.fetch('rows')
+
+        grid.fetch('elevations').length == expected_count
       end
 
       def grid_cap_refusal(dimensions)

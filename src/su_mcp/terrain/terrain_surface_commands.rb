@@ -405,6 +405,7 @@ module SU_MCP
         state = build_create_state(validation, owner)
         saved, output = save_and_generate(owner, state)
         return saved if refused?(saved)
+        return output_refusal(output) if refused?(output)
 
         success_response(
           outcome: 'created',
@@ -422,6 +423,7 @@ module SU_MCP
         state = build_adopted_state(sampled_source, owner)
         saved, output = save_and_generate(owner, state)
         return saved if refused?(saved)
+        return output_refusal(output) if refused?(output)
 
         erase_source(sampled_source)
         adoption_success_response(

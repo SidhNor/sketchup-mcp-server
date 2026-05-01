@@ -2,6 +2,7 @@
 
 require_relative '../test_helper'
 require_relative '../support/semantic_test_support'
+require_relative '../../src/su_mcp/terrain/tiled_heightmap_state'
 require_relative '../../src/su_mcp/terrain/heightmap_state'
 require_relative '../../src/su_mcp/terrain/terrain_mesh_generator'
 require_relative '../../src/su_mcp/terrain/terrain_output_cell_window'
@@ -556,6 +557,62 @@ class TerrainMeshGeneratorTest < Minitest::Test # rubocop:disable Metrics/ClassL
     assert_includes(owner.entities.faces, old_face)
   end
 
+  def test_v2_adaptive_generation_reduces_planar_faces_and_omits_grid_cell_identity
+    model = build_semantic_model
+    owner = model.active_entities.add_group
+    state = build_v2_state(columns: 5, rows: 5, elevations: Array.new(25, 2.0))
+
+    result = identity_generator.generate(
+      owner: owner,
+      state: state,
+      terrain_state_summary: { digest: 'digest-v2', revision: 1 }
+    )
+
+    assert_equal('adaptive_tin', result.dig(:summary, :derivedMesh, :meshType))
+    assert_operator(result.dig(:summary, :derivedMesh, :faceCount), :<, 32)
+    assert_equal(2, owner.entities.faces.length)
+    owner.entities.faces.each do |face|
+      assert_derived_output(face)
+      refute(terrain_attribute(face, 'gridCellColumn'))
+      refute(terrain_attribute(face, 'gridCellRow'))
+      refute(terrain_attribute(face, 'gridTriangleIndex'))
+    end
+  end
+
+  def test_v2_adaptive_generation_refuses_no_data_before_emitting_faces
+    model = build_semantic_model
+    owner = model.active_entities.add_group
+    state = build_v2_state(columns: 2, rows: 2, elevations: [1.0, nil, 1.0, 1.0])
+
+    result = identity_generator.generate(
+      owner: owner,
+      state: state,
+      terrain_state_summary: { digest: 'digest-v2', revision: 1 }
+    )
+
+    assert_equal('refused', result.fetch(:outcome))
+    assert_equal('adaptive_output_generation_failed', result.dig(:refusal, :code))
+    assert_empty(owner.entities.faces)
+  end
+
+  def test_v2_adaptive_regeneration_refuses_no_data_before_erasing_existing_output
+    model = build_semantic_model
+    owner = model.active_entities.add_group
+    old_face = owner.entities.add_face([0, 0, 1], [1, 0, 1], [1, 1, 1])
+    old_face.set_attribute('su_mcp_terrain', 'derivedOutput', true)
+    state = build_v2_state(columns: 2, rows: 2, elevations: [1.0, nil, 1.0, 1.0])
+
+    result = identity_generator.regenerate(
+      owner: owner,
+      state: state,
+      terrain_state_summary: { digest: 'digest-v2', revision: 1 }
+    )
+
+    assert_equal('refused', result.fetch(:outcome))
+    assert_equal('adaptive_output_generation_failed', result.dig(:refusal, :code))
+    assert_includes(owner.entities.faces, old_face)
+  end
+
   private
 
   def assert_derived_output(entity)
@@ -688,6 +745,23 @@ class TerrainMeshGeneratorTest < Minitest::Test # rubocop:disable Metrics/ClassL
       dimensions: { 'columns' => columns, 'rows' => rows },
       elevations: elevations || Array.new(columns * rows, 1.0),
       revision: revision,
+      state_id: 'terrain-state-1'
+    )
+  end
+
+  def build_v2_state(columns:, rows:, elevations:)
+    SU_MCP::Terrain::TiledHeightmapState.new(
+      basis: {
+        'xAxis' => [1.0, 0.0, 0.0],
+        'yAxis' => [0.0, 1.0, 0.0],
+        'zAxis' => [0.0, 0.0, 1.0],
+        'vertical' => 'z_up'
+      },
+      origin: { 'x' => 0.0, 'y' => 0.0, 'z' => 0.0 },
+      spacing: { 'x' => 1.0, 'y' => 1.0 },
+      dimensions: { 'columns' => columns, 'rows' => rows },
+      elevations: elevations,
+      revision: 1,
       state_id: 'terrain-state-1'
     )
   end

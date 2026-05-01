@@ -2,7 +2,7 @@
 doc_type: prd
 title: Managed Terrain Surface Authoring
 status: draft
-last_updated: 2026-04-28
+last_updated: 2026-04-30
 ---
 
 # PRD: Managed Terrain Surface Authoring
@@ -28,6 +28,7 @@ This product slice is separate from semantic hardscape creation. Existing `path`
 5. Return structured terrain-edit evidence that downstream validation and review workflows can use.
 6. Keep semantic hardscape objects such as paths, pads, and retaining edges separate from terrain state.
 7. Make operation intent, solver guardrails, and post-edit QA expectations discoverable through the public MCP contract.
+8. Support bounded SketchUp-facing visual controls for managed terrain edits where visual region selection and parameter adjustment are faster than MCP-only trial-and-error.
 
 ## Success Metrics & KPI
 
@@ -104,6 +105,14 @@ This product slice is separate from semantic hardscape creation. Existing `path`
 4. The edit result includes enough evidence to inspect changed region, survey residuals, preserve-zone drift, slope or curvature proxy changes, and maximum sample movement.
 5. The user or downstream workflow samples profiles through the edited area and nearby diagonals before accepting the terrain shape.
 
+### Flow 7: Apply A Bounded Visual Terrain Edit
+
+1. The SketchUp user selects a Managed Terrain Surface and activates a bounded visual terrain edit control.
+2. The user visually identifies a local support area, shoulder, plane, or fairing region and adjusts bounded parameters such as support size, blend distance, or operation mode.
+3. The system previews or communicates the intended managed edit without treating raw mesh dragging as source state.
+4. The user applies the edit as a managed terrain mutation that updates terrain state, regenerates derived output, and returns the same kind of structured evidence as command-driven edits.
+5. The user, agent, or validation workflow uses MCP sampling, profile checks, labels, redrape, and capture workflows to validate and preserve the accepted result.
+
 ## Functional Requirements
 
 | Requirement | User Story | Acceptance Criteria | Priority |
@@ -123,6 +132,7 @@ This product slice is separate from semantic hardscape creation. Existing `path`
 | Surface topology and fairness concerns as structured warnings or evidence | As a technical reviewer, I want topology or fairness concerns to be visible before acceptance so that terrain failures do not depend only on manual inspection | Representative terrain defect scenarios such as holes, loose edges, seam defects, slope spikes, humps, trenches, or abrupt transitions produce structured warnings, evidence, or downstream validation findings | P1 |
 | Keep semantic hardscape objects separate from terrain state | As a workflow author, I want paths, pads, and retaining edges to remain independent managed objects so that terrain editing does not silently absorb or corrupt hardscape semantics | Terrain authoring does not create, absorb, or mutate `path`, `pad`, or `retaining_edge` managed-object state as part of terrain source state; any use of those objects as references or constraints remains explicit and non-destructive | P0 |
 | Support terrain edits that can reference existing managed objects as constraints where product rules allow | As an agent, I want to use existing scene objects as controls or preserve references so that terrain edits can respect the modeled context without changing those objects | Supported terrain edits can reference eligible existing objects as controls or constraints and return structured refusal when a referenced object cannot safely be used for that purpose | P1 |
+| Support bounded visual terrain edit controls | As a SketchUp user, I want to select local terrain regions and adjust bounded terrain-edit parameters visually so that small shoulders and local grading corrections can be made faster than MCP-only trial-and-error | A bounded visual control can target a Managed Terrain Surface, collect or preview a supported managed edit, apply it through terrain state and command boundaries, and expose structured evidence or refusal results for later review | P1 |
 | Preserve undo-safe terrain edit behavior | As a SketchUp user, I want terrain edits to behave as coherent undoable actions so that failed or undesired edits do not require manual scene cleanup | Supported terrain-authoring mutations appear as one coherent SketchUp undo step where practical, and failures do not leave partial product-managed terrain state as the expected outcome | P0 |
 | Refuse unsupported or unsafe terrain requests clearly | As an agent, I want unsupported terrain edits to fail explicitly so that the workflow does not fall back to unsafe mesh mutation | Unsupported source surfaces, ambiguous targets, unsafe constraints, or out-of-scope edit intents return structured refusals with actionable reason data rather than silently proceeding | P0 |
 
@@ -137,6 +147,7 @@ Domain alignment: Managed Terrain Surface is represented in [`domain-analysis.md
 - Terrain requests must refuse ambiguous or unsafe inputs rather than guessing silently.
 - Terrain authoring must remain compatible with existing scene targeting, interrogation, semantic modeling, and validation workflows.
 - Discoverable MCP tool definitions must expose baseline-safe operation semantics, guardrails, and output expectations; richer examples may live in docs or future MCP prompts/resources.
+- SketchUp-facing visual controls should improve selection, preview, and parameter adjustment ergonomics while preserving managed terrain state, evidence, refusals, and undo semantics.
 
 ## Constraints
 
@@ -146,6 +157,7 @@ Domain alignment: Managed Terrain Surface is represented in [`domain-analysis.md
 - Existing terrain interrogation and validation capabilities remain separate slices; terrain authoring consumes or produces evidence for them rather than redefining all targeting or validation behavior.
 - Terrain mutation must not depend on `eval_ruby` as the normal path for supported workflows.
 - Undo-safe mutation behavior is required for supported terrain authoring workflows where SketchUp supports it.
+- Visual terrain edit UI must act as a controller over managed terrain commands, state, and evidence rather than creating an independent terrain source of truth.
 - Current `heightmap_grid` spacing limits the spatial detail that can be represented. Tight point clusters or contradictory controls inside one grid cell may need structured refusal, smaller spacing, localized detail, or relaxed targets.
 - Built levels such as slabs, platforms, wells, or house floors are verification context unless the request explicitly models pads, cuts, or built-surface terrain effects.
 
@@ -156,7 +168,7 @@ Domain alignment: Managed Terrain Surface is represented in [`domain-analysis.md
 - Public Unreal-style terrain tools such as flatten, smooth, or ramp as separate MCP tool commitments
 - Treating regional survey correction as implicit planar fitting before an explicit planar contract is designed
 - Treating fairing as a grade-intent operation rather than a finishing/smoothing operation
-- Interactive SketchUp sculpt tools, brush UI, or mouse-driven terrain editing
+- Broad freeform sculpting, continuous stroke replay, pressure-sensitive brush systems, or mouse-driven raw TIN editing outside managed terrain state
 - Erosion, weathering, procedural terrain generation, or broad terrain simulation
 - General-purpose mesh repair or unrestricted TIN surgery
 - Photorealistic terrain rendering or material-authoring workflows
@@ -175,12 +187,14 @@ Domain alignment: Managed Terrain Surface is represented in [`domain-analysis.md
 - Should planar region fitting be added as a new `edit_terrain_surface` operation or as an explicit nested intent under survey correction?
 - Which profile diagnostics belong in scene validation and review rather than terrain mutation?
 - Should MCP prompts/resources be exposed so richer server-owned terrain recipes can be discovered without bloating tool descriptions?
+- Which SketchUp UI mechanism should first host bounded visual terrain edits: native tool, toolbar/menu command, HtmlDialog, or a hybrid?
 
 ## Risks and Mitigation
 
 | Risk | Likelihood | Impact | Mitigation Strategy |
 | --- | --- | --- | --- |
 | Terrain authoring becomes a broad sculpting system rather than a bounded managed workflow | Medium | High | Keep first release scope centered on adoption, bounded edits, controls, preserve zones, evidence, and refusals |
+| Bounded visual terrain controls bypass managed state and evidence | Medium | High | Require UI-authored edits to apply through managed terrain commands or equivalent use-case boundaries and return structured evidence/refusals |
 | Terrain authoring reintroduces direct live-TIN mutation under a new name | Medium | High | Measure manual cleanup rates, require structured evidence, and make unsafe requests refuse rather than proceed silently |
 | Hardscape semantics blur into terrain state | Medium | High | Keep `path`, `pad`, and `retaining_edge` as separate Managed Scene Objects and require any use as terrain constraints to be explicit and non-destructive |
 | Terrain evidence duplicates validation and interrogation responsibilities | Medium | Medium | Treat terrain authoring as producer of terrain-edit evidence and depend on targeting/interrogation and validation slices for shared lookup and acceptance semantics |
@@ -210,3 +224,4 @@ Domain alignment: Managed Terrain Surface is represented in [`domain-analysis.md
 | 2026-04-24 | Initial draft created for managed terrain adoption and bounded terrain authoring after reviewing the terrain guide, current terrain-adjacent product slices, and the April 24 terrain-authoring signal. |
 | 2026-04-25 | Updated domain-alignment language after Managed Terrain Surface was added to the shared domain analysis. |
 | 2026-04-28 | Added intent-aware terrain correction, profile QA, grid-spacing guardrails, and discoverable MCP contract expectations from the April 28 terrain modelling signal expansion. |
+| 2026-04-30 | Added bounded SketchUp-facing visual edit controls as an in-scope managed terrain interaction surface after the terrain session showed MCP-only trial-and-error is too indirect for visual grading. |

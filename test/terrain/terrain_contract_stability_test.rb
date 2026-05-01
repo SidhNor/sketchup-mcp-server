@@ -2,6 +2,7 @@
 
 require_relative '../test_helper'
 require_relative '../support/terrain_output_planning_diagnostics'
+require_relative '../../src/su_mcp/terrain/tiled_heightmap_state'
 require_relative '../../src/su_mcp/terrain/heightmap_state'
 require_relative '../../src/su_mcp/terrain/terrain_edit_evidence_builder'
 require_relative '../../src/su_mcp/terrain/terrain_state_serializer'
@@ -16,15 +17,15 @@ class TerrainContractStabilityTest < Minitest::Test
     'vertical' => 'z_up'
   }.freeze
 
-  def test_serialized_heightmap_state_remains_v1_without_window_or_chunk_state
+  def test_serialized_terrain_state_is_v2_heightmap_grid_without_window_or_chunk_state
     parsed = JSON.parse(serializer.serialize(build_state))
 
     assert_equal('heightmap_grid', parsed.fetch('payloadKind'))
-    assert_equal(1, parsed.fetch('schemaVersion'))
+    assert_equal(2, parsed.fetch('schemaVersion'))
+    assert_includes(parsed.keys, 'tiles')
     refute_includes(parsed.keys, 'sampleWindows')
     refute_includes(parsed.keys, 'outputRegions')
     refute_includes(parsed.keys, 'chunks')
-    refute_includes(parsed.keys, 'tiles')
   end
 
   def test_edit_evidence_keeps_public_changed_region_vocabulary_without_generated_ids

@@ -23,15 +23,20 @@ module SU_MCP
       end
 
       def generate(owner:, state:, terrain_state_summary:, output_plan: nil)
-        rows = state.dimensions.fetch('rows')
-        columns = state.dimensions.fetch('columns')
-        vertices = vertices_for(state, columns, rows)
+        return no_data_refusal if adaptive_state?(state) && state.elevations.any?(&:nil?)
+
         # Create/adopt generation emits the complete derived grid; edit regeneration may be partial.
         plan = output_plan || TerrainOutputPlan.full_grid(
           state: state,
           terrain_state_summary: terrain_state_summary
         )
+        if plan.execution_strategy == :adaptive_tin
+          return generate_adaptive(owner: owner, state: state, output_plan: plan)
+        end
 
+        rows = state.dimensions.fetch('rows')
+        columns = state.dimensions.fetch('columns')
+        vertices = vertices_for(state, columns, rows)
         emit_faces_via_builder(
           owner.entities,
           vertices,
@@ -67,11 +72,16 @@ module SU_MCP
       def regenerate(owner:, state:, terrain_state_summary:, output_plan: nil)
         unsupported = unsupported_child_types(owner.entities)
         return unsupported_children_refusal(unsupported) unless unsupported.empty?
+        return no_data_refusal if adaptive_state?(state) && state.elevations.any?(&:nil?)
 
         plan = output_plan || TerrainOutputPlan.full_grid(
           state: state,
           terrain_state_summary: terrain_state_summary
         )
+        if plan.execution_strategy == :adaptive_tin
+          return regenerate_adaptive(owner: owner, state: state, output_plan: plan)
+        end
+
         partial_result = regenerate_partial(
           owner: owner,
           state: state,
@@ -97,6 +107,22 @@ module SU_MCP
           outcome: 'generated',
           summary: output_plan.to_summary
         }
+      end
+
+      def adaptive_state?(state)
+        state.respond_to?(:tiles) && state.respond_to?(:tile_size)
+      end
+
+      def generate_adaptive(owner:, state:, output_plan:)
+        return no_data_refusal if state.elevations.any?(&:nil?)
+
+        emit_adaptive_faces_via_builder(owner.entities, state, output_plan.adaptive_cells)
+        generated_result(output_plan)
+      end
+
+      def regenerate_adaptive(owner:, state:, output_plan:)
+        erase_entities(owner.entities, derived_output_entities(owner.entities))
+        generate_adaptive(owner: owner, state: state, output_plan: output_plan)
       end
 
       def vertices_for(state, columns, rows)
@@ -166,6 +192,41 @@ module SU_MCP
         entities.build do |builder|
           emit_faces(builder, vertices, columns, rows, ownership)
         end
+      end
+
+      def emit_adaptive_faces_via_builder(entities, state, cells)
+        return emit_adaptive_faces(entities, state, cells) unless entities.respond_to?(:build)
+
+        entities.build do |builder|
+          emit_adaptive_faces(builder, state, cells)
+        end
+      end
+
+      def emit_adaptive_faces(face_target, state, cells)
+        cells.each do |cell|
+          add_adaptive_cell_triangles(face_target, state, cell)
+        end
+      end
+
+      def add_adaptive_cell_triangles(entities, state, cell)
+        lower_left = adaptive_vertex_at(state, cell.fetch(:min_column), cell.fetch(:min_row))
+        lower_right = adaptive_vertex_at(state, cell.fetch(:max_column), cell.fetch(:min_row))
+        upper_left = adaptive_vertex_at(state, cell.fetch(:min_column), cell.fetch(:max_row))
+        upper_right = adaptive_vertex_at(state, cell.fetch(:max_column), cell.fetch(:max_row))
+
+        add_derived_face(entities, lower_left, lower_right, upper_right, ownership: nil)
+        add_derived_face(entities, lower_left, upper_right, upper_left, ownership: nil)
+      end
+
+      def adaptive_vertex_at(state, column, row)
+        origin = state.origin
+        spacing = state.spacing
+        index = (row * state.dimensions.fetch('columns')) + column
+        [
+          internal_length(origin.fetch('x') + (column * spacing.fetch('x'))),
+          internal_length(origin.fetch('y') + (row * spacing.fetch('y'))),
+          internal_length(state.elevations.fetch(index))
+        ]
       end
 
       def emit_faces(face_target, vertices, columns, rows, ownership)
@@ -269,6 +330,17 @@ module SU_MCP
           GRID_TRIANGLE_INDEX_KEY,
           ownership.fetch(:triangle_index)
         )
+      end
+
+      def no_data_refusal
+        {
+          outcome: 'refused',
+          refusal: {
+            code: 'adaptive_output_generation_failed',
+            message: 'Adaptive terrain output cannot be generated from no-data samples.',
+            details: { category: 'no_data_samples' }
+          }
+        }
       end
 
       def owned_faces_for_cell_window(entities, cell_window)

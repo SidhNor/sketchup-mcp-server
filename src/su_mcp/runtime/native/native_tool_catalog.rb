@@ -1080,10 +1080,25 @@ module SU_MCP
           origin: xyz_point_schema,
           spacing: xy_spacing_schema,
           dimensions: create_terrain_dimensions_schema,
-          baseElevation: described_schema(number_schema, 'Base elevation in public meters.')
+          baseElevation: described_schema(number_schema, 'Base elevation in public meters.'),
+          elevations: create_terrain_elevations_schema
         },
         additionalProperties: false
       }
+    end
+
+    def create_terrain_elevations_schema
+      described_schema(
+        {
+          type: 'array',
+          items: {
+            type: %w[number null]
+          }
+        },
+        'Optional row-major grid elevations in public meters. When omitted, baseElevation ' \
+        'is used for every sample. The array length must equal columns * rows; null samples ' \
+        'represent no-data and are refused for terrain output generation.'
+      )
     end
 
     def xyz_point_schema

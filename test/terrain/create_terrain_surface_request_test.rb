@@ -97,6 +97,26 @@ class CreateTerrainSurfaceRequestTest < Minitest::Test
     assert_equal(128, result.dig(:refusal, :details, :maxColumns))
   end
 
+  def test_accepts_public_row_major_grid_elevations
+    result = validate_request(
+      create_request_with_grid('elevations' => [1.0, 2.0, 3.0, 4.0, 5.0, 6.0])
+    )
+
+    assert_equal('ready', result.fetch(:outcome))
+  end
+
+  def test_refuses_malformed_public_grid_elevations
+    bad_count = create_request_with_grid('elevations' => [1.0, 2.0])
+    bad_value = create_request_with_grid(
+      'elevations' => [1.0, 2.0, Float::NAN, 4.0, 5.0, 6.0]
+    )
+
+    assert_refusal(validate_request(bad_count), 'invalid_grid_definition',
+                   'definition.grid.elevations')
+    assert_refusal(validate_request(bad_value), 'invalid_grid_definition',
+                   'definition.grid.elevations[2]')
+  end
+
   def test_refuses_duplicate_source_element_id_before_mutation
     result = validate_request(create_request, identity_exists: ->(_id) { true })
 

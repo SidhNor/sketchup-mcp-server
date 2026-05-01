@@ -2,7 +2,7 @@
 doc_type: hld
 title: Managed Terrain Surface Authoring
 status: draft
-last_updated: 2026-04-28
+last_updated: 2026-04-30
 ---
 
 # HLD: Managed Terrain Surface Authoring
@@ -30,13 +30,14 @@ In scope:
 - The bounded context split between terrain, semantic hardscape, targeting and interrogation, validation, and SketchUp adapters.
 - The ownership model for heightmap or equivalent materialized terrain state.
 - Internal terrain math boundaries for grade, transition, ramp-like, smoothing, and fairing behavior.
+- Bounded SketchUp-facing visual controls that collect, preview, and apply managed terrain edits through the terrain command/use-case layer.
 - Test and integration boundaries for terrain state, storage, geometry output, undo behavior, and evidence handoff.
 
 Out of scope:
 
 - Public MCP tool schemas or exact tool names.
 - Unreal-style public tools such as flatten, smooth, or ramp as direct MCP contract commitments.
-- Interactive sculpting, brush UI, broad mesh repair, erosion, weathering, procedural terrain generation, or photorealistic rendering.
+- Broad freeform sculpting, continuous stroke replay, raw live-TIN editing, broad mesh repair, erosion, weathering, procedural terrain generation, or photorealistic rendering.
 - Semantic hardscape creation or mutation. Current `path`, `pad`, and `retaining_edge` objects remain separate hardscape Managed Scene Objects.
 - Validation rule policy and pass/fail ownership, beyond the evidence terrain authoring must produce.
 
@@ -49,6 +50,8 @@ The core architectural move is to stop treating the live SketchUp TIN as the nor
 This directly addresses the current failure mode where fallback `eval_ruby` scripts drag vertices, delete faces, cut live triangulation, and attempt local topology repair. Those operations can remain outside the managed capability as unsupported fallback behavior, but they should not be the architecture for supported terrain workflows.
 
 Recent terrain modelling feedback adds a second architectural pressure: callers must be able to choose terrain edits by explicit geometric intent rather than by guessing solver behavior. The terrain edit engine may grow internal or public intent modes such as planar regional fit, profile-grade correction, or boundary-preserving patch behavior, but those modes belong inside the managed terrain edit domain. They should not move profile sampling ownership into terrain authoring and should not turn terrain evidence into validation policy.
+
+Later visual grading feedback adds a third architectural pressure: MCP request/response loops are too indirect for fine terrain-feel work. Bounded SketchUp UI controls may therefore sit in front of managed terrain commands for visual region selection, parameter adjustment, preview, and apply actions. Those controls are presentation and interaction surfaces only. They must not become a second terrain runtime, bypass repository-backed terrain state, mutate generated mesh as source state, or replace MCP sampling and validation workflows.
 
 ### Storage Posture
 
@@ -78,6 +81,7 @@ Sidecar files are deferred. They may be reconsidered only if model-embedded payl
 | Context | Owns | Must Not Own |
 | --- | --- | --- |
 | Managed terrain authoring | Terrain adoption, materialized terrain state, bounded terrain edits, terrain output regeneration, terrain-edit evidence | Public tool naming as architecture, semantic hardscape state, validation pass/fail policy, generic surface sampling tools |
+| SketchUp terrain UI controls | User interaction, visual region selection, bounded parameter collection, preview/apply orchestration, display of managed edit outcomes | Terrain edit math, terrain persistence, validation verdicts, raw TIN source mutation, hardscape mutation |
 | Scene targeting and interrogation | Workflow target resolution, surface sampling requests and evidence, topology interrogation | Terrain state persistence, terrain edit semantics, terrain output regeneration |
 | Semantic scene modeling | Managed Scene Object identity conventions and hardscape objects such as `path`, `pad`, and `retaining_edge` | Terrain heightmap state, terrain edit engine, implicit absorption of hardscape into terrain |
 | Scene validation and review | Validation rules, acceptance semantics, review findings, measurement interpretation | Terrain mutation, terrain storage, command completion semantics |
@@ -91,6 +95,7 @@ The main slippage risks are:
 - Terrain constraints mutating hardscape. A `path`, `pad`, or `retaining_edge` may be read as an explicit constraint when product rules allow it, but it must not become part of terrain source state or be silently rewritten by terrain editing.
 - Sampling becoming adoption ownership. Existing surface sampling should inform adoption and evidence, but the terrain slice owns conversion from source surface to managed terrain state.
 - Profile QA becoming terrain mutation. Terrain authoring can recommend or produce evidence for profile review, but ordered profile sampling remains owned by scene targeting/interrogation and acceptance interpretation remains owned by scene validation/review.
+- Visual UI becoming a second terrain editor. SketchUp UI controls should call into terrain command/use-case behavior or equivalent managed services instead of directly editing generated mesh output as the durable source.
 - Storage leaking into domain math. Terrain edit internals should operate on in-memory terrain state and should not know whether persistence is an attribute dictionary, chunked payload, or future sidecar.
 - Generated mesh becoming source of truth. The output mesh is replaceable derived geometry. The stored terrain state is the source of truth after adoption.
 
@@ -127,6 +132,24 @@ The main slippage risks are:
 - Heightmap persistence format.
 - Public validation acceptance policy.
 - Semantic hardscape creation or mutation.
+
+### SketchUp Terrain UI Controller
+
+**Responsibilities**
+
+- Provide bounded SketchUp-facing controls for selecting managed terrain targets, local support regions, operation modes, brush or support sizes, blend distances, and apply/cancel actions.
+- Present preview or pre-apply feedback where practical without treating preview geometry as authoritative terrain state.
+- Invoke managed terrain command/use-case behavior for durable apply operations.
+- Surface success, refusal, and evidence summaries in user-appropriate SketchUp UI affordances.
+- Keep UI-triggered mutations as coherent SketchUp undoable operations through the underlying terrain command path where practical.
+
+**Must Not Own**
+
+- Terrain edit math.
+- Terrain repository or serialization behavior.
+- Validation pass/fail policy.
+- Durable generated face or vertex identity.
+- Raw live-TIN sculpting as terrain source state.
 
 ### Managed Terrain Identity And Metadata
 
@@ -602,3 +625,4 @@ SketchUp groups and components can be transformed or scaled. Keeping state in a 
 14. Should planar region fitting be a new terrain edit operation, a nested survey correction intent, or a distinct internal strategy selected by explicit request fields?
 15. Which profile QA and bump or valley diagnostics are terrain-owned evidence versus validation-owned findings?
 16. Which richer terrain edit recipes should seed the initial MCP prompts catalog without bloating tool descriptions?
+17. Which SketchUp UI mechanism should host the first bounded terrain visual edit controls without bypassing managed terrain command boundaries?

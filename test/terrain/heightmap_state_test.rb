@@ -46,6 +46,14 @@ class HeightmapStateTest < Minitest::Test
     refute_equal(first, build_state(elevations: [10.0, nil, 11.5, 13.0]))
   end
 
+  def test_with_elevations_preserves_legacy_state_class_for_migration_fixtures
+    edited = build_state.with_elevations([1.0, 2.0, 3.0, 4.0], revision: 5)
+
+    assert_instance_of(SU_MCP::Terrain::HeightmapState, edited)
+    assert_equal(5, edited.revision)
+    assert_equal([1.0, 2.0, 3.0, 4.0], edited.elevations)
+  end
+
   private
 
   def build_state(overrides = {})

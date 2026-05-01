@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require_relative '../test_helper'
+require_relative '../../src/su_mcp/terrain/tiled_heightmap_state'
 require_relative '../../src/su_mcp/terrain/heightmap_state'
 require_relative '../../src/su_mcp/terrain/terrain_state_serializer'
 require_relative '../../src/su_mcp/terrain/attribute_terrain_storage'
@@ -23,7 +24,9 @@ class TerrainRepositoryTest < Minitest::Test
 
     assert_equal('saved', saved.fetch(:outcome))
     assert_equal('loaded', loaded.fetch(:outcome))
-    assert_equal(build_state, loaded.fetch(:state))
+    assert_instance_of(SU_MCP::Terrain::TiledHeightmapState, loaded.fetch(:state))
+    assert_equal(build_state.elevations, loaded.fetch(:state).elevations)
+    assert_equal(build_state.spacing, loaded.fetch(:state).spacing)
     assert_kind_of(Integer, loaded.fetch(:summary).fetch(:serializedBytes))
     refute_includes(loaded.keys, :storage)
     refute_includes(loaded.keys, :attribute_dictionary)

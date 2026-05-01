@@ -1,7 +1,6 @@
 # frozen_string_literal: true
 
 require_relative 'fixed_control_evaluator'
-require_relative 'heightmap_state'
 require_relative 'region_influence'
 require_relative 'sample_window'
 
@@ -434,8 +433,7 @@ module SU_MCP
             requestedElevation: point.fetch('z'),
             planeElevation: plane_z,
             residual: (point.fetch('z') - plane_z).abs,
-            tolerance: control.fetch(:tolerance),
-            status: 'satisfied'
+            tolerance: control.fetch(:tolerance)
           }.compact
           if state
             row[:beforeElevation] = interpolate_elevations(state, state.elevations, point)
@@ -445,8 +443,17 @@ module SU_MCP
               row[:surfaceResidual] = (point.fetch('z') - surface_z).abs
             end
           end
+          row[:status] = control_row_status(row)
           row
         end
+      end
+
+      def control_row_status(row)
+        if row.key?(:surfaceResidual)
+          return row.fetch(:surfaceResidual) <= row.fetch(:tolerance) ? 'satisfied' : 'unsafe'
+        end
+
+        row.fetch(:residual) <= row.fetch(:tolerance) ? 'satisfied' : 'violating'
       end
 
       def quality_for(rows)
@@ -570,18 +577,7 @@ module SU_MCP
       end
 
       def edited_state(state, elevations)
-        HeightmapState.new(
-          basis: state.basis,
-          origin: state.origin,
-          spacing: state.spacing,
-          dimensions: state.dimensions,
-          elevations: elevations,
-          revision: state.revision + 1,
-          state_id: state.state_id,
-          source_summary: state.source_summary,
-          constraint_refs: state.constraint_refs,
-          owner_transform_signature: state.owner_transform_signature
-        )
+        state.with_elevations(elevations, revision: state.revision + 1)
       end
 
       def public_control_reference(control)

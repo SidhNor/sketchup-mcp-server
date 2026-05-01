@@ -1,7 +1,6 @@
 # frozen_string_literal: true
 
 require_relative 'fixed_control_evaluator'
-require_relative 'heightmap_state'
 require_relative 'regional_survey_correction_solver'
 require_relative 'survey_correction_evidence'
 require_relative 'survey_correction_solver'
@@ -76,18 +75,7 @@ module SU_MCP
       end
 
       def edited_state(state, elevations)
-        HeightmapState.new(
-          basis: state.basis,
-          origin: state.origin,
-          spacing: state.spacing,
-          dimensions: state.dimensions,
-          elevations: elevations,
-          revision: state.revision + 1,
-          state_id: state.state_id,
-          source_summary: state.source_summary,
-          constraint_refs: state.constraint_refs,
-          owner_transform_signature: state.owner_transform_signature
-        )
+        state.with_elevations(elevations, revision: state.revision + 1)
       end
     end
   end
