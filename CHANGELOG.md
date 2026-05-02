@@ -2,6 +2,19 @@
 
 <!-- version list -->
 
+## v1.2.0 (2026-05-02)
+
+### Documentation
+
+- **terrain**: Task updates
+  ([`44fe6d7`](https://github.com/SidhNor/sketchup-mcp-server/commit/44fe6d7fb9101919181d899ef72ea0c4b6559260))
+
+### Features
+
+- **MTA-11**: Highly detailed terrain with TIN simplificaiton
+  ([`ac17479`](https://github.com/SidhNor/sketchup-mcp-server/commit/ac174795fe742fb1a19d5c93cc87e5c5b24d68f3))
+
+
 ## v1.1.2 (2026-04-30)
 
 ### Refactoring
