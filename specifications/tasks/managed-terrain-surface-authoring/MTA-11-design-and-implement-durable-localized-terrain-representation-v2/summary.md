@@ -83,7 +83,7 @@ Verified:
   group behind.
 - Sloped/irregular adoption replaces the unmanaged source, keeps
   `terrainState.payloadKind: "heightmap_grid"`, and produced representative adaptive output.
-- Live contract scan found no alternate payload kind, `tileSize`, `tileCount`, Ruby class dumps,
+- Live contract scan found no alternate payload kind, tile sizing/count fields, Ruby class dumps,
   or SketchUp object dumps in observed responses/schema/docs.
 - Non-coplanar planar-fit refusal evidence reports violating rows as
   `status: "violating"`.

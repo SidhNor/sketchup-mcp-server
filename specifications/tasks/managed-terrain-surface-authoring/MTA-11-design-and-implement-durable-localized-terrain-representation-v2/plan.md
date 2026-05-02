@@ -1,12 +1,12 @@
-# Technical Plan: MTA-11 Migrate To Dense Tiled Heightfield V2 With Adaptive Output
+# Technical Plan: MTA-11 Migrate To Tiled Heightmap V2 With Adaptive Output
 **Task ID**: `MTA-11`
-**Title**: `Migrate To Dense Tiled Heightfield V2 With Adaptive Output`
+**Title**: `Migrate To Tiled Heightmap V2 With Adaptive Output`
 **Status**: `finalized`
 **Date**: `2026-05-01`
 
 ## Source Task
 
-- [Migrate To Dense Tiled Heightfield V2 With Adaptive Output](./task.md)
+- [Migrate To Tiled Heightmap V2 With Adaptive Output](./task.md)
 
 ## Problem Summary
 
@@ -81,7 +81,7 @@ Initial payload posture:
 - `basis`, `origin`, `ownerTransformSignature`: same conceptual owner-local coordinate role as v1
 - `spacing`: one terrain-wide source spacing for the Managed Terrain Surface
 - `dimensions` or `extents`: total terrain sample dimensions or bounds
-- `tileSize`: one power-of-two tile size in samples
+- internal tile edge size: one power-of-two tile size in samples
 - `tiles`: ordered tile payloads with tile coordinates, dimensions, elevations, and optional per-tile integrity data
 - `revision`, `stateId`, `sourceSummary`, `constraintRefs`: preserved terrain identity and lineage fields
 

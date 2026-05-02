@@ -1,6 +1,6 @@
-# Task: MTA-11 Migrate To Dense Tiled Heightfield V2 With Adaptive Output
+# Task: MTA-11 Migrate To Tiled Heightmap V2 With Adaptive Output
 **Task ID**: `MTA-11`
-**Title**: `Migrate To Dense Tiled Heightfield V2 With Adaptive Output`
+**Title**: `Migrate To Tiled Heightmap V2 With Adaptive Output`
 **Status**: `implemented`
 **Priority**: `P1`
 **Date**: `2026-05-01`
@@ -27,7 +27,7 @@ This task intentionally drops v1 backward-compatibility as an implementation req
 - implement one-way v1-to-v2 migration posture without preserving v1 as a supported runtime format
 - store and load v2 tiled terrain state through the terrain repository with deterministic summaries and integrity checks
 - track dirty tiles or windows affected by terrain edits
-- generate adaptive SketchUp TIN output from dense v2 heightfield source as part of the same task
+- generate adaptive SketchUp TIN output from `heightmap_grid` v2 source as part of the same task
 - use a bounded first adaptive output algorithm, such as deterministic quadtree/error-based simplification, instead of starting with constrained Delaunay or advanced mesh optimization
 - preserve terrain state as source of truth and generated mesh as disposable derived output
 - keep sampling, validation, and evidence handoff understandable to downstream MCP workflows
@@ -62,7 +62,7 @@ Scenario: slope or planar edits cross former representation boundaries
   And source representation boundaries do not change the mathematical meaning of the edit
   And generated output is regenerated from the updated heightfield rather than edited directly
 
-Scenario: adaptive SketchUp output is generated from dense heightfield source
+Scenario: adaptive SketchUp output is generated from heightmap_grid v2 source
   Given a tiled heightmap v2 terrain has flat, planar, and locally detailed regions
   When derived SketchUp terrain output is regenerated
   Then flat or planar regions may collapse to fewer faces when they remain within documented height-error tolerance
@@ -106,7 +106,7 @@ Scenario: corrupt or unsupported v2 state refuses explicitly
 
 - terrain state remains behind the terrain repository seam and outside the lightweight `su_mcp` metadata dictionary
 - terrain edit kernels consume a uniform raster edit-window interface, not raw v2 storage tiles or generated mesh topology
-- generated output is derived from dense heightfield source and governed by documented height-error or simplification tolerances
+- generated output is derived from `heightmap_grid` v2 source and governed by documented height-error or simplification tolerances
 - adaptive output must preserve terrain boundary correctness and avoid visible cracks or unsafe seams between simplified output regions
 - migration and unsupported-version behavior must be deterministic and JSON-safe
 - generated face or vertex identifiers must not become durable representation identifiers
