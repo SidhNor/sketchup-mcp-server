@@ -48,6 +48,7 @@ module SU_MCP
       end
 
       def evidence_summary(edit_summary, diagnostics, sample_limit)
+        diagnostics = public_diagnostics(diagnostics)
         samples = diagnostics.fetch(:samples, [])
         summary = {
           editRegion: edit_summary.fetch(:region, {}),
@@ -66,6 +67,32 @@ module SU_MCP
         summary[:survey] = diagnostics[:survey] if diagnostics[:survey]
         summary[:planarFit] = diagnostics[:planarFit] if diagnostics[:planarFit]
         summary
+      end
+
+      def public_diagnostics(diagnostics)
+        sanitize_public_value(diagnostics)
+      end
+
+      def sanitize_public_value(value)
+        case value
+        when Hash
+          value.each_with_object({}) do |(key, nested), memo|
+            next if private_diagnostic_key?(key)
+
+            memo[key] = sanitize_public_value(nested)
+          end
+        when Array
+          value.map { |nested| sanitize_public_value(nested) }
+        else
+          value
+        end
+      end
+
+      def private_diagnostic_key?(key)
+        %w[
+          featureIntent featureConstraints FeatureIntentSet pointifiedLanes rawTriangles
+          solverMatrix outputPlan sampleWindow dirtyWindow outputRegions chunks tiles diagnostics
+        ].include?(key.to_s)
       end
 
       def fixed_controls(diagnostics)

@@ -2,6 +2,7 @@
 
 require_relative '../test_helper'
 require 'digest'
+require_relative '../../src/su_mcp/terrain/feature_intent_set'
 require_relative '../../src/su_mcp/terrain/tiled_heightmap_state'
 require_relative '../../src/su_mcp/terrain/heightmap_state'
 require_relative '../../src/su_mcp/terrain/terrain_state_serializer'
@@ -19,8 +20,9 @@ class TerrainStateSerializerTest < Minitest::Test
     parsed = JSON.parse(serialized)
 
     assert_equal('heightmap_grid', parsed.fetch('payloadKind'))
-    assert_equal(2, parsed.fetch('schemaVersion'))
+    assert_equal(3, parsed.fetch('schemaVersion'))
     assert_equal('sha256', parsed.fetch('digestAlgorithm'))
+    assert_equal(SU_MCP::Terrain::FeatureIntentSet.default_h, parsed.fetch('featureIntent'))
     assert_match(/\A[0-9a-f]{64}\z/, parsed.fetch('digest'))
     assert_equal([10.0, nil, 11.5, 12.0], parsed.fetch('tiles').first.fetch('elevations'))
   end
@@ -40,7 +42,7 @@ class TerrainStateSerializerTest < Minitest::Test
     assert_equal(build_state, loaded.fetch(:state))
   end
 
-  def test_migrates_v1_heightmap_payload_to_v2_without_upsampling
+  def test_migrates_v1_heightmap_payload_to_v3_without_upsampling
     v1_payload = serialized_v1_payload
 
     loaded = serializer.deserialize(JSON.generate(v1_payload))
@@ -48,9 +50,35 @@ class TerrainStateSerializerTest < Minitest::Test
     assert_equal('loaded', loaded.fetch(:outcome))
     assert_instance_of(SU_MCP::Terrain::TiledHeightmapState, loaded.fetch(:state))
     assert_equal('heightmap_grid', loaded.fetch(:state).payload_kind)
-    assert_equal(2, loaded.fetch(:state).schema_version)
+    assert_equal(3, loaded.fetch(:state).schema_version)
+    assert_equal(SU_MCP::Terrain::FeatureIntentSet.default_h, loaded.fetch(:state).feature_intent)
     assert_equal(build_v1_state.elevations, loaded.fetch(:state).elevations)
     assert_equal(build_v1_state.spacing, loaded.fetch(:state).spacing)
+  end
+
+  def test_migrates_v2_tiled_payload_to_v3_with_empty_feature_intent
+    v2_payload = JSON.parse(serializer.serialize(build_state))
+    v2_payload.delete('featureIntent')
+    v2_payload['schemaVersion'] = 2
+    v2_payload['digest'] = Digest::SHA256.hexdigest(canonical_json(
+                                                      v2_payload.reject do |key, _value|
+                                                        %w[digest digestAlgorithm].include?(key)
+                                                      end
+                                                    ))
+
+    loaded = serializer.deserialize(JSON.generate(v2_payload))
+
+    assert_equal('loaded', loaded.fetch(:outcome))
+    assert_equal(3, loaded.fetch(:state).schema_version)
+    assert_equal(SU_MCP::Terrain::FeatureIntentSet.default_h, loaded.fetch(:state).feature_intent)
+  end
+
+  def test_digest_participates_in_feature_intent_ordering
+    first = serializer.serialize(build_state(feature_intent: feature_intent(%w[b a])))
+    second = serializer.serialize(build_state(feature_intent: feature_intent(%w[a b])))
+
+    assert_equal(JSON.parse(first).fetch('digest'), JSON.parse(second).fetch('digest'))
+    assert_equal(first, second)
   end
 
   def test_refuses_corrupt_json_and_malformed_valid_json
@@ -105,9 +133,36 @@ class TerrainStateSerializerTest < Minitest::Test
         state_id: 'terrain-state-1',
         source_summary: nil,
         constraint_refs: [],
-        owner_transform_signature: 'transform-a'
+        owner_transform_signature: 'transform-a',
+        feature_intent: overrides.delete(:feature_intent) || SU_MCP::Terrain::FeatureIntentSet.default_h
       }.merge(overrides)
     )
+  end
+
+  def feature_intent(scopes)
+    {
+      'schemaVersion' => 3,
+      'revision' => 1,
+      'features' => scopes.map do |scope|
+        {
+          'id' => "feature:target_region:explicit_edit:#{scope}:aaaaaaaaaaaa",
+          'kind' => 'target_region',
+          'sourceMode' => 'explicit_edit',
+          'roles' => ['boundary'],
+          'priority' => 30,
+          'payload' => { 'semanticScope' => scope },
+          'affectedWindow' => { 'min' => { 'column' => 0, 'row' => 0 },
+                                'max' => { 'column' => 1, 'row' => 1 } },
+          'provenance' => {
+            'originClass' => 'edit_terrain_surface',
+            'originOperation' => 'target_height',
+            'createdAtRevision' => 1,
+            'updatedAtRevision' => 1
+          }
+        }
+      end,
+      'generation' => SU_MCP::Terrain::FeatureIntentSet.default_h.fetch('generation')
+    }
   end
 
   def build_v1_state(overrides = {})

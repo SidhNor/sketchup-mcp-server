@@ -14,7 +14,7 @@ class TerrainSurfaceStateBuilderTest < Minitest::Test
 
     assert_instance_of(SU_MCP::Terrain::TiledHeightmapState, state)
     assert_equal('heightmap_grid', state.payload_kind)
-    assert_equal(2, state.schema_version)
+    assert_equal(3, state.schema_version)
     assert_equal({ 'columns' => 3, 'rows' => 2 }, state.dimensions)
     assert_equal({ 'x' => 1.5, 'y' => 2.5 }, state.spacing)
     assert_equal([8.25, 8.25, 8.25, 8.25, 8.25, 8.25], state.elevations)

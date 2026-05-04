@@ -164,6 +164,29 @@ class TerrainEditEvidenceBuilderTest < Minitest::Test
     refute_includes(serialized, 'tiles')
   end
 
+  def test_nested_private_feature_diagnostics_do_not_leak_from_compact_evidence
+    result = SU_MCP::Terrain::TerrainEditEvidenceBuilder.new.build_success(
+      owner_reference: { sourceElementId: 'terrain-main' },
+      terrain_state_summary: terrain_state_summary,
+      output_summary: { derivedMesh: derived_mesh_summary },
+      edit_summary: edit_summary.merge(mode: 'corridor_transition', region: corridor_region),
+      diagnostics: diagnostics.merge(
+        transition: transition_diagnostics.merge(
+          featureIntent: { id: 'feature:linear_corridor:explicit_edit:a:aaaaaaaaaaaa' },
+          featureConstraints: [{ kind: 'linear_corridor', affectedWindow: {} }],
+          rawTriangles: [[0, 1, 2]]
+        )
+      ),
+      sample_limit: 0
+    )
+    serialized = JSON.generate(result)
+
+    assert_equal('corridor_transition', result.dig(:evidence, :transition, :mode))
+    %w[featureIntent feature: linear_corridor affectedWindow rawTriangles].each do |term|
+      refute_includes(serialized, term)
+    end
+  end
+
   private
 
   def terrain_state_summary

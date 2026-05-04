@@ -135,14 +135,22 @@ module SU_MCP
         version = payload.fetch('schemaVersion')
         return payload if version == CURRENT_SCHEMA_VERSION
 
-        return migrate_v1_payload(payload) if version == HeightmapState::SCHEMA_VERSION
+        if version == HeightmapState::SCHEMA_VERSION
+          return migrate_v2_payload(migrate_v1_payload(payload))
+        end
+        return migrate_v2_payload(payload) if version == 2
 
         raise MigrationError, "No migrator for schema version #{version}"
       end
 
       def migrate_v1_payload(payload)
         state = HeightmapState.from_h(payload)
-        migrated = TiledHeightmapState.from_heightmap_state(state).to_h
+        TiledHeightmapState.from_heightmap_state(state).to_h.merge('schemaVersion' => 2)
+      end
+
+      def migrate_v2_payload(payload)
+        state_payload = payload.merge('featureIntent' => FeatureIntentSet.default_h)
+        migrated = TiledHeightmapState.from_h(state_payload).to_h
         migrated['digestAlgorithm'] = DIGEST_ALGORITHM
         migrated['digest'] = digest_for(migrated)
         migrated

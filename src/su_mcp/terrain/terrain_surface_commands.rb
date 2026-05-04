@@ -9,10 +9,13 @@ require_relative 'bounded_grade_edit'
 require_relative 'corridor_transition_edit'
 require_relative 'create_terrain_surface_request'
 require_relative 'edit_terrain_surface_request'
+require_relative 'feature_intent_merger'
 require_relative 'local_fairing_edit'
 require_relative 'planar_region_fit_edit'
 require_relative 'sample_window'
 require_relative 'survey_point_constraint_edit'
+require_relative 'terrain_feature_intent_emitter'
+require_relative 'terrain_feature_planner'
 require_relative 'terrain_edit_evidence_builder'
 require_relative 'terrain_mesh_generator'
 require_relative 'terrain_output_plan'
@@ -49,7 +52,10 @@ module SU_MCP
         survey_point_editor: SurveyPointConstraintEdit.new,
         planar_region_fit_editor: PlanarRegionFitEdit.new,
         target_resolver: nil,
-        edit_evidence_builder: TerrainEditEvidenceBuilder.new
+        edit_evidence_builder: TerrainEditEvidenceBuilder.new,
+        terrain_feature_intent_emitter: TerrainFeatureIntentEmitter.new,
+        terrain_feature_intent_merger: FeatureIntentMerger.new,
+        terrain_feature_planner: TerrainFeaturePlanner.new
       )
         @model = model
         @validator = validator
@@ -69,6 +75,9 @@ module SU_MCP
         @planar_region_fit_editor = planar_region_fit_editor
         @target_resolver = target_resolver || TargetReferenceResolver.new
         @edit_evidence_builder = edit_evidence_builder
+        @terrain_feature_intent_emitter = terrain_feature_intent_emitter
+        @terrain_feature_intent_merger = terrain_feature_intent_merger
+        @terrain_feature_planner = terrain_feature_planner
       end
 
       def create_terrain_surface(params)
@@ -98,7 +107,8 @@ module SU_MCP
                   :length_converter, :edit_request_validator, :grade_editor, :target_resolver,
                   :corridor_editor, :local_fairing_editor, :survey_point_editor,
                   :planar_region_fit_editor,
-                  :edit_evidence_builder
+                  :edit_evidence_builder, :terrain_feature_intent_emitter,
+                  :terrain_feature_intent_merger, :terrain_feature_planner
 
       def validate(params)
         return validator.validate(params) if validator
@@ -151,26 +161,61 @@ module SU_MCP
         model.start_operation(EDIT_OPERATION_NAME, true)
         operation_started = true
 
-        saved = save_state_or_refusal(
-          context.fetch(:owner),
-          context.fetch(:edit_result).fetch(:state)
-        )
-        return finish_edit_refusal(saved) if refused?(saved)
+        result = run_edit_mutation(context)
+        return finish_edit_refusal(result) if refused?(result)
 
-        output = mesh_generator.regenerate(
-          owner: context.fetch(:owner),
-          state: context.fetch(:edit_result).fetch(:state),
-          terrain_state_summary: saved.fetch(:summary),
-          output_plan: edit_output_plan(context, saved)
-        )
-        return finish_edit_refusal(output_refusal(output)) if refused?(output)
-
-        result = edit_success_response(context, saved, output)
         model.commit_operation
         result
       rescue StandardError
         model.abort_operation if operation_started && model.respond_to?(:abort_operation)
         raise
+      end
+
+      def run_edit_mutation(context)
+        planned = planned_feature_state_or_refusal(context)
+        return planned if refused?(planned)
+
+        state = planned.fetch(:state)
+        saved = save_state_or_refusal(context.fetch(:owner), state)
+        return saved if refused?(saved)
+
+        feature_plan = post_save_feature_plan(state, saved)
+        return feature_plan if refused?(feature_plan)
+
+        output = regenerate_edit_output(context, saved, feature_plan)
+        return output_refusal(output) if refused?(output)
+
+        edit_success_response(context, saved, output, state)
+      end
+
+      def planned_feature_state_or_refusal(context)
+        feature_state = feature_merged_state(context)
+        pre_save = terrain_feature_planner.pre_save(state: feature_state)
+        return public_feature_refusal(pre_save) if refused?(pre_save)
+
+        { outcome: 'ready', state: pre_save.fetch(:state, feature_state) }
+      end
+
+      def public_feature_refusal(result)
+        result.reject { |key, _value| key == :diagnostics }
+      end
+
+      def post_save_feature_plan(state, saved)
+        terrain_feature_planner.prepare(
+          state: state,
+          terrain_state_summary: saved.fetch(:summary)
+        )
+      end
+
+      def regenerate_edit_output(context, saved, feature_plan)
+        output_state = context.fetch(:edit_result).fetch(:state)
+        mesh_generator.regenerate(
+          owner: context.fetch(:owner),
+          state: output_state,
+          terrain_state_summary: saved.fetch(:summary),
+          output_plan: edit_output_plan(context, saved, feature_plan, output_state),
+          feature_context: feature_plan.fetch(:context)
+        )
       end
 
       def finish_edit_refusal(result)
@@ -292,12 +337,65 @@ module SU_MCP
         )
       end
 
-      def edit_output_plan(context, saved)
+      def feature_merged_state(context)
+        edited_state = normalized_feature_state(context.fetch(:edit_result).fetch(:state))
+        delta = terrain_feature_intent_emitter.emit(
+          state: edited_state,
+          request: context.fetch(:validation).fetch(:params),
+          diagnostics: context.fetch(:edit_result).fetch(:diagnostics)
+        )
+        terrain_feature_intent_merger.apply(state: edited_state, delta: delta)
+      end
+
+      def normalized_feature_state(state)
+        return state if state.respond_to?(:feature_intent)
+
+        TiledHeightmapState.from_heightmap_state(state)
+      end
+
+      def edit_output_plan(context, saved, feature_plan, state)
+        if full_grid_feature_reconciliation?(feature_plan)
+          return TerrainOutputPlan.full_grid(
+            state: state,
+            terrain_state_summary: saved.fetch(:summary)
+          )
+        end
+
+        window = feature_planned_window(feature_plan) ||
+                 changed_region_window(context.fetch(:edit_result).fetch(:diagnostics))
         TerrainOutputPlan.dirty_window(
-          state: context.fetch(:edit_result).fetch(:state),
+          state: state,
           terrain_state_summary: saved.fetch(:summary),
           previous_terrain_state_summary: context.fetch(:loaded).fetch(:summary),
-          window: changed_region_window(context.fetch(:edit_result).fetch(:diagnostics))
+          window: window
+        )
+      end
+
+      def full_grid_feature_reconciliation?(feature_plan)
+        feature_plan.dig(:outputWindowReconciliation, :mode) == 'full_grid' ||
+          feature_plan.dig('outputWindowReconciliation', 'mode') == 'full_grid'
+      end
+
+      def feature_planned_window(feature_plan)
+        constraints = feature_plan.dig(:context, :constraints) ||
+                      feature_plan.dig('context', 'constraints') ||
+                      []
+        windows = constraints.filter_map { |constraint| constraint[:affectedWindow] }
+        return nil if windows.empty?
+
+        sample_window_from_feature_windows(windows)
+      rescue KeyError, TypeError
+        SampleWindow.full_grid(feature_plan.fetch(:state))
+      end
+
+      def sample_window_from_feature_windows(windows)
+        mins = windows.map { |window| window.fetch('min') }
+        maxes = windows.map { |window| window.fetch('max') }
+        SampleWindow.new(
+          min_column: mins.map { |point| point.fetch('column') }.min,
+          min_row: mins.map { |point| point.fetch('row') }.min,
+          max_column: maxes.map { |point| point.fetch('column') }.max,
+          max_row: maxes.map { |point| point.fetch('row') }.max
         )
       end
 
@@ -314,8 +412,7 @@ module SU_MCP
         )
       end
 
-      def edit_success_response(context, saved, output)
-        state = context.fetch(:edit_result).fetch(:state)
+      def edit_success_response(context, saved, output, state)
         params = context.fetch(:validation).fetch(:params)
         edit_evidence_builder.build_success(
           outcome: 'edited',

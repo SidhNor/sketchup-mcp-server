@@ -69,7 +69,10 @@ module SU_MCP
         generated_result(output_plan).merge(validationOnly: true)
       end
 
-      def regenerate(owner:, state:, terrain_state_summary:, output_plan: nil)
+      def regenerate(owner:, state:, terrain_state_summary:, output_plan: nil, feature_context: nil)
+        # Runtime-only context is accepted for MTA-20 planning; first-slice generation keeps
+        # existing TerrainOutputPlan behavior until a feature-aware generator consumes it.
+        _feature_context = feature_context
         unsupported = unsupported_child_types(owner.entities)
         return unsupported_children_refusal(unsupported) unless unsupported.empty?
         return no_data_refusal if adaptive_state?(state) && state.elevations.any?(&:nil?)

@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require_relative 'heightmap_state'
+require_relative 'feature_intent_set'
 require_relative 'sample_window'
 
 module SU_MCP
@@ -8,12 +9,12 @@ module SU_MCP
     # SketchUp-free tiled heightmap terrain state.
     class TiledHeightmapState
       PAYLOAD_KIND = HeightmapState::PAYLOAD_KIND
-      SCHEMA_VERSION = 2
+      SCHEMA_VERSION = 3
       DEFAULT_TILE_SIZE = 128
 
       attr_reader :basis, :origin, :spacing, :dimensions, :elevations, :revision,
                   :state_id, :source_summary, :constraint_refs,
-                  :owner_transform_signature, :tile_size, :tiles
+                  :owner_transform_signature, :tile_size, :tiles, :feature_intent
 
       def self.from_h(payload)
         normalized = HeightmapState.stringify_keys(payload)
@@ -29,7 +30,8 @@ module SU_MCP
           state_id: normalized.fetch('stateId'),
           source_summary: normalized['sourceSummary'],
           constraint_refs: normalized.fetch('constraintRefs', []),
-          owner_transform_signature: normalized['ownerTransformSignature']
+          owner_transform_signature: normalized['ownerTransformSignature'],
+          feature_intent: normalized.fetch('featureIntent', FeatureIntentSet.default_h)
         )
       rescue KeyError => e
         raise ArgumentError, "Missing tiled terrain state field: #{e.key}"
@@ -47,7 +49,8 @@ module SU_MCP
           state_id: state.state_id,
           source_summary: state.source_summary,
           constraint_refs: state.constraint_refs,
-          owner_transform_signature: state.owner_transform_signature
+          owner_transform_signature: state.owner_transform_signature,
+          feature_intent: FeatureIntentSet.default_h
         )
       end
 
@@ -73,6 +76,9 @@ module SU_MCP
 
         assign_from_normalized_state(normalized)
         @tiles = normalize_tiles(values[:tiles] || build_tiles(@elevations)).freeze
+        @feature_intent = FeatureIntentSet.new(
+          values.fetch(:feature_intent, FeatureIntentSet.default_h)
+        ).to_h
       end
 
       def payload_kind
@@ -103,7 +109,8 @@ module SU_MCP
           'stateId' => state_id,
           'sourceSummary' => source_summary,
           'constraintRefs' => constraint_refs,
-          'ownerTransformSignature' => owner_transform_signature
+          'ownerTransformSignature' => owner_transform_signature,
+          'featureIntent' => feature_intent
         }
       end
 
@@ -119,7 +126,25 @@ module SU_MCP
           state_id: state_id,
           source_summary: source_summary,
           constraint_refs: constraint_refs,
-          owner_transform_signature: owner_transform_signature
+          owner_transform_signature: owner_transform_signature,
+          feature_intent: feature_intent
+        )
+      end
+
+      def with_feature_intent(new_feature_intent)
+        self.class.new(
+          basis: basis,
+          origin: origin,
+          spacing: spacing,
+          dimensions: dimensions,
+          elevations: elevations,
+          tile_size: tile_size,
+          revision: revision,
+          state_id: state_id,
+          source_summary: source_summary,
+          constraint_refs: constraint_refs,
+          owner_transform_signature: owner_transform_signature,
+          feature_intent: new_feature_intent
         )
       end
 

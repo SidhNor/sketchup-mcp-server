@@ -17,15 +17,36 @@ class TerrainContractStabilityTest < Minitest::Test
     'vertical' => 'z_up'
   }.freeze
 
-  def test_serialized_terrain_state_is_v2_heightmap_grid_without_window_or_chunk_state
+  def test_serialized_terrain_state_is_v3_heightmap_grid_without_expanded_feature_or_chunk_state
     parsed = JSON.parse(serializer.serialize(build_state))
 
     assert_equal('heightmap_grid', parsed.fetch('payloadKind'))
-    assert_equal(2, parsed.fetch('schemaVersion'))
+    assert_equal(3, parsed.fetch('schemaVersion'))
+    assert_includes(parsed.keys, 'featureIntent')
     assert_includes(parsed.keys, 'tiles')
     refute_includes(parsed.keys, 'sampleWindows')
     refute_includes(parsed.keys, 'outputRegions')
     refute_includes(parsed.keys, 'chunks')
+    refute_includes(JSON.generate(parsed.fetch('featureIntent')), 'pointified')
+    refute_includes(JSON.generate(parsed.fetch('featureIntent')), 'rawTriangle')
+  end
+
+  def test_public_evidence_does_not_expose_feature_constraint_internals
+    result = edit_evidence_result(
+      diagnostics: edit_diagnostics.merge(
+        featureIntent: { id: 'feature:target_region:explicit_edit:a:aaaaaaaaaaaa' },
+        featureConstraints: [{ kind: 'linear_corridor', affectedWindow: {} }],
+        FeatureIntentSet: true,
+        pointifiedLanes: [[0, 0]],
+        rawTriangles: [[0, 1, 2]],
+        solverMatrix: [[1.0]]
+      )
+    )
+
+    %w[featureIntent feature: linear_corridor affectedWindow FeatureIntentSet pointified
+       rawTriangles solverMatrix].each do |term|
+      refute_includes(JSON.generate(result), term)
+    end
   end
 
   def test_edit_evidence_keeps_public_changed_region_vocabulary_without_generated_ids

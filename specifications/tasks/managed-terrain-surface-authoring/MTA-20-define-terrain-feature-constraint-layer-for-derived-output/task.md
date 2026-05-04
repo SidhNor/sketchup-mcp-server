@@ -1,7 +1,7 @@
 # Task: MTA-20 Define Terrain Feature Constraint Layer For Derived Output
 **Task ID**: `MTA-20`
 **Title**: `Define Terrain Feature Constraint Layer For Derived Output`
-**Status**: `draft`
+**Status**: `implemented`
 **Priority**: `P1`
 **Date**: `2026-05-02`
 
@@ -33,6 +33,8 @@ diagnostic work can use without changing public terrain source-of-truth semantic
   transition bands, control points, endpoint caps, protected zones, and feature priorities.
 - Allow terrain edit kernels and output planning to carry feature constraints alongside the
   authoritative `heightmap_grid` state without making generated mesh the source of truth.
+- Preserve only the durable feature intent and regeneration metadata needed to rebuild internal
+  constraints across output-regeneration boundaries.
 - Provide enough feature information for derived output diagnostics to distinguish expected sharp
   changes along a feature from suspicious cross-feature triangulation.
 - Preserve compact public MCP responses and avoid exposing feature-constraint internals unless a
@@ -46,7 +48,7 @@ diagnostic work can use without changing public terrain source-of-truth semantic
 Scenario: corridor edit emits generic feature constraints
   Given a managed terrain corridor-transition edit with start and end controls, width, side falloff, and end behavior
   When the edit produces its updated terrain state and edit diagnostics
-  Then the internal output-planning data includes feature constraints for the corridor centerline, side transition bands, endpoint control zones, and must-hit control points
+  Then the internal output-planning data includes feature constraints for the corridor centerline, side transition bands, endpoint control zones, and control role or priority
   And those constraints are expressed in terrain owner-local/grid-aware coordinates rather than raw SketchUp entity references
   And the public MCP response does not expose raw feature-constraint internals
 
@@ -74,10 +76,11 @@ Scenario: public contract remains compact
   Then public responses remain JSON-serializable and compact
   And responses do not expose raw feature graphs, raw triangle lists, solver matrices, SketchUp objects, or low-level algorithm names
 
-Scenario: feature constraints survive regeneration boundaries
+Scenario: feature intent survives regeneration boundaries
   Given a managed terrain edit changes terrain state and derived output is regenerated
   When output planning and generation run
-  Then feature constraints are available to output generation and diagnostic code before geometry replacement
+  Then the durable terrain data includes enough feature intent and regeneration metadata to rebuild internal feature constraints before geometry replacement
+  And expanded feature geometry and pointified lanes are derived during output planning rather than treated as durable source state
   And refusal paths that can be detected before output mutation leave previous valid output intact
 ```
 
@@ -87,6 +90,8 @@ Scenario: feature constraints survive regeneration boundaries
   triangulation backend
 - changing `heightmap_grid` as the public or persisted terrain source-of-truth payload kind
 - exposing feature constraints as public MCP request or response fields
+- persisting expanded feature graphs, pointified lanes, raw triangle lists, or solver internals as
+  durable terrain source state
 - creating a public Landscape Spline authoring tool or SketchUp UI for splines
 - adding corridor-specific mesh patches that bypass a generic feature-constraint model
 - making generated SketchUp mesh vertices, faces, or edges durable terrain state
@@ -97,6 +102,8 @@ Scenario: feature constraints survive regeneration boundaries
 - The task must improve the path toward reliable terrain output without reintroducing the failed
   MTA-19 simplifier as production behavior.
 - Public MCP clients should not need to understand internal feature graphs to use terrain tools.
+- Targeted Unreal Engine Landscape source research should inform internal feature mechanics, but it
+  must not define public MCP vocabulary or override this repository's Ruby runtime boundaries.
 - Corridor-heavy workflows are important evidence, but the solution must generalize to other
   terrain features and edit families.
 - The previous reliable simplifier remains the production baseline until feature-aware output work
@@ -106,8 +113,8 @@ Scenario: feature constraints survive regeneration boundaries
 
 - The Ruby extension runtime remains the owner of terrain edit orchestration, terrain output
   planning, SketchUp API mutation, and serialization.
-- Terrain state remains authoritative; feature constraints are auxiliary internal planning and
-  diagnostic data.
+- Terrain state remains authoritative; expanded feature constraints are auxiliary internal planning
+  and diagnostic data rebuilt from terrain state, feature intent, and regeneration metadata.
 - Feature constraints must be JSON-serializable internally and must not carry raw SketchUp object
   handles across runtime-facing boundaries.
 - Feature coordinates must be normalized to terrain owner-local/grid-aware coordinates so they can
@@ -141,7 +148,7 @@ Scenario: feature constraints survive regeneration boundaries
 
 ## Related Technical Plan
 
-- none yet
+- [Technical plan](./plan.md)
 
 ## Success Metrics
 

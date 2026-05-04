@@ -434,10 +434,13 @@ class TerrainSurfaceCommandsTest < Minitest::Test # rubocop:disable Metrics/Clas
 
   def test_edit_regeneration_refusal_aborts_operation_without_success
     model = build_semantic_model
-    managed_terrain_owner(model)
+    owner = managed_terrain_owner(model)
+    existing_face = owner.entities.add_face([0, 0, 0], [1, 0, 0], [1, 1, 0])
+    existing_face.set_attribute('su_mcp_terrain', 'derivedOutput', true)
+    repository = EditRepository.new(state)
     commands = build_edit_commands(
       model: model,
-      repository: EditRepository.new(state),
+      repository: repository,
       mesh_generator: RefusingRegeneratingMeshGenerator.new
     )
 
@@ -447,9 +450,112 @@ class TerrainSurfaceCommandsTest < Minitest::Test # rubocop:disable Metrics/Clas
     assert_equal('terrain_output_contains_unsupported_entities', result.dig(:refusal, :code))
     assert_equal([[:start_operation, 'Edit Terrain Surface', true], [:abort_operation]],
                  model.operations)
+    assert_instance_of(SU_MCP::Terrain::TiledHeightmapState, repository.saved_state)
+    assert_includes(owner.entities.faces, existing_face)
+  end
+
+  def test_real_feature_planner_conflict_refusal_strips_internal_diagnostics_publicly
+    model = build_semantic_model
+    managed_terrain_owner(model)
+    repository = EditRepository.new(state)
+    commands = build_edit_commands(
+      model: model,
+      repository: repository,
+      terrain_feature_intent_emitter: ConflictFeatureIntentEmitter.new,
+      terrain_feature_planner: SU_MCP::Terrain::TerrainFeaturePlanner.new
+    )
+
+    result = commands.edit_terrain_surface(edit_request)
+
+    assert_equal('refused', result.fetch(:outcome))
+    assert_equal('terrain_feature_conflict', result.dig(:refusal, :code))
+    refute_includes(result.keys, :diagnostics)
+    assert_nil(repository.saved_state)
+    refute_feature_leak(result)
+  end
+
+  def test_feature_pre_save_refusal_happens_before_repository_save_and_regeneration
+    model = build_semantic_model
+    managed_terrain_owner(model)
+    repository = EditRepository.new(state)
+    mesh_generator = RecordingRegeneratingMeshGenerator.new
+    commands = build_edit_commands(
+      model: model,
+      repository: repository,
+      mesh_generator: mesh_generator,
+      terrain_feature_intent_emitter: RecordingFeatureIntentEmitter.new,
+      terrain_feature_planner: RefusingFeaturePlanner.new
+    )
+
+    result = commands.edit_terrain_surface(edit_request)
+
+    assert_equal('refused', result.fetch(:outcome))
+    assert_equal('terrain_feature_conflict', result.dig(:refusal, :code))
+    assert_nil(repository.saved_state)
+    assert_empty(mesh_generator.calls)
+    assert_equal([[:start_operation, 'Edit Terrain Surface', true], [:abort_operation]],
+                 model.operations)
+    refute_feature_leak(result)
+  end
+
+  def test_feature_post_save_context_drives_full_regeneration_fallback_when_windows_do_not_reconcile
+    model = build_semantic_model
+    managed_terrain_owner(model)
+    mesh_generator = RecordingRegeneratingMeshGenerator.new
+    commands = build_edit_commands(
+      model: model,
+      repository: EditRepository.new(state),
+      mesh_generator: mesh_generator,
+      terrain_feature_intent_emitter: RecordingFeatureIntentEmitter.new,
+      terrain_feature_planner: FullFallbackFeaturePlanner.new
+    )
+
+    result = commands.edit_terrain_surface(edit_request)
+
+    assert_equal('edited', result.fetch(:outcome))
+    assert_equal(:full_grid, mesh_generator.last_regenerate_args.fetch(:output_plan).intent)
+    assert_equal(
+      { constraintCount: 1, terrainStateDigest: 'digest-1' },
+      mesh_generator.last_regenerate_args.fetch(:feature_context)
+    )
+  end
+
+  def test_feature_context_expands_dirty_window_before_partial_regeneration
+    model = build_semantic_model
+    managed_terrain_owner(model)
+    mesh_generator = RecordingRegeneratingMeshGenerator.new
+    commands = build_edit_commands(
+      model: model,
+      repository: EditRepository.new(state_4x4),
+      mesh_generator: mesh_generator,
+      terrain_feature_intent_emitter: RecordingFeatureIntentEmitter.new,
+      terrain_feature_planner: FeatureWindowPlanner.new
+    )
+
+    result = commands.edit_terrain_surface(edit_request)
+
+    assert_equal('edited', result.fetch(:outcome))
+    assert_equal(
+      SU_MCP::Terrain::SampleWindow.new(
+        min_column: 0,
+        min_row: 0,
+        max_column: 2,
+        max_row: 2
+      ),
+      mesh_generator.last_regenerate_args.fetch(:output_plan).window
+    )
   end
 
   private
+
+  def refute_feature_leak(result)
+    serialized = JSON.generate(result)
+    %w[
+      feature: target_region affectedWindow FeatureIntentSet pointified rawTriangles
+    ].each do |term|
+      refute_includes(serialized, term)
+    end
+  end
 
   def assert_dirty_window_plan(plan)
     assert_instance_of(SU_MCP::Terrain::TerrainOutputPlan, plan)
@@ -497,7 +603,9 @@ class TerrainSurfaceCommandsTest < Minitest::Test # rubocop:disable Metrics/Clas
                           survey_point_editor: nil,
                           planar_region_fit_editor: nil,
                           target_resolver: RecordingTargetResolver.new,
-                          edit_evidence_builder: EditEvidenceBuilder.new)
+                          edit_evidence_builder: EditEvidenceBuilder.new,
+                          terrain_feature_intent_emitter: nil,
+                          terrain_feature_planner: nil)
     options = {
       model: model,
       validator: AcceptingValidator.new,
@@ -512,6 +620,10 @@ class TerrainSurfaceCommandsTest < Minitest::Test # rubocop:disable Metrics/Clas
       target_resolver: target_resolver,
       edit_evidence_builder: edit_evidence_builder
     }
+    if terrain_feature_intent_emitter
+      options[:terrain_feature_intent_emitter] = terrain_feature_intent_emitter
+    end
+    options[:terrain_feature_planner] = terrain_feature_planner if terrain_feature_planner
     options[:local_fairing_editor] = local_fairing_editor if local_fairing_editor
     options[:survey_point_editor] = survey_point_editor if survey_point_editor
     options[:planar_region_fit_editor] = planar_region_fit_editor if planar_region_fit_editor
@@ -651,6 +763,23 @@ class TerrainSurfaceCommandsTest < Minitest::Test # rubocop:disable Metrics/Clas
     )
   end
 
+  def state_4x4
+    SU_MCP::Terrain::HeightmapState.new(
+      basis: {
+        'xAxis' => [1.0, 0.0, 0.0],
+        'yAxis' => [0.0, 1.0, 0.0],
+        'zAxis' => [0.0, 0.0, 1.0],
+        'vertical' => 'z_up'
+      },
+      origin: { 'x' => 0.0, 'y' => 0.0, 'z' => 0.0 },
+      spacing: { 'x' => 1.0, 'y' => 1.0 },
+      dimensions: { 'columns' => 4, 'rows' => 4 },
+      elevations: Array.new(16, 1.0),
+      revision: 1,
+      state_id: 'state-4x4'
+    )
+  end
+
   class AcceptingValidator
     def validate(params)
       { outcome: 'ready', lifecycle_mode: params.dig('lifecycle', 'mode'), params: params }
@@ -737,13 +866,14 @@ class TerrainSurfaceCommandsTest < Minitest::Test # rubocop:disable Metrics/Clas
   class RecordingRegeneratingMeshGenerator < RecordingMeshGenerator
     attr_reader :last_regenerate_args
 
-    def regenerate(owner:, state:, terrain_state_summary:, output_plan: nil)
+    def regenerate(owner:, state:, terrain_state_summary:, output_plan: nil, feature_context: nil)
       @calls << :regenerate
       @last_regenerate_args = {
         owner: owner,
         state: state,
         terrain_state_summary: terrain_state_summary,
-        output_plan: output_plan
+        output_plan: output_plan,
+        feature_context: feature_context
       }
       { outcome: 'generated', summary: { derivedMesh: { derivedFromStateDigest: 'digest-2' } } }
     end
@@ -757,6 +887,135 @@ class TerrainSurfaceCommandsTest < Minitest::Test # rubocop:disable Metrics/Clas
           code: 'terrain_output_contains_unsupported_entities',
           message: 'Owner contains unsupported child output.'
         }
+      }
+    end
+  end
+
+  class RecordingFeatureIntentEmitter
+    def emit(...)
+      {
+        'upsert_features' => [
+          {
+            'id' => 'feature:target_region:explicit_edit:region-a:aaaaaaaaaaaa',
+            'kind' => 'target_region',
+            'sourceMode' => 'explicit_edit',
+            'roles' => ['boundary'],
+            'priority' => 30,
+            'payload' => { 'semanticScope' => 'region-a' },
+            'affectedWindow' => { 'min' => { 'column' => 0, 'row' => 0 },
+                                  'max' => { 'column' => 1, 'row' => 1 } },
+            'provenance' => {
+              'originClass' => 'edit_terrain_surface',
+              'originOperation' => 'target_height',
+              'createdAtRevision' => 2,
+              'updatedAtRevision' => 2
+            }
+          }
+        ]
+      }
+    end
+  end
+
+  class ConflictFeatureIntentEmitter
+    def emit(...)
+      fixed_id = 'feature:fixed_control:explicit_edit:fixed-a:aaaaaaaaaaaa'
+      target_id = 'feature:target_region:explicit_edit:region-a:bbbbbbbbbbbb'
+      {
+        'upsert_features' => [
+          feature(
+            id: fixed_id,
+            kind: 'fixed_control',
+            roles: %w[control protected],
+            payload: { 'semanticScope' => 'fixed-a' }
+          ),
+          feature(
+            id: target_id,
+            kind: 'target_region',
+            roles: %w[boundary],
+            payload: {
+              'semanticScope' => 'region-a',
+              'conflictsWithFeatureIds' => [fixed_id]
+            }
+          )
+        ]
+      }
+    end
+
+    private
+
+    def feature(id:, kind:, roles:, payload:)
+      {
+        'id' => id,
+        'kind' => kind,
+        'sourceMode' => 'explicit_edit',
+        'roles' => roles,
+        'priority' => 50,
+        'payload' => payload,
+        'affectedWindow' => { 'min' => { 'column' => 0, 'row' => 0 },
+                              'max' => { 'column' => 1, 'row' => 1 } },
+        'provenance' => {
+          'originClass' => 'edit_terrain_surface',
+          'originOperation' => kind,
+          'createdAtRevision' => 1,
+          'updatedAtRevision' => 1
+        }
+      }
+    end
+  end
+
+  class RefusingFeaturePlanner
+    def pre_save(...)
+      {
+        outcome: 'refused',
+        refusal: {
+          code: 'terrain_feature_conflict',
+          message: 'Terrain feature intent conflicts with protected terrain constraints.',
+          details: { category: 'feature_conflict', featureCount: 2 }
+        }
+      }
+    end
+  end
+
+  class FullFallbackFeaturePlanner
+    def pre_save(state:)
+      { outcome: 'ready', state: state }
+    end
+
+    def prepare(state:, terrain_state_summary:)
+      {
+        outcome: 'prepared',
+        state: state,
+        context: {
+          constraintCount: 1,
+          terrainStateDigest: terrain_state_summary.fetch(:digest)
+        },
+        outputWindowReconciliation: { mode: 'full_grid' }
+      }
+    end
+  end
+
+  class FeatureWindowPlanner
+    def pre_save(state:)
+      { outcome: 'ready', state: state }
+    end
+
+    def prepare(state:, terrain_state_summary:)
+      {
+        outcome: 'prepared',
+        state: state,
+        context: {
+          constraintCount: 1,
+          terrainStateDigest: terrain_state_summary.fetch(:digest),
+          constraints: [
+            {
+              affectedWindow: {
+                'min' => { 'column' => 0, 'row' => 0 },
+                'max' => { 'column' => 2, 'row' => 2 }
+              }
+            }
+          ]
+        },
+        outputWindowReconciliation: { mode: 'feature_window' }
       }
     end
   end
