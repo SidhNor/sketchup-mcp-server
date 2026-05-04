@@ -2,6 +2,19 @@
 
 <!-- version list -->
 
+## v1.3.0 (2026-05-04)
+
+### Bug Fixes
+
+- **MTA-21**: Simplification updates and T-joint terrain face fixes
+  ([`e237299`](https://github.com/SidhNor/sketchup-mcp-server/commit/e237299fa7677db25745f00f657e189b33258745))
+
+### Features
+
+- **MTA-20**: Feature constraints during terrain modelling
+  ([`c291a2e`](https://github.com/SidhNor/sketchup-mcp-server/commit/c291a2e32bc382e588dc635997f23e2657c9505e))
+
+
 ## v1.2.0 (2026-05-02)
 
 ### Documentation
