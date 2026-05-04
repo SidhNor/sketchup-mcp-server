@@ -35,6 +35,8 @@ The current task order proves terrain authoring through concrete, testable incre
   heightmap v2 output proof
 - internal terrain feature constraints for derived output planning and diagnostics after the
   MTA-19 simplifier failure
+- conforming adaptive terrain output so mixed-resolution derived terrain does not produce visible
+  T-junction or gap seams
 
 ## Current Task Order
 
@@ -58,6 +60,7 @@ The current task order proves terrain authoring through concrete, testable incre
 18. [MTA-18 Define Bounded Managed Terrain Visual Edit UI](MTA-18-define-bounded-managed-terrain-visual-edit-ui/task.md)
 19. [MTA-19 Implement Detail Preserving Adaptive Terrain Output Simplification](MTA-19-implement-detail-preserving-adaptive-terrain-output-simplification/task.md) - failed/reverted
 20. [MTA-20 Define Terrain Feature Constraint Layer For Derived Output](MTA-20-define-terrain-feature-constraint-layer-for-derived-output/task.md)
+21. [MTA-21 Make Adaptive Terrain Output Conforming](MTA-21-make-adaptive-terrain-output-conforming/task.md)
 
 ## Deferred Follow-Ons
 
@@ -90,3 +93,6 @@ Deferred work is not promoted into active task folders in this iteration:
 - `MTA-20` reframes the next step away from corridor-specific mesh patches and toward a generic
   internal feature-constraint layer that output generation, diagnostics, and future simplifier
   backends can consume.
+- `MTA-21` fixes the existing adaptive TIN output baseline before any future RTIN, Delaunay,
+  DELATIN, or feature-aware backend comparison. It should preserve adaptive output rather than
+  reverting detailed terrain to regular full-grid production output.

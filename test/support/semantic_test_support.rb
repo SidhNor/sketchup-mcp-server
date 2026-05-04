@@ -31,7 +31,7 @@ module SemanticTestSupport
   class FakeEntitiesCollection
     include Enumerable
 
-    attr_reader :groups, :faces, :component_instances, :construction_points, :build_calls
+    attr_reader :groups, :faces, :edges, :component_instances, :construction_points, :build_calls
     attr_accessor :owner
 
     def initialize(id_sequence:, layer:, material:, owner: nil, writable: true)
@@ -42,6 +42,7 @@ module SemanticTestSupport
       @writable = writable
       @groups = []
       @faces = []
+      @edges = []
       @component_instances = []
       @construction_points = []
       @build_calls = 0
@@ -128,12 +129,19 @@ module SemanticTestSupport
       @groups.delete(entity)
       @component_instances.delete(entity)
       @faces.delete(entity)
+      @edges.delete(entity)
       @construction_points.delete(entity)
       entity
     end
 
+    def add_edge_entity(edge)
+      attach_entity(edge)
+      edge
+    end
+
     def length
-      @groups.length + @component_instances.length + @faces.length + @construction_points.length
+      @groups.length + @component_instances.length + @faces.length + @edges.length +
+        @construction_points.length
     end
 
     def each(&block)
@@ -142,6 +150,7 @@ module SemanticTestSupport
       @groups.each(&block)
       @component_instances.each(&block)
       @faces.each(&block)
+      @edges.each(&block)
       @construction_points.each(&block)
     end
 
@@ -161,6 +170,8 @@ module SemanticTestSupport
         @component_instances << entity
       when FakeFace
         @faces << entity
+      when FakeEdge
+        @edges << entity
       when FakeConstructionPoint
         @construction_points << entity
       end
@@ -287,11 +298,14 @@ module SemanticTestSupport
   end
 
   class FakeEdge < Sketchup::Edge
+    attr_accessor :hidden, :faces
     attr_reader :attributes
 
     def initialize
       super
       @attributes = Hash.new { |hash, key| hash[key] = {} }
+      @hidden = false
+      @faces = []
     end
 
     def set_attribute(dictionary_name, key, value)
@@ -300,6 +314,10 @@ module SemanticTestSupport
 
     def get_attribute(dictionary_name, key, default = nil)
       @attributes.fetch(dictionary_name, {}).fetch(key, default)
+    end
+
+    def hidden?
+      @hidden
     end
   end
 

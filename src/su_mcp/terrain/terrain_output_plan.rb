@@ -2,6 +2,7 @@
 
 require_relative 'sample_window'
 require_relative 'terrain_output_cell_window'
+require_relative 'adaptive_output_conformity'
 
 module SU_MCP
   module Terrain
@@ -78,7 +79,7 @@ module SU_MCP
       end
 
       def self.build_adaptive(intent, state, terrain_state_summary, previous_state_summary)
-        cells = adaptive_cells_for(state)
+        cells = AdaptiveOutputConformity.cells(adaptive_cells_for(state))
         summary = adaptive_summary_for(state, cells, terrain_state_summary, previous_state_summary)
         new(
           intent: intent,
@@ -107,8 +108,8 @@ module SU_MCP
       def self.adaptive_summary_for(state, cells, terrain_state_summary, previous_state_summary)
         {
           mesh_type: 'adaptive_tin',
-          vertex_count: adaptive_vertex_count(cells),
-          face_count: cells.length * 2,
+          vertex_count: AdaptiveOutputConformity.vertex_count(cells),
+          face_count: AdaptiveOutputConformity.face_count(cells),
           state_digest: terrain_state_summary.fetch(:digest),
           previous_state_digest: previous_state_summary&.fetch(:digest, nil),
           previous_state_revision: previous_state_summary&.fetch(:revision, nil),
@@ -165,6 +166,7 @@ module SU_MCP
       end
 
       def self.adaptive_cell(min_column, min_row, max_column, max_row, error)
+        # Preserved internally only to report the public maxSimplificationError summary.
         {
           min_column: min_column,
           min_row: min_row,
@@ -213,17 +215,6 @@ module SU_MCP
 
       def self.elevation_at(state, column, row)
         state.elevations.fetch((row * state.dimensions.fetch('columns')) + column)
-      end
-
-      def self.adaptive_vertex_count(cells)
-        cells.flat_map do |cell|
-          [
-            [cell.fetch(:min_column), cell.fetch(:min_row)],
-            [cell.fetch(:max_column), cell.fetch(:min_row)],
-            [cell.fetch(:min_column), cell.fetch(:max_row)],
-            [cell.fetch(:max_column), cell.fetch(:max_row)]
-          ]
-        end.uniq.length
       end
 
       def initialize(

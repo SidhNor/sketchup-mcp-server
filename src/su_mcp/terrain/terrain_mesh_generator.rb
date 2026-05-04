@@ -117,13 +117,13 @@ module SU_MCP
       end
 
       def generate_adaptive(owner:, state:, output_plan:)
-        return no_data_refusal if state.elevations.any?(&:nil?)
-
         emit_adaptive_faces_via_builder(owner.entities, state, output_plan.adaptive_cells)
         generated_result(output_plan)
       end
 
       def regenerate_adaptive(owner:, state:, output_plan:)
+        return no_data_refusal if state.elevations.any?(&:nil?)
+
         erase_entities(owner.entities, derived_output_entities(owner.entities))
         generate_adaptive(owner: owner, state: state, output_plan: output_plan)
       end
@@ -212,13 +212,20 @@ module SU_MCP
       end
 
       def add_adaptive_cell_triangles(entities, state, cell)
-        lower_left = adaptive_vertex_at(state, cell.fetch(:min_column), cell.fetch(:min_row))
-        lower_right = adaptive_vertex_at(state, cell.fetch(:max_column), cell.fetch(:min_row))
-        upper_left = adaptive_vertex_at(state, cell.fetch(:min_column), cell.fetch(:max_row))
-        upper_right = adaptive_vertex_at(state, cell.fetch(:max_column), cell.fetch(:max_row))
+        cell.fetch(:emission_triangles).each do |triangle|
+          add_derived_face(
+            entities,
+            *triangle.map { |vertex| adaptive_vertex_for_planned_point(state, vertex) },
+            ownership: nil
+          )
+        end
+      end
 
-        add_derived_face(entities, lower_left, lower_right, upper_right, ownership: nil)
-        add_derived_face(entities, lower_left, upper_right, upper_left, ownership: nil)
+      def adaptive_vertex_for_planned_point(state, point)
+        column, row = point
+        return adaptive_vertex_at(state, column, row) if column.is_a?(Integer) && row.is_a?(Integer)
+
+        adaptive_center_vertex_at(state, point)
       end
 
       def adaptive_vertex_at(state, column, row)
@@ -230,6 +237,34 @@ module SU_MCP
           internal_length(origin.fetch('y') + (row * spacing.fetch('y'))),
           internal_length(state.elevations.fetch(index))
         ]
+      end
+
+      def adaptive_center_vertex_at(state, center)
+        column, row = center
+        origin = state.origin
+        spacing = state.spacing
+        [
+          internal_length(origin.fetch('x') + (column * spacing.fetch('x'))),
+          internal_length(origin.fetch('y') + (row * spacing.fetch('y'))),
+          internal_length(fitted_adaptive_elevation_at(state, column, row))
+        ]
+      end
+
+      def fitted_adaptive_elevation_at(state, column, row)
+        min_column = column.floor
+        min_row = row.floor
+        max_column = column.ceil
+        max_row = row.ceil
+        x_ratio = max_column == min_column ? 0.0 : column - min_column
+        y_ratio = max_row == min_row ? 0.0 : row - min_row
+        columns = state.dimensions.fetch('columns')
+        z00 = state.elevations.fetch((min_row * columns) + min_column)
+        z10 = state.elevations.fetch((min_row * columns) + max_column)
+        z01 = state.elevations.fetch((max_row * columns) + min_column)
+        z11 = state.elevations.fetch((max_row * columns) + max_column)
+        bottom = z00 + ((z10 - z00) * x_ratio)
+        top = z01 + ((z11 - z01) * x_ratio)
+        bottom + ((top - bottom) * y_ratio)
       end
 
       def emit_faces(face_target, vertices, columns, rows, ownership)
@@ -311,6 +346,7 @@ module SU_MCP
         return entity unless entity.respond_to?(:set_attribute)
 
         entity.set_attribute(DERIVED_OUTPUT_DICTIONARY, DERIVED_OUTPUT_KEY, true)
+        entity.hidden = true if entity.is_a?(Sketchup::Edge) && entity.respond_to?(:hidden=)
         mark_ownership(entity, ownership) if ownership
         mark_derived_edges(entity)
         entity

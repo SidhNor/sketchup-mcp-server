@@ -579,6 +579,84 @@ class TerrainMeshGeneratorTest < Minitest::Test # rubocop:disable Metrics/ClassL
     end
   end
 
+  def test_v2_adaptive_generation_emits_conforming_topology_for_mixed_resolution_cells
+    model = build_semantic_model
+    owner = model.active_entities.add_group
+
+    identity_generator.generate(
+      owner: owner,
+      state: mixed_resolution_v2_state,
+      terrain_state_summary: { digest: 'digest-v2', revision: 1 }
+    )
+
+    assert_no_unsplit_emitted_axis_edges(owner.entities.faces)
+  end
+
+  def test_v2_adaptive_generation_summary_counts_match_emitted_geometry
+    model = build_semantic_model
+    owner = model.active_entities.add_group
+    state = mixed_resolution_v2_state
+
+    result = identity_generator.generate(
+      owner: owner,
+      state: state,
+      terrain_state_summary: { digest: 'digest-v2', revision: 1 }
+    )
+
+    derived_mesh = result.fetch(:summary).fetch(:derivedMesh)
+    assert_equal(owner.entities.faces.length, derived_mesh.fetch(:faceCount))
+    assert_equal(
+      unique_face_vertices(owner.entities.faces).length,
+      derived_mesh.fetch(:vertexCount)
+    )
+  end
+
+  def test_v2_adaptive_split_vertices_use_source_grid_sample_elevations
+    model = build_semantic_model
+    owner = model.active_entities.add_group
+
+    identity_generator.generate(
+      owner: owner,
+      state: mixed_resolution_v2_state,
+      terrain_state_summary: { digest: 'digest-v2', revision: 1 }
+    )
+
+    assert_includes(unique_face_vertices(owner.entities.faces), [4.0, 2.0, 0.0])
+  end
+
+  def test_v2_adaptive_generation_marks_edges_as_hidden_derived_output
+    model = build_semantic_model
+    owner = model.active_entities.add_group
+
+    identity_generator.generate(
+      owner: owner,
+      state: mixed_resolution_v2_state,
+      terrain_state_summary: { digest: 'digest-v2', revision: 1 }
+    )
+
+    owner.entities.faces.flat_map(&:edges).each do |edge|
+      assert_derived_output(edge)
+      assert_equal(true, edge.hidden?)
+      refute(terrain_attribute(edge, 'gridCellColumn'))
+      refute(terrain_attribute(edge, 'gridCellRow'))
+      refute(terrain_attribute(edge, 'gridTriangleIndex'))
+    end
+  end
+
+  def test_v2_adaptive_generation_preserves_positive_z_normals_after_split_emission
+    model = build_semantic_model
+    owner = model.active_entities.add_group
+    force_added_faces_downward(owner.entities)
+
+    identity_generator.generate(
+      owner: owner,
+      state: mixed_resolution_v2_state,
+      terrain_state_summary: { digest: 'digest-v2', revision: 1 }
+    )
+
+    assert_all_faces_point_up(owner.entities.faces)
+  end
+
   def test_v2_adaptive_generation_refuses_no_data_before_emitting_faces
     model = build_semantic_model
     owner = model.active_entities.add_group
@@ -610,6 +688,45 @@ class TerrainMeshGeneratorTest < Minitest::Test # rubocop:disable Metrics/ClassL
 
     assert_equal('refused', result.fetch(:outcome))
     assert_equal('adaptive_output_generation_failed', result.dig(:refusal, :code))
+    assert_includes(owner.entities.faces, old_face)
+  end
+
+  def test_v2_adaptive_regeneration_removes_prior_derived_faces_and_orphan_edges
+    model = build_semantic_model
+    owner = model.active_entities.add_group
+    old_face = owner.entities.add_face([0, 0, 1], [1, 0, 1], [1, 1, 1])
+    old_face.set_attribute('su_mcp_terrain', 'derivedOutput', true)
+    old_edge = SemanticTestSupport::FakeEdge.new
+    old_edge.set_attribute('su_mcp_terrain', 'derivedOutput', true)
+    owner.entities.add_edge_entity(old_edge)
+
+    result = identity_generator.regenerate(
+      owner: owner,
+      state: mixed_resolution_v2_state,
+      terrain_state_summary: { digest: 'digest-v2', revision: 2 }
+    )
+
+    assert_equal('generated', result.fetch(:outcome))
+    refute_includes(owner.entities.faces, old_face)
+    refute_includes(owner.entities.edges, old_edge)
+    assert_no_unsplit_emitted_axis_edges(owner.entities.faces)
+  end
+
+  def test_v2_adaptive_regeneration_refuses_unsupported_children_before_erasing_output
+    model = build_semantic_model
+    owner = model.active_entities.add_group
+    owner.entities.add_group
+    old_face = owner.entities.add_face([0, 0, 1], [1, 0, 1], [1, 1, 1])
+    old_face.set_attribute('su_mcp_terrain', 'derivedOutput', true)
+
+    result = identity_generator.regenerate(
+      owner: owner,
+      state: mixed_resolution_v2_state,
+      terrain_state_summary: { digest: 'digest-v2', revision: 2 }
+    )
+
+    assert_equal('refused', result.fetch(:outcome))
+    assert_equal('terrain_output_contains_unsupported_entities', result.dig(:refusal, :code))
     assert_includes(owner.entities.faces, old_face)
   end
 
@@ -692,6 +809,43 @@ class TerrainMeshGeneratorTest < Minitest::Test # rubocop:disable Metrics/ClassL
     end
   end
 
+  def assert_no_unsplit_emitted_axis_edges(faces)
+    vertices = unique_face_vertices(faces)
+    emitted_axis_edges(faces).each do |from, to|
+      interior = vertices.find { |point| point_strictly_inside_axis_edge?(point, from, to) }
+      refute(interior, "expected emitted edge #{from.inspect}->#{to.inspect} to be split")
+    end
+  end
+
+  def unique_face_vertices(faces)
+    faces.flat_map(&:points).uniq
+  end
+
+  def emitted_axis_edges(faces)
+    faces.flat_map do |face|
+      points = face.points
+      points.zip(points.rotate).select do |from, to|
+        same_xy_axis?(from, to)
+      end
+    end
+  end
+
+  def same_xy_axis?(from, to)
+    from[0] == to[0] || from[1] == to[1]
+  end
+
+  def point_strictly_inside_axis_edge?(point, from, to)
+    return false if point == from || point == to
+
+    return point[1] == from[1] && strictly_between?(point[0], from[0], to[0]) if from[1] == to[1]
+
+    point[0] == from[0] && strictly_between?(point[1], from[1], to[1])
+  end
+
+  def strictly_between?(value, first, second)
+    value > [first, second].min && value < [first, second].max
+  end
+
   def refute_internal_output_fields(result)
     serialized = JSON.generate(result)
 
@@ -763,6 +917,21 @@ class TerrainMeshGeneratorTest < Minitest::Test # rubocop:disable Metrics/ClassL
       elevations: elevations,
       revision: 1,
       state_id: 'terrain-state-1'
+    )
+  end
+
+  def mixed_resolution_v2_state
+    build_v2_state(
+      columns: 6,
+      rows: 6,
+      elevations: [
+        0.0, 0.0, 0.0, 0.05, 0.0, 0.0,
+        0.0, 0.0, 0.0, 0.0, 0.0, 0.05,
+        0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
+        0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
+        0.0, 0.0, 0.0, 0.0, 0.05, 0.0,
+        0.0, 0.0, 0.0, 0.0, 0.1, 0.0
+      ]
     )
   end
 

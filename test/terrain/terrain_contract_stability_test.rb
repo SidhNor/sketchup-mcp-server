@@ -63,7 +63,20 @@ class TerrainContractStabilityTest < Minitest::Test
 
   def test_public_output_vocabulary_does_not_expose_bulk_or_candidate_internals
     result = edit_evidence_result(
-      diagnostics: edit_diagnostics.merge(private_output_planning_diagnostics)
+      diagnostics: edit_diagnostics.merge(private_output_planning_diagnostics).merge(
+        splitColumns: [0, 1],
+        splitRows: [0, 1],
+        splitGrid: [[0, 0], [1, 0]],
+        adaptiveBoundaryLines: { columns: [0, 1], rows: [0, 1] },
+        conformingGrid: true,
+        boundaryVertices: [[0, 0], [1, 0]],
+        fanCenter: [0.5, 0.5],
+        emissionTriangles: [[[0.5, 0.5], [0, 0], [1, 0]]],
+        adaptiveCell: { splitColumns: [0, 1], splitRows: [0, 1] },
+        rawVertices: [[0.0, 0.0, 0.0]],
+        rawTriangles: [[0, 1, 2]],
+        stitch: { triangles: [[0, 1, 2]] }
+      )
     )
 
     assert_includes(result.fetch(:output).keys, :derivedMesh)
@@ -225,6 +238,10 @@ class TerrainContractStabilityTest < Minitest::Test
       validationOnly bulk candidate strategy sampleWindow outputPlan dirtyWindow
       outputRegions chunks tiles faceId vertexId outputSchemaVersion
       terrainStateRevision gridCellColumn gridCellRow gridTriangleIndex
+      splitColumns splitRows splitGrid adaptiveBoundaryLines conformingGrid
+      boundaryVertices fanCenter edgeSplits centerFan emissionTriangles
+      densified adaptiveCell adaptiveCells emissionStrategy sourceGridSubcell
+      sourceGridSubcells classification rawVertices rawTriangles stitch
     ].each { |term| refute_includes(serialized, term) }
     refute_includes(serialized_output, 'regeneration')
   end

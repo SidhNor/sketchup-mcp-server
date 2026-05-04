@@ -22,6 +22,20 @@ class TerrainFeaturePlannerTest < Minitest::Test
     refute_public_feature_leak(result.fetch(:refusal))
   end
 
+  def test_pre_save_keeps_affected_window_pointification_projection_diagnostic_only
+    broad_feature = feature('linear_corridor').merge(
+      'payload' => { 'generation' => { 'pointificationPolicy' => 'grid_relative_v1' } },
+      'affectedWindow' => { 'min' => { 'column' => 0, 'row' => 0 },
+                            'max' => { 'column' => 40, 'row' => 40 } }
+    )
+
+    result = planner.pre_save(state: state_with_features([broad_feature]))
+
+    assert_equal('ready', result.fetch(:outcome))
+    assert_equal(1681, result.dig(:diagnostics, :capProjection, :projectedSampleCount))
+    assert_equal(2, result.dig(:diagnostics, :capProjection, :maxLaneSamplesPerFeature))
+  end
+
   def test_pre_save_reports_internal_cap_diagnostics_on_ready_result
     result = normal_planner.pre_save(state: state_with_features([feature('fixed_control')]))
 

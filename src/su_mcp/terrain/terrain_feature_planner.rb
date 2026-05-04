@@ -101,8 +101,9 @@ module SU_MCP
 
       def pointification_cap_refusal(set, diagnostics)
         projected = projected_samples(set)
-        first_exceeded = projected.values.find { |count| count > max_lane_samples_per_feature }
-        total = projected.values.sum
+        enforced = enforceable_projected_samples(set, projected)
+        first_exceeded = enforced.values.find { |count| count > max_lane_samples_per_feature }
+        total = enforced.values.sum
         return nil unless first_exceeded || total > max_lane_samples_per_plan
 
         public_refusal = public_refusal(
@@ -198,6 +199,14 @@ module SU_MCP
         max = window.fetch('max')
         ((max.fetch('column') - min.fetch('column')).abs + 1) *
           ((max.fetch('row') - min.fetch('row')).abs + 1)
+      end
+
+      def enforceable_projected_samples(set, projected)
+        set.features.each_with_object({}) do |feature, samples|
+          next unless feature.dig('payload', 'sampleEstimate')
+
+          samples[feature.fetch('id')] = projected.fetch(feature.fetch('id'))
+        end
       end
 
       def projected_samples(set)
