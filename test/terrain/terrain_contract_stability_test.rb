@@ -84,6 +84,30 @@ class TerrainContractStabilityTest < Minitest::Test
     refute_internal_output_vocabulary(result)
   end
 
+  def test_public_output_vocabulary_does_not_expose_mta23_candidate_internals
+    result = edit_evidence_result(
+      diagnostics: edit_diagnostics.merge(
+        candidateRow: { backend: 'mta23_intent_aware_adaptive_grid_prototype' },
+        terrainFeatureGeometry: { outputAnchorCandidates: [], protectedRegions: [] },
+        featureGeometryDigest: 'abc',
+        referenceGeometryDigest: 'def',
+        candidateVertices: [[0.0, 0.0, 0.0]],
+        candidateTriangles: [[0, 1, 2]],
+        firmResidualsByRole: {},
+        topologyResiduals: {},
+        splitReasonHistogram: {},
+        solverVocabulary: 'intent_aware_adaptive_grid'
+      )
+    )
+
+    refute_internal_output_vocabulary(result)
+    %w[
+      mta23 candidateRow terrainFeatureGeometry outputAnchorCandidates protectedRegions
+      featureGeometryDigest referenceGeometryDigest candidateVertices candidateTriangles
+      firmResidualsByRole topologyResiduals splitReasonHistogram intent_aware_adaptive_grid
+    ].each { |term| refute_includes(JSON.generate(result), term) }
+  end
+
   def test_public_fairing_evidence_does_not_expose_output_or_generated_entity_internals
     result = edit_evidence_result(
       diagnostics: edit_diagnostics.merge(
@@ -242,6 +266,9 @@ class TerrainContractStabilityTest < Minitest::Test
       boundaryVertices fanCenter edgeSplits centerFan emissionTriangles
       densified adaptiveCell adaptiveCells emissionStrategy sourceGridSubcell
       sourceGridSubcells classification rawVertices rawTriangles stitch
+      candidateRow terrainFeatureGeometry outputAnchorCandidates protectedRegions
+      featureGeometryDigest referenceGeometryDigest candidateVertices candidateTriangles
+      firmResidualsByRole topologyResiduals splitReasonHistogram
     ].each { |term| refute_includes(serialized, term) }
     refute_includes(serialized_output, 'regeneration')
   end
