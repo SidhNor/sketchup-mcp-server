@@ -4,6 +4,7 @@ require 'time'
 
 require_relative 'adaptive_output_conformity'
 require_relative 'intent_aware_adaptive_grid_policy'
+require_relative 'terrain_feature_geometry'
 
 module SU_MCP
   module Terrain
@@ -18,7 +19,12 @@ module SU_MCP
         started = Process.clock_gettime(Process::CLOCK_MONOTONIC)
         @state = state
         @feature_geometry = feature_geometry
-        @policy = IntentAwareAdaptiveGridPolicy.new(
+        @split_policy = IntentAwareAdaptiveGridPolicy.new(
+          feature_geometry: grid_feature_geometry(feature_geometry),
+          base_tolerance: base_tolerance,
+          tile_columns: columns
+        )
+        @output_policy = IntentAwareAdaptiveGridPolicy.new(
           feature_geometry: feature_geometry,
           base_tolerance: base_tolerance,
           tile_columns: columns
@@ -39,15 +45,17 @@ module SU_MCP
 
       private
 
-      attr_reader :state, :feature_geometry, :policy
+      attr_reader :state, :feature_geometry, :split_policy, :output_policy
 
       def subdivide(max_cell_budget, max_runtime_budget, started)
         cells = [cell(0, 0, columns - 1, rows - 1)]
+        annotate_cells!(cells)
         budget_status = 'ok'
         loop do
-          annotate_cells!(cells)
-          candidate = cells.max_by { |item| policy.split_priority(item) }
-          break unless split_needed?(candidate)
+          candidates = cells.select { |item| split_needed?(item) }
+          break if candidates.empty?
+
+          candidate = candidates.max_by { |item| item.fetch(:split_priority) }
 
           if cells.length >= max_cell_budget
             budget_status = 'max_cell_budget_exceeded'
@@ -60,22 +68,35 @@ module SU_MCP
 
           @split_events[candidate.fetch(:split_reason)] += 1
           cells.delete(candidate)
-          cells.concat(split_cell(candidate))
+          children = split_cell(candidate)
+          annotate_cells!(children)
+          cells.concat(children)
         end
-        annotate_cells!(cells, budget_status: budget_status)
+        annotate_budget_stop!(cells) unless budget_status == 'ok'
         [cells, budget_status]
       end
 
       def annotate_cells!(cells, budget_status: 'ok')
         cells.each do |item|
           item[:height_error] = max_cell_error(item)
-          item[:local_tolerance] = policy.local_tolerance(item)
-          status = policy.hard_requirement_status_for(item, vertices: cell_corner_vertices(item))
+          status = split_policy.hard_requirement_status_for(
+            item,
+            vertices: grid_cell_corner_vertices(item)
+          )
           item[:hard_requirement_status] = status.fetch(:status)
           item[:hard_violation_counts] = status.fetch(:hardViolationCounts)
-          item[:firm_pressure] = policy.pressure_coverage_needed?(item, 'firm')
-          item[:soft_pressure] = policy.pressure_coverage_needed?(item, 'soft')
+          item[:firm_pressure] = split_policy.pressure_coverage_needed?(item, 'firm')
+          item[:soft_pressure] = split_policy.pressure_coverage_needed?(item, 'soft')
+          item[:local_tolerance] = split_policy.local_tolerance(item)
           item[:split_reason] = split_reason(item, budget_status)
+          item[:split_priority] = split_policy.split_priority(item)
+        end
+      end
+
+      def annotate_budget_stop!(cells)
+        cells.each do |item|
+          item[:split_reason] = split_reason(item, 'budget_stop')
+          item[:split_priority] = split_policy.split_priority(item)
         end
       end
 
@@ -153,8 +174,8 @@ module SU_MCP
       end
 
       def metrics_for(mesh, planned, budget_status, started)
-        crossings = policy.protected_crossing_metrics(triangles: mesh_triangles(mesh))
-        anchors = policy.anchor_hit_metrics(vertices: mesh.fetch(:vertices))
+        crossings = output_policy.protected_crossing_metrics(triangles: mesh_triangles(mesh))
+        anchors = output_policy.anchor_hit_metrics(vertices: mesh.fetch(:vertices))
         topology = topology_checks(mesh)
         {
           meshType: 'adaptive_tin',
@@ -390,6 +411,102 @@ module SU_MCP
           vertex_for([item.fetch(:max_col), item.fetch(:max_row)]),
           vertex_for([item.fetch(:min_col), item.fetch(:max_row)])
         ]
+      end
+
+      def grid_cell_corner_vertices(item)
+        [
+          [item.fetch(:min_col), item.fetch(:min_row), elevation_at(item.fetch(:min_col),
+                                                                    item.fetch(:min_row))],
+          [item.fetch(:max_col), item.fetch(:min_row), elevation_at(item.fetch(:max_col),
+                                                                    item.fetch(:min_row))],
+          [item.fetch(:max_col), item.fetch(:max_row), elevation_at(item.fetch(:max_col),
+                                                                    item.fetch(:max_row))],
+          [item.fetch(:min_col), item.fetch(:max_row), elevation_at(item.fetch(:min_col),
+                                                                    item.fetch(:max_row))]
+        ]
+      end
+
+      def grid_feature_geometry(feature_geometry)
+        TerrainFeatureGeometry.new(
+          outputAnchorCandidates: grid_anchor_candidates(feature_geometry),
+          protectedRegions: grid_protected_regions(feature_geometry),
+          pressureRegions: grid_pressure_regions(feature_geometry),
+          referenceSegments: grid_reference_segments(feature_geometry),
+          affectedWindows: feature_geometry.affected_windows,
+          tolerances: feature_geometry.tolerances,
+          failureCategory: feature_geometry.failure_category,
+          limitations: feature_geometry.limitations
+        )
+      end
+
+      def grid_anchor_candidates(feature_geometry)
+        feature_geometry.output_anchor_candidates.map do |anchor|
+          anchor.merge('ownerLocalPoint' => grid_point(anchor.fetch('ownerLocalPoint')))
+        end
+      end
+
+      def grid_protected_regions(feature_geometry)
+        feature_geometry.protected_regions.map do |region|
+          next region unless region.fetch('primitive', nil) == 'rectangle'
+
+          region.merge('ownerLocalBounds' => region.fetch('ownerLocalBounds').map do |point|
+            grid_point(point)
+          end)
+        end
+      end
+
+      def grid_pressure_regions(feature_geometry)
+        feature_geometry.pressure_regions.map do |region|
+          case region.fetch('primitive', nil)
+          when 'corridor'
+            grid_corridor_region(region)
+          when 'rectangle'
+            region.merge('ownerLocalShape' => region.fetch('ownerLocalShape').map do |point|
+              grid_point(point)
+            end)
+          when 'circle'
+            circle = region['ownerLocalShape'] || region['ownerLocalCenterRadius']
+            region.merge('ownerLocalShape' => grid_circle(circle))
+          else
+            region
+          end
+        end
+      end
+
+      def grid_corridor_region(region)
+        shape = region.fetch('ownerLocalShape')
+        region.merge(
+          'ownerLocalShape' => shape.merge(
+            'centerline' => shape.fetch('centerline').map { |point| grid_point(point) },
+            'width' => shape.fetch('width', 0.0).to_f / nominal_spacing,
+            'blendDistance' => shape.fetch('blendDistance', 0.0).to_f / nominal_spacing
+          )
+        )
+      end
+
+      def grid_reference_segments(feature_geometry)
+        feature_geometry.reference_segments.map do |segment|
+          segment.merge(
+            'ownerLocalStart' => grid_point(segment.fetch('ownerLocalStart')),
+            'ownerLocalEnd' => grid_point(segment.fetch('ownerLocalEnd'))
+          )
+        end
+      end
+
+      def grid_circle(circle)
+        center = grid_point([circle.fetch(0), circle.fetch(1)])
+        [center[0], center[1], circle.fetch(2).to_f / nominal_spacing]
+      end
+
+      def grid_point(point)
+        [
+          (point.fetch(0) - origin_x) / spacing_x,
+          (point.fetch(1) - origin_y) / spacing_y
+        ]
+      end
+
+      def nominal_spacing
+        [spacing_x.to_f, spacing_y.to_f].max
       end
 
       def min_cell?(item)

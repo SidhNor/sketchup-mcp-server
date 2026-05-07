@@ -60,6 +60,32 @@ class IntentAwareAdaptiveGridPolicyTest < Minitest::Test
     assert_in_delta(0.1, policy.local_tolerance(cell(1, 1, 2, 2), hard_tolerance: 0.001), 0.0001)
   end
 
+  def test_hard_anchor_requirements_are_scoped_to_cells_that_contain_the_anchor
+    policy = SU_MCP::Terrain::IntentAwareAdaptiveGridPolicy.new(
+      feature_geometry: anchor_geometry,
+      base_tolerance: 1.0,
+      tile_columns: 10
+    )
+
+    unrelated = policy.hard_requirement_status_for(
+      cell(0, 0, 2, 2),
+      vertices: cell_vertices(0, 0, 2, 2)
+    )
+    containing = policy.hard_requirement_status_for(
+      cell(4, 4, 8, 8),
+      vertices: cell_vertices(4, 4, 8, 8)
+    )
+    satisfied = policy.hard_requirement_status_for(
+      cell(6, 6, 8, 8),
+      vertices: cell_vertices(6, 6, 8, 8)
+    )
+
+    assert_equal('satisfied', unrelated.fetch(:status))
+    assert_empty(unrelated.fetch(:hardViolationCounts))
+    assert_equal('unresolved', containing.fetch(:status))
+    assert_equal('satisfied', satisfied.fetch(:status))
+  end
+
   private
 
   def cell(min_col, min_row, max_col, max_row, overrides = {})
@@ -84,5 +110,23 @@ class IntentAwareAdaptiveGridPolicyTest < Minitest::Test
           primitive: 'circle', ownerLocalShape: [6.0, 6.0, 2.0], targetCellSize: 3 }
       ]
     )
+  end
+
+  def anchor_geometry
+    SU_MCP::Terrain::TerrainFeatureGeometry.new(
+      outputAnchorCandidates: [
+        { id: 'anchor', featureId: 'fixed', role: 'control', strength: 'hard',
+          ownerLocalPoint: [6.0, 6.0], tolerance: 0.01 }
+      ]
+    )
+  end
+
+  def cell_vertices(min_col, min_row, max_col, max_row)
+    [
+      [min_col, min_row, 0.0],
+      [max_col, min_row, 0.0],
+      [max_col, max_row, 0.0],
+      [min_col, max_row, 0.0]
+    ]
   end
 end

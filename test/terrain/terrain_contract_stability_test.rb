@@ -108,6 +108,31 @@ class TerrainContractStabilityTest < Minitest::Test
     ].each { |term| refute_includes(JSON.generate(result), term) }
   end
 
+  def test_public_output_vocabulary_does_not_expose_mta24_cdt_candidate_internals
+    result = edit_evidence_result(
+      diagnostics: edit_diagnostics.merge(
+        cdt: { constrainedEdgeCoverage: 1.0 },
+        constrainedDelaunay: true,
+        breakline: true,
+        candidateRow: { backend: 'mta24_constrained_delaunay_cdt_prototype' },
+        rawTriangles: [[0, 1, 2]],
+        expandedConstraints: [{ start: [0, 0], end: [1, 1] }],
+        solverPredicates: { incircle: 0.0, orientation: 1.0 },
+        constraintGraph: { edges: [] },
+        delaunayViolationCount: 0,
+        triangulatorKind: 'ruby_bowyer_watson_constraint_recovery',
+        triangulatorVersion: 'mta24-ruby-cdt-prototype-0'
+      )
+    )
+
+    refute_internal_output_vocabulary(result)
+    %w[
+      cdt constrainedDelaunay breakline mta24 constrained_delaunay rawTriangles
+      expandedConstraints solverPredicates constraintGraph delaunayViolationCount
+      triangulatorKind triangulatorVersion ruby_bowyer_watson
+    ].each { |term| refute_includes(JSON.generate(result), term) }
+  end
+
   def test_public_fairing_evidence_does_not_expose_output_or_generated_entity_internals
     result = edit_evidence_result(
       diagnostics: edit_diagnostics.merge(
@@ -269,6 +294,9 @@ class TerrainContractStabilityTest < Minitest::Test
       candidateRow terrainFeatureGeometry outputAnchorCandidates protectedRegions
       featureGeometryDigest referenceGeometryDigest candidateVertices candidateTriangles
       firmResidualsByRole topologyResiduals splitReasonHistogram
+      cdt constrainedDelaunay breakline constrained_delaunay expandedConstraints
+      solverPredicates constraintGraph delaunayViolationCount triangulatorKind
+      triangulatorVersion ruby_bowyer_watson
     ].each { |term| refute_includes(serialized, term) }
     refute_includes(serialized_output, 'regeneration')
   end

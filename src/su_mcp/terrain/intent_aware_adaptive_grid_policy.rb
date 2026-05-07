@@ -68,22 +68,11 @@ module SU_MCP
       end
 
       def anchor_hit_metrics(vertices:)
-        distances = {}
-        violations = Hash.new(0)
-        hard_anchors.each do |anchor|
-          distance = vertices.map do |vertex|
-            xy_distance(vertex, anchor.fetch('ownerLocalPoint'))
-          end.min
-          distances[anchor.fetch('id')] = distance
-          tolerance = anchor.fetch('tolerance', DEFAULT_BOUNDARY_TOLERANCE)
-          violations[:fixed_anchor_missing] += 1 if distance.nil? || distance > tolerance
-        end
-        violations = {} if violations.empty?
-        { anchorHitDistances: distances, hardViolationCounts: violations }
+        anchor_hit_metrics_for(hard_anchors, vertices: vertices)
       end
 
       def hard_requirement_status_for(cell, vertices:)
-        anchor_metrics = anchor_hit_metrics(vertices: vertices)
+        anchor_metrics = anchor_hit_metrics_for(hard_anchors_for_cell(cell), vertices: vertices)
         if anchor_metrics.fetch(:hardViolationCounts).empty?
           return { status: 'satisfied',
                    **anchor_metrics }
@@ -97,9 +86,30 @@ module SU_MCP
 
       attr_reader :feature_geometry, :base_tolerance, :tile_columns
 
+      def anchor_hit_metrics_for(anchors, vertices:)
+        distances = {}
+        violations = Hash.new(0)
+        anchors.each do |anchor|
+          distance = vertices.map do |vertex|
+            xy_distance(vertex, anchor.fetch('ownerLocalPoint'))
+          end.min
+          distances[anchor.fetch('id')] = distance
+          tolerance = anchor.fetch('tolerance', DEFAULT_BOUNDARY_TOLERANCE)
+          violations[:fixed_anchor_missing] += 1 if distance.nil? || distance > tolerance
+        end
+        violations = {} if violations.empty?
+        { anchorHitDistances: distances, hardViolationCounts: violations }
+      end
+
       def hard_anchors
         feature_geometry.output_anchor_candidates.select do |anchor|
           anchor.fetch('strength', 'hard') == 'hard'
+        end
+      end
+
+      def hard_anchors_for_cell(cell)
+        hard_anchors.select do |anchor|
+          point_in_cell?(anchor.fetch('ownerLocalPoint'), cell)
         end
       end
 

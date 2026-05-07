@@ -37,6 +37,12 @@ The current task order proves terrain authoring through concrete, testable incre
   MTA-19 simplifier failure
 - conforming adaptive terrain output so mixed-resolution derived terrain does not produce visible
   T-junction or gap seams
+- adaptive-output benchmark fixtures and replay evidence before any future production
+  simplification backend replacement
+- intent-constrained adaptive output prototyping that uses MTA-20 feature intent before any
+  production backend promotion
+- CDT-oriented production terrain output with current-backend fallback and cleanup of prototype
+  bakeoff harnesses before long-lived production wiring
 
 ## Current Task Order
 
@@ -61,6 +67,10 @@ The current task order proves terrain authoring through concrete, testable incre
 19. [MTA-19 Implement Detail Preserving Adaptive Terrain Output Simplification](MTA-19-implement-detail-preserving-adaptive-terrain-output-simplification/task.md) - failed/reverted
 20. [MTA-20 Define Terrain Feature Constraint Layer For Derived Output](MTA-20-define-terrain-feature-constraint-layer-for-derived-output/task.md)
 21. [MTA-21 Make Adaptive Terrain Output Conforming](MTA-21-make-adaptive-terrain-output-conforming/task.md)
+22. [MTA-22 Capture Adaptive Simplification Benchmark Fixtures And Replay Framework](MTA-22-capture-adaptive-terrain-regression-fixture-pack/task.md)
+23. [MTA-23 Prototype Intent-Constrained Adaptive Output Backend](MTA-23-prototype-adaptive-simplification-backend-with-grey-box-sketchup-probes/task.md)
+24. [MTA-24 Prototype Constrained Delaunay/CDT Terrain Output Backend And Three-Way Bakeoff](MTA-24-prototype-constrained-delaunay-cdt-terrain-output-backend-and-three-way-bakeoff/task.md)
+25. [MTA-25 Productionize CDT Terrain Output With Current Backend Fallback](MTA-25-productionize-cdt-terrain-output-with-current-fallback/task.md)
 
 ## Deferred Follow-Ons
 
@@ -96,3 +106,20 @@ Deferred work is not promoted into active task folders in this iteration:
 - `MTA-21` fixes the existing adaptive TIN output baseline before any future RTIN, Delaunay,
   DELATIN, or feature-aware backend comparison. It should preserve adaptive output rather than
   reverting detailed terrain to regular full-grid production output.
+- `MTA-22` captures the MTA-21 adaptive-output baseline as a benchmark fixture and replay framework,
+  including varied terrain/edit families, current face counts, quality metrics, hosted-sensitive
+  provenance, and known residuals such as the off-grid adopted corridor endpoint mismatch. Its purpose
+  is to make later prototype comparisons meaningful.
+- `MTA-23` is the next simplification step: prototype an intent-constrained adaptive output backend
+  that consumes MTA-20 feature intent, emits validation-only candidate geometry, compares against the
+  MTA-22 baseline, and verifies promising rows with `eval_ruby` grey-box SketchUp probes. It must not
+  swap the production backend.
+- `MTA-24` is redefined from production implementation into a constrained Delaunay/CDT prototype
+  and three-way bakeoff, because MTA-23 kept adaptive-grid as a serious upgrade candidate but did
+  not prove an unconditional production swap. Productionization should move to a later task after
+  current, MTA-23 adaptive-grid, and CDT behavior are compared on the same fixture and live SketchUp
+  cases.
+- `MTA-25` is the CDT productionization follow-up selected by MTA-24. It must keep current
+  production output as fallback while CDT production behavior is gated, clean up or isolate
+  MTA-24-specific comparison and hosted-probe harnesses from production runtime ownership, and prove
+  production behavior through automated and hosted SketchUp acceptance.

@@ -69,6 +69,37 @@ class IntentAwareEnhancedAdaptiveGridPrototypeTest < Minitest::Test
                     'prototype_role_residuals_are_first_pass_metrics')
   end
 
+  def test_feature_geometry_is_projected_to_grid_space_for_non_unit_spacing_split_policy
+    result = prototype.run(
+      state: large_spacing_state,
+      feature_geometry: large_spacing_target_geometry,
+      base_tolerance: 10.0,
+      max_cell_budget: 256,
+      max_face_budget: 512,
+      max_runtime_budget: 10.0
+    )
+
+    assert_operator(cells_in_range(result, 18.0..30.0, 18.0..30.0).length,
+                    :>, cells_in_range(result, 0.0...12.0, 0.0...12.0).length)
+    assert_includes(result.dig(:metrics, :splitReasonHistogram).keys, 'soft_pressure_useful')
+  end
+
+  def test_unsplittable_off_grid_anchor_does_not_block_height_error_splits
+    result = prototype.run(
+      state: two_hotspot_state,
+      feature_geometry: off_grid_anchor_geometry,
+      base_tolerance: 0.05,
+      max_cell_budget: 256,
+      max_face_budget: 512,
+      max_runtime_budget: 10.0
+    )
+
+    histogram = result.dig(:metrics, :splitReasonHistogram)
+    assert_operator(histogram.fetch('height_error_exceeded', 0), :>, 0)
+    assert_operator(result.fetch(:candidateCells).length, :>, 25)
+    assert_operator(result.dig(:metrics, :maxHeightError), :<, 2.0)
+  end
+
   private
 
   def prototype
@@ -90,6 +121,59 @@ class IntentAwareEnhancedAdaptiveGridPrototypeTest < Minitest::Test
       revision: 1,
       state_id: 'prototype-state'
     )
+  end
+
+  def large_spacing_state
+    columns = 49
+    rows = 49
+    spacing = 2.5
+    elevations = Array.new(columns * rows, 4.0)
+    SU_MCP::Terrain::TiledHeightmapState.new(
+      basis: BASIS,
+      origin: { 'x' => 0.0, 'y' => 0.0, 'z' => 0.0 },
+      spacing: { 'x' => spacing, 'y' => spacing },
+      dimensions: { 'columns' => columns, 'rows' => rows },
+      elevations: elevations,
+      revision: 1,
+      state_id: 'prototype-large-spacing-state'
+    )
+  end
+
+  def two_hotspot_state
+    columns = 17
+    rows = 17
+    elevations = Array.new(columns * rows) do |index|
+      column = index % columns
+      row = index / columns
+      hotspot = [[4, 12, 4.0], [12, 4, -3.0]].sum do |cx, cy, height|
+        distance = Math.sqrt(((column - cx)**2) + ((row - cy)**2))
+        distance <= 3.0 ? height * (1.0 - (distance / 3.5)) : 0.0
+      end
+      1.0 + hotspot
+    end
+    SU_MCP::Terrain::TiledHeightmapState.new(
+      basis: BASIS,
+      origin: { 'x' => 0.0, 'y' => 0.0, 'z' => 0.0 },
+      spacing: { 'x' => 1.0, 'y' => 1.0 },
+      dimensions: { 'columns' => columns, 'rows' => rows },
+      elevations: elevations,
+      revision: 1,
+      state_id: 'prototype-two-hotspot-state'
+    )
+  end
+
+  def cells_in_range(result, column_range, row_range)
+    result.fetch(:candidateCells).select do |cell|
+      column, row = cell_center(cell)
+      column_range.cover?(column) && row_range.cover?(row)
+    end
+  end
+
+  def cell_center(cell)
+    [
+      (cell.fetch(:min_col) + cell.fetch(:max_col)) / 2.0,
+      (cell.fetch(:min_row) + cell.fetch(:max_row)) / 2.0
+    ]
   end
 
   def empty_geometry
@@ -129,6 +213,28 @@ class IntentAwareEnhancedAdaptiveGridPrototypeTest < Minitest::Test
       protectedRegions: [
         { id: 'protected', featureId: 'preserve', role: 'protected', primitive: 'rectangle',
           ownerLocalBounds: [[1.5, 1.5], [3.5, 3.5]] }
+      ]
+    )
+  end
+
+  def off_grid_anchor_geometry
+    SU_MCP::Terrain::TerrainFeatureGeometry.new(
+      outputAnchorCandidates: [
+        { id: 'off-grid-anchor', featureId: 'fixed', role: 'control', strength: 'hard',
+          ownerLocalPoint: [8.4, 8.4], tolerance: 0.01 }
+      ]
+    )
+  end
+
+  def large_spacing_target_geometry
+    SU_MCP::Terrain::TerrainFeatureGeometry.new(
+      pressureRegions: [
+        { id: 'target', featureId: 'target', role: 'target_support', strength: 'soft',
+          primitive: 'circle', ownerLocalShape: [60.0, 60.0, 15.0], targetCellSize: 4 }
+      ],
+      affectedWindows: [
+        { featureId: 'target', role: 'target_support', minCol: 18, minRow: 18, maxCol: 30,
+          maxRow: 30, source: 'payload' }
       ]
     )
   end
