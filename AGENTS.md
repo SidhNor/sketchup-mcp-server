@@ -39,6 +39,18 @@ Target Ruby layering:
 
 These are architectural boundaries, not a frozen directory layout. Move code toward those layers deliberately.
 
+## Capability Folder Structure
+
+Capability folders may start flat, but they should not become permanent catch-all
+directories. Once a capability mixes commands, request contracts, domain
+services, serializers/evidence, storage, output generation, probes, or
+SketchUp-facing adapters, move it toward named internal ownership folders instead
+of adding more files at the root. Keep structural moves mechanical and preserve
+public constants, MCP contracts, response shapes, tests, and package behavior.
+
+Use the platform HLD and Ruby coding guidelines for the fuller structure and
+migration guidance.
+
 ## Source of Truth
 
 - Keep MCP tool registration, SketchUp API usage, geometry work, entity traversal, and command behavior in the extension runtime rather than scattering them across helper scripts or release tooling.

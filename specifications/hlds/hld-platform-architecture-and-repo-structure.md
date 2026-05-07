@@ -11,7 +11,9 @@ The repository now contains:
 - staged RBZ packaging and vendored runtime support under the packaging helpers
 - local validation and CI entrypoints
 - CI-owned release automation through standalone semantic-release configuration
-- capability-oriented Ruby support subtrees for scene query, scene validation, semantic modeling, editing, solid modeling, developer tools, adapters, and runtime support
+- capability-oriented Ruby support subtrees for scene query, scene validation,
+  semantic modeling, editing, staged assets, managed terrain, developer tools,
+  adapters, and runtime support
 
 This HLD covers:
 
@@ -120,7 +122,10 @@ The main architectural goals are:
 
 - shared assembly via `src/su_mcp/runtime/runtime_command_factory.rb`
 - stable dispatch via `src/su_mcp/runtime/tool_dispatcher.rb`
-- capability command ownership under `src/su_mcp/scene_query/`, `src/su_mcp/scene_validation/`, `src/su_mcp/semantic/`, `src/su_mcp/editing/`, `src/su_mcp/modeling/`, and `src/su_mcp/developer/`
+- capability command ownership under `src/su_mcp/scene_query/`,
+  `src/su_mcp/scene_validation/`, `src/su_mcp/semantic/`, `src/su_mcp/editing/`,
+  `src/su_mcp/staged_assets/`, `src/su_mcp/terrain/`, and
+  `src/su_mcp/developer/`
 
 ### 5. Shared Ruby Runtime Infrastructure
 
@@ -167,6 +172,27 @@ The main architectural goals are:
 
 The platform now has explicit support subtrees for the major runtime and capability layers. It should continue refining those boundaries incrementally rather than forcing broad directory churn.
 
+Capability-oriented source roots are allowed to begin flat, but large capability
+roots should also express the same ownership boundaries as the wider runtime. A
+capability root should be split when concrete pressure appears, such as roughly
+8-10 Ruby files in one directory, repeated new files landing at the root by
+default, or three or more distinct ownership categories living as peers. Common
+categories include commands, public request contracts, domain services,
+serializers, evidence builders, storage seams, output generation, probes, and
+SketchUp-facing adapters.
+
+Capability root files should remain rare and intentional. Prefer named
+subfolders over broad `support/` buckets when a concern has clear ownership.
+Capability-local adapters should remain local when they encode capability policy;
+shared `src/su_mcp/adapters/` code should be limited to reusable SketchUp host
+primitives that return normalized data without capability-specific semantics.
+
+Structural reorganizations should be mechanical before they are semantic:
+preserve public constants, MCP tool contracts, response shapes, packaging
+behavior, and test coverage while moving files. Behavior changes should happen in
+separate follow-up work unless a small adjustment is required to keep the move
+valid.
+
 Current source grouping:
 
 - extension registration and boot
@@ -176,7 +202,8 @@ Current source grouping:
 - scene validation and measurement commands under `src/su_mcp/scene_validation/`
 - semantic scene modeling under `src/su_mcp/semantic/`
 - generic editing and mutation support under `src/su_mcp/editing/`
-- solid modeling support under `src/su_mcp/modeling/`
+- staged asset reuse support under `src/su_mcp/staged_assets/`
+- managed terrain authoring support under `src/su_mcp/terrain/`
 - developer-only tool support under `src/su_mcp/developer/`
 - shared SketchUp adapters under `src/su_mcp/adapters/`
 - packaging and release support under `rakelib/`
@@ -217,4 +244,5 @@ Manual SketchUp-hosted smoke validation remains required when:
 
 1. What additional SketchUp-hosted smoke coverage should become mandatory for packaged runtime startup, representative MCP requests, and high-risk mutating tools?
 2. Should release automation stay on `python-semantic-release` long term, or should a repo-owned release flow eventually replace it?
-3. How many initial MCP prompts should the native runtime expose for richer workflow guidance while keeping baseline usage semantics in tool descriptions and schemas?
+3. Should the native runtime expose MCP resources in addition to tools and prompts, and what content belongs there without weakening baseline tool descriptions and schemas?
+4. What governance should decide when prompt catalog additions are platform-owned workflow guidance rather than capability documentation or client-specific playbooks?

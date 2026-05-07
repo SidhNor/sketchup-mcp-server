@@ -52,6 +52,12 @@ A healthy Ruby runtime usually contains distinct concerns such as:
 - logging, instrumentation, and error translation
 
 These do not require a rigid directory structure, but they should remain mentally separable.
+As a capability grows, the filesystem should make those separations easier to
+see instead of hiding commands, contracts, domain services, serializers, storage,
+and host adapters in one flat directory. Split capability roots once they contain
+multiple ownership categories or have become a default destination for unrelated
+new files. Use named folders for real concerns; avoid a generic `support/`
+folder when a clearer ownership name exists.
 
 Warning signs:
 

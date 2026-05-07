@@ -1,14 +1,14 @@
 # Size: MTA-23 Prototype Intent-Constrained Adaptive Output Backend
 
-**Task ID**: `MTA-23`  
-**Title**: Prototype Intent-Constrained Adaptive Output Backend  
-**Status**: `challenged`  
-**Created**: 2026-05-06  
-**Last Updated**: 2026-05-06  
+**Task ID**: `MTA-23`
+**Title**: Prototype Intent-Constrained Adaptive Output Backend
+**Status**: `calibrated`
+**Created**: 2026-05-06
+**Last Updated**: 2026-05-07
 
-**Related Task**: [task.md](./task.md)  
-**Related Plan**: [plan.md](./plan.md)  
-**Related Summary**: none yet  
+**Related Task**: [task.md](./task.md)
+**Related Plan**: [plan.md](./plan.md)
+**Related Summary**: [summary.md](./summary.md)
 
 ---
 
@@ -211,21 +211,32 @@
 
 | Dimension | Score (0-4) | Notes |
 |---|---:|---|
-| Functional Scope | <0-4> | <short note> |
-| Technical Change Surface | <0-4> | <short note> |
-| Actual Implementation Friction | <0-4> | <short note> |
-| Actual Validation Burden | <0-4> | <short note> |
-| Actual Dependency Drag | <0-4> | <short note> |
-| Actual Discovery Encountered | <0-4> | <short note> |
-| Actual Scope Volatility | <0-4> | <short note> |
-| Actual Rework | <0-4> | <short note> |
-| Final Confidence in Completeness | <0-4> | <short note> |
+| Functional Scope | 2 | Stayed validation-only: no production backend swap, no public MCP contract change, and no user-facing behavior change. |
+| Technical Change Surface | 3 | Added feature geometry, policy, prototype backend, comparison/failure artifacts, hosted probe support, fixture integration, and no-leak tests. |
+| Actual Implementation Friction | 3 | Real mesh emission, feature derivation, hard/firm/soft scoring, and policy fixes resisted a straight-line implementation, but did not force production architecture rework. |
+| Actual Validation Burden | 4 | Closeout required local suites plus repeated live SketchUp sidecar matrices, post-deploy monkey patches, shared-state bakeoffs, hard-intent bakeoffs, and aggressive varied cases. |
+| Actual Dependency Drag | 3 | Completion depended on MTA-22 fixtures, MTA-20 feature intent, MTA-21 current backend behavior, user deployment timing, and live SketchUp MCP access. |
+| Actual Discovery Encountered | 4 | The evidence materially changed the verdict from candidate-failing to serious upgrade candidate, and revealed current backend hard-intent failures. |
+| Actual Scope Volatility | 3 | Task stayed prototype-only, but evidence redirected MTA-24 from production promotion to CDT/bakeoff and expanded live validation scope. |
+| Actual Rework | 2 | Follow-up fixes were contained to hard crossing classification, hard-anchor filtering, live monkey patches, and closeout artifact corrections. |
+| Final Confidence in Completeness | 3 | Strong local and hosted evidence supports the prototype verdict; confidence is limited by unoptimized runtime and unresolved production backend selection. |
 
 ### Actual Signals
-- Not filled yet.
+- Feature geometry was validated in focused Ruby tests and live SketchUp audit overlay.
+- Current-vs-MTA-23 shared-state bakeoff showed MTA-23 was substantially more compact than current
+  on adopted/stress scene cases while preserving clean topology.
+- Hard preserve/fixed-anchor failures were shared with the current simplifier rather than unique to
+  MTA-23.
+- Aggressive varied bakeoff showed strong compactness but exposed runtime, height-error, and
+  fixed-anchor tuning risks.
+- MTA-23 remained validation-only and did not change public tool contracts or production terrain
+  output behavior.
 
 ### Actual Notes
-- Not filled yet.
+- The dominant actual failure mode was not feature-geometry derivation; it was proving whether the
+  adaptive-grid backend was a production candidate versus a strong baseline for CDT comparison.
+- The `mta23_*` filenames are accepted as temporary prototype identifiers and should be renamed or
+  removed when a production backend is selected.
 <!-- SIZE:ACTUAL:END -->
 
 ---
@@ -236,22 +247,48 @@
 > Fill only the sections that are relevant. Say `not applicable` where needed.
 
 ### Automated Validation
-- Not filled yet.
+- Focused MTA-23 feature/candidate suite passed: `25 runs, 148 assertions, 0 failures`.
+- Terrain suite passed: `344 runs, 5495 assertions, 0 failures, 3 skips`.
+- Full Ruby test sweep before live-check expansion passed: `941 runs, 7812 assertions, 0 failures`.
+- RuboCop on affected MTA-23 files and earlier full RuboCop sweep reported no offenses.
+- Package verification before live-check expansion produced `dist/su_mcp-1.2.0.rbz`.
+- Final targeted closeout sweep passed: `63 runs, 2548 assertions, 0 failures`.
+- `git diff --check` passed after closeout edits.
 
 ### Hosted / Manual Validation
-- Not filled yet.
+- Live checks ran through MCP wrapper `eval_ruby` against SketchUp `26.1.189`, model `TestGround`.
+- Hosted sidecars covered corrected MTA-22 created-corridor rows, expanded hard/firm/soft probes,
+  single-terrain varied-intent matrix, feature-geometry audit overlay, scene-level MTA-22 fixture
+  inspection, current-vs-MTA-23 shared-state bakeoff, hard-intent bakeoff, and aggressive varied
+  bakeoff.
+- Generated validation sidecars were explicitly separate from existing scene geometry and remained
+  inspectable in the live scene.
 
 ### Performance Validation
-- Not filled yet.
+- Runtime budgets were exercised at `8s`, `12s`, and `20s` prototype limits with `1024` and `4096`
+  cell budgets.
+- MTA-23 repeatedly hit runtime limits on adopted/stress and aggressive cases, so runtime remains an
+  optimization risk rather than a production-ready result.
+- Face-count evidence was strong: MTA-23 was materially more compact than current simplifier in
+  shared-state adopted/stress and aggressive varied bakeoffs.
 
 ### Migration / Compatibility Validation
-- Not filled yet.
+- Public MCP contracts, dispatcher routes, schemas, and production terrain output behavior were not
+  changed.
+- Contract stability/no-leak tests were expanded so MTA-23 candidate internals do not appear in
+  public terrain evidence.
 
 ### Operational / Rollout Validation
-- Not filled yet.
+- Production rollout was not applicable; MTA-23 was validation-only.
+- User deployment was required for live SketchUp verification, and post-deploy monkey patches were
+  used for live checks after code fixes.
+- Save-copy and undo smoke evidence was collected for representative sidecar behavior; save/reopen
+  was not treated as decisive production evidence.
 
 ### Validation Notes
-- Not filled yet.
+- Hosted validation burden was high because evidence interpretation changed the recommendation and
+  required multiple live comparison shapes, not because any one hosted check was inherently large.
+- The final validation story supports a prototype recommendation, not production backend selection.
 <!-- SIZE:VALIDATION-EVIDENCE:END -->
 
 ---
@@ -261,14 +298,29 @@
 
 > Filled during final calibration. Compare prediction to actual behavior.
 
-- **Most Underestimated Dimension**: Not filled yet.
-- **Most Overestimated Dimension**: Not filled yet.
-- **Signal Present Early But Underweighted**: Not filled yet.
-- **Genuinely Unknowable Factor**: Not filled yet.
-- **Future Similar Tasks Should Assume**: Not filled yet.
+- **Most Underestimated Dimension**: Validation burden. The prediction expected hosted proof, but
+  actual closeout required repeated live scene-level bakeoffs, current-backend comparison,
+  hard-intent comparison, aggressive varied cases, and interpretation of runtime/quality tradeoffs.
+- **Most Overestimated Dimension**: Implementation friction. The prototype was technically
+  substantial, but the bounded validation-only architecture avoided the MTA-19-style production
+  rollback/rewrite.
+- **Signal Present Early But Underweighted**: MTA-19's hosted-validation lesson was weighted, but
+  the need to compare against current backend hard-intent behavior before judging MTA-23 was
+  underweighted.
+- **Genuinely Unknowable Factor**: Whether MTA-23 would be a failed backend, a production candidate,
+  or a strong upgrade baseline was unknowable until live current-vs-MTA-23 and aggressive bakeoffs
+  ran.
+- **Future Similar Tasks Should Assume**: Validation-only terrain backend prototypes need a
+  three-way evidence path early: candidate versus current, candidate versus hard-intent diagnostics,
+  and candidate versus aggressive hosted terrain before production conclusions are credible.
 
 ### Calibration Notes
-- Not filled yet.
+- Actual recommendation: keep MTA-23 adaptive-grid as a serious upgrade candidate, do not blindly
+  production-swap, and prototype CDT/breakline output next using the same feature-geometry substrate.
+- Future estimates should classify live SketchUp bakeoffs by retest and interpretation cost, not by
+  raw case count.
+- Temporary task-named prototype files are acceptable for validation slices only when cleanup is
+  explicitly recorded for production promotion.
 <!-- SIZE:DELTA:END -->
 
 ---
@@ -276,20 +328,18 @@
 <!-- SIZE:TAGS:START -->
 ## Retrieval Tags
 
-- `archetype:performance-sensitive`
+- `archetype:prototype-bakeoff`
 - `scope:managed-terrain`
-- `systems:terrain-output`
-- `systems:terrain-mesh-generator`
-- `systems:terrain-kernel`
-- `systems:test-support`
+- `systems:terrain-feature-geometry`
+- `systems:terrain-adaptive-grid`
 - `validation:performance`
 - `validation:hosted-matrix`
-- `validation:regression`
+- `validation:bakeoff`
 - `host:special-scene`
 - `contract:no-public-shape-change`
 - `risk:performance-scaling`
+- `risk:hard-intent-enforcement`
+- `backend:adaptive-grid`
 - `volatility:high`
-- `friction:high`
-- `rework:high`
-- `confidence:low`
+- `confidence:moderate`
 <!-- SIZE:TAGS:END -->
