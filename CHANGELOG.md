@@ -2,6 +2,22 @@
 
 <!-- version list -->
 
+## v1.4.0 (2026-05-07)
+
+### Documentation
+
+- Update some project structure guidance
+  ([`f184c41`](https://github.com/SidhNor/sketchup-mcp-server/commit/f184c41c14f979ca6aac12f76b4b050313e17efe))
+
+### Features
+
+- **MTA-23**: Feature intent geometry kernel and quadtree simplification prototype
+  ([`cc00fca`](https://github.com/SidhNor/sketchup-mcp-server/commit/cc00fca09d3460020a60f0da7c3a4736537057c8))
+
+- **MTA-24**: Constrained Delaunay triangulation for the terrain
+  ([`290943e`](https://github.com/SidhNor/sketchup-mcp-server/commit/290943e895dbba1c5594856ad2110ca7071f5a63))
+
+
 ## v1.3.0 (2026-05-04)
 
 ### Bug Fixes
