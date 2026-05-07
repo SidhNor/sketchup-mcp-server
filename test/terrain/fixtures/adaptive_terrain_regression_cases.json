@@ -1,0 +1,1050 @@
+{
+  "schemaVersion": 1,
+  "sourceTask": "MTA-22",
+  "baseline": {
+    "sourceTask": "MTA-21",
+    "status": "accepted_for_seam_conformance",
+    "source": "MTA-21 hosted validation checklist and summary"
+  },
+  "validationCommands": [
+    "bundle exec ruby -Itest test/terrain/adaptive_terrain_regression_fixture_test.rb",
+    "bundle exec ruby -Itest test/terrain/terrain_contract_stability_test.rb"
+  ],
+  "cases": [
+    {
+      "id": "created_flat_corridor_mta21",
+      "family": "created_corridor",
+      "replayableLocally": true,
+      "terrain": {
+        "recipe": "created_flat_grid",
+        "recipeVersion": 1,
+        "traits": [
+          "flat"
+        ],
+        "dimensions": {
+          "columns": 41,
+          "rows": 41
+        },
+        "spacing": {
+          "x": 1.0,
+          "y": 1.0
+        },
+        "parameters": {
+          "elevation": 0.0
+        }
+      },
+      "edits": [
+        {
+          "sequence": 1,
+          "mode": "corridor_transition",
+          "controls": {
+            "start": {
+              "x": 8.0,
+              "y": 20.0,
+              "elevation": 0.75
+            },
+            "end": {
+              "x": 32.0,
+              "y": 20.0,
+              "elevation": 1.9
+            },
+            "width": 4.0
+          }
+        }
+      ],
+      "provenance": {
+        "source": "MTA-21 hosted validation checklist"
+      }
+    },
+    {
+      "id": "created_crossfall_corridor_mta21",
+      "family": "created_corridor",
+      "replayableLocally": true,
+      "terrain": {
+        "recipe": "created_crossfall_grid",
+        "recipeVersion": 1,
+        "traits": [
+          "crossfall"
+        ],
+        "dimensions": {
+          "columns": 41,
+          "rows": 41
+        },
+        "spacing": {
+          "x": 1.0,
+          "y": 1.0
+        },
+        "parameters": {
+          "baseElevation": 0.0,
+          "xSlope": 0.03
+        }
+      },
+      "edits": [
+        {
+          "sequence": 1,
+          "mode": "corridor_transition",
+          "controls": {
+            "start": {
+              "x": 8.0,
+              "y": 20.0,
+              "elevation": 0.75
+            },
+            "end": {
+              "x": 32.0,
+              "y": 20.0,
+              "elevation": 1.9
+            },
+            "width": 4.0
+          }
+        }
+      ],
+      "provenance": {
+        "source": "MTA-21 hosted validation checklist"
+      }
+    },
+    {
+      "id": "created_steep_corridor_mta21",
+      "family": "created_corridor",
+      "replayableLocally": true,
+      "terrain": {
+        "recipe": "created_steep_grid",
+        "recipeVersion": 1,
+        "traits": [
+          "steep"
+        ],
+        "dimensions": {
+          "columns": 41,
+          "rows": 41
+        },
+        "spacing": {
+          "x": 1.0,
+          "y": 1.0
+        },
+        "parameters": {
+          "baseElevation": 0.0,
+          "xSlope": 0.08,
+          "ySlope": 0.06
+        }
+      },
+      "edits": [
+        {
+          "sequence": 1,
+          "mode": "corridor_transition",
+          "controls": {
+            "start": {
+              "x": 8.0,
+              "y": 20.0,
+              "elevation": 0.75
+            },
+            "end": {
+              "x": 32.0,
+              "y": 20.0,
+              "elevation": 1.9
+            },
+            "width": 4.0
+          }
+        }
+      ],
+      "provenance": {
+        "source": "MTA-21 hosted validation checklist"
+      }
+    },
+    {
+      "id": "created_non_square_corridor_mta21",
+      "family": "created_corridor",
+      "replayableLocally": true,
+      "terrain": {
+        "recipe": "created_non_square_grid",
+        "recipeVersion": 1,
+        "traits": [
+          "non_square"
+        ],
+        "dimensions": {
+          "columns": 71,
+          "rows": 31
+        },
+        "spacing": {
+          "x": 1.0,
+          "y": 1.0
+        },
+        "parameters": {
+          "elevation": 0.0
+        }
+      },
+      "edits": [
+        {
+          "sequence": 1,
+          "mode": "corridor_transition",
+          "controls": {
+            "start": {
+              "x": 10.0,
+              "y": 15.0,
+              "elevation": 0.75
+            },
+            "end": {
+              "x": 60.0,
+              "y": 15.0,
+              "elevation": 1.9
+            },
+            "width": 4.0
+          }
+        }
+      ],
+      "provenance": {
+        "source": "MTA-21 hosted validation checklist"
+      }
+    },
+    {
+      "id": "adopted_irregular_before_corridor_mta21",
+      "family": "adopted_baseline",
+      "replayableLocally": false,
+      "terrain": {
+        "recipe": "adopted_irregular_grid",
+        "recipeVersion": 1,
+        "traits": [
+          "ridge",
+          "valley",
+          "mound",
+          "hollow",
+          "ripple",
+          "base_slope"
+        ],
+        "dimensions": {
+          "columns": 100,
+          "rows": 100
+        },
+        "spacing": {
+          "x": 1.0,
+          "y": 1.0
+        },
+        "parameters": {
+          "ridgeAmplitude": 2.0,
+          "valleyDepth": -1.5,
+          "moundAmplitude": 1.2,
+          "hollowDepth": -0.9,
+          "rippleAmplitude": 0.25,
+          "baseSlope": 0.015
+        }
+      },
+      "edits": [
+
+      ],
+      "provenance": {
+        "source": "MTA-21 hosted validation checklist"
+      }
+    },
+    {
+      "id": "adopted_irregular_grid_aligned_corridor_mta21",
+      "family": "adopted_corridor",
+      "replayableLocally": false,
+      "terrain": {
+        "recipe": "adopted_irregular_grid",
+        "recipeVersion": 1,
+        "traits": [
+          "ridge",
+          "valley",
+          "mound",
+          "hollow",
+          "ripple",
+          "base_slope"
+        ],
+        "dimensions": {
+          "columns": 100,
+          "rows": 100
+        },
+        "spacing": {
+          "x": 1.0,
+          "y": 1.0
+        },
+        "parameters": {
+          "ridgeAmplitude": 2.0,
+          "valleyDepth": -1.5,
+          "moundAmplitude": 1.2,
+          "hollowDepth": -0.9,
+          "rippleAmplitude": 0.25,
+          "baseSlope": 0.015
+        }
+      },
+      "edits": [
+        {
+          "sequence": 1,
+          "mode": "corridor_transition",
+          "controls": {
+            "start": {
+              "x": 18.0,
+              "y": 40.0,
+              "elevation": 0.75
+            },
+            "end": {
+              "x": 72.0,
+              "y": 40.0,
+              "elevation": 1.9
+            },
+            "width": 5.0
+          }
+        }
+      ],
+      "provenance": {
+        "source": "MTA-21 hosted validation checklist"
+      }
+    },
+    {
+      "id": "adopted_irregular_off_grid_corridor_mta21",
+      "family": "adopted_corridor",
+      "replayableLocally": false,
+      "terrain": {
+        "recipe": "adopted_irregular_grid",
+        "recipeVersion": 1,
+        "traits": [
+          "ridge",
+          "valley",
+          "mound",
+          "hollow",
+          "ripple",
+          "base_slope"
+        ],
+        "dimensions": {
+          "columns": 100,
+          "rows": 100
+        },
+        "spacing": {
+          "x": 1.0,
+          "y": 1.0
+        },
+        "parameters": {
+          "ridgeAmplitude": 2.0,
+          "valleyDepth": -1.5,
+          "moundAmplitude": 1.2,
+          "hollowDepth": -0.9,
+          "rippleAmplitude": 0.25,
+          "baseSlope": 0.015
+        }
+      },
+      "edits": [
+        {
+          "sequence": 1,
+          "mode": "corridor_transition",
+          "controls": {
+            "start": {
+              "x": 18.4,
+              "y": 40.0,
+              "elevation": 0.75
+            },
+            "end": {
+              "x": 72.6,
+              "y": 40.0,
+              "elevation": 1.85
+            },
+            "width": 5.0
+          }
+        }
+      ],
+      "provenance": {
+        "source": "MTA-21 hosted validation checklist"
+      }
+    },
+    {
+      "id": "aggressive_stacked_created_terrain_mta21",
+      "family": "stress",
+      "replayableLocally": false,
+      "terrain": {
+        "recipe": "aggressive_stack_created_grid",
+        "recipeVersion": 1,
+        "traits": [
+          "aggressive_stack"
+        ],
+        "dimensions": {
+          "columns": 61,
+          "rows": 41
+        },
+        "spacing": {
+          "x": 1.0,
+          "y": 1.0
+        },
+        "parameters": {
+          "baseElevation": 0.0,
+          "stackedEditCount": 4
+        }
+      },
+      "edits": [
+        {
+          "sequence": 1,
+          "mode": "bounded_grade",
+          "controls": {
+            "targetElevation": 2.4,
+            "region": "pad"
+          }
+        },
+        {
+          "sequence": 2,
+          "mode": "bounded_grade",
+          "controls": {
+            "targetElevation": -1.2,
+            "region": "depression"
+          }
+        },
+        {
+          "sequence": 3,
+          "mode": "corridor_transition",
+          "controls": {
+            "start": {
+              "x": 6.0,
+              "y": 20.0,
+              "elevation": 2.4
+            },
+            "end": {
+              "x": 54.0,
+              "y": 20.0,
+              "elevation": 0.6
+            },
+            "width": 4.0
+          }
+        }
+      ],
+      "provenance": {
+        "source": "MTA-21 hosted validation checklist"
+      }
+    },
+    {
+      "id": "high_relief_seam_stress_mta21",
+      "family": "stress",
+      "replayableLocally": false,
+      "terrain": {
+        "recipe": "high_relief_seam_stress_grid",
+        "recipeVersion": 1,
+        "traits": [
+          "high_relief_seam_stress"
+        ],
+        "dimensions": {
+          "columns": 81,
+          "rows": 61
+        },
+        "spacing": {
+          "x": 1.0,
+          "y": 1.0
+        },
+        "parameters": {
+          "reliefAmplitude": 12.0,
+          "dropElevation": -3.0
+        }
+      },
+      "edits": [
+        {
+          "sequence": 1,
+          "mode": "corridor_transition",
+          "controls": {
+            "start": {
+              "x": 10.0,
+              "y": 30.0,
+              "elevation": 12.0
+            },
+            "end": {
+              "x": 70.0,
+              "y": 30.0,
+              "elevation": -3.0
+            },
+            "width": 5.0
+          }
+        }
+      ],
+      "provenance": {
+        "source": "MTA-21 hosted validation checklist"
+      }
+    }
+  ],
+  "baselineResults": [
+    {
+      "caseId": "created_flat_corridor_mta21",
+      "resultSchemaVersion": 1,
+      "backend": "mta21_current_adaptive",
+      "evidenceMode": "hosted_capture",
+      "metrics": {
+        "meshType": "adaptive_tin",
+        "faceCount": 1750,
+        "faceCountRange": {
+          "min": 1700,
+          "max": 1800
+        },
+        "denseEquivalentFaceCount": 3200,
+        "denseRatio": 0.546875,
+        "profileChecks": [
+          {
+            "type": "corridor_endpoint_profile",
+            "status": "satisfied",
+            "requested": {
+              "startElevation": 0.75,
+              "endElevation": 1.9
+            },
+            "tolerance": 0.02,
+            "provenance": {
+              "source": "MTA-21 hosted validation checklist"
+            }
+          }
+        ],
+        "topologyChecks": [
+          {
+            "type": "no_down_faces",
+            "status": "satisfied",
+            "provenance": {
+              "source": "MTA-21 hosted validation checklist"
+            }
+          },
+          {
+            "type": "no_non_manifold_edges",
+            "status": "satisfied",
+            "provenance": {
+              "source": "MTA-21 hosted validation checklist"
+            }
+          }
+        ],
+        "seamChecks": [
+          {
+            "type": "no_t_rips_or_folded_seams",
+            "status": "satisfied",
+            "provenance": {
+              "source": "MTA-21 hosted validation checklist"
+            }
+          }
+        ],
+        "diagnosticChecks": [
+
+        ],
+        "timing": null
+      },
+      "knownResiduals": [
+
+      ],
+      "provenance": {
+        "source": "MTA-21 hosted validation checklist"
+      },
+      "limitations": [
+
+      ]
+    },
+    {
+      "caseId": "created_crossfall_corridor_mta21",
+      "resultSchemaVersion": 1,
+      "backend": "mta21_current_adaptive",
+      "evidenceMode": "hosted_capture",
+      "metrics": {
+        "meshType": "adaptive_tin",
+        "faceCount": 1546,
+        "faceCountRange": {
+          "min": 1490,
+          "max": 1600
+        },
+        "denseEquivalentFaceCount": 3200,
+        "denseRatio": 0.483125,
+        "profileChecks": [
+          {
+            "type": "corridor_endpoint_profile",
+            "status": "satisfied",
+            "requested": {
+              "startElevation": 0.75,
+              "endElevation": 1.9
+            },
+            "tolerance": 0.02,
+            "provenance": {
+              "source": "MTA-21 hosted validation checklist"
+            }
+          }
+        ],
+        "topologyChecks": [
+          {
+            "type": "no_down_faces",
+            "status": "satisfied",
+            "provenance": {
+              "source": "MTA-21 hosted validation checklist"
+            }
+          }
+        ],
+        "seamChecks": [
+          {
+            "type": "no_t_rips_or_folded_seams",
+            "status": "satisfied",
+            "provenance": {
+              "source": "MTA-21 hosted validation checklist"
+            }
+          }
+        ],
+        "diagnosticChecks": [
+
+        ],
+        "timing": null
+      },
+      "knownResiduals": [
+
+      ],
+      "provenance": {
+        "source": "MTA-21 hosted validation checklist"
+      },
+      "limitations": [
+
+      ]
+    },
+    {
+      "caseId": "created_steep_corridor_mta21",
+      "resultSchemaVersion": 1,
+      "backend": "mta21_current_adaptive",
+      "evidenceMode": "hosted_capture",
+      "metrics": {
+        "meshType": "adaptive_tin",
+        "faceCount": 1653,
+        "faceCountRange": {
+          "min": 1600,
+          "max": 1700
+        },
+        "denseEquivalentFaceCount": 3200,
+        "denseRatio": 0.5165625,
+        "profileChecks": [
+          {
+            "type": "corridor_endpoint_profile",
+            "status": "satisfied",
+            "requested": {
+              "startElevation": 0.75,
+              "endElevation": 1.9
+            },
+            "tolerance": 0.02,
+            "provenance": {
+              "source": "MTA-21 hosted validation checklist"
+            }
+          }
+        ],
+        "topologyChecks": [
+          {
+            "type": "no_down_faces",
+            "status": "satisfied",
+            "provenance": {
+              "source": "MTA-21 hosted validation checklist"
+            }
+          }
+        ],
+        "seamChecks": [
+          {
+            "type": "no_t_rips_or_folded_seams",
+            "status": "satisfied",
+            "provenance": {
+              "source": "MTA-21 hosted validation checklist"
+            }
+          }
+        ],
+        "diagnosticChecks": [
+
+        ],
+        "timing": null
+      },
+      "knownResiduals": [
+
+      ],
+      "provenance": {
+        "source": "MTA-21 hosted validation checklist"
+      },
+      "limitations": [
+
+      ]
+    },
+    {
+      "caseId": "created_non_square_corridor_mta21",
+      "resultSchemaVersion": 1,
+      "backend": "mta21_current_adaptive",
+      "evidenceMode": "hosted_capture",
+      "metrics": {
+        "meshType": "adaptive_tin",
+        "faceCount": 1378,
+        "faceCountRange": {
+          "min": 1300,
+          "max": 1450
+        },
+        "denseEquivalentFaceCount": 4200,
+        "denseRatio": 0.3280952380952381,
+        "profileChecks": [
+          {
+            "type": "corridor_endpoint_profile",
+            "status": "satisfied",
+            "requested": {
+              "startElevation": 0.75,
+              "endElevation": 1.9
+            },
+            "tolerance": 0.02,
+            "provenance": {
+              "source": "MTA-21 hosted validation checklist"
+            }
+          }
+        ],
+        "topologyChecks": [
+          {
+            "type": "no_down_faces",
+            "status": "satisfied",
+            "provenance": {
+              "source": "MTA-21 hosted validation checklist"
+            }
+          }
+        ],
+        "seamChecks": [
+          {
+            "type": "no_t_rips_or_folded_seams",
+            "status": "satisfied",
+            "provenance": {
+              "source": "MTA-21 hosted validation checklist"
+            }
+          }
+        ],
+        "diagnosticChecks": [
+
+        ],
+        "timing": null
+      },
+      "knownResiduals": [
+
+      ],
+      "provenance": {
+        "source": "MTA-21 hosted validation checklist"
+      },
+      "limitations": [
+
+      ]
+    },
+    {
+      "caseId": "adopted_irregular_before_corridor_mta21",
+      "resultSchemaVersion": 1,
+      "backend": "mta21_current_adaptive",
+      "evidenceMode": "provenance_capture",
+      "metrics": {
+        "meshType": "adaptive_tin",
+        "faceCount": 11044,
+        "faceCountRange": {
+          "min": 10800,
+          "max": 11300
+        },
+        "denseEquivalentFaceCount": 19602,
+        "denseRatio": 0.5634118967452301,
+        "profileChecks": [
+
+        ],
+        "topologyChecks": [
+          {
+            "type": "no_down_faces",
+            "status": "satisfied",
+            "provenance": {
+              "source": "MTA-21 hosted validation checklist"
+            }
+          },
+          {
+            "type": "no_non_manifold_edges",
+            "status": "satisfied",
+            "provenance": {
+              "source": "MTA-21 hosted validation checklist"
+            }
+          }
+        ],
+        "seamChecks": [
+          {
+            "type": "no_t_rips_or_folded_seams",
+            "status": "satisfied",
+            "provenance": {
+              "source": "MTA-21 hosted validation checklist"
+            }
+          }
+        ],
+        "diagnosticChecks": [
+
+        ],
+        "timing": null
+      },
+      "knownResiduals": [
+
+      ],
+      "provenance": {
+        "source": "MTA-21 hosted validation checklist"
+      },
+      "limitations": [
+        "Hosted-sensitive facts are provenance-backed."
+      ]
+    },
+    {
+      "caseId": "adopted_irregular_grid_aligned_corridor_mta21",
+      "resultSchemaVersion": 1,
+      "backend": "mta21_current_adaptive",
+      "evidenceMode": "provenance_capture",
+      "metrics": {
+        "meshType": "adaptive_tin",
+        "faceCount": 6824,
+        "faceCountRange": {
+          "min": 6700,
+          "max": 7000
+        },
+        "denseEquivalentFaceCount": 19602,
+        "denseRatio": 0.348127742067136,
+        "profileChecks": [
+          {
+            "type": "corridor_endpoint_profile",
+            "status": "satisfied",
+            "requested": {
+              "startElevation": 0.75,
+              "endElevation": 1.9
+            },
+            "tolerance": 0.02,
+            "provenance": {
+              "source": "MTA-21 hosted validation checklist"
+            }
+          }
+        ],
+        "topologyChecks": [
+          {
+            "type": "no_down_faces",
+            "status": "satisfied",
+            "provenance": {
+              "source": "MTA-21 hosted validation checklist"
+            }
+          }
+        ],
+        "seamChecks": [
+          {
+            "type": "no_t_rips_or_folded_seams",
+            "status": "satisfied",
+            "provenance": {
+              "source": "MTA-21 hosted validation checklist"
+            }
+          }
+        ],
+        "diagnosticChecks": [
+
+        ],
+        "timing": null
+      },
+      "knownResiduals": [
+
+      ],
+      "provenance": {
+        "source": "MTA-21 hosted validation checklist"
+      },
+      "limitations": [
+        "Hosted-sensitive facts are provenance-backed."
+      ]
+    },
+    {
+      "caseId": "adopted_irregular_off_grid_corridor_mta21",
+      "resultSchemaVersion": 1,
+      "backend": "mta21_current_adaptive",
+      "evidenceMode": "provenance_capture",
+      "metrics": {
+        "meshType": "adaptive_tin",
+        "faceCount": 7765,
+        "faceCountRange": {
+          "min": 7600,
+          "max": 7900
+        },
+        "denseEquivalentFaceCount": 19602,
+        "denseRatio": 0.3961330476481992,
+        "profileChecks": [
+
+        ],
+        "topologyChecks": [
+          {
+            "type": "no_down_faces",
+            "status": "satisfied",
+            "provenance": {
+              "source": "MTA-21 hosted validation checklist"
+            }
+          }
+        ],
+        "seamChecks": [
+          {
+            "type": "no_t_rips_or_folded_seams",
+            "status": "satisfied",
+            "provenance": {
+              "source": "MTA-21 hosted validation checklist"
+            }
+          }
+        ],
+        "diagnosticChecks": [
+
+        ],
+        "timing": null
+      },
+      "knownResiduals": [
+        {
+          "type": "corridor_end_profile",
+          "status": "known_residual",
+          "requested": {
+            "endElevation": 1.85
+          },
+          "sampled": {
+            "endElevation": 1.43
+          },
+          "delta": 0.4165,
+          "tolerance": 0.02,
+          "provenance": {
+            "source": "MTA-21 hosted validation checklist"
+          }
+        }
+      ],
+      "provenance": {
+        "source": "MTA-21 hosted validation checklist"
+      },
+      "limitations": [
+        "Hosted-sensitive facts are provenance-backed."
+      ]
+    },
+    {
+      "caseId": "aggressive_stacked_created_terrain_mta21",
+      "resultSchemaVersion": 1,
+      "backend": "mta21_current_adaptive",
+      "evidenceMode": "provenance_capture",
+      "metrics": {
+        "meshType": "adaptive_tin",
+        "faceCount": 3578,
+        "faceCountRange": {
+          "min": 3400,
+          "max": 3700
+        },
+        "denseEquivalentFaceCount": 4800,
+        "denseRatio": 0.7454166666666666,
+        "profileChecks": [
+          {
+            "type": "corridor_endpoint_profile",
+            "status": "satisfied",
+            "requested": {
+              "startElevation": 2.4,
+              "endElevation": 0.6
+            },
+            "tolerance": 0.02,
+            "provenance": {
+              "source": "MTA-21 hosted validation checklist"
+            }
+          }
+        ],
+        "topologyChecks": [
+          {
+            "type": "no_down_faces",
+            "status": "satisfied",
+            "provenance": {
+              "source": "MTA-21 hosted validation checklist"
+            }
+          }
+        ],
+        "seamChecks": [
+          {
+            "type": "no_t_rips_or_folded_seams",
+            "status": "satisfied",
+            "provenance": {
+              "source": "MTA-21 hosted validation checklist"
+            }
+          }
+        ],
+        "diagnosticChecks": [
+          {
+            "type": "sharp_normal_breaks",
+            "status": "stress_indicator",
+            "observedCount": 149,
+            "worstDegrees": 94.12,
+            "provenance": {
+              "source": "MTA-21 hosted validation summary"
+            }
+          }
+        ],
+        "timing": null
+      },
+      "knownResiduals": [
+
+      ],
+      "provenance": {
+        "source": "MTA-21 hosted validation checklist"
+      },
+      "limitations": [
+        "Hosted-sensitive facts are provenance-backed."
+      ]
+    },
+    {
+      "caseId": "high_relief_seam_stress_mta21",
+      "resultSchemaVersion": 1,
+      "backend": "mta21_current_adaptive",
+      "evidenceMode": "provenance_capture",
+      "metrics": {
+        "meshType": "adaptive_tin",
+        "faceCount": 6667,
+        "faceCountRange": {
+          "min": 6500,
+          "max": 6900
+        },
+        "denseEquivalentFaceCount": 9600,
+        "denseRatio": 0.6944791666666666,
+        "profileChecks": [
+          {
+            "type": "corridor_endpoint_profile",
+            "status": "satisfied",
+            "requested": {
+              "startElevation": 12.0,
+              "endElevation": -3.0
+            },
+            "tolerance": 0.02,
+            "provenance": {
+              "source": "MTA-21 hosted validation checklist"
+            }
+          }
+        ],
+        "topologyChecks": [
+          {
+            "type": "no_down_faces",
+            "status": "satisfied",
+            "provenance": {
+              "source": "MTA-21 hosted validation checklist"
+            }
+          }
+        ],
+        "seamChecks": [
+          {
+            "type": "seam_conformance",
+            "status": "satisfied",
+            "provenance": {
+              "source": "MTA-21 hosted validation checklist"
+            }
+          }
+        ],
+        "diagnosticChecks": [
+
+        ],
+        "timing": null
+      },
+      "knownResiduals": [
+
+      ],
+      "provenance": {
+        "source": "MTA-21 hosted validation checklist"
+      },
+      "limitations": [
+        "Hosted-sensitive facts are provenance-backed."
+      ]
+    }
+  ],
+  "coverageLimitations": [
+    {
+      "kind": "edit_family",
+      "name": "planar_region_fit",
+      "reason": "No MTA-21 baseline result row is available in the current fixture evidence.",
+      "impact": "MTA-23 should not treat planar-region-fit simplification behavior as covered by this baseline pack.",
+      "downstreamAction": "Add candidate-era result evidence or follow-up hosted baseline capture before relying on this family."
+    },
+    {
+      "kind": "edit_family",
+      "name": "preserve_zone_adjacent",
+      "reason": "No MTA-21 baseline result row isolates preserve-zone-adjacent behavior in the current fixture evidence.",
+      "impact": "MTA-23 should not treat preserve-zone-adjacent simplification behavior as covered by this baseline pack.",
+      "downstreamAction": "Add candidate-era result evidence or follow-up hosted baseline capture before relying on this family."
+    },
+    {
+      "kind": "edit_family",
+      "name": "fixed_or_survey_control",
+      "reason": "No MTA-21 baseline result row isolates fixed or survey-control behavior in the current fixture evidence.",
+      "impact": "MTA-23 should not treat fixed or survey-control simplification behavior as covered by this baseline pack.",
+      "downstreamAction": "Add candidate-era result evidence or follow-up hosted baseline capture before relying on this family."
+    },
+    {
+      "kind": "edit_family",
+      "name": "fairing_or_smoothing",
+      "reason": "No MTA-21 baseline result row isolates fairing or smoothing behavior in the current fixture evidence.",
+      "impact": "MTA-23 should not treat fairing or smoothing simplification behavior as covered by this baseline pack.",
+      "downstreamAction": "Add candidate-era result evidence or follow-up hosted baseline capture before relying on this family."
+    }
+  ]
+}
