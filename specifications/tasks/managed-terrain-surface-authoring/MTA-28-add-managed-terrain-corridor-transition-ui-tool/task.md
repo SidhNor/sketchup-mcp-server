@@ -1,7 +1,7 @@
 # Task: MTA-28 Add Managed Terrain Corridor Transition UI Tool
 **Task ID**: `MTA-28`
 **Title**: `Add Managed Terrain Corridor Transition UI Tool`
-**Status**: `draft`
+**Status**: `planned`
 **Priority**: `P1`
 **Date**: `2026-05-08`
 
@@ -13,13 +13,14 @@
 
 Target-height and local-fairing tools share a round-brush interaction shape. Corridor transitions are different: a user needs to define a linear transition with start and end controls, elevations, width, and side-blend behavior. Treating this as a brush would hide the geometric intent that the managed terrain contract already makes explicit.
 
-This task adds a SketchUp-facing `Corridor Transition` tool as the first non-round-brush managed terrain UI tool. It should reuse the shared Managed Terrain toolbar and panel foundation while adding corridor-specific input and visual cues over the existing `corridor_transition` command behavior.
+This task adds a SketchUp-facing `Corridor Transition` tool as the first non-round-brush managed terrain UI tool. It should reuse the shared Managed Terrain toolbar and panel foundation while adding corridor-specific 3D control input and visual cues over the existing `corridor_transition` command behavior.
 
 ## Goals
 
 - Add a `Corridor Transition` toolbar button/tool under the existing Managed Terrain toolbar.
-- Let a user define or edit the corridor start and end controls needed by the existing corridor transition mode.
+- Let a user define or edit the corridor start and end controls needed by the existing corridor transition mode, including explicit `x`, `y`, and elevation values.
 - Expose bounded corridor parameters such as control elevations, width, and side blend.
+- Let corridor endpoint elevations be edited independently of the current terrain height while still allowing terrain height to seed or reset values where practical.
 - Show corridor-specific visual cues in the viewport.
 - Apply edits through the existing `corridor_transition` managed terrain command behavior.
 - Keep corridor UI separate from survey and planar point-list workflows.
@@ -39,14 +40,18 @@ Scenario: corridor parameters can be collected visually
   And the Corridor Transition tool is active
   When the user defines start and end corridor controls with valid elevations
   Then the shared panel shows the corridor controls
+  And start and end elevations can be adjusted with slider plus numeric input controls
   And the panel exposes corridor width and side-blend settings
+  And the endpoint elevations can be above, below, or equal to the current terrain height
 
 Scenario: corridor overlay shows transition geometry
   Given the Corridor Transition tool has valid start and end controls
   When the user previews the corridor before apply
-  Then the viewport shows the corridor centerline
+  Then the viewport shows start and end control markers at their actual elevations
+  And the viewport shows the corridor centerline
   And the viewport shows the full-width corridor band
   And the viewport shows side-blend shoulder information where applicable
+  And elevation offsets from the current terrain are visible or otherwise represented
   And endpoint cap information is visible or otherwise represented
 
 Scenario: corridor transition applies through managed terrain commands
@@ -77,6 +82,7 @@ Scenario: corridor task does not introduce control-point region tools
 ## Business Constraints
 
 - Corridor UI must make corridor-grade intent explicit rather than presenting it as a generic brush edit.
+- Corridor endpoint elevation controls must not imply that ramp endpoints are constrained to the current terrain height.
 - The workflow must reduce MCP-only trial-and-error for linear terrain transitions while preserving managed state and evidence.
 - The UI must not imply survey correction, planar fitting, or hardscape mutation behavior.
 - Semantic hardscape objects remain separate from terrain state.
@@ -87,6 +93,7 @@ Scenario: corridor task does not introduce control-point region tools
 - UI-triggered durable edits must route through managed terrain state and command/use-case boundaries or an equivalent managed service path.
 - The task must reuse existing `corridor_transition` command behavior rather than changing terrain edit math.
 - Corridor visual cues are a distinct overlay family from round-brush cues.
+- Endpoint control input must support explicit 3D intent; sampled terrain height may be a convenience, not the only source of endpoint elevation.
 - Automated coverage should verify corridor request construction, panel/tool state, and refusal behavior where practical, with hosted SketchUp smoke for real interaction and overlay behavior.
 
 ## Dependencies
@@ -104,12 +111,13 @@ Scenario: corridor task does not introduce control-point region tools
 
 ## Related Technical Plan
 
-- none yet
+- [Technical Plan](./plan.md)
 
 ## Success Metrics
 
 - Corridor Transition is available as a tool button in the single Managed Terrain toolbar
 - valid corridor controls and parameters can be collected through SketchUp UI
-- the viewport shows corridor geometry cues before apply
+- endpoint elevations can be edited independently from terrain height
+- the viewport shows corridor geometry and endpoint elevation cues before apply
 - applied edits route through existing `corridor_transition` command behavior
 - validation includes focused automated checks and hosted SketchUp smoke where practical

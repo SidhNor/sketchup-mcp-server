@@ -2,12 +2,12 @@
 
 **Task ID**: `MTA-28`  
 **Title**: `Add Managed Terrain Corridor Transition UI Tool`  
-**Status**: `seeded`  
+**Status**: `challenged`
 **Created**: `2026-05-08`  
 **Last Updated**: `2026-05-08`  
 
 **Related Task**: [task.md](./task.md)  
-**Related Plan**: none yet  
+**Related Plan**: [plan.md](./plan.md)
 **Related Summary**: none yet  
 
 ---
@@ -22,8 +22,11 @@
   - `systems:command-layer`
   - `systems:target-resolution`
   - `systems:scene-mutation`
+  - `systems:surface-sampling`
   - `systems:terrain-state`
+  - `systems:terrain-repository`
   - `systems:terrain-output`
+  - `systems:packaging`
   - `systems:test-support`
   - `systems:docs`
 - **Validation Modes**: `validation:hosted-smoke`, `validation:undo`
@@ -31,6 +34,7 @@
 
 ### Identity Notes
 - This task adds the first distinct visual cue family after round brushes. Corridor transition UI should reuse the shared panel foundation while keeping corridor geometry separate from survey and planar point-list UX.
+- Planning rebaseline: Step 06 and Step 10 made explicit 3D endpoint capture, manual Z editing, required corridor overlay roles, terrain sampling/reset, package coverage, and no-public-contract guard work part of the implementation baseline.
 <!-- SIZE:IDENTITY:END -->
 
 ---
@@ -65,7 +69,55 @@
 <!-- SIZE:PREDICTED:START -->
 ## Predicted Profile
 
-> Not filled yet. Produce during task planning.
+> Filled during task planning. This is the main pre-implementation estimate.
+
+| Dimension | Prediction (0-4) | Rationale |
+|---|---:|---|
+| Functional Scope | 3 | Adds a new SketchUp-facing managed terrain tool with two-point capture, explicit X/Y/Z endpoint editing, width and side-blend controls, preview overlay, Reset/Apply workflow, and command-backed apply. Scope remains one corridor workflow and excludes survey, planar, point-list, hardscape, and validation-dashboard behavior. |
+| Technical Change Surface | 3 | Touches installer/toolbar/menu wiring, shared dialog sizing, panel HTML/CSS/JS actions, corridor state/session, SketchUp tool callbacks, coordinate conversion, read-only terrain sampling, overlay drawing, request construction, package assets, docs if needed, UI tests, and contract guards. It avoids new terrain math and public MCP schemas. |
+| Implementation Friction Risk | 3 | Main friction is first non-round multi-point UI state: endpoint capture and recapture, sampled/manual Z provenance, preserving manual Z, owner-local XYZ conversion, panel/JS state sync, explicit Apply gating, and overlay geometry at actual endpoint Z. |
+| Validation Burden Risk | 3 | Local seams can cover state/request/panel/tool/overlay behavior, but real SketchUp smoke is required for `InputPoint#pick`, dialog focus/reselect, toolbar checked state, overlay readability, manual Z above/below terrain, undo posture, and transformed or non-zero-origin coordinates. |
+| Dependency / Coordination Risk | 2 | Depends on implemented MTA-27, MTA-26, MTA-05, package staging, and hosted SketchUp access. No external service, new solver, migration, or public contract coordination is planned. |
+| Discovery / Ambiguity Risk | 2 | Major design choices are resolved by planning and consensus. Remaining uncertainty is tactical defaults, slider ranges, visual styling, live marker hit testing if attempted, and hosted behavior. |
+| Scope Volatility Risk | 2 | Boundaries are explicit and marker-select recapture is optional/smoke-gated. Volatility remains if 3D gizmo, point-list, or future survey/planar abstractions are pulled in during implementation. |
+| Rework Risk | 3 | MTA-18/MTA-26/MTA-27 analogs show host UI and overlay features often require live tuning or lifecycle fixes. MTA-28 adds manual Z/provenance and transformed XYZ preview/apply alignment, making stale-state and visual rework likely enough to score high. |
+| Confidence | 2 | Confidence is moderate: the plan is detailed, the command contract exists, and analogs are strong for pieces, but no exact prior corridor UI analog exists and the hardest behavior is live SketchUp interaction. |
+
+### Top Assumptions
+
+- Existing `edit_terrain_surface` `corridor_transition` request validation and command dispatch remain sufficient for UI apply.
+- Corridor can be added as a distinct UI state/tool/overlay while preserving existing round-brush behavior.
+- SketchUp click/inference capture plus numeric panel editing is enough for first-slice 3D endpoint definition without scene gizmos.
+- Read-only terrain-state sampling can seed/reset endpoint Z, while manual Z above/below terrain remains valid.
+- Hosted SketchUp access is available for temporary-fixture smoke of capture, overlay, apply, undo, and transformed/non-zero-origin behavior.
+
+### Estimate Breakers
+
+- Full owner-local XYZ conversion requires changing existing command/request semantics rather than only UI conversion.
+- Real SketchUp interaction cannot provide reliable two-point capture or recapture without persistent helper geometry or a deeper tool lifecycle redesign.
+- The required overlay roles cannot be made readable without persistent preview entities or a substantially different rendering approach.
+- Manual Z preservation and terrain sampling create state divergence that cannot be covered by the planned corridor state/session object.
+- The task expands into 3D gizmos, survey/planar point-list controls, or public MCP contract changes.
+
+### Predicted Signals
+
+- Strong analog MTA-27: shared Managed Terrain toolbar/panel and local-fairing UI showed command-backed UI addition, invalid-state handling, panel sizing, package coverage, and hosted smoke needs.
+- Strong analog MTA-26: transient overlay work required transformed-owner proof, cache invalidation, invalid-settings proof, and live visual tuning.
+- Strong analog MTA-18: native SketchUp toolbar/dialog/tool lifecycle produced host-only issues around command state, icon rendering, dialog focus, and selection status.
+- MTA-05 removes corridor terrain-kernel risk but keeps corridor request-shape parity and adopted-coordinate validation relevant.
+- No exact analog exists for a non-round two-point SketchUp terrain UI over an existing command, so confidence is capped.
+
+### Predicted Estimate Notes
+
+- This is a moderate-large SketchUp UI feature, not a terrain kernel or public
+  MCP contract task.
+- Validation burden is score `3` because hosted proof is required and prior UI
+  analogs had real live tuning/fix loops. It is not score `4` because no
+  migration, performance investigation, public schema rollout, or new terrain
+  math is planned.
+- Planning rebaseline before prediction reflects explicit endpoint Z editing,
+  panel recapture, required overlay roles, and no-public-contract guard work.
+  This is not implementation drift.
 <!-- SIZE:PREDICTED:END -->
 
 ---
@@ -73,7 +125,81 @@
 <!-- SIZE:CHALLENGE:START -->
 ## Challenge Review
 
-> Not filled yet.
+### Agreed Drivers
+
+- Functional scope remains score `3`: the task adds a new two-point
+  SketchUp-facing terrain workflow with explicit endpoint Z editing and required
+  overlay feedback, but stays bounded to one corridor mode.
+- Technical change surface remains score `3`: installer, dialog, panel assets,
+  corridor state/tool/overlay, XYZ conversion, terrain sampling, request
+  construction, package coverage, and guards move together, while terrain math
+  and public MCP schemas stay unchanged.
+- Implementation friction remains score `3`: premortem and Grok 4.3 review both
+  identify real resistance around inference-dependent capture, manual-Z
+  provenance, transformed XYZ conversion, state lifecycle, and overlay geometry.
+- Validation burden remains score `3`: the premortem added sharper hosted cases,
+  but they are still a focused smoke/matrix over one UI feature rather than a
+  migration, performance investigation, public-client matrix, or new solver
+  proof.
+- Rework risk remains score `3`: host UI lifecycle and overlay readability have
+  calibrated live-tuning history in MTA-18, MTA-26, and MTA-27, and MTA-28 adds
+  new state/provenance paths that are likely to require local or hosted
+  correction.
+
+### Contested Drivers
+
+- Whether validation burden should rise to `4`: rejected for now. The added
+  manual-Z, transformed/non-zero-origin, lifecycle, and overlay-readability
+  checks are materially sharper than routine happy-path smoke, but there is not
+  pre-implementation evidence of blockers, repeated redeploy/restart loops,
+  performance work, persistence investigation, or validation-driven redesign.
+- Whether marker-select recapture should increase scope or volatility: rejected
+  because final plan makes panel Recapture Start/End the supported baseline and
+  treats marker selection as optional only with explicit proof and fallback.
+- Whether confidence should rise after consensus and premortem: rejected. The
+  plan is clearer, but no exact prior non-round two-point corridor UI analog
+  exists and the hardest evidence remains hosted.
+- Whether the task should split before implementation: rejected. The premortem
+  found no unresolved Tigers after adding manual-Z parity, transformed-owner
+  parity, lifecycle, and contract-guard checks.
+
+### Missing Evidence
+
+- Hosted evidence that panel-authored endpoint Z values not supplied by
+  inference visibly drive preview and Apply.
+- Hosted transformed or non-zero-origin owner proof with endpoint Z offset more
+  than 2 meters from sampled terrain.
+- Hosted focus/reselect evidence that panel state, overlay state, and Apply
+  state remain synchronized after dialog editing.
+- Implementation evidence that UI-only metadata such as provenance, recapture
+  mode, overlay cues, and marker state never leaks into public MCP requests,
+  persisted terrain state, native fixtures, or schemas.
+- Implementation evidence that effectively collapsed endpoint geometry is
+  refused or warned before a misleading preview/apply.
+
+### Recommendation
+
+- Confirm the predicted scores with no revisions.
+- Do not split MTA-28 before implementation.
+- Treat the final `plan.md` Premortem Gate as required implementation closeout
+  evidence, especially manual-Z preview/apply parity and transformed-owner
+  coordinate parity.
+- Raise validation burden or record drift only if hosted smoke produces a
+  blocked matrix, repeated fix/redeploy loops, or a need for persistent preview
+  geometry, 3D gizmos, or public contract changes.
+
+### Challenge Notes
+
+- Grok 4.3 premortem critique usefully challenged whether numeric Z editing was
+  falsifiable enough. The plan was corrected to require a hosted manual-Z case
+  where inference does not supply the intended elevation and panel values must
+  drive preview and Apply.
+- The critique also raised marker-select recapture and lifecycle divergence.
+  Final plan keeps marker-select optional and adds a hosted focus/reselect
+  lifecycle probe.
+- No new evidence justifies revising the predicted score table after those plan
+  corrections; the uncertainty is now carried as explicit validation evidence
+  rather than unresolved scope.
 <!-- SIZE:CHALLENGE:END -->
 
 ---
@@ -123,15 +249,20 @@
 - `scope:managed-terrain`
 - `systems:command-layer`
 - `systems:target-resolution`
-- `systems:scene-mutation`
+- `systems:surface-sampling`
+- `systems:terrain-state`
+- `systems:packaging`
 - `validation:hosted-smoke`
 - `host:routine-smoke`
 - `contract:no-public-shape-change`
 - `risk:host-api-mismatch`
+- `risk:unit-conversion`
 - `risk:transform-semantics`
+- `risk:visibility-semantics`
 - `risk:undo-semantics`
+- `risk:partial-state`
 - `volatility:medium`
-- `friction:medium`
+- `friction:high`
 - `rework:medium`
 - `confidence:medium`
 <!-- SIZE:TAGS:END -->
