@@ -2,12 +2,12 @@
 
 **Task ID**: `MTA-25`
 **Title**: Productionize CDT Terrain Output With Current Backend Fallback
-**Status**: `seeded`
+**Status**: `challenged`
 **Created**: 2026-05-07
-**Last Updated**: 2026-05-07
+**Last Updated**: 2026-05-08
 
 **Related Task**: [task.md](./task.md)
-**Related Plan**: none yet
+**Related Plan**: [plan.md](./plan.md)
 **Related Summary**: none yet
 
 ---
@@ -80,27 +80,66 @@
 
 | Dimension | Score (0-4) | Notes |
 |---|---:|---|
-| Functional Scope | <0-4> | <short note> |
-| Technical Change Surface | <0-4> | <short note> |
-| Implementation Friction Risk | <0-4> | <short note> |
-| Validation Burden Risk | <0-4> | <short note> |
-| Dependency / Coordination Risk | <0-4> | <short note> |
-| Discovery / Ambiguity Risk | <0-4> | <short note> |
-| Scope Volatility Risk | <0-4> | <short note> |
-| Rework Risk | <0-4> | <short note> |
-| Confidence | <0-4> | <short note> |
+| Functional Scope | 3 | Makes CDT eligible for real production terrain output behind fallback, but keeps public controls and contracts unchanged. |
+| Technical Change Surface | 4 | Spans production output routing, generator mutation ordering, CDT envelope/adapter/gates, command state handoff, contract tests, package checks, and hosted acceptance artifacts. |
+| Implementation Friction Risk | 4 | Production CDT must harden prototype triangulation, normalize constraints, gate residual/topology/hard geometry, and preserve SketchUp mutation invariants before erase. |
+| Validation Burden Risk | 4 | Requires local unit/integration/contract/package proof plus hosted accepted and forced-fallback matrices with timing, topology, undo, and persistence evidence. |
+| Dependency / Coordination Risk | 3 | Depends on MTA-20/MTA-22/MTA-23/MTA-24 artifacts, live SketchUp MCP access, user visual acceptance, and possible native/poly2tri readiness decisions. |
+| Discovery / Ambiguity Risk | 3 | Planning fixed the main boundaries, but Ruby runtime viability, exact thresholds, topology precision, and native compatibility remain material unknowns. |
+| Scope Volatility Risk | 3 | Scope is bounded by fallback-first productionization, yet Ruby gate failure, native adapter need, hosted defects, or public contract pressure could force split/follow-up decisions. |
+| Rework Risk | 4 | MTA-24 and MTA-19 analogs show terrain backend work can require repeated correction across residual logic, topology gates, hosted evidence, and output mutation assumptions. |
+| Confidence | 2 | The plan is detailed and analog-backed, but confidence stays moderate-low until production CDT gates and hosted SketchUp acceptance run. |
 
 ### Top Assumptions
-- Not filled yet.
+- The current production backend can remain a reliable fallback without changing public MCP
+  request/response shape.
+- MTA-24 CDT internals can be reused or wrapped without pulling MTA-24 comparison rows or hosted
+  probe helpers into the production call graph.
+- `TerrainFeatureGeometry` plus final terrain state are sufficient to normalize CDT primitive input
+  and evaluate hard/firm/soft tolerances.
+- Ruby CDT can satisfy at least a useful accepted-case subset under named gates; otherwise current
+  fallback remains retained and native/poly2tri work is split or explicitly scoped.
+- Hosted SketchUp access and user/live visual review will be available to close topology,
+  hard-geometry, undo, and save-copy/save-reopen evidence.
 
 ### Estimate Breakers
-- Not filled yet.
+- Pure Ruby CDT cannot pass runtime gates for representative accepted cases, requiring native/C++
+  adapter work inside MTA-25 rather than as a deferred follow-up.
+- `TerrainMeshGenerator` cannot compute/gate CDT before erasing old output without significant
+  restructuring of current fallback and partial-regeneration behavior.
+- Feature geometry normalization cannot map protected/reference/intersecting/hole-like cases into
+  deterministic fallback reasons without losing required production intent.
+- Hosted validation exposes invalid SketchUp topology, undo, persistence, or partial-state failures
+  that force redesign of emission or operation ordering.
+- A public contract change becomes unavoidable to expose necessary fallback or backend diagnostics,
+  triggering native catalog, dispatcher, docs/example, and fixture scope.
 
 ### Predicted Signals
-- Not filled yet.
+- MTA-24 is the closest analog: actual implementation friction, validation burden, discovery, and
+  rework were all high, and it still stopped short of production mutation.
+- MTA-23 showed that terrain backend candidates need feature-aware diagnostics and hosted evidence,
+  while MTA-19 showed local residual/sample correctness does not prove SketchUp topology.
+- The draft plan intentionally keeps CDT compute data-only and mutation under
+  `TerrainMeshGenerator`, which reduces contract risk but increases generator integration and
+  ordering test burden.
+- The TDD minimum coverage inventory is broad by design: contract no-leak, envelope, adapter
+  conformance, gates, generator mutation, command state, harness isolation, package verification,
+  and hosted acceptance all remain required.
+- Native/poly2tri is not mandatory in the plan, but adapter hardening and native-unavailable/input
+  violation behavior are required because Ruby performance and robustness are not yet proven.
 
 ### Predicted Estimate Notes
-- Not filled yet.
+- This prediction is the 2026-05-08 planning baseline after Step 10 created the draft technical
+  plan and after refinement added the hardened triangulation adapter/native-readiness requirement.
+- Functional scope is `3`, not `4`, because public tools and user controls stay unchanged and the
+  current backend remains fallback. The behavior is still production-visible because accepted CDT
+  can emit real derived terrain output.
+- Technical surface is `4` because the task crosses production output mutation, computational
+  geometry, fallback taxonomy, command/generator state handoff, packaging/no-leak checks, and hosted
+  acceptance evidence.
+- Validation and rework stay at `4` by outside-view calibration from MTA-24 and MTA-19: the risky
+  part is not generating triangles, but proving the generated SketchUp scene is valid, reversible,
+  persistent enough, and safe to fall back from.
 <!-- SIZE:PREDICTED:END -->
 
 ---
@@ -111,19 +150,67 @@
 > Filled when the estimate is pressure-tested through external review, premortem, or controlled consensus.
 
 ### Agreed Drivers
-- Not filled yet.
+- Functional scope remains `3`: CDT becomes eligible for real production terrain output, but public
+  controls, MCP contracts, and current-backend fallback remain unchanged.
+- Technical change surface remains `4`: the plan spans production mutation ordering,
+  command/generator handoff, CDT result envelopes, adapter normalization, gates, package/no-leak
+  checks, and hosted acceptance artifacts.
+- Implementation friction remains `4`: the hard part is not triangle generation alone; it is making
+  residual-driven CDT safe inside SketchUp mutation semantics with deterministic fallback.
+- Validation burden remains `4`: this is high because of performance, topology, undo, persistence,
+  public no-leak, forced-fallback, and hosted interpretation requirements, not merely because a
+  hosted matrix exists.
+- Dependency risk remains `3`: upstream MTA artifacts and live SketchUp/user visual access matter,
+  but native/poly2tri remains optional unless Ruby evidence fails gates.
+- Confidence remains `2`: the plan is concrete and externally reviewed, but production CDT and host
+  evidence do not exist yet.
 
 ### Contested Drivers
-- Not filled yet.
+- Technical change surface could be argued as `3` because work stays inside the terrain capability
+  and avoids public schema changes. It remains `4` because the implementation crosses production
+  output mutation, computational geometry, fallback routing, package/no-leak checks, and hosted
+  acceptance proof.
+- Validation burden could be argued as `3` if the hosted matrix runs cleanly. It remains `4` because
+  MTA-24 and the premortem both point to likely interpretation/retest cost across topology,
+  save-copy/save-reopen, undo, screenshots/entity counts, and forced fallback.
+- Scope volatility could rise to `4` if Ruby CDT fails production gates and native/poly2tri packaging
+  must be implemented inside MTA-25. It remains `3` because the plan explicitly allows fallback
+  retention and native follow-up instead of forcing an in-task native bridge.
+- Rework risk could be argued as `3` because the premortem added guardrails before implementation.
+  It remains `4` by MTA-24/MTA-19 outside-view evidence: terrain backend proof often revisits
+  residual logic, topology checks, and mutation assumptions after hosted evidence.
 
 ### Missing Evidence
-- Not filled yet.
+- No production proof yet that Ruby CDT can satisfy accepted-case runtime, residual, hard-geometry,
+  and topology gates.
+- No hosted SketchUp proof yet for accepted CDT or forced fallback output, including undo,
+  save-copy/save-reopen, screenshots/entity counts, and visible gap/hard-geometry acceptance.
+- No implementation proof yet that current fallback refusal can remain byte-identical publicly when
+  CDT is attempted versus disabled.
+- No package proof yet that native-unavailable behavior works without a native binary and that
+  MTA-24 harness symbols do not leak into packaged public behavior.
+- No final threshold calibration yet for runtime, residual, topology, dense-ratio, hard-anchor, and
+  visible-gap gates.
 
 ### Recommendation
-- Not filled yet.
+- Confirm the predicted profile with no score revisions.
+- Proceed with the finalized `WARN` premortem gate.
+- Do not split native/poly2tri work now; split or explicitly scope it only if Ruby CDT fails the
+  planned production gates.
+- Do not narrow or retire current fallback unless hosted evidence closes accepted-CDT and
+  forced-fallback behavior.
+- During task implementation, convert the TDD minimum inventory into an ordered failing skeleton and
+  preserve or expand the coverage surface.
 
 ### Challenge Notes
-- Not filled yet.
+- Challenge evidence came from the Step 12 premortem, PAL challenge prompt, Grok 4.3 premortem
+  review, MTA-24 calibrated actuals, and MTA-19 negative topology history.
+- The challenge produced plan corrections rather than estimate revisions: byte-identical refusal
+  checks, dirty-window/CDT non-mixing, packaged native-unavailable behavior, limitation prevalidation,
+  and richer hosted evidence rows.
+- The final plan and challenged estimate agree: this is a bounded no-public-contract production
+  backend promotion with high technical/validation/rework risk, retained fallback, and explicit
+  native readiness without mandatory native packaging.
 <!-- SIZE:CHALLENGE:END -->
 
 ---

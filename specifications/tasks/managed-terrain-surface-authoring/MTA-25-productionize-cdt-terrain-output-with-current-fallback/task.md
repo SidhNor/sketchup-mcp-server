@@ -1,7 +1,7 @@
 # Task: MTA-25 Productionize CDT Terrain Output With Current Backend Fallback
 **Task ID**: `MTA-25`
 **Title**: `Productionize CDT Terrain Output With Current Backend Fallback`
-**Status**: `defined`
+**Status**: `planned`
 **Priority**: `P1`
 **Date**: `2026-05-07`
 
@@ -32,6 +32,8 @@ acceptance gates.
   is gated and validated.
 - Define measurable fallback predicates for CDT runtime, topology, hard-geometry, and residual
   failures.
+- Harden the triangulation adapter boundary so the production path can swap the Ruby triangulator
+  for a native/C++ triangulation implementation if runtime or robustness gates require it.
 - Remove, relocate, or isolate MTA-24 task-specific comparison and hosted-probe harnesses so they do
   not become mixed into long-lived production runtime code.
 - Preserve public MCP contracts and response shapes unless a separate contract-change task is
@@ -122,6 +124,9 @@ Scenario: Hosted SketchUp acceptance validates production behavior
   risks.
 - Performance gates must account for high-relief and repeated residual retriangulation cases found
   in MTA-24.
+- The triangulation implementation must remain behind a production-owned adapter seam so native
+  library evaluation does not leak through terrain commands, SketchUp mutation, diagnostics, or
+  public response contracts.
 
 ## Dependencies
 
@@ -146,10 +151,13 @@ Scenario: Hosted SketchUp acceptance validates production behavior
   triangulation library adapter for the heavy CDT calculations, while preserving the Ruby production
   boundary for feature-geometry ingestion, fallback routing, diagnostics, and public contract
   stability.
+- The technical plan should explicitly prepare the adapter shape for a possible `poly2tri`-style
+  C++ implementation, including input prevalidation, simple-polygon/duplicate-point limitations,
+  packaging impact, and fallback behavior if the native triangulator is unavailable.
 
 ## Related Technical Plan
 
-- none yet
+- [Technical Implementation Plan](./plan.md)
 
 ## Success Metrics
 
@@ -161,6 +169,8 @@ Scenario: Hosted SketchUp acceptance validates production behavior
   isolated from production runtime ownership.
 - Automated tests cover fallback routing, contract no-leak behavior, topology/residual gates, and
   representative feature-geometry inputs.
+- The triangulation adapter is hardened enough that Ruby and native/C++ implementations can be
+  compared or swapped behind the same production result and fallback contract.
 - Hosted SketchUp validation accepts production CDT output on representative flat, crossfall,
   bumpy, high-relief, bounded/intersecting, preserve, fixed-anchor, and corridor/reference cases.
 - Summary evidence states the remaining production risks and whether current fallback can be
