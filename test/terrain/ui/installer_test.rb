@@ -107,6 +107,19 @@ class TerrainUiInstallerTest < Minitest::Test
     assert_equal(1, dialog.push_state_calls)
   end
 
+  def test_default_dialog_close_clears_active_tool_overlay
+    tool = RecordingTool.new
+    installer = SU_MCP::Terrain::UI::Installer.new(
+      ui_host: RecordingUiHost.new,
+      session: RecordingSession.new,
+      tool_factory: -> { tool }
+    )
+
+    installer.send(:dialog).instance_variable_get(:@after_close).call
+
+    assert_equal(1, tool.clear_overlay_calls)
+  end
+
   def test_command_validation_tracks_active_checked_state_without_graying_out
     host = RecordingUiHost.new
     session = RecordingSession.new
@@ -223,6 +236,18 @@ class TerrainUiInstallerTest < Minitest::Test
 
     def push_state
       @push_state_calls += 1
+    end
+  end
+
+  class RecordingTool
+    attr_reader :clear_overlay_calls
+
+    def initialize
+      @clear_overlay_calls = 0
+    end
+
+    def clear_overlay
+      @clear_overlay_calls += 1
     end
   end
 

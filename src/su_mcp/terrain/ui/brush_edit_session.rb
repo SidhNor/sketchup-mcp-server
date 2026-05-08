@@ -67,6 +67,24 @@ module SU_MCP
           show_and_return(result)
         end
 
+        def preview_context(point)
+          settings_result = settings.validate
+          return settings_result if refused?(settings_result)
+
+          terrain = resolver.resolve
+          update_selection_status(terrain)
+          return terrain if refused?(terrain)
+
+          {
+            outcome: 'ready',
+            owner: terrain.fetch(:owner),
+            targetReference: terrain.fetch(:targetReference),
+            selectedTerrain: terrain.fetch(:selectedTerrain),
+            center: converted_center(point, terrain.fetch(:owner)),
+            settings: settings.snapshot
+          }
+        end
+
         def state_snapshot
           settings.snapshot.merge(
             active: active?,

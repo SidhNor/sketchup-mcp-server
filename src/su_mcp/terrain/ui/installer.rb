@@ -100,7 +100,11 @@ module SU_MCP
         end
 
         def dialog
-          @dialog ||= SettingsDialog.new(session: session, after_update: -> { reselect_tool })
+          @dialog ||= SettingsDialog.new(
+            session: session,
+            after_update: -> { reselect_tool },
+            after_close: -> { tool.clear_overlay if tool.respond_to?(:clear_overlay) }
+          )
         end
 
         def configure_validation(command)

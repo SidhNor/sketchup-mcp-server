@@ -1,7 +1,7 @@
 # Task: MTA-26 Add Managed Terrain Brush Overlay Feedback
 **Task ID**: `MTA-26`
 **Title**: `Add Managed Terrain Brush Overlay Feedback`
-**Status**: `draft`
+**Status**: `completed`
 **Priority**: `P1`
 **Date**: `2026-05-08`
 
@@ -101,7 +101,7 @@ Scenario: existing target-height apply behavior is preserved
 
 ## Related Technical Plan
 
-- none yet
+- [plan.md](./plan.md)
 
 ## Success Metrics
 

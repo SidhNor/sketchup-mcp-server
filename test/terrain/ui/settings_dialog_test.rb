@@ -69,6 +69,21 @@ class TerrainUiSettingsDialogTest < Minitest::Test
     assert_equal([:reselected], calls)
   end
 
+  def test_close_callback_runs_after_close_hook_for_overlay_cleanup
+    calls = []
+    factory = RecordingDialogFactory.new
+    dialog = SU_MCP::Terrain::UI::SettingsDialog.new(
+      session: RecordingSession.new,
+      dialog_factory: factory,
+      after_close: -> { calls << :cleared }
+    )
+
+    dialog.show
+    factory.dialog.invoke('close')
+
+    assert_equal([:cleared], calls)
+  end
+
   def test_close_and_reopen_recreates_dialog_and_reregisters_callbacks
     factory = RecordingDialogFactory.new
     dialog = SU_MCP::Terrain::UI::SettingsDialog.new(

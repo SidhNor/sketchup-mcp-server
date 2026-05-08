@@ -13,10 +13,11 @@ module SU_MCP
         )
         # rubocop:enable SketchupSuggestions/FileEncoding
 
-        def initialize(session:, dialog_factory: nil, after_update: nil)
+        def initialize(session:, dialog_factory: nil, after_update: nil, after_close: nil)
           @session = session
           @dialog_factory = dialog_factory || method(:build_dialog)
           @after_update = after_update || -> {}
+          @after_close = after_close || -> {}
           @dialog = nil
         end
 
@@ -47,7 +48,7 @@ module SU_MCP
 
         private
 
-        attr_reader :session, :dialog_factory, :after_update
+        attr_reader :session, :dialog_factory, :after_update, :after_close
 
         def register_callbacks(dialog)
           dialog.add_action_callback('ready') { |_context| refresh_and_push_state }
@@ -57,7 +58,10 @@ module SU_MCP
             push_state
             after_update.call
           end
-          dialog.add_action_callback('close') { |_context| close }
+          dialog.add_action_callback('close') do |_context|
+            close
+            after_close.call
+          end
         end
 
         def refresh_and_push_state

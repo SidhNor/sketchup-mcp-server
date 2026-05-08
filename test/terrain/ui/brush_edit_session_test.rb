@@ -165,6 +165,31 @@ class TerrainUiBrushEditSessionTest < Minitest::Test
     assert_empty(model.operations)
   end
 
+  def test_preview_context_returns_read_only_hover_inputs_without_command_invocation
+    commands = RecordingCommands.new(success_response)
+    session = build_session(commands: commands)
+    session.update_settings(valid_settings)
+
+    result = session.preview_context(point(1.0, 2.0, 0.0))
+
+    assert_equal('ready', result.fetch(:outcome))
+    assert_equal(owner('terrain-main'), result.fetch(:owner))
+    assert_equal({ 'x' => 1.0, 'y' => 2.0 }, result.fetch(:center))
+    assert_equal(2.0, result.fetch(:settings).fetch(:radius))
+    assert_empty(commands.calls)
+  end
+
+  def test_preview_context_refuses_invalid_settings_before_selection_resolution
+    resolver = DriftResolver.new([resolved(owner('terrain-main'))])
+    session = build_session(resolver: resolver)
+    session.update_settings(valid_settings.merge('blendDistance' => 1.0, 'falloff' => 'none'))
+
+    result = session.preview_context(point(1.0, 2.0, 0.0))
+
+    assert_equal('refused', result.fetch(:outcome))
+    assert_equal(0, resolver.calls)
+  end
+
   private
 
   class RecordingModel

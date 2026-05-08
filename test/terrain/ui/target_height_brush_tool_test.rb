@@ -15,6 +15,71 @@ class TerrainUiTargetHeightBrushToolTest < Minitest::Test
     assert_equal('Click a managed terrain surface to apply target height.', view.status_text)
   end
 
+  def test_mouse_move_updates_overlay_from_valid_input_point
+    session = RecordingSession.new
+    point = Struct.new(:x, :y, :z).new(1.0, 2.0, 3.0)
+    overlay = RecordingOverlay.new
+    tool = build_tool(
+      session: session,
+      input_point: FakeInputPoint.new(valid: true, position: point),
+      overlay: overlay
+    )
+    view = FakeView.new
+
+    tool.onMouseMove(0, 10, 15, view)
+
+    assert_equal([[point, view]], overlay.hover_updates)
+    assert_empty(session.applied_points)
+  end
+
+  def test_mouse_move_clears_overlay_when_pick_fails
+    overlay = RecordingOverlay.new
+    tool = build_tool(
+      session: RecordingSession.new,
+      input_point: FakeInputPoint.new(valid: false),
+      overlay: overlay
+    )
+    view = FakeView.new
+
+    tool.onMouseMove(0, 10, 15, view)
+
+    assert_equal([view], overlay.cleared_views)
+    assert_equal('Pick a valid terrain point before applying the brush.', view.status_text)
+  end
+
+  def test_draw_and_extents_delegate_to_overlay
+    overlay = RecordingOverlay.new
+    tool = build_tool(
+      session: RecordingSession.new,
+      input_point: FakeInputPoint.new(valid: true),
+      overlay: overlay
+    )
+    view = FakeView.new
+
+    tool.draw(view)
+    extents = tool.getExtents
+
+    assert_equal([view], overlay.draw_views)
+    assert_equal(:overlay_extents, extents)
+  end
+
+  def test_mouse_leave_and_deactivate_clear_overlay
+    overlay = RecordingOverlay.new
+    session = RecordingSession.new
+    tool = build_tool(
+      session: session,
+      input_point: FakeInputPoint.new(valid: true),
+      overlay: overlay
+    )
+    view = FakeView.new
+
+    tool.onMouseLeave(view)
+    tool.deactivate(view)
+
+    assert_equal([view, view], overlay.cleared_views)
+    assert_equal(%i[deactivate], session.lifecycle)
+  end
+
   def test_left_click_refuses_when_input_point_pick_fails
     session = RecordingSession.new
     tool = build_tool(session: session, input_point: FakeInputPoint.new(valid: false))
@@ -53,6 +118,22 @@ class TerrainUiTargetHeightBrushToolTest < Minitest::Test
     assert_equal([:pushed], calls)
   end
 
+  def test_left_click_marks_overlay_dirty_after_apply
+    session = RecordingSession.new
+    overlay = RecordingOverlay.new
+    point = Struct.new(:x, :y, :z).new(1.0, 2.0, 3.0)
+    tool = build_tool(
+      session: session,
+      input_point: FakeInputPoint.new(valid: true, position: point),
+      overlay: overlay
+    )
+    view = FakeView.new
+
+    tool.onLButtonDown(0, 10, 15, view)
+
+    assert_equal([view], overlay.dirty_views)
+  end
+
   def test_activate_and_deactivate_track_session_state_for_toolbar_toggle
     calls = []
     session = RecordingSession.new
@@ -73,6 +154,39 @@ class TerrainUiTargetHeightBrushToolTest < Minitest::Test
 
   class FakeView
     attr_accessor :status_text
+  end
+
+  class RecordingOverlay
+    attr_reader :hover_updates, :cleared_views, :draw_views, :dirty_views
+
+    def initialize
+      @hover_updates = []
+      @cleared_views = []
+      @draw_views = []
+      @dirty_views = []
+    end
+
+    def update_hover(point, view:)
+      @hover_updates << [point, view]
+      { outcome: 'ready', status: 'valid', message: 'Managed terrain target ready.' }
+    end
+
+    def clear(view:)
+      @cleared_views << view
+      { outcome: 'cleared' }
+    end
+
+    def draw(view)
+      @draw_views << view
+    end
+
+    def extents
+      :overlay_extents
+    end
+
+    def mark_dirty(view:)
+      @dirty_views << view
+    end
   end
 
   class FakeInputPoint
@@ -110,12 +224,14 @@ class TerrainUiTargetHeightBrushToolTest < Minitest::Test
     end
   end
 
-  def build_tool(session:, input_point:, after_apply: nil, after_state_change: nil)
-    SU_MCP::Terrain::UI::TargetHeightBrushTool.new(
+  def build_tool(session:, input_point:, after_apply: nil, after_state_change: nil, overlay: nil)
+    kwargs = {
       session: session,
       input_point_factory: -> { input_point },
       after_apply: after_apply,
       after_state_change: after_state_change
-    )
+    }
+    kwargs[:overlay] = overlay if overlay
+    SU_MCP::Terrain::UI::TargetHeightBrushTool.new(**kwargs)
   end
 end
