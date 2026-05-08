@@ -2,6 +2,22 @@
 
 <!-- version list -->
 
+## v1.6.1 (2026-05-08)
+
+### Documentation
+
+- **MTA-28**: Plan corridor UI tool
+  ([`f6dd469`](https://github.com/SidhNor/sketchup-mcp-server/commit/f6dd469a82188e731554681a8f0f5710c0adbb90))
+
+### Refactoring
+
+- **MTA-31**: Cdt module restructuring
+  ([`e04f0a1`](https://github.com/SidhNor/sketchup-mcp-server/commit/e04f0a1fe5624c2b01e35d53c9199258b32e1d7c))
+
+- **MTA-31**: Further CDT terrain improvements
+  ([`5c4a498`](https://github.com/SidhNor/sketchup-mcp-server/commit/5c4a498af589da17cdbd44ca68ce6720ad30ab2e))
+
+
 ## v1.6.0 (2026-05-08)
 
 ### Features
