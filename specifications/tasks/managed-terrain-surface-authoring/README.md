@@ -43,6 +43,10 @@ The current task order proves terrain authoring through concrete, testable incre
   production backend promotion
 - CDT-oriented production terrain output with current-backend fallback and cleanup of prototype
   bakeoff harnesses before long-lived production wiring
+- SketchUp-facing brush overlay feedback for the initial target-height visual edit tool
+- a shared Managed Terrain tool panel proven by adding local fairing as a second round-brush tool
+- corridor-transition UI over the existing managed corridor edit mode
+- survey-point and planar-region UI tools over the existing control-point edit modes
 
 ## Current Task Order
 
@@ -71,6 +75,11 @@ The current task order proves terrain authoring through concrete, testable incre
 23. [MTA-23 Prototype Intent-Constrained Adaptive Output Backend](MTA-23-prototype-adaptive-simplification-backend-with-grey-box-sketchup-probes/task.md)
 24. [MTA-24 Prototype Constrained Delaunay/CDT Terrain Output Backend And Three-Way Bakeoff](MTA-24-prototype-constrained-delaunay-cdt-terrain-output-backend-and-three-way-bakeoff/task.md)
 25. [MTA-25 Productionize CDT Terrain Output With Current Backend Fallback](MTA-25-productionize-cdt-terrain-output-with-current-fallback/task.md)
+26. [MTA-26 Add Managed Terrain Brush Overlay Feedback](MTA-26-add-managed-terrain-brush-overlay-feedback/task.md)
+27. [MTA-27 Generalize Managed Terrain Tool Panel And Add Local Fairing](MTA-27-generalize-managed-terrain-tool-panel-and-add-local-fairing/task.md)
+28. [MTA-28 Add Managed Terrain Corridor Transition UI Tool](MTA-28-add-managed-terrain-corridor-transition-ui-tool/task.md)
+29. [MTA-29 Add Managed Terrain Survey Point Constraint UI Tool](MTA-29-add-managed-terrain-survey-point-constraint-ui-tool/task.md)
+30. [MTA-30 Add Managed Terrain Planar Region Fit UI Tool](MTA-30-add-managed-terrain-planar-region-fit-ui-tool/task.md)
 
 ## Deferred Follow-Ons
 
@@ -81,7 +90,7 @@ Deferred work is not promoted into active task folders in this iteration:
 - broad mesh repair or unrestricted TIN surgery
 - broad freeform sculpting, continuous stroke replay, or pressure-sensitive brush systems
 - erosion, weathering, or procedural terrain generation
-- public Unreal-style terrain tools such as flatten, smooth, or ramp
+- new public Unreal-style terrain tools beyond the existing managed edit modes
 - polygon/freeform terrain edit regions
 - accepting `boundary_preserving_patch_edit` as a separate mode before current regional correction plus `preserveZones` recipes are evaluated
 
@@ -123,3 +132,8 @@ Deferred work is not promoted into active task folders in this iteration:
   production output as fallback while CDT production behavior is gated, clean up or isolate
   MTA-24-specific comparison and hosted-probe harnesses from production runtime ownership, and prove
   production behavior through automated and hosted SketchUp acceptance.
+- `MTA-26` through `MTA-30` are the next SketchUp-facing UI follow-ups after the initial MTA-18
+  toolbar/dialog/tool slice. They deliberately reuse existing managed terrain edit commands rather
+  than adding terrain math: first target-height overlay feedback, then a shared panel proven by local
+  fairing, then corridor-transition UI, then survey-point and planar-region point-control UI in
+  separate tasks.
