@@ -2,6 +2,17 @@
 
 <!-- version list -->
 
+## v1.6.0 (2026-05-08)
+
+### Features
+
+- **MTA-26**: Ui indicator for brush terrain edits
+  ([`2a18a48`](https://github.com/SidhNor/sketchup-mcp-server/commit/2a18a48efb595d73f3235d58e58e5f550df5643f))
+
+- **MTA-27**: Smoothing terrain brush
+  ([`9e3c3ea`](https://github.com/SidhNor/sketchup-mcp-server/commit/9e3c3ea1f5c4e7768a16e0c2417c5c6197eff29d))
+
+
 ## v1.5.1 (2026-05-08)
 
 ### Refactoring
