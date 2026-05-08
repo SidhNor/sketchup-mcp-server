@@ -2,6 +2,27 @@
 
 <!-- version list -->
 
+## v1.5.0 (2026-05-08)
+
+### Documentation
+
+- **PLAT-19**: Terrain refactor prep
+  ([`5d7d570`](https://github.com/SidhNor/sketchup-mcp-server/commit/5d7d570fac58d41c5660eaf970590b8d0333898a))
+
+- **ui**: Add ui related terrain tasks
+  ([`56cff68`](https://github.com/SidhNor/sketchup-mcp-server/commit/56cff688a26f766f2c0a584a03752bc970c4030e))
+
+### Features
+
+- **MTA-18**: First UI terrain tools (target height)
+  ([`63d3ab2`](https://github.com/SidhNor/sketchup-mcp-server/commit/63d3ab2f23bab577bdf6014628cf18189965cef9))
+
+### Refactoring
+
+- **PLAT-19**: Restructure terrain folder
+  ([`6074e10`](https://github.com/SidhNor/sketchup-mcp-server/commit/6074e103d36b1583595b9b8d97a12e7a16637f98))
+
+
 ## v1.4.0 (2026-05-07)
 
 ### Documentation
