@@ -15,6 +15,16 @@ class TerrainUiTargetHeightBrushToolTest < Minitest::Test
     assert_equal('Click a managed terrain surface to apply target height.', view.status_text)
   end
 
+  def test_mouse_move_uses_active_tool_status_text
+    session = RecordingSession.new(active_tool: 'local_fairing')
+    tool = build_tool(session: session, input_point: FakeInputPoint.new(valid: true))
+    view = FakeView.new
+
+    tool.onMouseMove(0, 10, 15, view)
+
+    assert_equal('Click a managed terrain surface to apply local fairing.', view.status_text)
+  end
+
   def test_mouse_move_updates_overlay_from_valid_input_point
     session = RecordingSession.new
     point = Struct.new(:x, :y, :z).new(1.0, 2.0, 3.0)
@@ -203,9 +213,10 @@ class TerrainUiTargetHeightBrushToolTest < Minitest::Test
   end
 
   class RecordingSession
-    attr_reader :applied_points, :lifecycle
+    attr_reader :active_tool, :applied_points, :lifecycle
 
-    def initialize
+    def initialize(active_tool: 'target_height')
+      @active_tool = active_tool
       @applied_points = []
       @lifecycle = []
     end
@@ -221,6 +232,10 @@ class TerrainUiTargetHeightBrushToolTest < Minitest::Test
     def apply_click(point)
       @applied_points << point
       { outcome: 'edited' }
+    end
+
+    def state_snapshot
+      { activeTool: @active_tool }
     end
   end
 

@@ -11,9 +11,25 @@ module SU_MCP
       class Installer
         TOOLBAR_NAME = 'Managed Terrain'
         COMMAND_TEXT = 'Target Height Brush'
+        LOCAL_FAIRING_COMMAND_TEXT = 'Local Fairing'
         # rubocop:disable SketchupSuggestions/FileEncoding
         ICON_PATH = File.expand_path('assets/target_height_brush.svg', __dir__)
+        LOCAL_FAIRING_ICON_PATH = File.expand_path('assets/local_fairing.svg', __dir__)
         # rubocop:enable SketchupSuggestions/FileEncoding
+        COMMANDS = [
+          {
+            tool: 'target_height',
+            text: COMMAND_TEXT,
+            icon: ICON_PATH,
+            status: 'Apply a circular managed terrain target-height brush.'
+          },
+          {
+            tool: 'local_fairing',
+            text: LOCAL_FAIRING_COMMAND_TEXT,
+            icon: LOCAL_FAIRING_ICON_PATH,
+            status: 'Apply a circular managed terrain local fairing brush.'
+          }
+        ].freeze
 
         def initialize(
           ui_host: nil,
@@ -32,37 +48,47 @@ module SU_MCP
             )
           }
           @tool = nil
-          @command = nil
+          @commands = {}
           @installed = false
         end
 
         def install
           return if @installed
 
-          command = build_command
-          @command = command
           toolbar = ui_host.toolbar(TOOLBAR_NAME)
-          toolbar.add_item(command)
+          COMMANDS.each do |definition|
+            command = build_command(definition)
+            @commands[definition.fetch(:tool)] = command
+            toolbar.add_item(command)
+            ui_host.add_menu_item(definition.fetch(:text)) do
+              activate_brush(definition.fetch(:tool))
+            end
+          end
           toolbar.show
-          ui_host.add_menu_item(COMMAND_TEXT) { activate_brush }
           @installed = true
-          command
+          @commands.fetch('target_height')
         end
 
         private
 
         attr_reader :ui_host, :session, :tool_factory
 
-        def build_command
-          command = ui_host.command(COMMAND_TEXT) { activate_brush }
-          command.small_icon = ICON_PATH
-          command.large_icon = ICON_PATH
-          configure_validation(command)
+        def build_command(definition)
+          command = ui_host.command(definition.fetch(:text)) do
+            activate_brush(definition.fetch(:tool))
+          end
+          command.small_icon = definition.fetch(:icon)
+          command.large_icon = definition.fetch(:icon)
+          configure_validation(command, definition.fetch(:tool))
           command
         end
 
-        def activate_brush
-          session.activate
+        def activate_brush(tool)
+          if session.respond_to?(:activate_tool)
+            session.activate_tool(tool)
+          else
+            session.activate
+          end
           show_dialog
           reselect_tool
           refresh_active_ui_state
@@ -93,10 +119,13 @@ module SU_MCP
         end
 
         def update_command_icon
-          return unless @command
+          COMMANDS.each do |definition|
+            command = @commands[definition.fetch(:tool)]
+            next unless command
 
-          @command.small_icon = ICON_PATH
-          @command.large_icon = ICON_PATH
+            command.small_icon = definition.fetch(:icon)
+            command.large_icon = definition.fetch(:icon)
+          end
         end
 
         def dialog
@@ -107,8 +136,15 @@ module SU_MCP
           )
         end
 
-        def configure_validation(command)
-          validation = -> { session.active? ? checked_state : unchecked_state }
+        def configure_validation(command, tool)
+          validation = lambda do
+            active = if session.respond_to?(:active_tool?)
+                       session.active_tool?(tool)
+                     else
+                       session.active?
+                     end
+            active ? checked_state : unchecked_state
+          end
           if command.respond_to?(:set_validation_proc)
             command.set_validation_proc(&validation)
           elsif command.respond_to?(:validation=)
@@ -134,7 +170,7 @@ module SU_MCP
             ::UI.const_get('Command').new(text, &block).tap do |command|
               command.menu_text = text
               command.tooltip = text
-              command.status_bar_text = 'Apply a circular managed terrain target-height brush.'
+              command.status_bar_text = status_for(text)
             end
           end
 
@@ -163,6 +199,14 @@ module SU_MCP
           end
 
           private
+
+          def status_for(text)
+            if text == LOCAL_FAIRING_COMMAND_TEXT
+              return 'Apply a circular managed terrain local fairing brush.'
+            end
+
+            'Apply a circular managed terrain target-height brush.'
+          end
 
           def menu
             @menu ||= ::UI.menu('Extensions').add_submenu('SketchUp MCP')

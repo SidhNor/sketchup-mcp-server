@@ -13,18 +13,22 @@ class TerrainUiTargetHeightBrushOverlayContractGuardTest < Minitest::Test
     )
 
     refute_includes(native_catalog, 'Target Height Brush')
+    refute_includes(native_catalog, 'Local Fairing')
+    refute_includes(native_catalog, 'Managed Terrain Tools')
     refute_includes(native_catalog, 'brush overlay')
     refute_includes(native_catalog, 'falloff ring')
   end
 
-  def test_existing_ui_apply_tests_remain_public_contract_guard_for_request_shape
+  def test_existing_ui_apply_tests_remain_public_contract_guard_for_request_shapes
     test_source = File.read(
       File.join(REPO_ROOT, 'test/terrain/ui/brush_edit_session_test.rb'),
       encoding: 'utf-8'
     )
 
     assert_includes(test_source, 'test_apply_click_builds_exact_target_height_circle_request')
+    assert_includes(test_source, 'test_apply_click_builds_local_fairing_circle_request')
     assert_includes(test_source, "'mode' => 'target_height'")
+    assert_includes(test_source, "'mode' => 'local_fairing'")
     assert_includes(test_source, "'type' => 'circle'")
   end
 

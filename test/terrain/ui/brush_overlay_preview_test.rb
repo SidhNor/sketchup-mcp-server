@@ -46,6 +46,17 @@ class TerrainUiBrushOverlayPreviewTest < Minitest::Test
     assert_equal([2.0, 2.75], result.fetch(:rings).map { |ring| ring.fetch(:radius) })
   end
 
+  def test_radius_above_slider_max_is_not_clamped_for_overlay_preview
+    session = RecordingSession.new(settings: settings(radius: 150.0))
+
+    result = build_preview(session: session).update_hover(
+      point(1.0, 1.0, 0.0),
+      view: RecordingView.new
+    )
+
+    assert_equal([150.0], result.fetch(:rings).map { |ring| ring.fetch(:radius) })
+  end
+
   def test_zero_blend_draws_only_support_ring
     result = build_preview.update_hover(point(1.0, 1.0, 0.0), view: RecordingView.new)
 
@@ -196,10 +207,10 @@ class TerrainUiBrushOverlayPreviewTest < Minitest::Test
     assert_equal(2, view.invalidations)
   end
 
-  def self.settings(blend_distance: 0.0, falloff: 'none')
+  def self.settings(radius: 2.0, blend_distance: 0.0, falloff: 'none')
     {
       targetElevation: 1.25,
-      radius: 2.0,
+      radius: radius,
       blendDistance: blend_distance,
       falloff: falloff
     }
@@ -336,8 +347,8 @@ class TerrainUiBrushOverlayPreviewTest < Minitest::Test
     self.class.ready_context(owner: owner)
   end
 
-  def settings(blend_distance: 0.0, falloff: 'none')
-    self.class.settings(blend_distance: blend_distance, falloff: falloff)
+  def settings(radius: 2.0, blend_distance: 0.0, falloff: 'none')
+    self.class.settings(radius: radius, blend_distance: blend_distance, falloff: falloff)
   end
 
   def loaded_state(state = heightmap_state)

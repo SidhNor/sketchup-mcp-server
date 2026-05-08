@@ -38,6 +38,15 @@ module SU_MCP
           state_snapshot
         end
 
+        def activate_tool(tool)
+          result = settings.activate_tool(tool)
+          return show_and_return(result) if refused?(result)
+
+          @active = true
+          update_selection_status(resolver.resolve)
+          state_snapshot
+        end
+
         def deactivate
           @active = false
           state_snapshot
@@ -97,6 +106,10 @@ module SU_MCP
           @active
         end
 
+        def active_tool?(tool)
+          active? && settings.snapshot.fetch(:activeTool) == tool.to_s
+        end
+
         private
 
         attr_reader :model, :settings, :resolver, :coordinate_converter, :commands, :feedback
@@ -115,10 +128,7 @@ module SU_MCP
           snapshot = settings.snapshot
           {
             'targetReference' => terrain.fetch(:targetReference),
-            'operation' => {
-              'mode' => 'target_height',
-              'targetElevation' => snapshot.fetch(:targetElevation)
-            },
+            'operation' => operation_request(snapshot),
             'region' => {
               'type' => 'circle',
               'center' => center,
@@ -130,6 +140,23 @@ module SU_MCP
             },
             'constraints' => { 'fixedControls' => [], 'preserveZones' => [] },
             'outputOptions' => { 'includeSampleEvidence' => false, 'sampleEvidenceLimit' => 20 }
+          }
+        end
+
+        def operation_request(snapshot)
+          if snapshot.fetch(:activeTool) == 'local_fairing'
+            fairing = snapshot.fetch(:localFairing)
+            return {
+              'mode' => 'local_fairing',
+              'strength' => fairing.fetch(:strength),
+              'neighborhoodRadiusSamples' => fairing.fetch(:neighborhoodRadiusSamples),
+              'iterations' => fairing.fetch(:iterations)
+            }
+          end
+
+          {
+            'mode' => 'target_height',
+            'targetElevation' => snapshot.fetch(:targetElevation)
           }
         end
 

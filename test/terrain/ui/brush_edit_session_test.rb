@@ -14,9 +14,41 @@ class TerrainUiBrushEditSessionTest < Minitest::Test
     snapshot = session.state_snapshot
 
     assert_equal(true, session.active?)
+    assert_equal('target_height', snapshot.fetch(:activeTool))
     assert_equal('target_height', snapshot.fetch(:mode))
     assert_equal('terrain-main', snapshot.fetch(:selectedTerrain))
     refute_includes(JSON.generate(snapshot), 'Sketchup::')
+  end
+
+  def test_activate_tool_switches_active_tool_and_keeps_shared_selection_state
+    session = build_session
+
+    snapshot = session.activate_tool('local_fairing')
+
+    assert_equal(true, session.active?)
+    assert_equal('local_fairing', snapshot.fetch(:activeTool))
+    assert_equal('terrain-main', snapshot.fetch(:selectedTerrain))
+  end
+
+  def test_tool_switch_preserves_independent_operation_settings
+    session = build_session
+    session.update_settings(valid_settings.merge('targetElevation' => 3.5))
+    session.activate_tool('local_fairing')
+    session.update_settings(
+      'strength' => 0.7,
+      'neighborhoodRadiusSamples' => 6,
+      'iterations' => 2
+    )
+
+    session.activate_tool('target_height')
+    target_snapshot = session.state_snapshot
+    session.activate_tool('local_fairing')
+    fairing_snapshot = session.state_snapshot
+
+    assert_equal(3.5, target_snapshot.fetch(:targetElevation))
+    assert_equal(0.7, fairing_snapshot.fetch(:localFairing).fetch(:strength))
+    assert_equal(6, fairing_snapshot.fetch(:localFairing).fetch(:neighborhoodRadiusSamples))
+    assert_equal(2, fairing_snapshot.fetch(:localFairing).fetch(:iterations))
   end
 
   def test_activation_reports_invalid_selection_in_dialog_status_state
@@ -100,6 +132,43 @@ class TerrainUiBrushEditSessionTest < Minitest::Test
     )
   end
 
+  def test_apply_click_builds_local_fairing_circle_request
+    commands = RecordingCommands.new(success_response)
+    session = build_session(commands: commands)
+    session.activate_tool('local_fairing')
+    session.update_settings(
+      'radius' => 7.0,
+      'blendDistance' => 2.0,
+      'falloff' => 'linear',
+      'strength' => 0.6,
+      'neighborhoodRadiusSamples' => 5,
+      'iterations' => 3
+    )
+
+    session.apply_click(point(1.0, 2.0, 0.0))
+
+    assert_equal(
+      {
+        'targetReference' => { 'sourceElementId' => 'terrain-main' },
+        'operation' => {
+          'mode' => 'local_fairing',
+          'strength' => 0.6,
+          'neighborhoodRadiusSamples' => 5,
+          'iterations' => 3
+        },
+        'region' => {
+          'type' => 'circle',
+          'center' => { 'x' => 1.0, 'y' => 2.0 },
+          'radius' => 7.0,
+          'blend' => { 'distance' => 2.0, 'falloff' => 'linear' }
+        },
+        'constraints' => { 'fixedControls' => [], 'preserveZones' => [] },
+        'outputOptions' => { 'includeSampleEvidence' => false, 'sampleEvidenceLimit' => 20 }
+      },
+      commands.calls.first
+    )
+  end
+
   def test_invalid_settings_refuse_before_command_invocation
     commands = RecordingCommands.new(success_response)
     session = build_session(commands: commands)
@@ -108,6 +177,19 @@ class TerrainUiBrushEditSessionTest < Minitest::Test
     result = session.apply_click(point(1.0, 2.0, 0.0))
 
     assert_equal('refused', result.fetch(:outcome))
+    assert_empty(commands.calls)
+  end
+
+  def test_invalid_update_blocks_stale_previous_value_from_apply
+    commands = RecordingCommands.new(success_response)
+    session = build_session(commands: commands)
+    session.update_settings(valid_settings.merge('radius' => 4.0))
+    session.update_settings('radius' => 0.0)
+
+    result = session.apply_click(point(1.0, 2.0, 0.0))
+
+    assert_equal('refused', result.fetch(:outcome))
+    assert_equal('radius', result.dig(:refusal, :details, :field))
     assert_empty(commands.calls)
   end
 
@@ -176,6 +258,18 @@ class TerrainUiBrushEditSessionTest < Minitest::Test
     assert_equal(owner('terrain-main'), result.fetch(:owner))
     assert_equal({ 'x' => 1.0, 'y' => 2.0 }, result.fetch(:center))
     assert_equal(2.0, result.fetch(:settings).fetch(:radius))
+    assert_empty(commands.calls)
+  end
+
+  def test_preview_context_uses_numeric_radius_above_slider_max_without_clamping
+    commands = RecordingCommands.new(success_response)
+    session = build_session(commands: commands)
+    session.update_settings(valid_settings.merge('radius' => 150.0))
+
+    result = session.preview_context(point(1.0, 2.0, 0.0))
+
+    assert_equal('ready', result.fetch(:outcome))
+    assert_equal(150.0, result.fetch(:settings).fetch(:radius))
     assert_empty(commands.calls)
   end
 

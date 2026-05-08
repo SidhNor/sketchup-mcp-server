@@ -18,6 +18,20 @@ class TerrainUiSettingsDialogTest < Minitest::Test
     assert_equal(1, factory.dialog.show_calls)
   end
 
+  def test_show_uses_shared_managed_terrain_panel_identity
+    factory = RecordingDialogFactory.new
+    dialog = SU_MCP::Terrain::UI::SettingsDialog.new(
+      session: RecordingSession.new,
+      dialog_factory: factory
+    )
+
+    dialog.show
+
+    assert_match(/managed_terrain_panel\.html\z/, factory.dialog.file)
+    assert_equal('Managed Terrain Tools', factory.dialog.options.fetch(:dialog_title))
+    assert_equal('com.su-mcp.terrain.tools', factory.dialog.options.fetch(:preferences_key))
+  end
+
   def test_ready_callback_pushes_json_escaped_state
     factory = RecordingDialogFactory.new
     session = RecordingSession.new(status: %(Applied "terrain-main"))
@@ -116,15 +130,52 @@ class TerrainUiSettingsDialogTest < Minitest::Test
     assert_includes(script, '\\u2029')
   end
 
-  def test_packaged_dialog_source_exposes_only_first_slice_controls
+  def test_packaged_dialog_source_exposes_shared_round_brush_controls
     source = File.read(SU_MCP::Terrain::UI::SettingsDialog::DIALOG_FILE, encoding: 'utf-8')
 
-    %w[targetElevation radius blendDistance falloff selectedTerrain status].each do |control_id|
+    %w[
+      targetElevation
+      radius
+      radiusSlider
+      radiusNumber
+      blendDistance
+      blendDistanceSlider
+      blendDistanceNumber
+      falloff
+      strength
+      strengthSlider
+      strengthNumber
+      neighborhoodRadiusSamples
+      iterations
+      targetHeightPanel
+      localFairingPanel
+      selectedTerrain
+      status
+    ].each do |control_id|
       assert_includes(source, control_id)
     end
-    %w[sculpt pressure stroke redrape validate sampling labels capture].each do |out_of_scope|
+    assert_includes(source, 'target_height')
+    assert_includes(source, 'local_fairing')
+    out_of_scope_terms = %w[
+      sculpt pressure stroke redrape validate sampling labels capture corridor survey planar
+    ]
+    out_of_scope_terms.each do |out_of_scope|
       refute_includes(source.downcase, out_of_scope)
     end
+  end
+
+  def test_shared_panel_javascript_surfaces_invalid_values_to_ruby
+    script = File.read(
+      File.expand_path('target_height_brush.js',
+                       File.dirname(SU_MCP::Terrain::UI::SettingsDialog::DIALOG_FILE)),
+      encoding: 'utf-8'
+    )
+
+    assert_includes(script, 'setCustomValidity')
+    assert_includes(script, 'updateSettings')
+    assert_includes(script, 'activeTool')
+    assert_includes(script, 'radiusNumber')
+    assert_includes(script, 'radiusSlider')
   end
 
   class RecordingSession
@@ -153,15 +204,16 @@ class TerrainUiSettingsDialogTest < Minitest::Test
   class RecordingDialogFactory
     attr_reader :dialog
 
-    def call(_options)
-      @dialog = RecordingDialog.new
+    def call(options)
+      @dialog = RecordingDialog.new(options)
     end
   end
 
   class RecordingDialog
-    attr_reader :file, :callbacks, :scripts, :show_calls
+    attr_reader :file, :callbacks, :scripts, :show_calls, :options
 
-    def initialize
+    def initialize(options = {})
+      @options = options
       @callbacks = []
       @callback_blocks = {}
       @scripts = []

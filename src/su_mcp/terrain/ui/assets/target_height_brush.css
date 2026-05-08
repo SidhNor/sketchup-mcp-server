@@ -37,6 +37,22 @@ body {
   gap: 6px;
 }
 
+.tool-panel[hidden] {
+  display: none;
+}
+
+.control-pair {
+  display: grid;
+  gap: 6px;
+}
+
+.paired-inputs {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 74px;
+  gap: 8px;
+  align-items: center;
+}
+
 input,
 select {
   width: 100%;

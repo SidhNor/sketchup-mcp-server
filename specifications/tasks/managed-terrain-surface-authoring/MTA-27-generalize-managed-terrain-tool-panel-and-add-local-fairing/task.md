@@ -1,7 +1,7 @@
 # Task: MTA-27 Generalize Managed Terrain Tool Panel And Add Local Fairing
 **Task ID**: `MTA-27`
 **Title**: `Generalize Managed Terrain Tool Panel And Add Local Fairing`
-**Status**: `draft`
+**Status**: `completed`
 **Priority**: `P1`
 **Date**: `2026-05-08`
 
@@ -20,6 +20,8 @@ This task generalizes the current target-height-specific UI just enough to suppo
 - Convert the current target-height-specific dialog into a shared Managed Terrain tool panel.
 - Keep one `Managed Terrain` toolbar container while adding a second toolbar button for `Local Fairing`.
 - Let the shared panel switch between target-height and local-fairing settings based on the active tool.
+- Use slider plus adjacent numeric input controls for bounded brush and fairing parameters where practical.
+- Reject invalid panel values before constructing or applying a managed terrain edit request.
 - Apply local fairing through the existing managed terrain command path.
 - Reuse the round-brush interaction and overlay family for both target-height and local-fairing tools.
 - Preserve shared selected-terrain, status, success, and refusal feedback.
@@ -41,6 +43,13 @@ Scenario: shared panel changes with the active tool
   When the user activates the Local Fairing tool
   Then the panel shows local-fairing settings
   And the shared selected-terrain and status area remains available
+
+Scenario: bounded panel controls support fast and exact adjustment
+  Given the Managed Terrain panel is open
+  When a bounded brush or fairing parameter is shown
+  Then the panel provides a slider for fast adjustment where practical
+  And the panel provides an adjacent numeric input for exact values
+  And invalid values such as non-positive radius or out-of-range fairing controls are rejected before apply
 
 Scenario: local fairing applies through managed terrain commands
   Given a managed terrain surface is selected
@@ -104,7 +113,7 @@ Scenario: unsupported future tool families are not implied
 
 ## Related Technical Plan
 
-- none yet
+- [Technical Plan](./plan.md)
 
 ## Success Metrics
 

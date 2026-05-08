@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Managed Terrain Tools</title>
+  <link rel="stylesheet" href="target_height_brush.css">
+</head>
+<body>
+  <main class="palette">
+    <section class="row">
+      <span class="mode" id="mode">target_height</span>
+      <span class="terrain" id="selectedTerrain">No terrain selected</span>
+    </section>
+
+    <section class="controls shared-controls">
+      <div class="control-pair">
+        <label for="radiusSlider">Radius</label>
+        <div class="paired-inputs">
+          <input id="radiusSlider" name="radiusSlider" type="range" min="0" max="100" step="1" value="10" data-min-meters="0.01" data-mid-meters="10" data-max-meters="100">
+          <input id="radiusNumber" name="radius" type="number" min="0.01" step="0.01" value="2.0">
+        </div>
+      </div>
+
+      <div class="control-pair">
+        <label for="blendDistanceSlider">Blend distance</label>
+        <div class="paired-inputs">
+          <input id="blendDistanceSlider" name="blendDistanceSlider" type="range" min="0" max="100" step="1" value="0" data-min-meters="0" data-mid-meters="10" data-max-meters="100">
+          <input id="blendDistanceNumber" name="blendDistance" type="number" min="0" step="0.01" value="0.0">
+        </div>
+      </div>
+
+      <label for="falloff">Falloff</label>
+      <select id="falloff" name="falloff">
+        <option value="none">none</option>
+        <option value="linear">linear</option>
+        <option value="smooth">smooth</option>
+      </select>
+    </section>
+
+    <section class="controls tool-panel" id="targetHeightPanel" data-tool-panel="target_height">
+      <label for="targetElevation">Target elevation</label>
+      <input id="targetElevation" name="targetElevation" type="number" step="0.01">
+    </section>
+
+    <section class="controls tool-panel" id="localFairingPanel" data-tool-panel="local_fairing" hidden>
+      <div class="control-pair">
+        <label for="strengthSlider">Strength</label>
+        <div class="paired-inputs">
+          <input id="strengthSlider" name="strengthSlider" type="range" min="0.01" max="1" step="0.01" value="0.35">
+          <input id="strengthNumber" name="strength" type="number" min="0.01" max="1" step="0.01" value="0.35">
+        </div>
+      </div>
+
+      <label for="neighborhoodRadiusSamples">Neighborhood radius samples</label>
+      <input id="neighborhoodRadiusSamples" name="neighborhoodRadiusSamples" type="number" min="1" max="31" step="1" value="4">
+
+      <label for="iterations">Iterations</label>
+      <input id="iterations" name="iterations" type="number" min="1" max="8" step="1" value="1">
+    </section>
+
+    <section class="status" id="status">Ready</section>
+  </main>
+  <script src="target_height_brush.js"></script>
+</body>
+</html>

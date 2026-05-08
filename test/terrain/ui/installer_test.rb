@@ -14,14 +14,21 @@ class TerrainUiInstallerTest < Minitest::Test
     assert_equal(SU_MCP::Terrain::UI::Installer::ICON_PATH, command.small_icon)
     assert_equal(SU_MCP::Terrain::UI::Installer::ICON_PATH, command.large_icon)
     assert(File.file?(command.small_icon), 'expected toolbar SVG icon to be packaged')
-    assert_equal(['Target Height Brush'], host.toolbars.fetch('Managed Terrain').items.map(&:text))
+    fairing = host.commands.fetch('Local Fairing')
+    assert_equal(SU_MCP::Terrain::UI::Installer::LOCAL_FAIRING_ICON_PATH, fairing.small_icon)
+    assert_equal(SU_MCP::Terrain::UI::Installer::LOCAL_FAIRING_ICON_PATH, fairing.large_icon)
+    assert(File.file?(fairing.small_icon), 'expected local fairing toolbar SVG icon to be packaged')
+    assert_equal(
+      ['Target Height Brush', 'Local Fairing'],
+      host.toolbars.fetch('Managed Terrain').items.map(&:text)
+    )
   end
 
   def test_installs_menu_mirror_under_existing_extension_submenu
     host = RecordingUiHost.new
     SU_MCP::Terrain::UI::Installer.new(ui_host: host, session: RecordingSession.new).install
 
-    assert_equal(['Target Height Brush'], host.menu_items)
+    assert_equal(['Target Height Brush', 'Local Fairing'], host.menu_items)
     assert_empty(host.menu_commands)
   end
 
@@ -33,8 +40,27 @@ class TerrainUiInstallerTest < Minitest::Test
     installer.install
     host.commands.fetch('Target Height Brush').call
 
-    assert_equal(1, session.activations)
+    assert_equal(['target_height'], session.activations)
     assert_equal(1, host.dialog_show_calls)
+    assert_instance_of(SU_MCP::Terrain::UI::TargetHeightBrushTool, host.selected_tool)
+  end
+
+  def test_local_fairing_activation_uses_same_dialog_and_round_brush_tool
+    host = RecordingUiHost.new
+    session = RecordingSession.new
+    dialog = RecordingDialog.new
+    installer = SU_MCP::Terrain::UI::Installer.new(
+      ui_host: host,
+      session: session,
+      dialog: dialog
+    )
+
+    installer.install
+    host.commands.fetch('Local Fairing').call
+
+    assert_equal(['local_fairing'], session.activations)
+    assert_equal(1, host.dialog_show_calls)
+    assert_equal(1, dialog.push_state_calls)
     assert_instance_of(SU_MCP::Terrain::UI::TargetHeightBrushTool, host.selected_tool)
   end
 
@@ -126,11 +152,22 @@ class TerrainUiInstallerTest < Minitest::Test
     SU_MCP::Terrain::UI::Installer.new(ui_host: host, session: session).install
 
     validation = host.commands.fetch('Target Height Brush').validation.call
-    session.active = true
+    session.activate_tool('target_height')
     checked_validation = host.commands.fetch('Target Height Brush').validation.call
 
     assert_equal(:unchecked, validation)
     assert_equal(:checked, checked_validation)
+  end
+
+  def test_command_validation_tracks_checked_state_per_active_tool
+    host = RecordingUiHost.new
+    session = RecordingSession.new
+    SU_MCP::Terrain::UI::Installer.new(ui_host: host, session: session).install
+
+    session.activate_tool('local_fairing')
+
+    assert_equal(:unchecked, host.commands.fetch('Target Height Brush').validation.call)
+    assert_equal(:checked, host.commands.fetch('Local Fairing').validation.call)
   end
 
   def test_install_is_idempotent
@@ -140,8 +177,8 @@ class TerrainUiInstallerTest < Minitest::Test
     installer.install
     installer.install
 
-    assert_equal(1, host.toolbars.fetch('Managed Terrain').items.length)
-    assert_equal(['Target Height Brush'], host.menu_items)
+    assert_equal(2, host.toolbars.fetch('Managed Terrain').items.length)
+    assert_equal(['Target Height Brush', 'Local Fairing'], host.menu_items)
   end
 
   def test_real_ui_host_uses_string_constant_lookup_for_sketchup_ui_classes
@@ -155,21 +192,31 @@ class TerrainUiInstallerTest < Minitest::Test
   end
 
   class RecordingSession
-    attr_accessor :active
+    attr_accessor :active, :active_tool
     attr_reader :activations
 
     def initialize
       @active = false
-      @activations = 0
+      @active_tool = nil
+      @activations = []
     end
 
     def activate
+      activate_tool('target_height')
+    end
+
+    def activate_tool(tool)
       @active = true
-      @activations += 1
+      @active_tool = tool
+      @activations << tool
     end
 
     def active?
       @active
+    end
+
+    def active_tool?(tool)
+      @active && @active_tool == tool
     end
 
     def deactivate
@@ -228,10 +275,15 @@ class TerrainUiInstallerTest < Minitest::Test
   end
 
   class RecordingDialog
-    attr_reader :push_state_calls
+    attr_reader :push_state_calls, :show_calls
 
     def initialize
       @push_state_calls = 0
+      @show_calls = 0
+    end
+
+    def show
+      @show_calls += 1
     end
 
     def push_state

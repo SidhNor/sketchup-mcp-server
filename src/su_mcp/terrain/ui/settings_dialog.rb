@@ -9,7 +9,7 @@ module SU_MCP
       class SettingsDialog
         # rubocop:disable SketchupSuggestions/FileEncoding
         DIALOG_FILE = File.expand_path(
-          File.join(File.dirname(__FILE__), 'assets', 'target_height_brush.html')
+          File.join(File.dirname(__FILE__), 'assets', 'managed_terrain_panel.html')
         )
         # rubocop:enable SketchupSuggestions/FileEncoding
 
@@ -82,12 +82,12 @@ module SU_MCP
 
         def dialog_options
           {
-            dialog_title: 'Managed Terrain Target Height Brush',
-            preferences_key: 'com.su-mcp.terrain.target-height-brush',
+            dialog_title: 'Managed Terrain Tools',
+            preferences_key: 'com.su-mcp.terrain.tools',
             scrollable: false,
             resizable: false,
             width: 320,
-            height: 360
+            height: 520
           }
         end
 

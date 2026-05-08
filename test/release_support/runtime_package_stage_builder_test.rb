@@ -44,6 +44,8 @@ class RuntimePackageStageBuilderTest < Minitest::Test
 
       %w[
         target_height_brush.svg
+        local_fairing.svg
+        managed_terrain_panel.html
         target_height_brush.html
         target_height_brush.css
         target_height_brush.js

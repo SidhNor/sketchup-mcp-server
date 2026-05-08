@@ -9,6 +9,10 @@ module SU_MCP
       class TargetHeightBrushTool
         # rubocop:disable Naming/MethodName
         STATUS_TEXT = 'Click a managed terrain surface to apply target height.'
+        STATUS_TEXT_BY_TOOL = {
+          'target_height' => STATUS_TEXT,
+          'local_fairing' => 'Click a managed terrain surface to apply local fairing.'
+        }.freeze
 
         def initialize(
           session:,
@@ -46,7 +50,7 @@ module SU_MCP
         end
 
         def onMouseMove(_flags, x, y, view)
-          return set_status(view, STATUS_TEXT) unless overlay
+          return set_status(view, status_text) unless overlay
 
           input_point = input_point_factory.call
           picked = input_point.pick(view, x, y)
@@ -107,6 +111,16 @@ module SU_MCP
         def set_status(view, message)
           view.status_text = message if view.respond_to?(:status_text=)
           nil
+        end
+
+        def status_text
+          STATUS_TEXT_BY_TOOL.fetch(active_tool_id, STATUS_TEXT)
+        end
+
+        def active_tool_id
+          return nil unless session.respond_to?(:state_snapshot)
+
+          session.state_snapshot.fetch(:activeTool, nil)
         end
 
         def invalid_pick_refusal
