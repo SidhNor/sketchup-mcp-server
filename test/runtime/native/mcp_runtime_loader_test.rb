@@ -4,7 +4,7 @@ require_relative '../../test_helper'
 require 'stringio'
 require 'tmpdir'
 require_relative '../../../src/su_mcp/runtime/tool_response'
-require_relative '../../../src/su_mcp/terrain/edit_terrain_surface_request'
+require_relative '../../../src/su_mcp/terrain/contracts/edit_terrain_surface_request'
 require_relative '../../../src/su_mcp/runtime/native/mcp_runtime_loader'
 
 # rubocop:disable Metrics/ClassLength

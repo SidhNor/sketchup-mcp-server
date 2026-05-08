@@ -7,8 +7,8 @@
     "source": "MTA-21 hosted validation checklist and summary"
   },
   "validationCommands": [
-    "bundle exec ruby -Itest test/terrain/adaptive_terrain_regression_fixture_test.rb",
-    "bundle exec ruby -Itest test/terrain/terrain_contract_stability_test.rb"
+    "bundle exec ruby -Itest test/terrain/output/adaptive_terrain_regression_fixture_test.rb",
+    "bundle exec ruby -Itest test/terrain/contracts/terrain_contract_stability_test.rb"
   ],
   "cases": [
     {

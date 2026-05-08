@@ -2,10 +2,10 @@
 
 require 'set'
 
-require_relative '../../src/su_mcp/terrain/fixed_control_evaluator'
-require_relative '../../src/su_mcp/terrain/heightmap_state'
-require_relative '../../src/su_mcp/terrain/region_influence'
-require_relative '../../src/su_mcp/terrain/sample_window'
+require_relative '../../src/su_mcp/terrain/regions/fixed_control_evaluator'
+require_relative '../../src/su_mcp/terrain/state/heightmap_state'
+require_relative '../../src/su_mcp/terrain/regions/region_influence'
+require_relative '../../src/su_mcp/terrain/regions/sample_window'
 
 module SU_MCP
   module Terrain

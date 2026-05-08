@@ -2,10 +2,10 @@
 
 require 'json'
 
-require_relative '../../src/su_mcp/terrain/corridor_transition_edit'
-require_relative '../../src/su_mcp/terrain/heightmap_state'
-require_relative '../../src/su_mcp/terrain/terrain_output_plan'
-require_relative '../../src/su_mcp/terrain/tiled_heightmap_state'
+require_relative '../../src/su_mcp/terrain/edits/corridor_transition_edit'
+require_relative '../../src/su_mcp/terrain/state/heightmap_state'
+require_relative '../../src/su_mcp/terrain/output/terrain_output_plan'
+require_relative '../../src/su_mcp/terrain/state/tiled_heightmap_state'
 
 # Test-owned loader seam for the MTA-22 adaptive terrain regression fixture pack.
 class AdaptiveTerrainRegressionFixtures

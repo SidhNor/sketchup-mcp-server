@@ -24,6 +24,7 @@ The current post-seeding breakdown is intentionally smaller than the recovered 1
 - 2 follow-on MCP adoption tasks derived from the completed spike
 - 1 post-validation runtime-retirement task for removing the Python compatibility layer after native validation
 - 1 post-migration Ruby support-tree cleanup task for expressing the settled runtime layers in the filesystem
+- 1 capability-internal support-tree cleanup task for managed terrain
 - 1 post-retirement contract-hardening task for shared native tool declarations and response conventions
 - 1 post-hardening cleanup task for residual public contract discoverability drift across the shipped tool catalog
 - 1 initial MCP prompts task for richer server-owned workflow guidance beyond tool descriptions
@@ -58,34 +59,35 @@ The current post-seeding breakdown is intentionally smaller than the recovered 1
 ### Post-Migration Structure Cleanup
 
 11. [PLAT-12 Organize Ruby Support Tree Around Runtime Layers](PLAT-12-organize-ruby-support-tree-around-runtime-layers/task.md)
+12. [PLAT-19 Restructure Managed Terrain Support Tree](PLAT-19-restructure-managed-terrain-support-tree/task.md)
 
 ### Post-Retirement Contract Hardening
 
-12. [PLAT-14 Establish Native MCP Tool Contract And Response Conventions](PLAT-14-establish-native-mcp-tool-contract-and-response-conventions/task.md)
+13. [PLAT-14 Establish Native MCP Tool Contract And Response Conventions](PLAT-14-establish-native-mcp-tool-contract-and-response-conventions/task.md)
 
 ### Public Tool Boundary Cleanup
 
-13. [PLAT-15 Align Public Targeting and Generic Mutation Tool Boundaries](PLAT-15-align-public-targeting-and-generic-mutation-tool-boundaries/task.md)
+14. [PLAT-15 Align Public Targeting and Generic Mutation Tool Boundaries](PLAT-15-align-public-targeting-and-generic-mutation-tool-boundaries/task.md)
 
 ### Post-Hardening Contract Discoverability Cleanup
 
-14. [PLAT-16 Align Residual Public Contract Discoverability With Runtime Constraints](PLAT-16-align-residual-public-contract-discoverability-with-runtime-constraints/task.md)
+15. [PLAT-16 Align Residual Public Contract Discoverability With Runtime Constraints](PLAT-16-align-residual-public-contract-discoverability-with-runtime-constraints/task.md)
 
 ### Cross-Family Public Contract Convergence
 
-15. [PLAT-17 Harmonize Residual Public MCP Contract Conventions](PLAT-17-harmonize-residual-public-mcp-contract-conventions/task.md)
+16. [PLAT-17 Harmonize Residual Public MCP Contract Conventions](PLAT-17-harmonize-residual-public-mcp-contract-conventions/task.md)
 
 ### Server Guidance Surface
 
-16. [PLAT-18 Implement Initial MCP Prompts Guidance Surface](PLAT-18-implement-initial-mcp-prompts-guidance-surface/task.md)
+17. [PLAT-18 Implement Initial MCP Prompts Guidance Surface](PLAT-18-implement-initial-mcp-prompts-guidance-surface/task.md)
 
 ### Deferred Low-Priority Tasks
 
-17. [PLAT-06 Add SketchUp-Hosted Smoke and Fixture Coverage](PLAT-06-add-sketchup-hosted-smoke-and-fixture-coverage/task.md)
+18. [PLAT-06 Add SketchUp-Hosted Smoke and Fixture Coverage](PLAT-06-add-sketchup-hosted-smoke-and-fixture-coverage/task.md)
 
 ### Architecture Spikes
 
-18. [PLAT-07 Spike Ruby-Native MCP Runtime In SketchUp](PLAT-07-spike-ruby-native-mcp-runtime-in-sketchup/task.md)
+19. [PLAT-07 Spike Ruby-Native MCP Runtime In SketchUp](PLAT-07-spike-ruby-native-mcp-runtime-in-sketchup/task.md)
 
 ## Dependency Summary
 
@@ -102,6 +104,7 @@ The current post-seeding breakdown is intentionally smaller than the recovered 1
 | `PLAT-10` | `PLAT-09`, `PLAT-07`, ADR 2026-04-16 | eventual Python demotion or removal decision |
 | `PLAT-13` | `PLAT-10`, ADR 2026-04-16 | single-runtime repo posture after native validation removes the bridge-era compatibility path |
 | `PLAT-12` | `PLAT-10`, `PLAT-08`, `PLAT-11` | clearer Ruby support-tree layering after runtime migration ownership settles |
+| `PLAT-19` | `PLAT-12` | clearer managed terrain support-tree ownership before further terrain capability growth |
 | `PLAT-14` | `PLAT-10`, `PLAT-13` | shared native tool declaration and response conventions for future MCP surface cleanup |
 | `PLAT-15` | `STI-01`, `SEM-03`, `PLAT-14` | clearer public targeting, inventory, and generic deletion boundaries |
 | `PLAT-16` | `PLAT-14`, `PLAT-15`, `SEM-11`, `SEM-13` | residual public contract discoverability cleanup for shipped finite option sets |
@@ -127,6 +130,7 @@ The current post-seeding breakdown is intentionally smaller than the recovered 1
 - `PLAT-09` and `PLAT-10` are the post-spike adoption tasks. `PLAT-09` owns reproducible packaging and runtime foundations; `PLAT-10` owns migration of the current tool surface plus retirement of the experimental spike posture.
 - `PLAT-13` exists because `PLAT-10` intentionally stops at making Python removable. It owns the actual retirement of the Python compatibility runtime plus the resulting cleanup across docs, guidance, CI, dependencies, and package metadata, with any surviving Python limited to CI-owned release tooling rather than a repo Python project.
 - `PLAT-12` is a separate follow-on structure task. It exists to express the settled runtime layers in the support tree after the ownership migration work is far enough along, not to reopen `PLAT-10` scope.
+- `PLAT-19` applies the same structure posture inside the managed terrain capability folder. It is intentionally mechanical: file ownership, require paths, tests, and package loadability, not terrain behavior redesign.
 - `PLAT-14` is a bounded post-retirement contract-hardening task. It is intended to establish shared native tool declaration and response conventions without turning the effort into a broader selector redesign or full-catalog conformance program.
 - `PLAT-15` remains the focused public-boundary cleanup task for targeting, inventory, and generic deletion semantics after the shared native declaration work in `PLAT-14`.
 - `PLAT-16` is the bounded follow-on cleanup task for residual discoverability drift where shipped public runtime constraints are still not surfaced coherently through schema, refusal behavior, contract coverage, or docs.

@@ -9,7 +9,7 @@ require_relative '../scene_validation/scene_validation_commands'
 require_relative '../semantic/hierarchy_maintenance_commands'
 require_relative '../semantic/semantic_commands'
 require_relative '../staged_assets/staged_asset_commands'
-require_relative '../terrain/terrain_surface_commands'
+require_relative '../terrain/commands/terrain_surface_commands'
 
 module SU_MCP
   # Builds the shared Ruby command collaborators used by both runtime paths.

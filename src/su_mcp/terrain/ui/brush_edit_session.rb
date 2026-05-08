@@ -3,7 +3,7 @@
 require_relative 'brush_settings'
 require_relative 'selected_terrain_resolver'
 require_relative 'brush_coordinate_converter'
-require_relative '../terrain_surface_commands'
+require_relative '../commands/terrain_surface_commands'
 
 module SU_MCP
   module Terrain

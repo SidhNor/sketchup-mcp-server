@@ -5,8 +5,8 @@ require_relative '../../semantic/managed_object_metadata'
 require_relative '../../semantic/request_shape_contract'
 require_relative '../../semantic/request_validator'
 require_relative '../../staged_assets/asset_exemplar_metadata'
-require_relative '../../terrain/create_terrain_surface_request'
-require_relative '../../terrain/edit_terrain_surface_request'
+require_relative '../../terrain/contracts/create_terrain_surface_request'
+require_relative '../../terrain/contracts/edit_terrain_surface_request'
 
 module SU_MCP
   # Owns native MCP public tool definitions and JSON-compatible input schemas.
