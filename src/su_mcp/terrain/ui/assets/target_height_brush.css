@@ -1,0 +1,51 @@
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font: 13px/1.4 Arial, sans-serif;
+  color: #202124;
+  background: #f5f7f8;
+}
+
+.palette {
+  display: grid;
+  gap: 12px;
+  padding: 14px;
+}
+
+.row {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.mode,
+.terrain,
+.status {
+  overflow-wrap: anywhere;
+}
+
+.mode {
+  font-weight: 700;
+}
+
+.controls {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 6px;
+}
+
+input,
+select {
+  width: 100%;
+  min-height: 28px;
+}
+
+.status {
+  min-height: 36px;
+  padding: 8px;
+  border: 1px solid #c6ccd2;
+  background: #ffffff;
+}

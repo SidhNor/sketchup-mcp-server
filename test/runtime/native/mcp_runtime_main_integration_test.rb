@@ -34,6 +34,17 @@ class McpRuntimeMainIntegrationTest < Minitest::Test
     assert_includes(labels, 'Stop MCP Server')
   end
 
+  def test_main_delegates_managed_terrain_ui_installation_without_owning_brush_logic
+    main_source = File.read(File.expand_path('../../../src/su_mcp/main.rb', __dir__),
+                            encoding: 'utf-8')
+
+    assert_includes(main_source, "require_relative 'terrain/ui/installer'")
+    assert_includes(main_source, 'Terrain::UI::Installer')
+    refute_includes(main_source, 'targetElevation')
+    refute_includes(main_source, 'blendDistance')
+    refute_includes(main_source, 'Sketchup::Tool')
+  end
+
   def test_native_runtime_server_uses_the_shared_runtime_command_factory
     server = SU_MCP::Main.send(:build_native_runtime_server)
     facade = server.instance_variable_get(:@facade)

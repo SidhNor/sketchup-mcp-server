@@ -7,6 +7,7 @@ require_relative 'runtime/native/mcp_runtime_http_backend'
 require_relative 'runtime/native/mcp_runtime_loader'
 require_relative 'runtime/native/mcp_runtime_server'
 require_relative 'runtime/runtime_logger'
+require_relative 'terrain/ui/installer'
 require_relative 'version'
 
 # Namespace for the SketchUp MCP extension runtime.
@@ -28,7 +29,9 @@ module SU_MCP
     def install_menu
       return if @menu_installed
 
-      build_menu(UI.menu('Extensions').add_submenu(MENU_NAME))
+      menu = UI.menu('Extensions').add_submenu(MENU_NAME)
+      build_menu(menu)
+      install_managed_terrain_ui(menu)
       @menu_installed = true
     end
 
@@ -68,6 +71,12 @@ module SU_MCP
 
     def console_menu_actions
       [['Open Ruby Console', -> { SKETCHUP_CONSOLE.show if defined?(SKETCHUP_CONSOLE) }]]
+    end
+
+    def install_managed_terrain_ui(menu)
+      Terrain::UI::Installer.new(
+        ui_host: Terrain::UI::Installer::RealUiHost.new(menu: menu)
+      ).install
     end
 
     def build_native_runtime_server
@@ -152,6 +161,7 @@ module SU_MCP
       :build_native_runtime_transport,
       :native_runtime_menu_actions,
       :console_menu_actions,
+      :install_managed_terrain_ui,
       :available_native_runtime_status_message,
       :unavailable_native_runtime_status_message
     )
