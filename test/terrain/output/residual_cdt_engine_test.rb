@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 require_relative '../../test_helper'
-require_relative '../../../src/su_mcp/terrain/output/residual_cdt_engine'
+require_relative '../../../src/su_mcp/terrain/output/cdt/residual_cdt_engine'
 require_relative '../../../src/su_mcp/terrain/features/terrain_feature_geometry'
 require_relative '../../../src/su_mcp/terrain/state/tiled_heightmap_state'
 
@@ -43,6 +43,19 @@ class ResidualCdtEngineTest < Minitest::Test
     assert_includes(JSON.generate(result.fetch(:limitations)), 'cdt_mesh_residual_refinement')
     refute_includes(result.keys, :backend)
     refute_includes(result.keys, :candidateRow)
+  end
+
+  def test_residual_passes_use_injected_triangulation_adapter
+    adapter = RecordingTriangulationAdapter.new
+    result = run_engine(
+      state: rough_state(columns: 33, rows: 33),
+      triangulation_adapter: adapter
+    )
+
+    assert_equal('accepted', result.fetch(:status))
+    assert_operator(adapter.calls.length, :>, 1)
+    assert_operator(adapter.calls.last.fetch(:point_count), :>,
+                    adapter.calls.first.fetch(:point_count))
   end
 
   def test_smooth_state_stays_sparse_and_residual_satisfied
@@ -160,6 +173,20 @@ class ResidualCdtEngineTest < Minitest::Test
 
     def max_error(...)
       1.0
+    end
+  end
+
+  class RecordingTriangulationAdapter
+    attr_reader :calls
+
+    def initialize
+      @triangulator = SU_MCP::Terrain::CdtTriangulator.new
+      @calls = []
+    end
+
+    def triangulate(points:, constraints:)
+      calls << { point_count: points.length, constraint_count: constraints.length }
+      @triangulator.triangulate(points: points, constraints: constraints)
     end
   end
 end

@@ -1,13 +1,13 @@
 # Task: MTA-31 Enable CDT Terrain Output After Disabled Scaffold
 **Task ID**: `MTA-31`
 **Title**: `Enable CDT Terrain Output After Disabled Scaffold`
-**Status**: `draft`
+**Status**: `planned`
 **Priority**: `P1`
 **Date**: `2026-05-08`
 
 ## Linked HLD
 
-- [Managed Terrain Surface Authoring](../../../hlds/hld-managed-terrain-surface-authoring.md)
+- [Managed Terrain Surface Authoring](specifications/hlds/hld-managed-terrain-surface-authoring.md)
 
 ## Problem Statement
 
@@ -26,12 +26,15 @@ output backend as the production default until evidence supports changing that p
 
 ## Goals
 
-- Define and validate the effective feature-intent set consumed by CDT on terrains with large edit
-  histories.
-- Prove that a single new edit on a representative terrain with hundreds of prior feature intents
-  completes within an explicit production budget.
+- Implement and validate an undoable materialized effective feature-intent layer consumed by CDT on
+  terrains with large edit histories.
+- Measure a single new edit on a representative terrain with hundreds of prior feature intents
+  against the desired small-edit responsiveness target, prevent minute-scale hangs, and identify
+  remaining bottlenecks with evidence.
 - Ensure feature-intent override, deprecation, replacement, and merge semantics are respected before
-  CDT input generation.
+  CDT input generation without replaying all historical edit events on every output generation.
+- Prove repeated undo and a new edit after undo keep feature intent, effective state, and terrain
+  output on the restored branch.
 - Bound CDT input size and relevance for create/edit output without losing required active feature
   constraints.
 - Prevent CDT triangulation inputs from expanding output geometry outside the managed terrain
@@ -53,21 +56,34 @@ Scenario: current output remains the default until CDT enablement is proven
   And CDT is not attempted unless an internal enablement switch or test injection explicitly enables it
   And public MCP responses remain unchanged
 
-Scenario: effective feature-intent set is bounded and semantically correct
+Scenario: effective feature-intent state is bounded and semantically correct
   Given a managed terrain state with hundreds of historical feature intents
   And those intents include overrides, deprecated intents, replacements, and merged edit histories
-  When CDT feature geometry is prepared
-  Then only active effective feature intents are included in CDT input
+  When a new edit is merged and CDT feature geometry is prepared
+  Then the persisted terrain state contains an undoable effective feature-intent state for the
+      current branch
+  And only active effective feature intents are included in CDT input
   And superseded or deprecated intents are excluded
+  And normal CDT generation does not reinterpret the full historical edit record to decide active
+      intent
   And the resulting feature geometry records enough diagnostics to explain included and excluded counts
 
-Scenario: representative large-history edit meets a production budget
+Scenario: representative large-history edit is measured against the responsiveness target
   Given a representative managed terrain fixture with hundreds of accumulated feature intents
   When a single small target-height edit is applied
-  Then terrain output generation completes within the planned production time budget
-  And the result does not hang SketchUp or the MCP command path for minutes
+  Then the result does not hang SketchUp or the MCP command path for minutes
   And timing evidence separates feature-geometry preparation, point planning, residual metering,
       triangulation, and SketchUp mutation
+  And the task records whether the desired sub-3-second small-edit target is met, missed, or blocked
+      by specific follow-up work
+
+Scenario: undo and edit branching preserve effective intent
+  Given a managed terrain has several successful edits with materialized effective feature intent
+  When the user applies repeated SketchUp undo operations
+  And then applies a new terrain edit
+  Then the new edit merges against the restored terrain state and effective feature-intent branch
+  And superseded features from the abandoned redo branch are not resurrected
+  And generated output, saved terrain state, and diagnostics describe the same branch
 
 Scenario: CDT input selection is relevant to the current output
   Given active feature intents span regions outside the current edit influence and output relevance
@@ -97,8 +113,9 @@ Scenario: CDT module ownership is coherent
 Scenario: native triangulation decision is evidence based
   Given Ruby CDT profiling and robustness evidence has been collected on representative fixtures
   When the enablement decision is made
-  Then the task records whether Ruby CDT can meet production budgets
-  And if Ruby CDT cannot meet those budgets, a native/C++ adapter path is selected or explicitly
+  Then the task records whether Ruby CDT can approach the desired responsiveness target with bounded
+      behavior
+  And if Ruby CDT cannot approach that target, a native/C++ adapter path is selected or explicitly
       deferred with evidence
   And native-unavailable and native-input-violation posture remains deterministic and package-safe
 
@@ -142,7 +159,10 @@ Scenario: hosted SketchUp acceptance proves safe enablement
 - CDT input must be derived from production terrain state and `TerrainFeatureGeometry`, not raw
   SketchUp objects or MTA-24 candidate rows.
 - Effective feature-intent computation must handle accumulated histories, overrides, deprecations,
-  replacements, and merges deterministically.
+  replacements, and merges deterministically, and normal CDT generation must consume materialized
+  effective state rather than replaying full edit history.
+- Materialized effective feature-intent state must be saved with the terrain state so SketchUp undo
+  restores feature intent, effective intent, and terrain output coherently.
 - Performance instrumentation must separate feature-geometry preparation, point planning, residual
   metering, triangulation, gating, and SketchUp mutation.
 - Native/C++ evaluation, if pursued, must remain behind the production adapter/result envelope and
@@ -155,9 +175,10 @@ Scenario: hosted SketchUp acceptance proves safe enablement
 - `MTA-20`
 - `MTA-24`
 - `MTA-25`
-- representative large-history managed terrain fixture from MTA-25 live validation
-- [Managed Terrain Surface Authoring HLD](../../../hlds/hld-managed-terrain-surface-authoring.md)
-- [SketchUp Extension Development Guidance](../../../guidelines/sketchup-extension-development-guidance.md)
+- representative large-history managed terrain fixture from MTA-25 live validation or a deterministic
+  large-history fixture generator
+- [Managed Terrain Surface Authoring HLD](specifications/hlds/hld-managed-terrain-surface-authoring.md)
+- [SketchUp Extension Development Guidance](specifications/guidelines/sketchup-extension-development-guidance.md)
 
 ## Relationships
 
@@ -169,7 +190,7 @@ Scenario: hosted SketchUp acceptance proves safe enablement
 
 ## Related Technical Plan
 
-- none yet
+- [Technical plan](./plan.md)
 
 ## Success Metrics
 
@@ -177,8 +198,10 @@ Scenario: hosted SketchUp acceptance proves safe enablement
   enabled.
 - A representative terrain with hundreds of feature intents can accept a single small edit without
   minute-scale hangs.
-- CDT input generation reports bounded active feature counts and excludes superseded/deprecated
-  feature intents.
+- CDT input generation reports bounded active feature counts, excludes superseded/deprecated feature
+  intents, and does not replay full historical edit events during normal output generation.
+- Repeated SketchUp undo followed by a new edit preserves branch-correct feature intent, effective
+  state, diagnostics, and terrain output.
 - Profiling evidence identifies the dominant CDT cost centers on representative fixtures.
 - CDT accepted output remains inside the managed terrain domain in boundary/corridor cases.
 - Module naming and ownership clearly separate production CDT runtime, validation wrappers, adapter

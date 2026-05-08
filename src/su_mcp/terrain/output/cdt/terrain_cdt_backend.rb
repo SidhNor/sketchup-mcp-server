@@ -1,12 +1,12 @@
 # frozen_string_literal: true
 
 require_relative 'residual_cdt_engine'
-require_relative 'terrain_production_cdt_result'
+require_relative 'terrain_cdt_result'
 
 module SU_MCP
   module Terrain
-    # Translates residual CDT engine output into production accepted/fallback envelopes.
-    class TerrainProductionCdtBackend
+    # Translates residual CDT engine output into accepted/fallback envelopes.
+    class TerrainCdtBackend
       DEFAULT_POINT_BUDGET = 4096
       DEFAULT_FACE_BUDGET = 8192
       DEFAULT_RUNTIME_BUDGET = 10.0
@@ -27,8 +27,7 @@ module SU_MCP
         'feature_geometry_failed' => 'feature_geometry_failed',
         'topology_invalid' => 'topology_gate_failed',
         'topology_degraded' => 'topology_gate_failed',
-        'hard_output_geometry_violation' => 'hard_geometry_gate_failed',
-        'candidate_generation_failed' => 'adapter_exception'
+        'hard_output_geometry_violation' => 'hard_geometry_gate_failed'
       }.freeze
 
       STRICT_FAILURE_FALLBACKS = FAILURE_FALLBACKS.merge(
@@ -82,6 +81,8 @@ module SU_MCP
         accepted(engine_result)
       rescue ArgumentError, KeyError, TypeError
         fallback('input_normalization_failed', empty_engine_result(context || {}))
+      rescue TerrainTriangulationAdapter::Unavailable
+        fallback('native_unavailable', empty_engine_result(context || {}))
       rescue StandardError
         fallback('adapter_exception', empty_engine_result(context || {}))
       end
@@ -135,7 +136,7 @@ module SU_MCP
       end
 
       def accepted(engine_result)
-        TerrainProductionCdtResult.accepted(
+        TerrainCdtResult.accepted(
           mesh: engine_result.fetch(:mesh),
           metrics: engine_result.fetch(:metrics, {}),
           limits: limits_for(engine_result),
@@ -148,7 +149,7 @@ module SU_MCP
       end
 
       def fallback(reason, engine_result)
-        TerrainProductionCdtResult.fallback(
+        TerrainCdtResult.fallback(
           reason: reason,
           metrics: engine_result.fetch(:metrics, {}),
           limits: limits_for(engine_result),

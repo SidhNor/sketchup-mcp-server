@@ -5,7 +5,7 @@ require 'rake'
 require 'tmpdir'
 require 'zip'
 require_relative '../test_helper'
-require_relative '../../src/su_mcp/terrain/output/terrain_triangulation_adapter'
+require_relative '../../src/su_mcp/terrain/output/cdt/terrain_triangulation_adapter'
 
 class RuntimePackageTasksTest < Minitest::Test
   def setup
@@ -40,15 +40,14 @@ class RuntimePackageTasksTest < Minitest::Test
   def test_package_verification_covers_no_native_triangulator_fallback_posture
     package_rake = File.read(File.expand_path('../../rakelib/package.rake', __dir__),
                              encoding: 'utf-8')
-    result = SU_MCP::Terrain::TerrainTriangulationAdapter.native_unavailable.call(
-      points: [[0.0, 0.0], [1.0, 0.0], [0.0, 1.0]],
-      segments: [],
-      limits: {},
-      limitations: []
-    )
+    error = assert_raises(SU_MCP::Terrain::TerrainTriangulationAdapter::Unavailable) do
+      SU_MCP::Terrain::TerrainTriangulationAdapter.native_unavailable.triangulate(
+        points: [[0.0, 0.0], [1.0, 0.0], [0.0, 1.0]],
+        constraints: []
+      )
+    end
 
-    assert_equal('fallback', result.fetch(:status))
-    assert_equal('native_unavailable', result.fetch(:fallbackReason))
+    assert_equal('native_unavailable', error.category)
     refute_includes(package_rake, 'native_unavailable')
     refute_includes(package_rake, 'poly2tri')
   end

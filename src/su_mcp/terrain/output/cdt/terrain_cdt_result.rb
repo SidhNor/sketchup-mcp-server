@@ -2,8 +2,8 @@
 
 module SU_MCP
   module Terrain
-    # Internal production CDT result envelope. This stays below public terrain responses.
-    class TerrainProductionCdtResult
+    # Internal CDT result envelope. This stays below public terrain responses.
+    class TerrainCdtResult
       FALLBACK_REASONS = %w[
         cdt_disabled feature_geometry_failed native_unavailable native_input_violation
         input_normalization_failed unsupported_constraint_shape intersecting_constraints

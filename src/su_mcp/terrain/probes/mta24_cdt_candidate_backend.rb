@@ -1,12 +1,12 @@
 # frozen_string_literal: true
 
-require_relative 'cdt_triangulator'
-require_relative 'residual_cdt_engine'
+require_relative '../output/cdt/cdt_triangulator'
+require_relative '../output/cdt/residual_cdt_engine'
 
 module SU_MCP
   module Terrain
-    # MTA-24 comparison-only CDT candidate row wrapper over the production residual engine.
-    class CdtTerrainCandidateBackend
+    # MTA-24 comparison-only CDT candidate row wrapper over the residual CDT engine.
+    class Mta24CdtCandidateBackend
       BACKEND = 'mta24_constrained_delaunay_cdt_prototype'
       RESULT_SCHEMA_VERSION = 1
       TRIANGULATOR_KIND = 'ruby_bowyer_watson_constraint_recovery'

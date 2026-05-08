@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-require_relative '../output/cdt_terrain_candidate_backend'
+require_relative 'mta24_cdt_candidate_backend'
 require_relative '../output/intent_aware_enhanced_adaptive_grid_prototype'
 require_relative 'mta24_hosted_bakeoff_probe'
 require_relative '../features/terrain_feature_geometry_builder'
@@ -17,7 +17,7 @@ module SU_MCP
       def initialize(
         builder: TerrainFeatureGeometryBuilder.new,
         adaptive: IntentAwareEnhancedAdaptiveGridPrototype.new,
-        cdt: CdtTerrainCandidateBackend.new
+        cdt: Mta24CdtCandidateBackend.new
       )
         @builder = builder
         @adaptive = adaptive
@@ -127,7 +127,7 @@ module SU_MCP
 
       def not_applicable_rows(baseline)
         [CURRENT_BACKEND, IntentAwareEnhancedAdaptiveGridPrototype::BACKEND,
-         CdtTerrainCandidateBackend::BACKEND].map do |backend|
+         Mta24CdtCandidateBackend::BACKEND].map do |backend|
           {
             caseId: baseline.fetch('caseId'),
             resultSchemaVersion: 1,
@@ -328,7 +328,7 @@ module SU_MCP
       end
 
       def cdt_viable?(rows)
-        cdt_rows = rows.select { |row| row.fetch(:backend, nil) == CdtTerrainCandidateBackend::BACKEND }
+        cdt_rows = rows.select { |row| row.fetch(:backend, nil) == Mta24CdtCandidateBackend::BACKEND }
         return false if cdt_rows.empty?
 
         cdt_rows.all? { |row| cdt_row_viable?(row) }

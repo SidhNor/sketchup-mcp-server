@@ -3,7 +3,7 @@
 require 'set'
 
 require_relative '../../semantic/length_converter'
-require_relative 'terrain_production_cdt_backend'
+require_relative 'cdt/terrain_cdt_backend'
 require_relative 'terrain_output_plan'
 
 module SU_MCP
@@ -142,7 +142,7 @@ module SU_MCP
       def default_cdt_backend
         return nil unless DEFAULT_CDT_ENABLED
 
-        TerrainProductionCdtBackend.new
+        TerrainCdtBackend.new
       end
 
       def generate_cdt(owner:, state:, terrain_state_summary:, plan:, feature_context:)

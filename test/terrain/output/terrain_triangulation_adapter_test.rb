@@ -1,38 +1,59 @@
 # frozen_string_literal: true
 
 require_relative '../../test_helper'
-require_relative '../../../src/su_mcp/terrain/output/terrain_triangulation_adapter'
+require_relative '../../../src/su_mcp/terrain/output/cdt/terrain_triangulation_adapter'
 
 class TerrainTriangulationAdapterTest < Minitest::Test
-  def test_native_unavailable_adapter_returns_internal_fallback_envelope_without_binary
-    result = SU_MCP::Terrain::TerrainTriangulationAdapter.native_unavailable.call(request)
+  def test_native_unavailable_adapter_raises_typed_low_level_error_without_binary_detail
+    error = assert_raises(SU_MCP::Terrain::TerrainTriangulationAdapter::Unavailable) do
+      SU_MCP::Terrain::TerrainTriangulationAdapter.native_unavailable.triangulate(
+        points: request.fetch(:points),
+        constraints: request.fetch(:segments)
+      )
+    end
 
-    assert_equal('fallback', result.fetch(:status))
-    assert_equal('native_unavailable', result.fetch(:fallbackReason))
-    refute_includes(JSON.generate(result), 'LoadError')
-    refute_includes(JSON.generate(result), '.so')
+    assert_equal('native_unavailable', error.category)
+    refute_includes(error.message, 'LoadError')
+    refute_includes(error.message, '.so')
   end
 
-  def test_adapter_exception_is_sanitized
+  def test_triangulator_exception_bubbles_to_backend_for_sanitized_fallback
     adapter = SU_MCP::Terrain::TerrainTriangulationAdapter.ruby_cdt(
       triangulator: RaisingTriangulator.new
     )
 
-    result = adapter.call(request)
-
-    assert_equal('fallback', result.fetch(:status))
-    assert_equal('adapter_exception', result.fetch(:fallbackReason))
-    refute_includes(JSON.generate(result), 'boom')
-    refute_includes(JSON.generate(result), 'RaisingTriangulator')
+    assert_raises(RuntimeError) do
+      adapter.triangulate(points: request.fetch(:points), constraints: request.fetch(:segments))
+    end
   end
 
-  def test_ruby_and_native_stub_adapters_share_result_shape
-    ruby_result = SU_MCP::Terrain::TerrainTriangulationAdapter.ruby_cdt(
+  def test_ruby_adapter_returns_raw_triangulation_result
+    result = SU_MCP::Terrain::TerrainTriangulationAdapter.ruby_cdt(
       triangulator: SuccessfulTriangulator.new
-    ).call(request)
-    native_result = SU_MCP::Terrain::TerrainTriangulationAdapter.native_unavailable.call(request)
+    ).triangulate(points: request.fetch(:points), constraints: request.fetch(:segments))
 
-    assert_equal(ruby_result.keys.sort, native_result.keys.sort)
+    assert_equal(
+      %i[
+        constrainedEdgeCoverage
+        constrainedEdges
+        delaunayViolationCount
+        limitations
+        triangles
+        vertices
+      ],
+      result.keys.sort
+    )
+    assert_equal([[0, 1, 2]], result.fetch(:triangles))
+    refute_includes(result.keys, :status)
+    refute_includes(result.keys, :fallbackReason)
+  end
+
+  def test_call_alias_uses_low_level_keyword_contract
+    result = SU_MCP::Terrain::TerrainTriangulationAdapter.ruby_cdt(
+      triangulator: SuccessfulTriangulator.new
+    ).call(points: request.fetch(:points), constraints: request.fetch(:segments))
+
+    assert_equal([[0, 1, 2]], result.fetch(:triangles))
   end
 
   private
@@ -57,6 +78,9 @@ class TerrainTriangulationAdapterTest < Minitest::Test
       {
         vertices: [[0.0, 0.0], [1.0, 0.0], [0.0, 1.0]],
         triangles: [[0, 1, 2]],
+        constrainedEdges: [],
+        constrainedEdgeCoverage: 1.0,
+        delaunayViolationCount: 0,
         limitations: []
       }
     end

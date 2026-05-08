@@ -2,7 +2,7 @@
 
 module SU_MCP
   module Terrain
-    # Selects comparison-only CDT seed points from terrain boundary and feature geometry intent.
+    # Selects CDT seed points from terrain boundary and feature geometry intent.
     class CdtTerrainPointPlanner
       POINT_KEY_PRECISION = 9
 

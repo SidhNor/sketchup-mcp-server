@@ -1,11 +1,11 @@
 # frozen_string_literal: true
 
 require_relative '../../test_helper'
-require_relative '../../../src/su_mcp/terrain/output/cdt_terrain_candidate_backend'
+require_relative '../../../src/su_mcp/terrain/probes/mta24_cdt_candidate_backend'
 require_relative '../../../src/su_mcp/terrain/features/terrain_feature_geometry'
 require_relative '../../../src/su_mcp/terrain/state/tiled_heightmap_state'
 
-class CdtTerrainCandidateBackendTest < Minitest::Test
+class Mta24CdtCandidateBackendTest < Minitest::Test
   BASIS = {
     'xAxis' => [1.0, 0.0, 0.0],
     'yAxis' => [0.0, 1.0, 0.0],
@@ -25,9 +25,9 @@ class CdtTerrainCandidateBackendTest < Minitest::Test
     refute_includes(JSON.generate(result), 'Sketchup::')
   end
 
-  def test_candidate_backend_wraps_production_residual_engine_without_changing_row_shape
+  def test_candidate_backend_wraps_residual_engine_without_changing_row_shape
     engine = ResidualEngineSpy.new
-    result = SU_MCP::Terrain::CdtTerrainCandidateBackend.new(
+    result = SU_MCP::Terrain::Mta24CdtCandidateBackend.new(
       residual_engine: engine
     ).run(state: state, feature_geometry: feature_geometry,
           base_tolerance: 0.05, max_point_budget: 256,
@@ -285,29 +285,29 @@ class CdtTerrainCandidateBackendTest < Minitest::Test
   end
 
   def backend
-    @backend ||= SU_MCP::Terrain::CdtTerrainCandidateBackend.new
+    @backend ||= SU_MCP::Terrain::Mta24CdtCandidateBackend.new
   end
 
   def backend_with_pruning_triangulator
-    SU_MCP::Terrain::CdtTerrainCandidateBackend.new(
+    SU_MCP::Terrain::Mta24CdtCandidateBackend.new(
       triangulator: PruningTriangulator.new
     )
   end
 
   def backend_with_retriangulating_triangulator
-    SU_MCP::Terrain::CdtTerrainCandidateBackend.new(
+    SU_MCP::Terrain::Mta24CdtCandidateBackend.new(
       triangulator: RetriangulatingTriangulator.new
     )
   end
 
   def backend_with_repairing_triangulator
-    SU_MCP::Terrain::CdtTerrainCandidateBackend.new(
+    SU_MCP::Terrain::Mta24CdtCandidateBackend.new(
       triangulator: RepairingTriangulator.new
     )
   end
 
   def backend_with_residual_settings(point_ratio:, max_passes:, batch_size:)
-    SU_MCP::Terrain::CdtTerrainCandidateBackend.new(
+    SU_MCP::Terrain::Mta24CdtCandidateBackend.new(
       residual_refinement_point_ratio: point_ratio,
       residual_refinement_max_passes: max_passes,
       residual_refinement_batch_size: batch_size

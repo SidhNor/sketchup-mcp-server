@@ -1,9 +1,9 @@
 # frozen_string_literal: true
 
 require_relative '../../test_helper'
-require_relative '../../../src/su_mcp/terrain/output/terrain_production_cdt_backend'
+require_relative '../../../src/su_mcp/terrain/output/cdt/terrain_cdt_backend'
 
-class TerrainProductionCdtBackendTest < Minitest::Test
+class TerrainCdtBackendTest < Minitest::Test
   def test_disabled_gate_returns_cdt_disabled_without_engine_call
     engine = RecordingResidualEngine.new(engine_result)
     result = backend(enabled: false, residual_engine: engine).build(**input)
@@ -164,6 +164,13 @@ class TerrainProductionCdtBackendTest < Minitest::Test
     assert_equal('point_budget_exceeded', result.fetch(:fallbackReason))
   end
 
+  def test_native_unavailable_adapter_error_maps_to_native_unavailable_fallback
+    result = backend(residual_engine: NativeUnavailableResidualEngine.new).build(**input)
+
+    assert_equal('fallback', result.fetch(:status))
+    assert_equal('native_unavailable', result.fetch(:fallbackReason))
+  end
+
   def test_residual_engine_exception_maps_to_adapter_exception_fallback
     result = backend(residual_engine: RaisingResidualEngine.new).build(**input)
 
@@ -173,17 +180,17 @@ class TerrainProductionCdtBackendTest < Minitest::Test
     refute_includes(JSON.generate(result), 'RaisingResidualEngine')
   end
 
-  def test_production_cdt_files_do_not_depend_on_probe_harness_vocabulary
-    production_files = %w[
+  def test_cdt_runtime_files_do_not_depend_on_probe_harness_vocabulary
+    runtime_files = %w[
       residual_cdt_engine.rb
-      terrain_production_cdt_result.rb
+      terrain_cdt_result.rb
       terrain_cdt_primitive_request.rb
       terrain_triangulation_adapter.rb
-      terrain_production_cdt_backend.rb
+      terrain_cdt_backend.rb
     ].map do |name|
-      File.expand_path("../../../src/su_mcp/terrain/output/#{name}", __dir__)
+      File.expand_path("../../../src/su_mcp/terrain/output/cdt/#{name}", __dir__)
     end
-    serialized = production_files.map { |path| File.read(path, encoding: 'utf-8') }.join("\n")
+    serialized = runtime_files.map { |path| File.read(path, encoding: 'utf-8') }.join("\n")
 
     %w[
       Mta24 mta24 candidateRow candidateRows comparisonRows HostedBakeoff ThreeWay
@@ -196,7 +203,7 @@ class TerrainProductionCdtBackendTest < Minitest::Test
   private
 
   def backend(**options)
-    SU_MCP::Terrain::TerrainProductionCdtBackend.new(**options)
+    SU_MCP::Terrain::TerrainCdtBackend.new(**options)
   end
 
   def input
@@ -257,6 +264,12 @@ class TerrainProductionCdtBackendTest < Minitest::Test
   class RaisingResidualEngine
     def run(...)
       raise 'boom'
+    end
+  end
+
+  class NativeUnavailableResidualEngine
+    def run(...)
+      raise SU_MCP::Terrain::TerrainTriangulationAdapter::Unavailable
     end
   end
 end

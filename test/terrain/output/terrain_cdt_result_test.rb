@@ -1,9 +1,9 @@
 # frozen_string_literal: true
 
 require_relative '../../test_helper'
-require_relative '../../../src/su_mcp/terrain/output/terrain_production_cdt_result'
+require_relative '../../../src/su_mcp/terrain/output/cdt/terrain_cdt_result'
 
-class TerrainProductionCdtResultTest < Minitest::Test
+class TerrainCdtResultTest < Minitest::Test
   EXPECTED_FALLBACK_REASONS = %w[
     cdt_disabled feature_geometry_failed native_unavailable native_input_violation
     input_normalization_failed unsupported_constraint_shape intersecting_constraints
@@ -21,12 +21,12 @@ class TerrainProductionCdtResultTest < Minitest::Test
   def test_closed_fallback_reason_set_matches_plan
     assert_equal(
       EXPECTED_FALLBACK_REASONS,
-      SU_MCP::Terrain::TerrainProductionCdtResult::FALLBACK_REASONS
+      SU_MCP::Terrain::TerrainCdtResult::FALLBACK_REASONS
     )
   end
 
-  def test_accepted_envelope_is_json_safe_and_contains_production_fields
-    result = SU_MCP::Terrain::TerrainProductionCdtResult.accepted(
+  def test_accepted_envelope_is_json_safe_and_contains_runtime_fields
+    result = SU_MCP::Terrain::TerrainCdtResult.accepted(
       mesh: { vertices: [[0.0, 0.0, 0.0]], triangles: [[0, 1, 2]] },
       metrics: { faceCount: 1, vertexCount: 3 },
       limits: { pointBudget: 256 },
@@ -44,7 +44,7 @@ class TerrainProductionCdtResultTest < Minitest::Test
   end
 
   def test_fallback_envelope_uses_closed_reason_and_sanitized_details
-    result = SU_MCP::Terrain::TerrainProductionCdtResult.fallback(
+    result = SU_MCP::Terrain::TerrainCdtResult.fallback(
       reason: 'adapter_exception',
       details: { errorClass: 'RuntimeError', backtrace: ['internal.rb:1'] },
       metrics: {},
@@ -64,7 +64,7 @@ class TerrainProductionCdtResultTest < Minitest::Test
   end
 
   def test_envelope_sanitizes_internal_vocabulary_without_candidate_row_input
-    result = SU_MCP::Terrain::TerrainProductionCdtResult.fallback(
+    result = SU_MCP::Terrain::TerrainCdtResult.fallback(
       reason: 'adapter_exception',
       metrics: {
         triangulatorKind: 'ruby_bowyer_watson_constraint_recovery',

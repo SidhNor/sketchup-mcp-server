@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 require_relative '../../test_helper'
-require_relative '../../../src/su_mcp/terrain/output/cdt_height_error_meter'
+require_relative '../../../src/su_mcp/terrain/output/cdt/cdt_height_error_meter'
 require_relative '../../../src/su_mcp/terrain/features/terrain_feature_geometry'
 require_relative '../../../src/su_mcp/terrain/state/tiled_heightmap_state'
 

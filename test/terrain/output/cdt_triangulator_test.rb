@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 require_relative '../../test_helper'
-require_relative '../../../src/su_mcp/terrain/output/cdt_triangulator'
+require_relative '../../../src/su_mcp/terrain/output/cdt/cdt_triangulator'
 
 class CdtTriangulatorTest < Minitest::Test
   def test_unconstrained_square_produces_delaunay_valid_mesh

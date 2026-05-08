@@ -4,11 +4,11 @@ require 'json'
 
 require_relative 'cdt_height_error_meter'
 require_relative 'cdt_terrain_point_planner'
-require_relative 'cdt_triangulator'
+require_relative 'terrain_triangulation_adapter'
 
 module SU_MCP
   module Terrain
-    # Production-owned residual CDT engine extracted from the validated CDT stack.
+    # Residual CDT engine extracted from the validated CDT stack.
     class ResidualCdtEngine # rubocop:disable Metrics/ClassLength
       RESIDUAL_REFINEMENT_POINT_RATIO = 1.0
       RESIDUAL_REFINEMENT_BATCH_SIZE = 128
@@ -28,14 +28,17 @@ module SU_MCP
       def initialize(
         point_planner: CdtTerrainPointPlanner.new,
         height_error_meter: CdtHeightErrorMeter.new,
-        triangulator: CdtTriangulator.new,
+        triangulation_adapter: nil,
+        triangulator: nil,
         residual_refinement_point_ratio: RESIDUAL_REFINEMENT_POINT_RATIO,
         residual_refinement_max_passes: RESIDUAL_REFINEMENT_MAX_PASSES,
         residual_refinement_batch_size: RESIDUAL_REFINEMENT_BATCH_SIZE
       )
         @point_planner = point_planner
         @height_error_meter = height_error_meter
-        @triangulator = triangulator
+        @triangulation_adapter = triangulation_adapter || TerrainTriangulationAdapter.ruby_cdt(
+          triangulator: triangulator || CdtTriangulator.new
+        )
         @residual_refinement_point_ratio = normalized_residual_refinement_point_ratio(
           residual_refinement_point_ratio
         )
@@ -62,7 +65,7 @@ module SU_MCP
 
       private
 
-      attr_reader :point_planner, :height_error_meter, :triangulator,
+      attr_reader :point_planner, :height_error_meter, :triangulation_adapter,
                   :residual_refinement_point_ratio, :residual_refinement_max_passes,
                   :residual_refinement_batch_size
 
@@ -129,7 +132,7 @@ module SU_MCP
       end
 
       def triangulated_mesh(state, normalized, constraints)
-        triangulation = triangulator.triangulate(
+        triangulation = triangulation_adapter.triangulate(
           points: normalized.fetch(:points),
           constraints: constraints
         )
