@@ -49,6 +49,18 @@ class TiledHeightmapStateTest < Minitest::Test
     assert_equal([10.0, 2.0, 3.0, 4.0, 5.0, 12.0], edited.elevations)
   end
 
+  def test_feature_intent_effective_index_survives_state_round_trip_and_feature_update
+    state = build_state(feature_intent: feature_intent_with_effective_index)
+    restored = SU_MCP::Terrain::TiledHeightmapState.from_h(state.to_h)
+    updated = restored.with_feature_intent(restored.feature_intent)
+
+    assert_equal(
+      feature_intent_with_effective_index.fetch('effectiveIndex'),
+      restored.feature_intent.fetch('effectiveIndex')
+    )
+    assert_equal(restored.feature_intent, updated.feature_intent)
+  end
+
   def test_default_feature_intent_is_compact_schema_v3_payload
     state = build_state
 
@@ -83,16 +95,26 @@ class TiledHeightmapStateTest < Minitest::Test
     {
       'schemaVersion' => 3,
       'revision' => 2,
+      'effectiveRevision' => 2,
       'features' => [
         {
           'id' => 'feature:target_region:explicit_edit:region-a:aaaaaaaaaaaa',
           'kind' => 'target_region',
           'sourceMode' => 'explicit_edit',
+          'semanticScope' => 'region-a',
+          'strengthClass' => 'soft',
           'roles' => ['boundary'],
           'priority' => 30,
           'payload' => { 'region' => { 'type' => 'rectangle' } },
           'affectedWindow' => { 'min' => { 'column' => 0, 'row' => 0 },
                                 'max' => { 'column' => 1, 'row' => 1 } },
+          'relevanceWindow' => { 'min' => { 'column' => 0, 'row' => 0 },
+                                 'max' => { 'column' => 1, 'row' => 1 } },
+          'lifecycle' => {
+            'status' => 'active',
+            'supersededBy' => nil,
+            'updatedAtRevision' => 2
+          },
           'provenance' => {
             'originClass' => 'edit_terrain_surface',
             'originOperation' => 'target_height',
@@ -101,7 +123,27 @@ class TiledHeightmapStateTest < Minitest::Test
           }
         }
       ],
+      'effectiveIndex' => {
+        'effectiveRevision' => 2,
+        'sourceDigest' => 'a' * 64,
+        'activeIdsByStrength' => {
+          'hard' => [],
+          'firm' => [],
+          'soft' => ['feature:target_region:explicit_edit:region-a:aaaaaaaaaaaa']
+        },
+        'countsByStatus' => {
+          'active' => 1,
+          'superseded' => 0,
+          'deprecated' => 0,
+          'retired' => 0
+        },
+        'countsByStrength' => { 'hard' => 0, 'firm' => 0, 'soft' => 1 }
+      },
       'generation' => SU_MCP::Terrain::FeatureIntentSet.default_h.fetch('generation')
     }
+  end
+
+  def feature_intent_with_effective_index
+    feature_intent
   end
 end

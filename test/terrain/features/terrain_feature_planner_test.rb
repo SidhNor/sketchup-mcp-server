@@ -134,6 +134,194 @@ class TerrainFeaturePlannerTest < Minitest::Test
     assert_match(/\A[a-f0-9]{64}\z/, result.dig(:context, :featureGeometryDigest))
   end
 
+  def test_prepare_uses_effective_active_features_for_constraints_and_cdt_geometry
+    active = feature('fixed_control').merge(
+      'id' => 'feature:fixed_control:explicit_edit:active-fixed:aaaaaaaaaaaa',
+      'semanticScope' => 'active-fixed',
+      'payload' => { 'control' => { 'point' => { 'x' => 1.0, 'y' => 1.0 } } }
+    )
+    retired = feature('fixed_control').merge(
+      'id' => 'feature:fixed_control:explicit_edit:retired-fixed:bbbbbbbbbbbb',
+      'semanticScope' => 'retired-fixed',
+      'payload' => { 'control' => { 'point' => { 'x' => 2.0, 'y' => 2.0 } } },
+      'lifecycle' => { 'status' => 'retired', 'updatedAtRevision' => 2 }
+    )
+
+    result = normal_planner.prepare(
+      state: state_with_features([active, retired]),
+      terrain_state_summary: { digest: 'digest-feature' },
+      include_feature_geometry: true
+    )
+
+    assert_equal(1, result.dig(:context, :constraintCount))
+    assert_equal(['feature:fixed_control:explicit_edit:active-fixed:aaaaaaaaaaaa'],
+                 result.dig(:context, :constraints).map { |item| item.fetch(:id) })
+    assert_equal(1, result.dig(:context, :featureGeometry).output_anchor_candidates.length)
+  end
+
+  def test_prepare_ignores_retired_broken_hard_geometry
+    active = feature('fixed_control').merge(
+      'id' => 'feature:fixed_control:explicit_edit:active-fixed:aaaaaaaaaaaa',
+      'semanticScope' => 'active-fixed',
+      'payload' => { 'control' => { 'point' => { 'x' => 1.0, 'y' => 1.0 } } }
+    )
+    retired_broken_preserve = feature('preserve_region').merge(
+      'id' => 'feature:preserve_region:explicit_edit:old-preserve:bbbbbbbbbbbb',
+      'semanticScope' => 'old-preserve',
+      'roles' => %w[protected boundary],
+      'payload' => { 'region' => { 'type' => 'polygon' } },
+      'lifecycle' => { 'status' => 'retired', 'updatedAtRevision' => 2 }
+    )
+
+    result = normal_planner.prepare(
+      state: state_with_features([retired_broken_preserve, active]),
+      terrain_state_summary: { digest: 'digest-feature' },
+      include_feature_geometry: true
+    )
+    geometry = result.dig(:context, :featureGeometry)
+
+    assert_equal('prepared', result.fetch(:outcome))
+    assert_equal('none', geometry.failure_category)
+    assert_empty(geometry.limitations)
+    assert_equal(1, geometry.output_anchor_candidates.length)
+  end
+
+  def test_prepare_large_history_uses_effective_active_relevant_records_only
+    active = feature('fixed_control').merge(
+      'id' => 'feature:fixed_control:explicit_edit:active-fixed:aaaaaaaaaaaa',
+      'semanticScope' => 'active-fixed',
+      'payload' => { 'control' => { 'point' => { 'x' => 1.0, 'y' => 1.0 } } }
+    )
+    historical = 50.times.map do |index|
+      feature('target_region').merge(
+        'id' => format(
+          'feature:target_region:explicit_edit:old-%<index>02d:%<suffix>012x',
+          index: index,
+          suffix: index
+        ),
+        'semanticScope' => "old-#{index}",
+        'roles' => %w[support falloff],
+        'lifecycle' => { 'status' => 'superseded', 'updatedAtRevision' => index + 1 }
+      )
+    end
+
+    result = normal_planner.prepare(
+      state: state_with_features(historical + [active]),
+      terrain_state_summary: { digest: 'digest-feature' },
+      include_feature_geometry: true,
+      selection_window: output_window
+    )
+
+    assert_equal(1, result.dig(:context, :constraintCount))
+    assert_equal(['feature:fixed_control:explicit_edit:active-fixed:aaaaaaaaaaaa'],
+                 result.dig(:context, :constraints).map { |item| item.fetch(:id) })
+    assert_equal(1, result.dig(:context, :featureGeometry).output_anchor_candidates.length)
+  end
+
+  def test_prepare_keeps_hard_features_and_bounds_soft_features_by_selection_window
+    hard = feature('fixed_control').merge(
+      'id' => 'feature:fixed_control:explicit_edit:hard-far:aaaaaaaaaaaa',
+      'semanticScope' => 'hard-far',
+      'affectedWindow' => far_window,
+      'relevanceWindow' => far_window,
+      'payload' => { 'control' => { 'point' => { 'x' => 1.0, 'y' => 1.0 } } }
+    )
+    soft_near = feature('target_region').merge(
+      'id' => 'feature:target_region:explicit_edit:soft-near:bbbbbbbbbbbb',
+      'semanticScope' => 'soft-near',
+      'roles' => %w[support falloff],
+      'affectedWindow' => output_window,
+      'relevanceWindow' => output_window
+    )
+    soft_far = feature('target_region').merge(
+      'id' => 'feature:target_region:explicit_edit:soft-far:cccccccccccc',
+      'semanticScope' => 'soft-far',
+      'roles' => %w[support falloff],
+      'affectedWindow' => far_window,
+      'relevanceWindow' => far_window
+    )
+
+    result = normal_planner.prepare(
+      state: state_with_features([soft_far, hard, soft_near]),
+      terrain_state_summary: { digest: 'digest-feature' },
+      include_feature_geometry: true,
+      selection_window: output_window
+    )
+
+    assert_equal(
+      %w[
+        feature:fixed_control:explicit_edit:hard-far:aaaaaaaaaaaa
+        feature:target_region:explicit_edit:soft-near:bbbbbbbbbbbb
+      ],
+      result.dig(:context, :constraints).map { |item| item.fetch(:id) }.sort
+    )
+  end
+
+  def test_prepare_reports_effective_selection_diagnostics_for_large_history
+    active_hard = feature('fixed_control').merge(
+      'id' => 'feature:fixed_control:explicit_edit:hard-active:aaaaaaaaaaaa',
+      'semanticScope' => 'hard-active',
+      'payload' => { 'control' => { 'point' => { 'x' => 1.0, 'y' => 1.0 } } }
+    )
+    active_soft_near = feature('target_region').merge(
+      'id' => 'feature:target_region:explicit_edit:soft-near:bbbbbbbbbbbb',
+      'semanticScope' => 'soft-near',
+      'roles' => %w[support falloff],
+      'affectedWindow' => output_window,
+      'relevanceWindow' => output_window
+    )
+    active_soft_far = feature('target_region').merge(
+      'id' => 'feature:target_region:explicit_edit:soft-far:cccccccccccc',
+      'semanticScope' => 'soft-far',
+      'roles' => %w[support falloff],
+      'affectedWindow' => far_window,
+      'relevanceWindow' => far_window
+    )
+    historical = 240.times.map do |index|
+      feature('target_region').merge(
+        'id' => format(
+          'feature:target_region:explicit_edit:history-%<index>03d:%<suffix>012x',
+          index: index,
+          suffix: index
+        ),
+        'semanticScope' => "history-#{index}",
+        'roles' => %w[support falloff],
+        'lifecycle' => { 'status' => 'superseded', 'updatedAtRevision' => index + 1 }
+      )
+    end
+
+    result = normal_planner.prepare(
+      state: state_with_features(historical + [active_soft_far, active_hard, active_soft_near]),
+      terrain_state_summary: { digest: 'digest-feature' },
+      include_feature_geometry: true,
+      selection_window: output_window
+    )
+
+    assert_equal(
+      {
+        active: 3,
+        included: 2,
+        excludedByStatus: 240,
+        excludedByRelevance: 1,
+        includedByStrength: { hard: 1, firm: 0, soft: 1 }
+      },
+      result.dig(:context, :featureSelectionDiagnostics)
+    )
+    assert_equal(2, result.dig(:context, :constraintCount))
+  end
+
+  def test_prepare_refuses_stale_effective_index_without_public_feature_leak
+    result = normal_planner.prepare(
+      state: state_with_features([feature('fixed_control')], stale_effective_index: true),
+      terrain_state_summary: { digest: 'digest-feature' },
+      include_feature_geometry: true
+    )
+
+    assert_equal('refused', result.fetch(:outcome))
+    assert_equal('terrain_feature_effective_index_invalid', result.dig(:refusal, :code))
+    refute_public_feature_leak(result.fetch(:refusal))
+  end
+
   def test_prepare_omits_feature_geometry_when_cdt_output_is_not_enabled
     result = planner.prepare(state: state_with_features([feature('fixed_control')]),
                              terrain_state_summary: { digest: 'digest-feature' })
@@ -187,15 +375,18 @@ class TerrainFeaturePlannerTest < Minitest::Test
     @normal_planner ||= SU_MCP::Terrain::TerrainFeaturePlanner.new
   end
 
-  def state_with_features(features)
-    build_state.with_feature_intent(
-      {
-        'schemaVersion' => 3,
-        'revision' => 1,
-        'features' => features,
-        'generation' => SU_MCP::Terrain::FeatureIntentSet.default_h.fetch('generation')
-      }
-    )
+  def state_with_features(features, stale_effective_index: false)
+    feature_intent = SU_MCP::Terrain::FeatureIntentSet.new(
+      'schemaVersion' => 3,
+      'revision' => 1,
+      'features' => features,
+      'generation' => SU_MCP::Terrain::FeatureIntentSet.default_h.fetch('generation')
+    ).to_h
+    if stale_effective_index
+      feature_intent['effectiveIndex'] = feature_intent.fetch('effectiveIndex')
+                                                       .merge('sourceDigest' => '0' * 64)
+    end
+    build_state.with_feature_intent(feature_intent)
   end
 
   def build_state(elevations: Array.new(4, 1.0))
@@ -227,6 +418,14 @@ class TerrainFeaturePlannerTest < Minitest::Test
         'updatedAtRevision' => 1
       }
     }
+  end
+
+  def output_window
+    { 'min' => { 'column' => 0, 'row' => 0 }, 'max' => { 'column' => 1, 'row' => 1 } }
+  end
+
+  def far_window
+    { 'min' => { 'column' => 10, 'row' => 10 }, 'max' => { 'column' => 12, 'row' => 12 } }
   end
 
   def refute_public_feature_leak(result)

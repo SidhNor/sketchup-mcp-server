@@ -71,23 +71,28 @@ module SU_MCP
 
       def build_result(request)
         started = Process.clock_gettime(Process::CLOCK_MONOTONIC)
-        normalized = normalize_input(request)
+        phase_timings = empty_phase_timings
+        normalized = timed_normalize_input(request, phase_timings)
         budget_status = budget_status_for(normalized, request.max_point_budget)
-        constraints = if budget_status == 'max_point_budget_exceeded'
-                        []
-                      else
-                        normalized.fetch(:segments)
-                      end
-        triangulation, mesh = triangulated_mesh(request.state, normalized, constraints)
-        if budget_status == 'ok'
-          triangulation, mesh = refine_mesh_residuals(
-            request: request,
-            normalized: normalized,
-            constraints: constraints,
-            triangulation: triangulation,
-            mesh: mesh
-          )
+        unless budget_status == 'ok'
+          return budget_limited_result(request, normalized, budget_status, phase_timings)
         end
+
+        constraints = normalized.fetch(:segments)
+        triangulation, mesh = timed_triangulated_mesh(
+          request,
+          normalized,
+          constraints,
+          phase_timings
+        )
+        triangulation, mesh = timed_refine_mesh_residuals(
+          request: request,
+          normalized: normalized,
+          constraints: constraints,
+          triangulation: triangulation,
+          mesh: mesh,
+          phase_timings: phase_timings
+        )
         budget_status = face_budget_status(mesh, budget_status, request.max_face_budget)
         budget_status = runtime_budget_status(started, budget_status, request.max_runtime_budget)
         metrics = metrics_for(
@@ -96,10 +101,78 @@ module SU_MCP
           mesh: mesh,
           triangulation: triangulation,
           budget_status: budget_status,
-          started: started
+          started: started,
+          phase_timings: phase_timings
         )
         engine_result(request: request, normalized: normalized, triangulation: triangulation,
-                      mesh: mesh, metrics: metrics, budget_status: budget_status)
+                      mesh: mesh, metrics: metrics, budget_status: budget_status,
+                      phase_timings: phase_timings, started: started)
+      end
+
+      def timed_normalize_input(request, phase_timings)
+        phase_started = Process.clock_gettime(Process::CLOCK_MONOTONIC)
+        normalized = normalize_input(request)
+        elapsed = Process.clock_gettime(Process::CLOCK_MONOTONIC) - phase_started
+        phase_timings[:inputNormalizationSeconds] = elapsed
+        phase_timings[:pointPlanningSeconds] = elapsed
+        normalized
+      end
+
+      def timed_triangulated_mesh(request, normalized, constraints, phase_timings)
+        phase_started = Process.clock_gettime(Process::CLOCK_MONOTONIC)
+        result = triangulated_mesh(request.state, normalized, constraints)
+        phase_timings[:triangulationSeconds] +=
+          Process.clock_gettime(Process::CLOCK_MONOTONIC) - phase_started
+        result
+      end
+
+      def timed_refine_mesh_residuals(request:, normalized:, constraints:, triangulation:, mesh:,
+                                      phase_timings:)
+        phase_started = Process.clock_gettime(Process::CLOCK_MONOTONIC)
+        result = refine_mesh_residuals(
+          request: request,
+          normalized: normalized,
+          constraints: constraints,
+          triangulation: triangulation,
+          mesh: mesh
+        )
+        phase_timings[:residualRefinementSeconds] =
+          Process.clock_gettime(Process::CLOCK_MONOTONIC) - phase_started
+        result
+      end
+
+      def budget_limited_result(request, normalized, budget_status, phase_timings)
+        mesh = { vertices: [], triangles: [] }
+        triangulation = {
+          vertices: [],
+          triangles: [],
+          constrainedEdgeCoverage: 0.0,
+          constrainedEdges: [],
+          delaunayViolationCount: 0,
+          limitations: []
+        }
+        started = Process.clock_gettime(Process::CLOCK_MONOTONIC)
+        metrics = metrics_for(
+          request: request,
+          normalized: normalized,
+          mesh: mesh,
+          triangulation: triangulation,
+          budget_status: budget_status,
+          started: started,
+          phase_timings: phase_timings
+        )
+        engine_result(request: request, normalized: normalized, triangulation: triangulation,
+                      mesh: mesh, metrics: metrics, budget_status: budget_status,
+                      phase_timings: phase_timings, started: started)
+      end
+
+      def empty_phase_timings
+        {
+          inputNormalizationSeconds: 0.0,
+          pointPlanningSeconds: 0.0,
+          triangulationSeconds: 0.0,
+          residualRefinementSeconds: 0.0
+        }
       end
 
       def normalize_input(request)
@@ -110,8 +183,8 @@ module SU_MCP
           max_point_budget: request.max_point_budget
         )
         segments = []
-        segments.concat(protected_region_segments(request.feature_geometry))
-        segments.concat(reference_segments(request.feature_geometry))
+        segments.concat(protected_region_segments(request.state, request.feature_geometry))
+        segments.concat(reference_segments(request.state, request.feature_geometry))
         {
           points: planned.fetch(:points),
           segments: segments,
@@ -127,6 +200,7 @@ module SU_MCP
           limitations: planned.fetch(:limitations),
           residual_refinement_stop_reason: 'not_started',
           residual_refinement_safety_cap: planned.fetch(:selectedPointCount),
+          residual_refinement_probes: empty_residual_refinement_probes,
           max_residual_excess: 0.0
         }
       end
@@ -172,25 +246,38 @@ module SU_MCP
         triangulation, mesh = mesh_result
         stop_reason = nil
         residual_refinement_max_passes.times do
-          samples = residual_samples(request, mesh, normalized, residual_refinement_batch_size)
+          record_residual_pass_started(normalized)
+          samples = timed_residual_samples(
+            request,
+            mesh,
+            normalized,
+            residual_refinement_batch_size
+          )
           normalized[:max_residual_excess] = sample_residual_excess(samples)
           if samples.empty?
+            record_residual_pass_points(normalized, added: 0)
             stop_reason = 'residual_satisfied'
             break
           end
           if normalized.fetch(:points).length >= limit
+            record_residual_pass_points(normalized, added: 0)
             stop_reason = 'safety_cap'
             break
           end
 
-          added = add_mesh_residual_points(normalized, samples, limit)
+          added = timed_add_mesh_residual_points(normalized, samples, limit)
+          record_residual_pass_points(normalized, added: added)
           if added.zero?
             stop_reason = 'stalled'
             break
           end
 
           add_residual_refinement_limitation(normalized)
-          triangulation, mesh = triangulated_mesh(request.state, normalized, constraints)
+          triangulation, mesh = timed_residual_retriangulated_mesh(
+            request.state,
+            normalized,
+            constraints
+          )
         end
         [triangulation, mesh, stop_reason]
       end
@@ -211,21 +298,55 @@ module SU_MCP
         )
       end
 
+      def timed_residual_samples(request, mesh, normalized, limit, final_scan: false)
+        started = Process.clock_gettime(Process::CLOCK_MONOTONIC)
+        samples = residual_samples(request, mesh, normalized, limit)
+        elapsed = Process.clock_gettime(Process::CLOCK_MONOTONIC) - started
+        probes = residual_refinement_probes(normalized)
+        probes[:scanCount] += 1
+        probes[:scanSeconds] += elapsed
+        probes[:scanSampleCount] += samples.length
+        if final_scan
+          probes[:finalScanCount] += 1
+          probes[:finalScanSeconds] += elapsed
+        end
+        samples
+      end
+
       def sample_residual_excess(samples)
         samples.fetch(0, { residualExcess: 0.0 }).fetch(:residualExcess)
       end
 
       def max_residual_excess(request, mesh, normalized)
-        sample_residual_excess(residual_samples(request, mesh, normalized, 1))
+        sample_residual_excess(timed_residual_samples(request, mesh, normalized, 1,
+                                                      final_scan: true))
       end
 
       def residual_refinement_final_stop_reason(request, mesh, normalized, limit)
-        remaining = residual_samples(request, mesh, normalized, 1)
+        remaining = timed_residual_samples(request, mesh, normalized, 1, final_scan: true)
         normalized[:max_residual_excess] = sample_residual_excess(remaining)
         return 'residual_satisfied' if remaining.empty?
         return 'safety_cap' if normalized.fetch(:points).length >= limit
 
         'max_passes'
+      end
+
+      def timed_add_mesh_residual_points(normalized, samples, limit)
+        started = Process.clock_gettime(Process::CLOCK_MONOTONIC)
+        added = add_mesh_residual_points(normalized, samples, limit)
+        residual_refinement_probes(normalized)[:pointInsertionSeconds] +=
+          Process.clock_gettime(Process::CLOCK_MONOTONIC) - started
+        added
+      end
+
+      def timed_residual_retriangulated_mesh(state, normalized, constraints)
+        started = Process.clock_gettime(Process::CLOCK_MONOTONIC)
+        result = triangulated_mesh(state, normalized, constraints)
+        probes = residual_refinement_probes(normalized)
+        probes[:retriangulationCount] += 1
+        probes[:retriangulationSeconds] += Process.clock_gettime(Process::CLOCK_MONOTONIC) -
+                                           started
+        result
       end
 
       def add_mesh_residual_points(normalized, samples, limit)
@@ -260,25 +381,97 @@ module SU_MCP
         }
       end
 
-      def protected_region_segments(feature_geometry)
+      def empty_residual_refinement_probes
+        {
+          passCount: 0,
+          scanCount: 0,
+          scanSeconds: 0.0,
+          scanSampleCount: 0,
+          finalScanCount: 0,
+          finalScanSeconds: 0.0,
+          pointInsertionSeconds: 0.0,
+          retriangulationCount: 0,
+          retriangulationSeconds: 0.0,
+          pointsAddedByPass: [],
+          pointCountByPass: []
+        }
+      end
+
+      def residual_refinement_probes(normalized)
+        normalized[:residual_refinement_probes] ||= empty_residual_refinement_probes
+      end
+
+      def record_residual_pass_started(normalized)
+        residual_refinement_probes(normalized)[:passCount] += 1
+      end
+
+      def record_residual_pass_points(normalized, added:)
+        probes = residual_refinement_probes(normalized)
+        probes.fetch(:pointsAddedByPass) << added
+        probes.fetch(:pointCountByPass) << normalized.fetch(:points).length
+      end
+
+      def protected_region_segments(state, feature_geometry)
         feature_geometry.protected_regions.flat_map do |region|
           next [] unless region.fetch('primitive') == 'rectangle'
 
+          strength = region.fetch('strength', 'hard')
           min, max = region.fetch('ownerLocalBounds')
           corners = [[min[0], min[1]], [max[0], min[1]], [max[0], max[1]], [min[0], max[1]]]
-          segment_loop(corners, region.fetch('id'), region.fetch('strength', 'hard'))
+          next [] if strength == 'hard' && corners.any? { |point| !inside_domain?(state, point) }
+
+          contained = corners.map { |point| contained_point(state, point, strength) }.compact
+          segment_loop(contained, region.fetch('id'), strength)
         end
       end
 
-      def reference_segments(feature_geometry)
-        feature_geometry.reference_segments.map do |segment|
+      def reference_segments(state, feature_geometry)
+        feature_geometry.reference_segments.filter_map do |segment|
+          strength = segment.fetch('strength', 'firm')
+          start_point = contained_point(state, segment.fetch('ownerLocalStart'), strength)
+          end_point = contained_point(state, segment.fetch('ownerLocalEnd'), strength)
+          next unless start_point && end_point
+
           {
             id: segment.fetch('id'),
-            start: segment.fetch('ownerLocalStart'),
-            end: segment.fetch('ownerLocalEnd'),
-            strength: segment.fetch('strength', 'firm')
+            start: start_point,
+            end: end_point,
+            strength: strength
           }
         end
+      end
+
+      def contained_point(state, point, strength)
+        pair = [Float(point.fetch(0)), Float(point.fetch(1))]
+        return pair if inside_domain?(state, pair)
+        return nil if strength == 'hard'
+        return nil if strength == 'soft'
+
+        [
+          pair[0].clamp(min_x(state), max_x(state)),
+          pair[1].clamp(min_y(state), max_y(state))
+        ]
+      end
+
+      def inside_domain?(state, point)
+        point[0].between?(min_x(state), max_x(state)) &&
+          point[1].between?(min_y(state), max_y(state))
+      end
+
+      def min_x(state)
+        [x_at(state, 0), x_at(state, columns(state) - 1)].min
+      end
+
+      def max_x(state)
+        [x_at(state, 0), x_at(state, columns(state) - 1)].max
+      end
+
+      def min_y(state)
+        [y_at(state, 0), y_at(state, rows(state) - 1)].min
+      end
+
+      def max_y(state)
+        [y_at(state, 0), y_at(state, rows(state) - 1)].max
       end
 
       def segment_loop(points, id, strength)
@@ -342,7 +535,8 @@ module SU_MCP
       end
       # rubocop:enable Metrics/AbcSize
 
-      def metrics_for(request:, normalized:, mesh:, triangulation:, budget_status:, started:)
+      def metrics_for(request:, normalized:, mesh:, triangulation:, budget_status:, started:,
+                      phase_timings: empty_phase_timings)
         topology = topology_checks(mesh)
         coverage = triangulation.fetch(:constrainedEdgeCoverage)
         {
@@ -362,8 +556,15 @@ module SU_MCP
           topologyResiduals: topology_residuals(topology),
           firmResidualsByRole: firm_residuals_by_role(request.feature_geometry, coverage),
           residualRefinement: residual_refinement_metrics(normalized, mesh),
-          timing: { elapsedSeconds: Process.clock_gettime(Process::CLOCK_MONOTONIC) - started },
+          timing: timing_for(started, phase_timings),
           budgetStatus: budget_status
+        }
+      end
+
+      def timing_for(started, phase_timings)
+        {
+          totalSeconds: Process.clock_gettime(Process::CLOCK_MONOTONIC) - started,
+          phases: phase_timings
         }
       end
 
@@ -382,11 +583,13 @@ module SU_MCP
           residualCount: normalized.fetch(:residual_point_count),
           stopReason: normalized.fetch(:residual_refinement_stop_reason),
           maxResidualExcess: normalized.fetch(:max_residual_excess),
-          enabled: residual_refinement_max_passes.positive?
+          enabled: residual_refinement_max_passes.positive?,
+          probes: residual_refinement_probes(normalized)
         }
       end
 
-      def engine_result(request:, normalized:, triangulation:, mesh:, metrics:, budget_status:)
+      def engine_result(request:, normalized:, triangulation:, mesh:, metrics:, budget_status:,
+                        phase_timings:, started:)
         {
           status: 'accepted',
           mesh: mesh,
@@ -410,6 +613,7 @@ module SU_MCP
           constrainedEdgeCoverage: triangulation.fetch(:constrainedEdgeCoverage),
           constrainedEdges: triangulation.fetch(:constrainedEdges),
           delaunayViolationCount: triangulation.fetch(:delaunayViolationCount),
+          timing: timing_for(started, phase_timings),
           limitations: limitations(request.feature_geometry, normalized, triangulation,
                                    budget_status)
         }
@@ -427,6 +631,11 @@ module SU_MCP
           return 'feature_geometry_failed'
         end
         return 'performance_limit_exceeded' unless budget_status == 'ok'
+        if normalized.fetch(:limitations).any? do |item|
+          item.fetch(:category) == 'hard_domain_violation'
+        end
+          return 'hard_output_geometry_violation'
+        end
         return 'topology_degraded' if topology_degraded?(normalized, triangulation)
 
         return 'hard_output_geometry_violation' unless metrics.fetch(:hardViolationCounts).empty?

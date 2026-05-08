@@ -1,14 +1,13 @@
 # Size: MTA-31 Enable CDT Terrain Output After Disabled Scaffold
 
-**Task ID**: MTA-31  
-**Title**: Enable CDT Terrain Output After Disabled Scaffold  
-**Status**: challenged  
-**Created**: 2026-05-08  
-**Last Updated**: 2026-05-08  
-
-**Related Task**: [task.md](./task.md)  
-**Related Plan**: [plan.md](./plan.md)  
-**Related Summary**: none yet  
+**Task ID**: MTA-31
+**Title**: Enable CDT Terrain Output After Disabled Scaffold
+**Status**: calibrated
+**Created**: 2026-05-08
+**Last Updated**: 2026-05-09
+**Related Task**: [task.md](./task.md)
+**Related Plan**: [plan.md](./plan.md)
+**Related Summary**: [summary.md](./summary.md)
 
 ---
 
@@ -168,21 +167,34 @@
 
 | Dimension | Score (0-4) | Notes |
 |---|---:|---|
-| Functional Scope | Not filled yet. | Not filled yet. |
-| Technical Change Surface | Not filled yet. | Not filled yet. |
-| Actual Implementation Friction | Not filled yet. | Not filled yet. |
-| Actual Validation Burden | Not filled yet. | Not filled yet. |
-| Actual Dependency Drag | Not filled yet. | Not filled yet. |
-| Actual Discovery Encountered | Not filled yet. | Not filled yet. |
-| Actual Scope Volatility | Not filled yet. | Not filled yet. |
-| Actual Rework | Not filled yet. | Not filled yet. |
-| Final Confidence in Completeness | Not filled yet. | Not filled yet. |
+| Functional Scope | 3 | Internal CDT enablement foundation changed materially, but public behavior and default backend stayed stable. |
+| Technical Change Surface | 4 | Touched CDT output structure, feature-intent schema/indexing, merge lifecycle, planner/view selection, command edit windows, backend containment/budgets, residual probes, storage/serializer tests, and hosted validation seams. |
+| Actual Implementation Friction | 4 | Work was dominated by hidden coupling between feature history, edit windows, CDT primitive budgets, residual policy, and hosted runtime behavior. The `SampleWindow` selection bug and residual bottleneck attribution required extra implementation and probe loops. |
+| Actual Validation Burden | 4 | Validation required full terrain regression, lint/package checks, required `grok-4.3` review, deployed SketchUp hosted matrix, special side-copy harness setup, live patch verification, and performance probes that exposed a nonviable runtime path. |
+| Actual Dependency Drag | 3 | Flow depended on MTA-24/MTA-25 architecture history, deployed SketchUp access, representative hosted scene state, side-copy repository saves, and external research review, but no native binary or public contract dependency blocked closeout. |
+| Actual Discovery Encountered | 4 | The task became evidence-heavy: effective selection was wired but initially ineffective for `SampleWindow`, Ruby residual refinement dominated runtime, feature constraints multiplied cost, and the external review shifted the follow-up direction toward dirty/local residual strategy. |
+| Actual Scope Volatility | 4 | The task closed as an evidence/recalibration milestone rather than default enablement. Performance evidence forced follow-up rearchitecture instead of continuing a mechanical enablement pass. |
+| Actual Rework | 3 | Review follow-up and hosted findings caused targeted rework in effective-index validation, lifecycle defaults, native-unavailable regression, command window handling, residual probes, and builder fallback. The main architecture was not rewritten inside MTA-31. |
+| Final Confidence in Completeness | 3 | Strong confidence that MTA-31 evidence and internal foundations are complete; moderate confidence only for production enablement because undo/save-reopen acceptance and sub-3-second CDT edits remain follow-up work. |
 
 ### Actual Signals
-- Not filled yet.
+- Full terrain suite stayed green after the final builder fallback hardening:
+  `585 runs, 9277 assertions, 0 failures, 3 skips`.
+- Hosted real CDT P1 completed visually but took roughly 9 minutes on the
+  representative terrain with `204` feature intents.
+- Hosted small-terrain probes isolated the bottleneck to residual refinement and
+  repeated Ruby retriangulation, not effective feature selection or SketchUp
+  face emission.
+- Effective view selection had a real host-shape defect: `SampleWindow` failed
+  open until fixed, selecting all `204` active features instead of `123`.
+- External review supported keeping CDT as a topology primitive but changing the
+  residual strategy before any default enablement attempt.
 
 ### Actual Notes
-- Not filled yet.
+- The predicted high-risk profile was directionally correct. The biggest actual
+  lesson is that bounded feature selection is necessary but insufficient: the
+  current global residual/retriangulation policy can still miss interactive
+  budgets by orders of magnitude.
 <!-- SIZE:ACTUAL:END -->
 
 ---
@@ -193,22 +205,53 @@
 > Fill only the sections that are relevant. Say `not applicable` where needed.
 
 ### Automated Validation
-- Not filled yet.
+- Focused affected regression: `123 runs, 671 assertions, 0 failures, 0 errors,
+  0 skips`.
+- Full terrain suite: `585 runs, 9277 assertions, 0 failures, 0 errors, 3 skips`.
+- Package-support smoke: `14 runs, 85 assertions, 0 failures, 0 errors, 0 skips`.
+- Targeted RuboCop: `31 files inspected, no offenses detected`.
+- `git diff --check`: clean.
 
 ### Hosted / Manual Validation
-- Not filled yet.
+- Hosted matrix ran on deployed SketchUp scene `TestGround` against
+  `option-terrain-north-terrace-west-threshold-amendment-semantic-edit-v1`.
+- P1 real CDT target-height path completed and emitted `5,379` derived CDT faces,
+  but took roughly 9 minutes.
+- P2 fast accepted corridor seam, N1 native-unavailable fallback, N2 unsupported
+  option refusal, and E1-E4 hard/firm/soft/budget edge probes passed.
+- Hosted visual confirmation exists for P1 topology, but repeated undo/new-edit
+  branch behavior and save/reopen acceptance remain follow-up gaps.
 
 ### Performance Validation
-- Not filled yet.
+- Representative P1 hosted edit missed the intended responsiveness target by a
+  large margin: roughly 9 minutes.
+- Small 31x31 hosted probe with 10 seeded edits: real CDT command about
+  `4085ms`; planner/effective view/geometry build `5.49ms`; backend `3969ms`;
+  residual refinement `3521ms`.
+- Residual disabled path ran about `136ms` but produced unacceptable quality
+  with max height error `1.1256`.
+- Detailed residual probes showed scan time around `0.33s-0.46s`, while repeated
+  late Ruby retriangulations dominated total runtime.
 
 ### Migration / Compatibility Validation
-- Not filled yet.
+- Feature-intent normalization, serializer, and tiled-state tests cover legacy
+  active lifecycle defaults, new field round-tripping, effective index digest
+  stability under audit-only churn, and digest changes for query-driving
+  lifecycle changes.
+- Public MCP response shape and default backend remained unchanged.
 
 ### Operational / Rollout Validation
-- Not filled yet.
+- CDT remains internal/test gated and disabled by default.
+- No public backend selector, public CDT diagnostics, setup path, or user-facing
+  workflow changed; no user-facing doc update was required.
+- Native/C++ packaging was not introduced; adapter posture and native-unavailable
+  fallback behavior were preserved.
 
 ### Validation Notes
-- Not filled yet.
+- Hosted validation was high burden because it required special side-copy setup,
+  repository-save correction after integrity refusal, transform-signature
+  handling, performance probes, live patch verification, and interpretation of a
+  nonviable runtime path. This was not a routine clean hosted matrix.
 <!-- SIZE:VALIDATION-EVIDENCE:END -->
 
 ---
@@ -218,14 +261,30 @@
 
 > Filled during final calibration. Compare prediction to actual behavior.
 
-- **Most Underestimated Dimension**: Not filled yet.
-- **Most Overestimated Dimension**: Not filled yet.
-- **Signal Present Early But Underweighted**: Not filled yet.
-- **Genuinely Unknowable Factor**: Not filled yet.
-- **Future Similar Tasks Should Assume**: Not filled yet.
+- **Most Underestimated Dimension**: Discovery/ambiguity. The plan expected
+  profiling uncertainty, but not the degree to which the task would become a
+  residual-policy investigation and external-review recalibration.
+- **Most Overestimated Dimension**: Native dependency. The native adapter path
+  remained important, but closeout did not require native binaries or packaging;
+  the immediate blocker is residual strategy and locality, not only raw
+  triangulation implementation language.
+- **Signal Present Early But Underweighted**: MTA-25 minute-scale hang and global
+  residual refinement should have been treated as a conceptual-risk signal, not
+  merely a Ruby performance-risk signal.
+- **Genuinely Unknowable Factor**: The `SampleWindow` versus hash-window mismatch
+  in live command selection and the exact residual/retriangulation timing split
+  required hosted execution and instrumentation.
+- **Future Similar Tasks Should Assume**: A disabled performance scaffold is not
+  ready to default-enable until hosted probes prove locality, residual policy,
+  mutation cost, and quality budgets together. Effective filtering alone does not
+  prove interactive behavior.
 
 ### Calibration Notes
-- Not filled yet.
+- Dominant actual failure mode: performance-scaling from global residual
+  refinement and repeated full Ruby retriangulation on growing point sets.
+- Future analog retrieval should prioritize performance-sensitive managed
+  terrain output tasks with hosted special-scene matrices, residual/triangulation
+  bottleneck attribution, no public contract change, and high scope volatility.
 <!-- SIZE:DELTA:END -->
 
 ---
@@ -240,13 +299,13 @@ Use canonical values from the repo task-estimation taxonomy when present. Keep t
 - `systems:terrain-output`
 - `systems:terrain-mesh-generator`
 - `systems:terrain-state`
-- `systems:serialization`
 - `validation:performance`
 - `validation:hosted-matrix`
 - `validation:undo`
-- `validation:migration`
 - `host:special-scene`
+- `host:repeated-fix-loop`
 - `contract:no-public-shape-change`
 - `risk:performance-scaling`
-- `risk:undo-semantics`
+- `volatility:high`
+- `friction:high`
 <!-- SIZE:TAGS:END -->

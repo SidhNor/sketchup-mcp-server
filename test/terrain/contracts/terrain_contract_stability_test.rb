@@ -429,8 +429,10 @@ class TerrainContractStabilityTest < Minitest::Test
       { outcome: 'ready', state: state }
     end
 
-    def prepare(state:, terrain_state_summary:, include_feature_geometry: false)
+    def prepare(state:, terrain_state_summary:, include_feature_geometry: false,
+                selection_window: nil)
       _include_feature_geometry = include_feature_geometry
+      _selection_window = selection_window
       {
         outcome: 'prepared',
         state: state,

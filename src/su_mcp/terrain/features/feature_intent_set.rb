@@ -22,14 +22,18 @@ module SU_MCP
         centerline side_transition endpoint_cap boundary support protected control falloff
         hard_break soft_transition
       ].freeze
+      STRENGTH_CLASSES = %w[hard firm soft].freeze
+      LIFECYCLE_STATUSES = %w[active superseded deprecated retired].freeze
 
-      attr_reader :revision, :features, :generation
+      attr_reader :revision, :effective_revision, :features, :effective_index, :generation
 
       def self.default_h
         {
           'schemaVersion' => SCHEMA_VERSION,
           'revision' => 0,
+          'effectiveRevision' => 0,
           'features' => [],
+          'effectiveIndex' => effective_index_for([], effective_revision: 0),
           'generation' => DEFAULT_GENERATION.dup
         }
       end
@@ -54,6 +58,11 @@ module SU_MCP
           normalize_feature(feature)
         end
         @features = normalized_features.sort_by { |feature| feature.fetch('id') }.freeze
+        @effective_revision = Integer(normalized.fetch('effectiveRevision', revision))
+        @effective_index = normalize_effective_index(
+          normalized.fetch('effectiveIndex', nil),
+          effective_revision: effective_revision
+        ).freeze
       rescue KeyError => e
         raise ArgumentError, "Missing feature intent field: #{e.key}"
       end
@@ -62,7 +71,9 @@ module SU_MCP
         {
           'schemaVersion' => SCHEMA_VERSION,
           'revision' => revision,
+          'effectiveRevision' => effective_revision,
           'features' => features,
+          'effectiveIndex' => effective_index,
           'generation' => generation
         }
       end
@@ -79,6 +90,7 @@ module SU_MCP
         self.class.new(
           'schemaVersion' => SCHEMA_VERSION,
           'revision' => revision,
+          'effectiveRevision' => revision,
           'features' => new_features,
           'generation' => generation
         )
@@ -144,6 +156,61 @@ module SU_MCP
         value
       end
 
+      def self.effective_index_for(features, effective_revision:)
+        active_features = features.select do |feature|
+          feature.dig('lifecycle', 'status') == 'active'
+        end
+        {
+          'effectiveRevision' => effective_revision,
+          'sourceDigest' => effective_source_digest(features),
+          'activeIdsByStrength' => STRENGTH_CLASSES.to_h do |strength|
+            [
+              strength,
+              active_features.select { |feature| feature.fetch('strengthClass') == strength }
+                             .map { |feature| feature.fetch('id') }
+                             .sort
+            ]
+          end,
+          'countsByStatus' => LIFECYCLE_STATUSES.to_h do |status|
+            [status, features.count { |feature| feature.dig('lifecycle', 'status') == status }]
+          end,
+          'countsByStrength' => STRENGTH_CLASSES.to_h do |strength|
+            [
+              strength,
+              active_features.count { |feature| feature.fetch('strengthClass') == strength }
+            ]
+          end
+        }
+      end
+
+      def self.effective_source_digest(features)
+        digest_features = features.map do |feature|
+          effective_digest_feature(feature)
+        end
+        sorted_features = digest_features.sort_by { |feature| feature.fetch('id') }
+
+        Digest::SHA256.hexdigest(canonical_json(sorted_features))
+      end
+
+      def self.effective_digest_feature(feature)
+        {
+          'id' => feature.fetch('id'),
+          'kind' => feature.fetch('kind'),
+          'sourceMode' => feature.fetch('sourceMode'),
+          'roles' => feature.fetch('roles'),
+          'priority' => feature.fetch('priority'),
+          'semanticScope' => feature.fetch('semanticScope'),
+          'strengthClass' => feature.fetch('strengthClass'),
+          'lifecycle' => {
+            'status' => feature.dig('lifecycle', 'status'),
+            'supersededBy' => feature.dig('lifecycle', 'supersededBy')
+          },
+          'affectedWindow' => feature.fetch('affectedWindow', nil),
+          'relevanceWindow' => feature.fetch('relevanceWindow', nil),
+          'payload' => identity_value(feature.fetch('payload', {}))
+        }
+      end
+
       private
 
       def normalize_generation(value)
@@ -155,25 +222,140 @@ module SU_MCP
         feature = stringify_keys(value)
         kind = feature.fetch('kind')
         source_mode = feature.fetch('sourceMode')
-        roles = Array(feature.fetch('roles', []))
-        raise ArgumentError, "Unsupported feature kind: #{kind}" unless KINDS.include?(kind)
-        unless SOURCE_MODES.include?(source_mode)
-          raise ArgumentError, "Unsupported feature sourceMode: #{source_mode}"
-        end
+        roles = normalize_roles(feature.fetch('roles', []))
+        validate_feature_kind(kind)
+        validate_source_mode(source_mode)
+        affected_window = normalize_json_value(feature.fetch('affectedWindow', nil))
 
-        unsupported_role = roles.find { |role| !ROLES.include?(role) }
-        raise ArgumentError, "Unsupported feature role: #{unsupported_role}" if unsupported_role
+        normalized_feature_hash(feature, kind, source_mode, roles, affected_window)
+      end
 
+      def normalized_feature_hash(feature, kind, source_mode, roles, affected_window)
         {
           'id' => feature.fetch('id').to_s,
           'kind' => kind,
           'sourceMode' => source_mode,
+          'semanticScope' => semantic_scope_for(feature),
+          'strengthClass' => normalize_strength_class(
+            feature.fetch('strengthClass', default_strength_class(kind))
+          ),
           'roles' => roles.sort,
           'priority' => Integer(feature.fetch('priority', 0)),
           'payload' => normalize_json_value(feature.fetch('payload', {})),
-          'affectedWindow' => normalize_json_value(feature.fetch('affectedWindow', nil)),
+          'affectedWindow' => affected_window,
+          'relevanceWindow' => normalize_json_value(
+            feature.fetch('relevanceWindow', affected_window)
+          ),
+          'lifecycle' => normalize_lifecycle(feature.fetch('lifecycle', {})),
           'provenance' => normalize_provenance(feature.fetch('provenance', {}))
         }.compact
+      end
+
+      def validate_feature_kind(kind)
+        raise ArgumentError, "Unsupported feature kind: #{kind}" unless KINDS.include?(kind)
+      end
+
+      def validate_source_mode(source_mode)
+        return if SOURCE_MODES.include?(source_mode)
+
+        raise ArgumentError, "Unsupported feature sourceMode: #{source_mode}"
+      end
+
+      def normalize_roles(value)
+        roles = Array(value)
+        unsupported_role = roles.find { |role| !ROLES.include?(role) }
+        raise ArgumentError, "Unsupported feature role: #{unsupported_role}" if unsupported_role
+
+        roles
+      end
+
+      def semantic_scope_for(feature)
+        feature['semanticScope'] ||
+          feature.dig('payload', 'semanticScope') ||
+          semantic_scope_from_id(feature.fetch('id'))
+      end
+
+      def semantic_scope_from_id(feature_id)
+        match = feature_id.to_s.match(/\Afeature:[^:]+:[^:]+:(.*):[0-9a-f]{12}\z/)
+        match ? match[1] : feature_id.to_s
+      end
+
+      def default_strength_class(kind)
+        case kind
+        when 'fixed_control', 'preserve_region'
+          'hard'
+        when 'linear_corridor', 'survey_control', 'planar_region'
+          'firm'
+        else
+          'soft'
+        end
+      end
+
+      def normalize_strength_class(value)
+        strength_class = value.to_s
+        unless STRENGTH_CLASSES.include?(strength_class)
+          raise ArgumentError, "Unsupported feature strengthClass: #{strength_class}"
+        end
+
+        strength_class
+      end
+
+      def normalize_lifecycle(value)
+        lifecycle = stringify_keys(value || {})
+        status = lifecycle.fetch('status', 'active').to_s
+        unless LIFECYCLE_STATUSES.include?(status)
+          raise ArgumentError, "Unsupported feature lifecycle status: #{status}"
+        end
+
+        {
+          'status' => status,
+          'supersededBy' => lifecycle.fetch('supersededBy', nil),
+          'updatedAtRevision' => Integer(
+            lifecycle.fetch(
+              'updatedAtRevision',
+              revision
+            )
+          )
+        }
+      end
+
+      def normalize_effective_index(value, effective_revision:)
+        unless value
+          return self.class.effective_index_for(features, effective_revision: effective_revision)
+        end
+
+        index = stringify_keys(value)
+        {
+          'effectiveRevision' => Integer(index.fetch('effectiveRevision', effective_revision)),
+          'sourceDigest' => index.fetch(
+            'sourceDigest',
+            self.class.effective_source_digest(features)
+          ),
+          'activeIdsByStrength' => normalize_id_buckets(
+            index.fetch('activeIdsByStrength', {}),
+            STRENGTH_CLASSES
+          ),
+          'countsByStatus' => normalize_count_buckets(
+            index.fetch('countsByStatus', {}),
+            LIFECYCLE_STATUSES
+          ),
+          'countsByStrength' => normalize_count_buckets(
+            index.fetch('countsByStrength', {}),
+            STRENGTH_CLASSES
+          )
+        }
+      end
+
+      def normalize_id_buckets(value, keys)
+        normalized = stringify_keys(value || {})
+        keys.to_h do |key|
+          [key, Array(normalized.fetch(key, [])).map(&:to_s).sort]
+        end
+      end
+
+      def normalize_count_buckets(value, keys)
+        normalized = stringify_keys(value || {})
+        keys.to_h { |key| [key, Integer(normalized.fetch(key, 0))] }
       end
 
       def normalize_provenance(value)

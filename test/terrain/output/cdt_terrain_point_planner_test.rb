@@ -91,6 +91,48 @@ class CdtTerrainPointPlannerTest < Minitest::Test
     refute_includes(JSON.generate(result.fetch(:limitations)), 'point_budget')
   end
 
+  def test_hard_anchor_outside_domain_is_rejected_before_expanding_hull
+    result = planner.plan(
+      state: planar_state(columns: 5, rows: 5),
+      feature_geometry: SU_MCP::Terrain::TerrainFeatureGeometry.new(
+        outputAnchorCandidates: [
+          { id: 'hard-outside', featureId: 'fixed', role: 'control', strength: 'hard',
+            ownerLocalPoint: [99.0, 99.0], tolerance: 0.01 }
+        ]
+      ),
+      base_tolerance: 1.0,
+      max_point_budget: 4096
+    )
+
+    refute_includes(result.fetch(:points), [99.0, 99.0])
+    assert_includes(
+      result.fetch(:limitations).map { |item| item.fetch(:category) },
+      'hard_domain_violation'
+    )
+  end
+
+  def test_firm_reference_segment_is_clipped_to_domain_without_hard_failure
+    result = planner.plan(
+      state: planar_state(columns: 5, rows: 5),
+      feature_geometry: SU_MCP::Terrain::TerrainFeatureGeometry.new(
+        referenceSegments: [
+          { id: 'firm-crossing', featureId: 'corridor', role: 'centerline', strength: 'firm',
+            ownerLocalStart: [-10.0, 2.0], ownerLocalEnd: [10.0, 2.0], targetCellSize: 1 }
+        ]
+      ),
+      base_tolerance: 1.0,
+      max_point_budget: 4096
+    )
+
+    assert(result.fetch(:points).all? { |point| point[0].between?(0.0, 4.0) })
+    assert_includes(result.fetch(:points), [0.0, 2.0])
+    assert_includes(result.fetch(:points), [4.0, 2.0])
+    assert_includes(
+      result.fetch(:limitations).map { |item| item.fetch(:category) },
+      'firm_constraint_clipped'
+    )
+  end
+
   private
 
   def assert_required_feature_seed_points(points)

@@ -45,6 +45,22 @@ class ResidualCdtEngineTest < Minitest::Test
     refute_includes(result.keys, :candidateRow)
   end
 
+  def test_residual_refinement_reports_scan_and_retriangulation_probes
+    result = run_engine(state: rough_state(columns: 17, rows: 17))
+    residual = result.dig(:metrics, :residualRefinement)
+    probes = residual.fetch(:probes)
+
+    assert_operator(probes.fetch(:passCount), :>, 0)
+    assert_operator(probes.fetch(:scanCount), :>=, probes.fetch(:passCount))
+    assert_operator(probes.fetch(:scanSeconds), :>=, 0.0)
+    assert_operator(probes.fetch(:scanSampleCount), :>=, 0)
+    assert_operator(probes.fetch(:pointInsertionSeconds), :>=, 0.0)
+    assert_operator(probes.fetch(:retriangulationCount), :>=, 0)
+    assert_operator(probes.fetch(:retriangulationSeconds), :>=, 0.0)
+    assert_equal(probes.fetch(:passCount), probes.fetch(:pointsAddedByPass).length)
+    assert_equal(probes.fetch(:passCount), probes.fetch(:pointCountByPass).length)
+  end
+
   def test_residual_passes_use_injected_triangulation_adapter
     adapter = RecordingTriangulationAdapter.new
     result = run_engine(
@@ -70,6 +86,21 @@ class ResidualCdtEngineTest < Minitest::Test
     assert_operator(result.dig(:metrics, :maxHeightError), :<=, 0.05)
   end
 
+  def test_reports_phase_timing_for_cdt_compute_path
+    result = run_engine(state: smooth_state(columns: 9, rows: 9))
+    phases = result.dig(:timing, :phases)
+
+    assert_operator(result.dig(:timing, :totalSeconds), :>=, 0.0)
+    %i[
+      inputNormalizationSeconds
+      pointPlanningSeconds
+      triangulationSeconds
+      residualRefinementSeconds
+    ].each do |key|
+      assert_operator(phases.fetch(key), :>=, 0.0)
+    end
+  end
+
   def test_intersecting_constraints_are_diagnostics_not_ruby_cdt_preflight_fallback
     result = run_engine(
       state: smooth_state(columns: 5, rows: 5),
@@ -80,6 +111,39 @@ class ResidualCdtEngineTest < Minitest::Test
     refute_includes(result.keys, :fallbackReason)
     assert_operator(result.dig(:mesh, :triangles).length, :>, 0)
     assert_includes(JSON.generate(result.fetch(:limitations)), 'intersecting_constraint')
+  end
+
+  def test_firm_constraints_are_clipped_before_adapter_triangulation
+    adapter = RecordingTriangulationAdapter.new
+    result = run_engine(
+      state: smooth_state(columns: 5, rows: 5),
+      feature_geometry: crossing_firm_geometry,
+      triangulation_adapter: adapter
+    )
+
+    assert_equal('accepted', result.fetch(:status))
+    assert_includes(JSON.generate(result.fetch(:limitations)), 'firm_constraint_clipped')
+    adapter.calls.first.fetch(:constraints).each do |constraint|
+      [constraint.fetch(:start), constraint.fetch(:end)].each do |point|
+        assert(point[0].between?(0.0, 4.0), point.inspect)
+        assert(point[1].between?(0.0, 4.0), point.inspect)
+      end
+    end
+  end
+
+  def test_hard_domain_violation_maps_to_hard_failure_category
+    result = run_engine(
+      state: smooth_state(columns: 5, rows: 5),
+      feature_geometry: SU_MCP::Terrain::TerrainFeatureGeometry.new(
+        outputAnchorCandidates: [
+          { id: 'outside-hard', featureId: 'fixed', role: 'control',
+            strength: 'hard', ownerLocalPoint: [99.0, 99.0] }
+        ]
+      )
+    )
+
+    assert_equal('hard_output_geometry_violation', result.fetch(:failureCategory))
+    assert_includes(JSON.generate(result.fetch(:limitations)), 'hard_domain_violation')
   end
 
   def test_residual_stop_reason_can_report_max_passes
@@ -100,21 +164,40 @@ class ResidualCdtEngineTest < Minitest::Test
     assert_equal('stalled', result.dig(:metrics, :residualRefinement, :stopReason))
   end
 
+  def test_point_budget_exhaustion_returns_before_triangulation
+    adapter = RecordingTriangulationAdapter.new
+    result = run_engine(
+      state: smooth_state(columns: 5, rows: 5),
+      feature_geometry: many_anchor_geometry,
+      triangulation_adapter: adapter,
+      max_point_budget: 4
+    )
+
+    assert_equal('max_point_budget_exceeded', result.fetch(:budgetStatus))
+    assert_equal(0, adapter.calls.length)
+    assert_equal('performance_limit_exceeded', result.fetch(:failureCategory))
+  end
+
   private
 
   def run_engine(state:, feature_geometry: SU_MCP::Terrain::TerrainFeatureGeometry.new,
-                 **options)
+                 max_point_budget: 4096, **options)
     SU_MCP::Terrain::ResidualCdtEngine.new(**options).run(
-      **engine_input(state: state, feature_geometry: feature_geometry)
+      **engine_input(
+        state: state,
+        feature_geometry: feature_geometry,
+        max_point_budget: max_point_budget
+      )
     )
   end
 
-  def engine_input(state:, feature_geometry: SU_MCP::Terrain::TerrainFeatureGeometry.new)
+  def engine_input(state:, feature_geometry: SU_MCP::Terrain::TerrainFeatureGeometry.new,
+                   max_point_budget: 4096)
     {
       state: state,
       feature_geometry: feature_geometry,
       base_tolerance: 0.05,
-      max_point_budget: 4096,
+      max_point_budget: max_point_budget,
       max_face_budget: dense_face_budget(state),
       max_runtime_budget: 10.0
     }
@@ -166,6 +249,25 @@ class ResidualCdtEngineTest < Minitest::Test
     )
   end
 
+  def many_anchor_geometry
+    SU_MCP::Terrain::TerrainFeatureGeometry.new(
+      outputAnchorCandidates: 10.times.map do |index|
+        { id: "anchor-#{index}", featureId: "fixed-#{index}", role: 'control',
+          strength: 'hard', ownerLocalPoint: [index.to_f % 5, (index / 5).to_f] }
+      end
+    )
+  end
+
+  def crossing_firm_geometry
+    SU_MCP::Terrain::TerrainFeatureGeometry.new(
+      referenceSegments: [
+        { id: 'crossing-firm', featureId: 'corridor', role: 'centerline',
+          strength: 'firm', ownerLocalStart: [-10.0, 2.0],
+          ownerLocalEnd: [10.0, 2.0] }
+      ]
+    )
+  end
+
   class StallingHeightErrorMeter
     def worst_samples_with_local_tolerance(...)
       [{ point: [0.0, 0.0], residualExcess: 1.0 }]
@@ -185,7 +287,11 @@ class ResidualCdtEngineTest < Minitest::Test
     end
 
     def triangulate(points:, constraints:)
-      calls << { point_count: points.length, constraint_count: constraints.length }
+      calls << {
+        point_count: points.length,
+        constraint_count: constraints.length,
+        constraints: constraints
+      }
       @triangulator.triangulate(points: points, constraints: constraints)
     end
   end

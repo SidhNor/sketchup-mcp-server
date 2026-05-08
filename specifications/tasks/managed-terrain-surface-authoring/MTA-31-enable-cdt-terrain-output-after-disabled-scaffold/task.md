@@ -1,7 +1,8 @@
 # Task: MTA-31 Enable CDT Terrain Output After Disabled Scaffold
+
 **Task ID**: `MTA-31`
 **Title**: `Enable CDT Terrain Output After Disabled Scaffold`
-**Status**: `planned`
+**Status**: `closed`
 **Priority**: `P1`
 **Date**: `2026-05-08`
 

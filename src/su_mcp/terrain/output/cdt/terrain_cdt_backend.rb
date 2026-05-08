@@ -9,6 +9,8 @@ module SU_MCP
     class TerrainCdtBackend
       DEFAULT_POINT_BUDGET = 4096
       DEFAULT_FACE_BUDGET = 8192
+      DEFAULT_SEGMENT_BUDGET = 2048
+      DEFAULT_REGION_BUDGET = 1024
       DEFAULT_RUNTIME_BUDGET = 10.0
       DEFAULT_BASE_TOLERANCE = 0.05
       DEFAULT_MAX_RESIDUAL_ERROR = 0.05
@@ -39,6 +41,8 @@ module SU_MCP
         residual_engine: ResidualCdtEngine.new,
         point_budget: DEFAULT_POINT_BUDGET,
         face_budget: DEFAULT_FACE_BUDGET,
+        segment_budget: DEFAULT_SEGMENT_BUDGET,
+        region_budget: DEFAULT_REGION_BUDGET,
         runtime_budget: DEFAULT_RUNTIME_BUDGET,
         base_tolerance: DEFAULT_BASE_TOLERANCE,
         max_residual_error: DEFAULT_MAX_RESIDUAL_ERROR,
@@ -48,6 +52,8 @@ module SU_MCP
         @residual_engine = residual_engine
         @point_budget = point_budget
         @face_budget = face_budget
+        @segment_budget = segment_budget
+        @region_budget = region_budget
         @runtime_budget = runtime_budget
         @base_tolerance = base_tolerance
         @max_residual_error = max_residual_error
@@ -65,6 +71,9 @@ module SU_MCP
         if feature_geometry_failed || feature_geometry_failed?(feature_geometry)
           return fallback('feature_geometry_failed', empty_engine_result(context))
         end
+
+        preflight = pre_triangulation_budget_result(feature_geometry, context)
+        return preflight if preflight
 
         engine_result = residual_engine.run(
           state: state,
@@ -90,7 +99,8 @@ module SU_MCP
       private
 
       attr_reader :enabled, :residual_engine, :point_budget, :face_budget, :runtime_budget,
-                  :base_tolerance, :max_residual_error, :strict_quality_gates
+                  :segment_budget, :region_budget, :base_tolerance, :max_residual_error,
+                  :strict_quality_gates
 
       def digest_context(state_digest:, feature_geometry_digest:, reference_geometry_digest:)
         {
@@ -103,6 +113,52 @@ module SU_MCP
       def feature_geometry_failed?(feature_geometry)
         feature_geometry.respond_to?(:failure_category) &&
           feature_geometry.failure_category == 'feature_geometry_failed'
+      end
+
+      def pre_triangulation_budget_result(feature_geometry, context)
+        projection = primitive_projection(feature_geometry)
+        exceeded = projection.fetch(:hardFirmPointCount) > point_budget ||
+                   projection.fetch(:hardFirmSegmentCount) > segment_budget ||
+                   projection.fetch(:hardFirmRegionCount) > region_budget
+        return nil unless exceeded
+
+        engine_result = empty_engine_result(context).merge(
+          metrics: {
+            budgetStatus: 'pre_triangulate_budget_exceeded',
+            primitiveProjection: projection
+          },
+          limitations: [
+            {
+              category: 'pre_triangulate_budget',
+              reason: 'hard_firm_primitive_budget_exceeded'
+            }
+          ],
+          failureCategory: 'performance_limit_exceeded'
+        )
+        fallback('pre_triangulate_budget_exceeded', engine_result)
+      end
+
+      def primitive_projection(feature_geometry)
+        anchors = feature_items(feature_geometry, :output_anchor_candidates)
+        protected_regions = feature_items(feature_geometry, :protected_regions)
+        pressure_regions = feature_items(feature_geometry, :pressure_regions)
+        reference_segments = feature_items(feature_geometry, :reference_segments)
+        {
+          hardFirmPointCount: 4 + anchors.length + (protected_regions.length * 4) +
+            (reference_segments.length * 2),
+          hardFirmSegmentCount: (protected_regions.length * 4) + reference_segments.length,
+          hardFirmRegionCount: protected_regions.length,
+          softPressureRegionCount: pressure_regions.count do |region|
+            region.fetch('strength', 'soft') == 'soft'
+          end,
+          totalPressureRegionCount: pressure_regions.length
+        }
+      end
+
+      def feature_items(feature_geometry, method_name)
+        return [] unless feature_geometry.respond_to?(method_name)
+
+        Array(feature_geometry.public_send(method_name))
       end
 
       def fallback_reason(engine_result)
@@ -165,7 +221,13 @@ module SU_MCP
       def limits_for(engine_result)
         engine_result.fetch(
           :limits,
-          { pointBudget: point_budget, faceBudget: face_budget, runtimeBudget: runtime_budget }
+          {
+            pointBudget: point_budget,
+            faceBudget: face_budget,
+            segmentBudget: segment_budget,
+            regionBudget: region_budget,
+            runtimeBudget: runtime_budget
+          }
         )
       end
 
@@ -177,6 +239,7 @@ module SU_MCP
         {
           metrics: {},
           limits: { pointBudget: point_budget, faceBudget: face_budget,
+                    segmentBudget: segment_budget, regionBudget: region_budget,
                     runtimeBudget: runtime_budget },
           limitations: [],
           timing: {}

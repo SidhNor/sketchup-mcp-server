@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require_relative '../regions/corridor_frame'
+require_relative 'effective_feature_view'
 require_relative 'feature_intent_set'
 require_relative 'terrain_feature_geometry'
 
@@ -19,7 +20,7 @@ module SU_MCP
         'inferred_heightfield' => :derive_inferred
       }.freeze
 
-      def build(state:)
+      def build(state:, features: nil)
         @state = state
         @anchors = []
         @protected_regions = []
@@ -30,7 +31,9 @@ module SU_MCP
         @limitations = []
         @failure_category = 'none'
 
-        FeatureIntentSet.new(state.feature_intent).features.each do |feature|
+        feature_source = features ||
+                         EffectiveFeatureView.new(state.feature_intent).selection.fetch(:features)
+        feature_source.each do |feature|
           derive_feature(feature)
         end
 

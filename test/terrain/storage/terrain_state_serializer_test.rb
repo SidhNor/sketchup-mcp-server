@@ -73,6 +73,23 @@ class TerrainStateSerializerTest < Minitest::Test
     assert_equal(SU_MCP::Terrain::FeatureIntentSet.default_h, loaded.fetch(:state).feature_intent)
   end
 
+  def test_deserializes_legacy_v3_feature_intent_with_effective_defaults
+    payload = JSON.parse(serializer.serialize(build_state(feature_intent: legacy_feature_intent)))
+
+    loaded = serializer.deserialize(JSON.generate(payload))
+
+    feature_intent = loaded.fetch(:state).feature_intent
+    feature = feature_intent.fetch('features').first
+    assert_equal('active', feature.dig('lifecycle', 'status'))
+    assert_equal('soft', feature.fetch('strengthClass'))
+    assert_equal(feature.fetch('affectedWindow'), feature.fetch('relevanceWindow'))
+    assert_match(/\A[a-f0-9]{64}\z/, feature_intent.dig('effectiveIndex', 'sourceDigest'))
+    assert_equal(
+      ['feature:target_region:explicit_edit:region-a:aaaaaaaaaaaa'],
+      feature_intent.dig('effectiveIndex', 'activeIdsByStrength', 'soft')
+    )
+  end
+
   def test_digest_participates_in_feature_intent_ordering
     first = serializer.serialize(build_state(feature_intent: feature_intent(%w[b a])))
     second = serializer.serialize(build_state(feature_intent: feature_intent(%w[a b])))
@@ -143,14 +160,68 @@ class TerrainStateSerializerTest < Minitest::Test
     {
       'schemaVersion' => 3,
       'revision' => 1,
+      'effectiveRevision' => 1,
       'features' => scopes.map do |scope|
         {
           'id' => "feature:target_region:explicit_edit:#{scope}:aaaaaaaaaaaa",
           'kind' => 'target_region',
           'sourceMode' => 'explicit_edit',
+          'semanticScope' => scope,
+          'strengthClass' => 'soft',
           'roles' => ['boundary'],
           'priority' => 30,
           'payload' => { 'semanticScope' => scope },
+          'affectedWindow' => { 'min' => { 'column' => 0, 'row' => 0 },
+                                'max' => { 'column' => 1, 'row' => 1 } },
+          'relevanceWindow' => { 'min' => { 'column' => 0, 'row' => 0 },
+                                 'max' => { 'column' => 1, 'row' => 1 } },
+          'lifecycle' => {
+            'status' => 'active',
+            'supersededBy' => nil,
+            'updatedAtRevision' => 1
+          },
+          'provenance' => {
+            'originClass' => 'edit_terrain_surface',
+            'originOperation' => 'target_height',
+            'createdAtRevision' => 1,
+            'updatedAtRevision' => 1
+          }
+        }
+      end,
+      'effectiveIndex' => {
+        'effectiveRevision' => 1,
+        'sourceDigest' => 'a' * 64,
+        'activeIdsByStrength' => {
+          'hard' => [],
+          'firm' => [],
+          'soft' => scopes.map do |scope|
+            "feature:target_region:explicit_edit:#{scope}:aaaaaaaaaaaa"
+          end.sort
+        },
+        'countsByStatus' => {
+          'active' => scopes.length,
+          'superseded' => 0,
+          'deprecated' => 0,
+          'retired' => 0
+        },
+        'countsByStrength' => { 'hard' => 0, 'firm' => 0, 'soft' => scopes.length }
+      },
+      'generation' => SU_MCP::Terrain::FeatureIntentSet.default_h.fetch('generation')
+    }
+  end
+
+  def legacy_feature_intent
+    {
+      'schemaVersion' => 3,
+      'revision' => 1,
+      'features' => [
+        {
+          'id' => 'feature:target_region:explicit_edit:region-a:aaaaaaaaaaaa',
+          'kind' => 'target_region',
+          'sourceMode' => 'explicit_edit',
+          'roles' => ['boundary'],
+          'priority' => 30,
+          'payload' => { 'semanticScope' => 'region-a' },
           'affectedWindow' => { 'min' => { 'column' => 0, 'row' => 0 },
                                 'max' => { 'column' => 1, 'row' => 1 } },
           'provenance' => {
@@ -160,7 +231,7 @@ class TerrainStateSerializerTest < Minitest::Test
             'updatedAtRevision' => 1
           }
         }
-      end,
+      ],
       'generation' => SU_MCP::Terrain::FeatureIntentSet.default_h.fetch('generation')
     }
   end

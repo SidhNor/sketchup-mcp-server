@@ -179,7 +179,11 @@ module SU_MCP
         saved = save_state_or_refusal(context.fetch(:owner), state)
         return saved if refused?(saved)
 
-        feature_plan = post_save_feature_plan(state, saved)
+        feature_plan = post_save_feature_plan(
+          state,
+          saved,
+          selection_window: changed_region_window(context.fetch(:edit_result).fetch(:diagnostics))
+        )
         return feature_plan if refused?(feature_plan)
 
         output = regenerate_edit_output(context, saved, feature_plan, state)
@@ -200,11 +204,12 @@ module SU_MCP
         result.reject { |key, _value| key == :diagnostics }
       end
 
-      def post_save_feature_plan(state, saved)
+      def post_save_feature_plan(state, saved, selection_window: nil)
         terrain_feature_planner.prepare(
           state: state,
           terrain_state_summary: saved.fetch(:summary),
-          include_feature_geometry: cdt_output_enabled?
+          include_feature_geometry: cdt_output_enabled?,
+          selection_window: selection_window
         )
       end
 
@@ -563,7 +568,7 @@ module SU_MCP
 
         feature_context = nil
         if state.respond_to?(:feature_intent) && cdt_output_enabled?
-          feature_plan = post_save_feature_plan(state, saved)
+          feature_plan = post_save_feature_plan(state, saved, selection_window: nil)
           return [feature_plan, nil] if refused?(feature_plan)
 
           feature_context = cdt_feature_context(feature_plan, state)

@@ -9,7 +9,23 @@ class FeatureIntentSetTest < Minitest::Test
 
     assert_equal(3, payload.fetch('schemaVersion'))
     assert_equal(0, payload.fetch('revision'))
+    assert_equal(0, payload.fetch('effectiveRevision'))
     assert_equal([], payload.fetch('features'))
+    assert_equal(
+      {
+        'effectiveRevision' => 0,
+        'activeIdsByStrength' => { 'hard' => [], 'firm' => [], 'soft' => [] },
+        'countsByStatus' => {
+          'active' => 0,
+          'superseded' => 0,
+          'deprecated' => 0,
+          'retired' => 0
+        },
+        'countsByStrength' => { 'hard' => 0, 'firm' => 0, 'soft' => 0 }
+      },
+      payload.fetch('effectiveIndex').reject { |key, _value| key == 'sourceDigest' }
+    )
+    assert_match(/\A[a-f0-9]{64}\z/, payload.dig('effectiveIndex', 'sourceDigest'))
     assert_equal('grid_relative_v1', payload.dig('generation', 'pointificationPolicy'))
     refute_includes(JSON.generate(payload), 'Sketchup::')
   end
@@ -126,6 +142,125 @@ class FeatureIntentSetTest < Minitest::Test
     )
   end
 
+  def test_legacy_feature_normalizes_effective_fields_without_losing_identity
+    set = SU_MCP::Terrain::FeatureIntentSet.new(
+      'schemaVersion' => 3,
+      'revision' => 5,
+      'features' => [
+        feature('feature:target_region:explicit_edit:region-a:aaaaaaaaaaaa').merge(
+          'payload' => { 'semanticScope' => 'region-a' }
+        )
+      ],
+      'generation' => SU_MCP::Terrain::FeatureIntentSet.default_h.fetch('generation')
+    )
+
+    normalized = set.to_h.fetch('features').first
+    assert_equal('region-a', normalized.fetch('semanticScope'))
+    assert_equal('soft', normalized.fetch('strengthClass'))
+    assert_equal(normalized.fetch('affectedWindow'), normalized.fetch('relevanceWindow'))
+    assert_equal('active', normalized.dig('lifecycle', 'status'))
+    assert_nil(normalized.dig('lifecycle', 'supersededBy'))
+    assert_equal(5, normalized.dig('lifecycle', 'updatedAtRevision'))
+  end
+
+  def test_preserves_supplied_lifecycle_relevance_and_effective_index
+    payload = {
+      'schemaVersion' => 3,
+      'revision' => 7,
+      'effectiveRevision' => 3,
+      'features' => [
+        feature('feature:linear_corridor:explicit_edit:corridor-a:bbbbbbbbbbbb').merge(
+          'semanticScope' => 'corridor-a',
+          'strengthClass' => 'firm',
+          'relevanceWindow' => { 'min' => { 'column' => 2, 'row' => 2 },
+                                 'max' => { 'column' => 3, 'row' => 3 } },
+          'lifecycle' => {
+            'status' => 'superseded',
+            'supersededBy' => 'feature:linear_corridor:explicit_edit:corridor-a:cccccccccccc',
+            'updatedAtRevision' => 7
+          }
+        )
+      ],
+      'effectiveIndex' => {
+        'effectiveRevision' => 3,
+        'sourceDigest' => 'a' * 64,
+        'activeIdsByStrength' => { 'hard' => [], 'firm' => [], 'soft' => [] },
+        'countsByStatus' => {
+          'active' => 0,
+          'superseded' => 1,
+          'deprecated' => 0,
+          'retired' => 0
+        },
+        'countsByStrength' => { 'hard' => 0, 'firm' => 0, 'soft' => 0 }
+      },
+      'generation' => SU_MCP::Terrain::FeatureIntentSet.default_h.fetch('generation')
+    }
+
+    normalized = SU_MCP::Terrain::FeatureIntentSet.new(payload).to_h
+
+    assert_equal(3, normalized.fetch('effectiveRevision'))
+    assert_equal(payload.fetch('effectiveIndex'), normalized.fetch('effectiveIndex'))
+    assert_equal('superseded', normalized.dig('features', 0, 'lifecycle', 'status'))
+    assert_equal('corridor-a', normalized.dig('features', 0, 'semanticScope'))
+  end
+
+  def test_effective_index_digest_ignores_provenance_revision_churn
+    feature_payload = feature('feature:target_region:explicit_edit:region-a:aaaaaaaaaaaa')
+    first = SU_MCP::Terrain::FeatureIntentSet.new(
+      'schemaVersion' => 3,
+      'revision' => 7,
+      'features' => [feature_payload],
+      'generation' => SU_MCP::Terrain::FeatureIntentSet.default_h.fetch('generation')
+    ).to_h
+    second = SU_MCP::Terrain::FeatureIntentSet.new(
+      'schemaVersion' => 3,
+      'revision' => 8,
+      'features' => [
+        feature_payload.merge(
+          'provenance' => feature_payload.fetch('provenance').merge(
+            'updatedAtRevision' => 99
+          )
+        )
+      ],
+      'generation' => SU_MCP::Terrain::FeatureIntentSet.default_h.fetch('generation')
+    ).to_h
+
+    assert_equal(
+      first.dig('effectiveIndex', 'sourceDigest'),
+      second.dig('effectiveIndex', 'sourceDigest')
+    )
+  end
+
+  def test_effective_index_digest_changes_when_query_driving_lifecycle_changes
+    feature_payload = feature('feature:target_region:explicit_edit:region-a:aaaaaaaaaaaa')
+    active = SU_MCP::Terrain::FeatureIntentSet.new(
+      'schemaVersion' => 3,
+      'revision' => 7,
+      'features' => [feature_payload],
+      'generation' => SU_MCP::Terrain::FeatureIntentSet.default_h.fetch('generation')
+    ).to_h
+    retired = SU_MCP::Terrain::FeatureIntentSet.new(
+      'schemaVersion' => 3,
+      'revision' => 7,
+      'features' => [
+        feature_payload.merge(
+          'lifecycle' => {
+            'status' => 'retired',
+            'supersededBy' => nil,
+            'updatedAtRevision' => 99
+          }
+        )
+      ],
+      'generation' => SU_MCP::Terrain::FeatureIntentSet.default_h.fetch('generation')
+    ).to_h
+
+    refute_equal(
+      active.dig('effectiveIndex', 'sourceDigest'),
+      retired.dig('effectiveIndex', 'sourceDigest')
+    )
+    assert_equal([], retired.dig('effectiveIndex', 'activeIdsByStrength', 'soft'))
+  end
+
   def test_rejects_unknown_feature_kind_and_role
     assert_raises(ArgumentError) do
       SU_MCP::Terrain::FeatureIntentSet.new(
@@ -138,6 +273,28 @@ class FeatureIntentSetTest < Minitest::Test
         'features' => [
           feature('feature:target_region:explicit_edit:x:aaaaaaaaaaaa').merge(
             'roles' => ['unknown_role']
+          )
+        ]
+      )
+    end
+  end
+
+  def test_rejects_unknown_lifecycle_status_and_strength_class
+    assert_raises(ArgumentError) do
+      SU_MCP::Terrain::FeatureIntentSet.new(
+        'features' => [
+          feature('feature:target_region:explicit_edit:x:aaaaaaaaaaaa').merge(
+            'lifecycle' => { 'status' => 'zombie' }
+          )
+        ]
+      )
+    end
+
+    assert_raises(ArgumentError) do
+      SU_MCP::Terrain::FeatureIntentSet.new(
+        'features' => [
+          feature('feature:target_region:explicit_edit:x:aaaaaaaaaaaa').merge(
+            'strengthClass' => 'medium-ish'
           )
         ]
       )

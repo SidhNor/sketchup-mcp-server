@@ -79,6 +79,19 @@ class TerrainFeatureGeometryBuilderTest < Minitest::Test
     assert(geometry.reference_segments.any? { |segment| segment.fetch('role') == 'centerline' })
   end
 
+  def test_default_feature_source_uses_effective_view_and_excludes_retired_history
+    geometry = builder.build(
+      state: state_with_features([
+                                   preserve_feature('active-preserve'),
+                                   retired_feature(fixed_feature('retired-fixed'))
+                                 ])
+    )
+
+    assert_equal(['active-preserve:protected'],
+                 geometry.protected_regions.map { |region| region.fetch('id') })
+    assert_empty(geometry.output_anchor_candidates)
+  end
+
   private
 
   def builder
@@ -195,6 +208,14 @@ class TerrainFeatureGeometryBuilderTest < Minitest::Test
     feature(id: id, kind: 'fixed_control', roles: %w[control protected],
             payload: { 'control' => { 'id' => id, 'point' => { 'x' => 2.0, 'y' => 2.0 },
                                       'tolerance' => 0.05 } })
+  end
+
+  def retired_feature(feature)
+    feature.merge('lifecycle' => {
+                    'status' => 'retired',
+                    'supersededBy' => nil,
+                    'updatedAtRevision' => 1
+                  })
   end
 
   def corridor_feature(id, width: 2.0, side_blend: { 'distance' => 1.0, 'falloff' => 'cosine' })

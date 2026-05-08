@@ -2,6 +2,9 @@
 
 require_relative '../../test_helper'
 require_relative '../../../src/su_mcp/terrain/output/cdt/terrain_cdt_backend'
+require_relative '../../../src/su_mcp/terrain/output/cdt/terrain_triangulation_adapter'
+require_relative '../../../src/su_mcp/terrain/features/terrain_feature_geometry'
+require_relative '../../../src/su_mcp/terrain/state/tiled_heightmap_state'
 
 class TerrainCdtBackendTest < Minitest::Test
   def test_disabled_gate_returns_cdt_disabled_without_engine_call
@@ -19,6 +22,7 @@ class TerrainCdtBackendTest < Minitest::Test
     assert_equal('accepted', result.fetch(:status))
     assert_equal([[0, 1, 2]], result.dig(:mesh, :triangles))
     assert_equal('state-digest', result.fetch(:stateDigest))
+    assert_equal({ totalSeconds: 0.01 }, result.fetch(:timing))
     refute_internal_vocabulary(result)
   end
 
@@ -164,11 +168,62 @@ class TerrainCdtBackendTest < Minitest::Test
     assert_equal('point_budget_exceeded', result.fetch(:fallbackReason))
   end
 
+  def test_pre_triangulation_budget_fallback_is_feature_strength_dependent
+    soft_pressure = Array.new(20) do |index|
+      { id: "soft-#{index}", featureId: "soft-#{index}", role: 'target_support',
+        strength: 'soft', primitive: 'circle', ownerLocalShape: [[0.0, 0.0], 1.0] }
+    end
+    engine = RecordingResidualEngine.new(engine_result)
+
+    soft_result = backend(
+      residual_engine: engine,
+      point_budget: 8,
+      segment_budget: 2,
+      region_budget: 2
+    ).build(**input(feature_geometry: feature_geometry(pressureRegions: soft_pressure)))
+
+    assert_equal('accepted', soft_result.fetch(:status))
+    assert_equal(1, engine.calls)
+
+    engine = RecordingResidualEngine.new(engine_result)
+    firm_segments = Array.new(3) do |index|
+      { id: "firm-#{index}", featureId: "firm-#{index}", role: 'centerline',
+        strength: 'firm', ownerLocalStart: [0.0, index.to_f],
+        ownerLocalEnd: [1.0, index.to_f] }
+    end
+
+    firm_result = backend(
+      residual_engine: engine,
+      point_budget: 64,
+      segment_budget: 2,
+      region_budget: 2
+    ).build(**input(feature_geometry: feature_geometry(referenceSegments: firm_segments)))
+
+    assert_equal('fallback', firm_result.fetch(:status))
+    assert_equal('pre_triangulate_budget_exceeded', firm_result.fetch(:fallbackReason))
+    assert_equal(0, engine.calls)
+    assert_equal('pre_triangulate_budget_exceeded', firm_result.dig(:metrics, :budgetStatus))
+  end
+
   def test_native_unavailable_adapter_error_maps_to_native_unavailable_fallback
     result = backend(residual_engine: NativeUnavailableResidualEngine.new).build(**input)
 
     assert_equal('fallback', result.fetch(:status))
     assert_equal('native_unavailable', result.fetch(:fallbackReason))
+  end
+
+  def test_native_unavailable_adapter_survives_real_residual_engine_path
+    residual_engine = SU_MCP::Terrain::ResidualCdtEngine.new(
+      triangulation_adapter: SU_MCP::Terrain::TerrainTriangulationAdapter.native_unavailable
+    )
+    result = backend(residual_engine: residual_engine).build(
+      **input(state: real_state, feature_geometry: feature_geometry)
+    )
+
+    assert_equal('fallback', result.fetch(:status))
+    assert_equal('native_unavailable', result.fetch(:fallbackReason))
+    refute_includes(JSON.generate(result), '.so')
+    refute_includes(JSON.generate(result), 'LoadError')
   end
 
   def test_residual_engine_exception_maps_to_adapter_exception_fallback
@@ -206,14 +261,35 @@ class TerrainCdtBackendTest < Minitest::Test
     SU_MCP::Terrain::TerrainCdtBackend.new(**options)
   end
 
-  def input
+  def input(state: Object.new, feature_geometry: Object.new)
     {
-      state: Object.new,
-      feature_geometry: Object.new,
+      state: state,
+      feature_geometry: feature_geometry,
       state_digest: 'state-digest',
       feature_geometry_digest: 'feature-digest',
       reference_geometry_digest: 'reference-digest'
     }
+  end
+
+  def feature_geometry(**attributes)
+    SU_MCP::Terrain::TerrainFeatureGeometry.new(**attributes)
+  end
+
+  def real_state
+    SU_MCP::Terrain::TiledHeightmapState.new(
+      basis: {
+        'xAxis' => [1.0, 0.0, 0.0],
+        'yAxis' => [0.0, 1.0, 0.0],
+        'zAxis' => [0.0, 0.0, 1.0],
+        'vertical' => 'z_up'
+      },
+      origin: { 'x' => 0.0, 'y' => 0.0, 'z' => 0.0 },
+      spacing: { 'x' => 1.0, 'y' => 1.0 },
+      dimensions: { 'columns' => 3, 'rows' => 3 },
+      elevations: Array.new(9, 1.0),
+      revision: 1,
+      state_id: 'native-unavailable-backend'
+    )
   end
 
   def engine_result(metrics: {}, limitations: [], budget_status: 'ok',

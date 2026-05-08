@@ -39,7 +39,12 @@ module SU_MCP
 
       def add_feature_points
         feature_geometry.output_anchor_candidates.each do |anchor|
-          add_point(anchor.fetch('ownerLocalPoint'), mandatory: true)
+          add_point(
+            anchor.fetch('ownerLocalPoint'),
+            mandatory: true,
+            strength: anchor.fetch('strength', 'hard'),
+            source: anchor.fetch('id', 'anchor')
+          )
         end
         feature_geometry.protected_regions.each { |region| add_protected_region(region) }
         feature_geometry.reference_segments.each { |segment| add_reference_segment(segment) }
@@ -55,23 +60,58 @@ module SU_MCP
           return
         end
 
+        strength = region.fetch('strength', 'hard')
+        corners = protected_region_corners(region)
+        if strength == 'hard' && corners.any? { |point| !inside_domain?(point) }
+          hard_domain_violation(region.fetch('id', 'protected_region'))
+          return
+        end
+
+        add_protected_corner_support(region, contain_corners(corners, region, strength), strength)
+      end
+
+      def protected_region_corners(region)
         min, max = region.fetch('ownerLocalBounds')
-        corners = [
+        [
           [min[0], min[1]],
           [max[0], min[1]],
           [max[0], max[1]],
           [min[0], max[1]]
         ]
-        corners.each { |point| add_point(point, mandatory: true) }
+      end
+
+      def contain_corners(corners, region, strength)
+        corners.map do |point|
+          contain_point(point, strength: strength, source: region.fetch('id', 'protected_region'))
+        end.compact
+      end
+
+      def add_protected_corner_support(region, corners, strength)
+        corners.each { |point| add_point(point, mandatory: true, strength: strength) }
         corners.each_with_index do |point, index|
-          add_minimal_segment_support(point, corners.fetch((index + 1) % corners.length))
+          add_minimal_segment_support(
+            point,
+            corners.fetch((index + 1) % corners.length),
+            strength: strength,
+            source: region.fetch('id', 'protected_region')
+          )
         end
       end
 
       def add_reference_segment(segment)
-        add_minimal_segment_support(
+        start_point, end_point = contained_segment(
           segment.fetch('ownerLocalStart'),
-          segment.fetch('ownerLocalEnd')
+          segment.fetch('ownerLocalEnd'),
+          strength: segment.fetch('strength', 'firm'),
+          source: segment.fetch('id', 'reference_segment')
+        )
+        return unless start_point && end_point
+
+        add_minimal_segment_support(
+          start_point,
+          end_point,
+          strength: segment.fetch('strength', 'firm'),
+          source: segment.fetch('id', 'reference_segment')
         )
       end
 
@@ -86,7 +126,7 @@ module SU_MCP
         end
       end
 
-      def add_minimal_segment_support(start_point, end_point)
+      def add_minimal_segment_support(start_point, end_point, strength: 'firm', source: nil)
         distance = xy_distance(start_point, end_point)
         steps = [(distance / (nominal_spacing * 8.0)).ceil, 1].max.clamp(1, 8)
         (0..steps).each do |index|
@@ -94,20 +134,59 @@ module SU_MCP
           add_point([
                       start_point[0] + ((end_point[0] - start_point[0]) * ratio),
                       start_point[1] + ((end_point[1] - start_point[1]) * ratio)
-                    ], mandatory: true)
+                    ], mandatory: true, strength: strength, source: source)
         end
       end
 
-      def add_point(point, mandatory: false)
+      def add_point(point, mandatory: false, strength: 'soft', source: nil)
+        pair = contain_point(point, strength: strength, source: source)
+        return unless pair
+
         if point_budget_exhausted?
           limitations << { category: 'point_budget', reason: 'selected point budget exhausted' }
           return
         end
 
-        pair = [Float(point.fetch(0)), Float(point.fetch(1))]
         key = point_key(pair)
         points_by_key[key] ||= pair
         mandatory_points_by_key[key] = true if mandatory
+      end
+
+      def contained_segment(start_point, end_point, strength:, source:)
+        start_pair = contain_point(start_point, strength: strength, source: source)
+        end_pair = contain_point(end_point, strength: strength, source: source)
+        return [nil, nil] unless start_pair && end_pair
+
+        [start_pair, end_pair]
+      end
+
+      def contain_point(point, strength:, source:)
+        pair = [Float(point.fetch(0)), Float(point.fetch(1))]
+        return pair if inside_domain?(pair)
+
+        case strength
+        when 'hard'
+          hard_domain_violation(source)
+          nil
+        when 'firm'
+          limitations << { category: 'firm_constraint_clipped', source: source }.compact
+          clipped_point(pair)
+        else
+          limitations << { category: 'soft_pressure_ignored', source: source }.compact
+          nil
+        end
+      end
+
+      def inside_domain?(point)
+        point[0].between?(min_x, max_x) && point[1].between?(min_y, max_y)
+      end
+
+      def clipped_point(point)
+        [point[0].clamp(min_x, max_x), point[1].clamp(min_y, max_y)]
+      end
+
+      def hard_domain_violation(source)
+        limitations << { category: 'hard_domain_violation', source: source }.compact
       end
 
       def point_budget_exhausted?
@@ -167,6 +246,22 @@ module SU_MCP
 
       def y_at(row)
         state.origin.fetch('y') + (row * state.spacing.fetch('y'))
+      end
+
+      def min_x
+        [x_at(0), x_at(columns - 1)].min
+      end
+
+      def max_x
+        [x_at(0), x_at(columns - 1)].max
+      end
+
+      def min_y
+        [y_at(0), y_at(rows - 1)].min
+      end
+
+      def max_y
+        [y_at(0), y_at(rows - 1)].max
       end
 
       def dense_equivalent_face_count

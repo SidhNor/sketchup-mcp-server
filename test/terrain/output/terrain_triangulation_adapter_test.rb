@@ -28,8 +28,9 @@ class TerrainTriangulationAdapterTest < Minitest::Test
   end
 
   def test_ruby_adapter_returns_raw_triangulation_result
+    triangulator = SuccessfulTriangulator.new
     result = SU_MCP::Terrain::TerrainTriangulationAdapter.ruby_cdt(
-      triangulator: SuccessfulTriangulator.new
+      triangulator: triangulator
     ).triangulate(points: request.fetch(:points), constraints: request.fetch(:segments))
 
     assert_equal(
@@ -44,6 +45,10 @@ class TerrainTriangulationAdapterTest < Minitest::Test
       result.keys.sort
     )
     assert_equal([[0, 1, 2]], result.fetch(:triangles))
+    assert_equal(
+      { points: request.fetch(:points), constraints: request.fetch(:segments) },
+      triangulator.last_call
+    )
     refute_includes(result.keys, :status)
     refute_includes(result.keys, :fallbackReason)
   end
@@ -74,7 +79,10 @@ class TerrainTriangulationAdapterTest < Minitest::Test
   end
 
   class SuccessfulTriangulator
-    def triangulate(...)
+    attr_reader :last_call
+
+    def triangulate(points:, constraints:)
+      @last_call = { points: points, constraints: constraints }
       {
         vertices: [[0.0, 0.0], [1.0, 0.0], [0.0, 1.0]],
         triangles: [[0, 1, 2]],

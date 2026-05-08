@@ -591,6 +591,26 @@ class TerrainSurfaceCommandsTest < Minitest::Test # rubocop:disable Metrics/Clas
     )
   end
 
+  def test_cdt_feature_planning_receives_edit_relevance_window
+    model = build_semantic_model
+    managed_terrain_owner(model)
+    mesh_generator = RecordingRegeneratingMeshGenerator.new(cdt_enabled: true)
+    planner = RecordingSelectionWindowPlanner.new
+    commands = build_edit_commands(
+      model: model,
+      repository: EditRepository.new(state_4x4),
+      mesh_generator: mesh_generator,
+      terrain_feature_intent_emitter: RecordingFeatureIntentEmitter.new,
+      terrain_feature_planner: planner
+    )
+
+    result = commands.edit_terrain_surface(edit_request)
+
+    assert_equal('edited', result.fetch(:outcome))
+    assert_equal(expected_changed_region_window, planner.selection_window)
+    assert(mesh_generator.last_regenerate_args.fetch(:feature_context))
+  end
+
   private
 
   def refute_feature_leak(result)
@@ -1055,8 +1075,10 @@ class TerrainSurfaceCommandsTest < Minitest::Test # rubocop:disable Metrics/Clas
       { outcome: 'ready', state: state }
     end
 
-    def prepare(state:, terrain_state_summary:, include_feature_geometry: false)
+    def prepare(state:, terrain_state_summary:, include_feature_geometry: false,
+                selection_window: nil)
       _include_feature_geometry = include_feature_geometry
+      _selection_window = selection_window
       {
         outcome: 'prepared',
         state: state,
@@ -1074,8 +1096,10 @@ class TerrainSurfaceCommandsTest < Minitest::Test # rubocop:disable Metrics/Clas
       { outcome: 'ready', state: state }
     end
 
-    def prepare(state:, terrain_state_summary:, include_feature_geometry: false)
+    def prepare(state:, terrain_state_summary:, include_feature_geometry: false,
+                selection_window: nil)
       _include_feature_geometry = include_feature_geometry
+      _selection_window = selection_window
       {
         outcome: 'prepared',
         state: state,
@@ -1090,6 +1114,30 @@ class TerrainSurfaceCommandsTest < Minitest::Test # rubocop:disable Metrics/Clas
               }
             }
           ]
+        },
+        outputWindowReconciliation: { mode: 'feature_window' }
+      }
+    end
+  end
+
+  class RecordingSelectionWindowPlanner
+    attr_reader :selection_window
+
+    def pre_save(state:)
+      { outcome: 'ready', state: state }
+    end
+
+    def prepare(state:, terrain_state_summary:, include_feature_geometry: false,
+                selection_window: nil)
+      @selection_window = selection_window
+      _include_feature_geometry = include_feature_geometry
+      {
+        outcome: 'prepared',
+        state: state,
+        context: {
+          constraintCount: 1,
+          terrainStateDigest: terrain_state_summary.fetch(:digest),
+          featureGeometry: SU_MCP::Terrain::TerrainFeatureGeometry.new
         },
         outputWindowReconciliation: { mode: 'feature_window' }
       }

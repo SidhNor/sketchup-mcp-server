@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require_relative 'feature_intent_set'
+require_relative 'effective_feature_view'
 require_relative 'terrain_feature_geometry_builder'
 
 module SU_MCP
@@ -35,8 +36,13 @@ module SU_MCP
         )
       end
 
-      def prepare(state:, terrain_state_summary:, include_feature_geometry: false)
-        explicit_constraints = FeatureIntentSet.new(state.feature_intent).features.map do |feature|
+      def prepare(state:, terrain_state_summary:, include_feature_geometry: false,
+                  selection_window: nil)
+        selection = EffectiveFeatureView.new(state.feature_intent).selection(
+          window: selection_window
+        )
+        selected_features = selection.fetch(:features)
+        explicit_constraints = selected_features.map do |feature|
           runtime_constraint_for(feature)
         end
         inferred_constraints = explicit_constraints.empty? ? inferred_constraints_for(state) : []
@@ -44,10 +50,14 @@ module SU_MCP
         context = {
           terrainStateDigest: terrain_state_summary.fetch(:digest),
           constraintCount: constraints.length,
-          constraints: constraints
+          constraints: constraints,
+          featureSelectionDiagnostics: selection.fetch(:diagnostics)
         }
         if include_feature_geometry
-          feature_geometry = feature_geometry_builder.build(state: state)
+          feature_geometry = feature_geometry_builder.build(
+            state: state,
+            features: selected_features
+          )
           context[:featureGeometry] = feature_geometry
           context[:featureGeometryDigest] = feature_geometry.feature_geometry_digest
           context[:referenceGeometryDigest] = feature_geometry.reference_geometry_digest
@@ -60,6 +70,12 @@ module SU_MCP
             mode: constraints.empty? ? 'dirty_window' : 'feature_window'
           }
         }
+      rescue EffectiveFeatureView::StaleIndexError
+        public_refusal(
+          code: 'terrain_feature_effective_index_invalid',
+          message: 'Terrain feature intent effective index is invalid.',
+          internal_details: { category: 'feature_effective_index', featureCount: 0 }
+        )
       end
 
       def classify_topology(context:, topology:)
