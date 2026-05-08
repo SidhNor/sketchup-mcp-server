@@ -2,6 +2,14 @@
 
 <!-- version list -->
 
+## v1.5.1 (2026-05-08)
+
+### Refactoring
+
+- **MTA-25**: Partial promotion of CDT terrain
+  ([`18accf0`](https://github.com/SidhNor/sketchup-mcp-server/commit/18accf0b7ca3ca26a684ebcc3942456add1285f6))
+
+
 ## v1.5.0 (2026-05-08)
 
 ### Documentation
