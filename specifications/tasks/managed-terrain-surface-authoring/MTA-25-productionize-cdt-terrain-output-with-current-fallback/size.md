@@ -2,13 +2,13 @@
 
 **Task ID**: `MTA-25`
 **Title**: Productionize CDT Terrain Output With Current Backend Fallback
-**Status**: `challenged`
+**Status**: `calibrated`
 **Created**: 2026-05-07
 **Last Updated**: 2026-05-08
 
 **Related Task**: [task.md](./task.md)
 **Related Plan**: [plan.md](./plan.md)
-**Related Summary**: none yet
+**Related Summary**: [summary.md](./summary.md)
 
 ---
 
@@ -222,9 +222,15 @@
 
 | Date | Phase / Checkpoint | Event Type | Severity (1-3) | Dimension Affected | Predictable Earlier? | Notes |
 |---|---|---|---:|---|---|---|
+| 2026-05-08 | Implementation / live validation | approach-change | 3 | Scope Volatility, Rework, Discovery | Partly | Initial one-shot production wrapper was repivoted to residual-engine ownership after MTA-24 reread and live CDT fallback behavior showed the original productionization path was too loose. |
+| 2026-05-08 | Hosted/live pressure check | performance-blocker | 3 | Validation Burden, Discovery, Scope Volatility | Partly | Representative terrain with hundreds of accumulated feature intents could hang for minutes on a single target-height edit, forcing disabled-by-default closeout and MTA-31 enablement follow-up. |
+| 2026-05-08 | Cleanup / closeout | rework | 2 | Implementation Friction, Rework | Yes | Boundary seeding, clipping, fallback-gate churn, and default-path CDT feature-geometry overhead required cleanup before closeout. |
 
 ### Drift Notes
-- No material drift recorded yet.
+- Material drift was high. The task closed as disabled production scaffolding rather than active CDT
+  production enablement.
+- Live validation and user review materially changed the task posture: the current backend remains
+  default, and CDT enablement moved to MTA-31.
 <!-- SIZE:DRIFT:END -->
 
 ---
@@ -236,21 +242,28 @@
 
 | Dimension | Score (0-4) | Notes |
 |---|---:|---|
-| Functional Scope | <0-4> | <short note> |
-| Technical Change Surface | <0-4> | <short note> |
-| Actual Implementation Friction | <0-4> | <short note> |
-| Actual Validation Burden | <0-4> | <short note> |
-| Actual Dependency Drag | <0-4> | <short note> |
-| Actual Discovery Encountered | <0-4> | <short note> |
-| Actual Scope Volatility | <0-4> | <short note> |
-| Actual Rework | <0-4> | <short note> |
-| Final Confidence in Completeness | <0-4> | <short note> |
+| Functional Scope | 2 | Final user-visible behavior stays on the current backend; shipped scope is internal CDT scaffold, fallback/no-leak posture, and validation wrapper extraction. |
+| Technical Change Surface | 4 | Touched command state handoff, feature planning, mesh generation, CDT engine/backend/result/adapter seams, contract tests, package posture tests, and task metadata. |
+| Actual Implementation Friction | 4 | Work required residual-engine repivot, wrapper extraction, fallback/gate policy changes, live monkey-patch diagnosis, and cleanup of overcorrections. |
+| Actual Validation Burden | 4 | Required many focused unit/integration/contract/package checks plus live SketchUp probing; full suite/package/hosted closeout remains an explicit gap. |
+| Actual Dependency Drag | 3 | Depended on MTA-20 feature geometry, MTA-24 CDT evidence, live SketchUp runtime access, PAL review, and follow-up task creation. |
+| Actual Discovery Encountered | 4 | Found intersecting-constraint semantics drift, productized planner inefficiency concerns, feature-history scaling hang, boundary containment risk, and naming/ownership ambiguity. |
+| Actual Scope Volatility | 4 | Outcome shifted from active CDT productionization to disabled-by-default scaffold with MTA-31 enablement task. |
+| Actual Rework | 4 | Multiple implementation slices were revised or removed: one-shot wrapper, fallback gates, perimeter seeding, clipping experiment, and default feature-geometry preparation. |
+| Final Confidence in Completeness | 3 | Closeout is credible for disabled-by-default scaffold; confidence is intentionally not 4 because full suite/package/hosted closeout were not rerun and enablement is deferred. |
 
 ### Actual Signals
-- Not filled yet.
+- Default `TerrainMeshGenerator.new` leaves CDT disabled and does not build CDT feature geometry.
+- Current adaptive/full-grid/partial output paths remain the production default.
+- Residual CDT engine exists and MTA-24 candidate backend now wraps it as validation oracle.
+- Live SketchUp pressure showed representative feature-history performance is not production-ready.
+- Public contract tests cover accepted CDT and all internal fallback reasons for no-leak behavior.
 
 ### Actual Notes
-- Not filled yet.
+- This task should calibrate as a high-rework terrain backend promotion attempt that closed as
+  controlled scaffold rather than active backend enablement.
+- The dominant failure mode was not triangle generation. It was production readiness under real
+  feature-history scale, runtime budgets, geometry containment, and clear ownership.
 <!-- SIZE:ACTUAL:END -->
 
 ---
@@ -261,22 +274,38 @@
 > Fill only the sections that are relevant. Say `not applicable` where needed.
 
 ### Automated Validation
-- Not filled yet.
+- Focused terrain command, feature planner, contract, package posture, mesh generator, residual
+  engine, candidate wrapper, production backend/result, primitive request, triangulation adapter,
+  and point planner tests passed individually.
+- Targeted RuboCop over changed command, feature, output, package, contract, and test files passed.
+- PAL `grok-4.3` code review completed; one low-severity dead assignment was removed and
+  revalidated.
 
 ### Hosted / Manual Validation
-- Not filled yet.
+- Live SketchUp checks and monkey-patch probes were used during implementation to inspect CDT
+  acceptance/fallback, residual metrics, constraint coverage, runtime behavior, and geometry bounds.
+- Hosted closeout matrix was not rerun after disabled-default cleanup because CDT is no longer
+  active by default; this remains a documented confidence gap rather than a hidden green.
 
 ### Performance Validation
-- Not filled yet.
+- Live representative terrain exposed unacceptable edit latency: a single target-height edit on a
+  terrain with hundreds of accumulated feature intents could hang for minutes.
+- This performance finding drove the disabled-by-default closeout and MTA-31 follow-up.
 
 ### Migration / Compatibility Validation
-- Not filled yet.
+- Public MCP response shape remained unchanged.
+- Contract no-leak tests cover accepted CDT and internal fallback reasons.
+- Package/no-native posture test passed in the focused package support test file.
 
 ### Operational / Rollout Validation
-- Not filled yet.
+- Runtime default remains current backend output; CDT requires explicit internal injection/enabled
+  backend.
+- No public backend selector, public CDT diagnostics, or user-facing workflow change was introduced.
 
 ### Validation Notes
-- Not filled yet.
+- Full test suite, full lint, package verification, and hosted closeout were not rerun.
+- Validation burden should be scored high because live runtime evidence changed the closeout
+  decision and because final confidence depends on explicitly deferred enablement evidence.
 <!-- SIZE:VALIDATION-EVIDENCE:END -->
 
 ---
@@ -286,14 +315,24 @@
 
 > Filled during final calibration. Compare prediction to actual behavior.
 
-- **Most Underestimated Dimension**: <dimension + why>
-- **Most Overestimated Dimension**: <dimension + why>
-- **Signal Present Early But Underweighted**: <note>
-- **Genuinely Unknowable Factor**: <note or `none identified`>
-- **Future Similar Tasks Should Assume**: <note>
+- **Most Underestimated Dimension**: Scope Volatility. The prediction allowed fallback retention,
+  but actual implementation shifted from active productionization to disabled scaffold plus MTA-31.
+- **Most Overestimated Dimension**: Functional Scope. The planned behavior would have made CDT
+  eligible as active production output; the actual closeout intentionally keeps user-visible output
+  on the current backend.
+- **Signal Present Early But Underweighted**: MTA-24 proved CDT candidate potential, but the
+  residual-driven stack, feature-history scale, and hosted/live validation costs were stronger
+  production blockers than the plan treated them.
+- **Genuinely Unknowable Factor**: Representative terrain with hundreds of accumulated feature
+  intents hanging for minutes on a single small edit was only knowable through live runtime pressure.
+- **Future Similar Tasks Should Assume**: Terrain backend promotion from prototype to production must first prove representative feature-history performance and ownership/naming clarity before default enablement.
 
 ### Calibration Notes
-- Not filled yet.
+- The estimate correctly predicted high technical surface, validation burden, and rework risk.
+- Future analog retrieval should treat this as `performance-sensitive` plus `validation-heavy`
+  disabled-default scaffold, not as a successful active backend promotion.
+- Native/C++ triangulation readiness should be planned as evidence-driven enablement work, not
+  mixed into a late cleanup pass.
 <!-- SIZE:DELTA:END -->
 
 ---
@@ -307,14 +346,12 @@
 - `systems:terrain-mesh-generator`
 - `systems:terrain-kernel`
 - `validation:performance`
-- `validation:hosted-matrix`
 - `validation:contract`
-- `validation:undo`
-- `validation:persistence`
-- `host:repeated-fix-loop`
+- `host:not-run-gap`
+- `host:performance`
 - `contract:no-public-shape-change`
 - `risk:performance-scaling`
-- `risk:transform-semantics`
-- `volatility:medium`
-- `confidence:low`
+- `risk:review-rework`
+- `volatility:high`
+- `confidence:medium`
 <!-- SIZE:TAGS:END -->

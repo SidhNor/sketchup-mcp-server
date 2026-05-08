@@ -47,6 +47,9 @@ The current task order proves terrain authoring through concrete, testable incre
 - a shared Managed Terrain tool panel proven by adding local fairing as a second round-brush tool
 - corridor-transition UI over the existing managed corridor edit mode
 - survey-point and planar-region UI tools over the existing control-point edit modes
+- CDT terrain output enablement after the disabled MTA-25 scaffold, including large feature-history
+  performance, geometry containment, module ownership cleanup, and Ruby-versus-native triangulation
+  evidence
 
 ## Current Task Order
 
@@ -80,6 +83,7 @@ The current task order proves terrain authoring through concrete, testable incre
 28. [MTA-28 Add Managed Terrain Corridor Transition UI Tool](MTA-28-add-managed-terrain-corridor-transition-ui-tool/task.md)
 29. [MTA-29 Add Managed Terrain Survey Point Constraint UI Tool](MTA-29-add-managed-terrain-survey-point-constraint-ui-tool/task.md)
 30. [MTA-30 Add Managed Terrain Planar Region Fit UI Tool](MTA-30-add-managed-terrain-planar-region-fit-ui-tool/task.md)
+31. [MTA-31 Enable CDT Terrain Output After Disabled Scaffold](MTA-31-enable-cdt-terrain-output-after-disabled-scaffold/task.md)
 
 ## Deferred Follow-Ons
 
@@ -137,3 +141,7 @@ Deferred work is not promoted into active task folders in this iteration:
   than adding terrain math: first target-height overlay feedback, then a shared panel proven by local
   fairing, then corridor-transition UI, then survey-point and planar-region point-control UI in
   separate tasks.
+- `MTA-31` captures the CDT enablement work deferred from MTA-25 after the disabled-default
+  closeout. It should prove large feature-history performance, effective feature-intent selection,
+  geometry containment, module ownership cleanup, and the Ruby-versus-native triangulation decision
+  before CDT is considered for default production output.

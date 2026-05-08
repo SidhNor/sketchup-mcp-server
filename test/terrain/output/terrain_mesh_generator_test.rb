@@ -4,6 +4,7 @@ require_relative '../../test_helper'
 require_relative '../../support/semantic_test_support'
 require_relative '../../../src/su_mcp/terrain/state/tiled_heightmap_state'
 require_relative '../../../src/su_mcp/terrain/state/heightmap_state'
+require_relative '../../../src/su_mcp/terrain/features/terrain_feature_geometry'
 require_relative '../../../src/su_mcp/terrain/output/terrain_mesh_generator'
 require_relative '../../../src/su_mcp/terrain/output/terrain_output_cell_window'
 require_relative '../../../src/su_mcp/terrain/output/terrain_output_plan'
@@ -730,6 +731,215 @@ class TerrainMeshGeneratorTest < Minitest::Test # rubocop:disable Metrics/ClassL
     assert_includes(owner.entities.faces, old_face)
   end
 
+  def test_cdt_preflight_runs_before_compute_and_before_erasing_existing_output
+    model = build_semantic_model
+    owner = model.active_entities.add_group
+    owner.entities.add_group
+    old_face = owner.entities.add_face([0, 0, 1], [1, 0, 1], [1, 1, 1])
+    old_face.set_attribute('su_mcp_terrain', 'derivedOutput', true)
+    cdt_backend = RecordingCdtBackend.new(status: 'accepted')
+
+    result = generator_with_cdt(cdt_backend).regenerate(
+      owner: owner,
+      state: mixed_resolution_v2_state,
+      terrain_state_summary: { digest: 'digest-v2', revision: 2 },
+      feature_context: { featureGeometryDigest: 'feature-digest' }
+    )
+
+    assert_equal('refused', result.fetch(:outcome))
+    assert_equal(0, cdt_backend.calls)
+    assert_includes(owner.entities.faces, old_face)
+  end
+
+  def test_accepted_cdt_emits_faces_through_existing_derived_output_conventions
+    model = build_semantic_model
+    owner = model.active_entities.add_group
+    cdt_backend = RecordingCdtBackend.new(
+      status: 'accepted',
+      mesh: {
+        vertices: [[0.0, 0.0, 1.0], [1.0, 0.0, 1.0], [0.0, 1.0, 1.0]],
+        triangles: [[0, 1, 2]]
+      }
+    )
+
+    result = generator_with_cdt(cdt_backend).regenerate(
+      owner: owner,
+      state: mixed_resolution_v2_state,
+      terrain_state_summary: { digest: 'digest-cdt', revision: 2 },
+      feature_context: { featureGeometryDigest: 'feature-digest' }
+    )
+
+    assert_equal('generated', result.fetch(:outcome))
+    assert_equal('adaptive_tin', result.dig(:summary, :derivedMesh, :meshType))
+    assert_equal(1, owner.entities.faces.length)
+    assert_derived_output(owner.entities.faces.first)
+    assert_all_faces_point_up(owner.entities.faces)
+  end
+
+  def test_default_cdt_backend_is_disabled_so_current_output_remains_active
+    model = build_semantic_model
+    owner = model.active_entities.add_group
+    state = build_state(columns: 2, rows: 2, elevations: [1.0, 2.0, 3.0, 4.0])
+
+    result = identity_generator.regenerate(
+      owner: owner,
+      state: state,
+      terrain_state_summary: { digest: 'digest-cdt-default', revision: 2 },
+      feature_context: {
+        terrainState: state,
+        featureGeometry: SU_MCP::Terrain::TerrainFeatureGeometry.new
+      }
+    )
+
+    assert_equal('generated', result.fetch(:outcome))
+    assert_equal('regular_grid', result.dig(:summary, :derivedMesh, :meshType))
+    assert_equal(2, owner.entities.faces.length)
+  end
+
+  def test_create_generation_uses_cdt_when_feature_geometry_context_exists
+    model = build_semantic_model
+    owner = model.active_entities.add_group
+    state = build_state(columns: 3, rows: 3, revision: 1)
+    cdt_backend = RecordingCdtBackend.new(
+      status: 'accepted',
+      mesh: {
+        vertices: [[0.0, 0.0, 1.0], [1.0, 0.0, 1.0], [0.0, 1.0, 1.0]],
+        triangles: [[0, 1, 2]]
+      }
+    )
+
+    result = generator_with_cdt(cdt_backend).generate(
+      owner: owner,
+      state: state,
+      terrain_state_summary: { digest: 'digest-create-cdt', revision: 1 },
+      feature_context: {
+        terrainState: state,
+        featureGeometry: SU_MCP::Terrain::TerrainFeatureGeometry.new
+      }
+    )
+
+    assert_equal('generated', result.fetch(:outcome))
+    assert_equal(1, cdt_backend.calls)
+    assert_equal(1, owner.entities.faces.length)
+    assert_equal(3, result.dig(:summary, :derivedMesh, :vertexCount))
+  end
+
+  def test_cdt_fallback_selects_current_backend_before_erasing_existing_output
+    model = build_semantic_model
+    owner = model.active_entities.add_group
+    old_face = owner.entities.add_face([0, 0, 1], [1, 0, 1], [1, 1, 1])
+    old_face.set_attribute('su_mcp_terrain', 'derivedOutput', true)
+    cdt_backend = RecordingCdtBackend.new(
+      status: 'fallback',
+      fallback_reason: 'point_budget_exceeded'
+    )
+
+    result = generator_with_cdt(cdt_backend).regenerate(
+      owner: owner,
+      state: mixed_resolution_v2_state,
+      terrain_state_summary: { digest: 'digest-current', revision: 2 },
+      feature_context: { featureGeometryDigest: 'feature-digest' }
+    )
+
+    assert_equal('generated', result.fetch(:outcome))
+    refute_includes(owner.entities.faces, old_face)
+    refute_includes(JSON.generate(result), 'point_budget_exceeded')
+  end
+
+  def test_cdt_backend_exception_selects_current_backend_without_leaking_internal_error
+    model = build_semantic_model
+    owner = model.active_entities.add_group
+    old_face = owner.entities.add_face([0, 0, 1], [1, 0, 1], [1, 1, 1])
+    old_face.set_attribute('su_mcp_terrain', 'derivedOutput', true)
+
+    result = generator_with_cdt(RaisingCdtBackend.new).regenerate(
+      owner: owner,
+      state: mixed_resolution_v2_state,
+      terrain_state_summary: { digest: 'digest-current', revision: 2 },
+      feature_context: { featureGeometryDigest: 'feature-digest' }
+    )
+
+    assert_equal('generated', result.fetch(:outcome))
+    refute_includes(owner.entities.faces, old_face)
+    refute_includes(JSON.generate(result), 'boom')
+    refute_includes(JSON.generate(result), 'RaisingCdtBackend')
+  end
+
+  def test_cdt_feature_geometry_can_accept_full_regeneration_from_dirty_window_plan
+    model = build_semantic_model
+    owner = model.active_entities.add_group
+    state = build_state(columns: 3, rows: 3, revision: 1)
+    old_face = owner.entities.add_face([0, 0, 1], [1, 0, 1], [1, 1, 1])
+    old_face.set_attribute('su_mcp_terrain', 'derivedOutput', true)
+    cdt_backend = RecordingCdtBackend.new(
+      status: 'accepted',
+      mesh: {
+        vertices: [[0.0, 0.0, 1.0], [1.0, 0.0, 1.0], [0.0, 1.0, 1.0]],
+        triangles: [[0, 1, 2]]
+      }
+    )
+
+    result = generator_with_cdt(cdt_backend).regenerate(
+      owner: owner,
+      state: state,
+      terrain_state_summary: { digest: 'digest-cdt-feature-window', revision: 2 },
+      output_plan: dirty_window_plan(state, digest: 'digest-cdt-feature-window',
+                                            window: dirty_window(0, 0, 1, 1)),
+      feature_context: { featureGeometry: SU_MCP::Terrain::TerrainFeatureGeometry.new }
+    )
+
+    assert_equal('generated', result.fetch(:outcome))
+    assert_equal('adaptive_tin', result.dig(:summary, :derivedMesh, :meshType))
+    assert_equal(1, cdt_backend.calls)
+    refute_includes(owner.entities.faces, old_face)
+  end
+
+  def test_cdt_is_not_used_for_dirty_window_partial_regeneration
+    model = build_semantic_model
+    owner = model.active_entities.add_group
+    state = build_state(columns: 3, rows: 3, revision: 1)
+    identity_generator.generate(
+      owner: owner,
+      state: state,
+      terrain_state_summary: { digest: 'digest-1', revision: 1 }
+    )
+    cdt_backend = RecordingCdtBackend.new(status: 'accepted')
+
+    result = generator_with_cdt(cdt_backend).regenerate(
+      owner: owner,
+      state: state,
+      terrain_state_summary: { digest: 'digest-2', revision: 2 },
+      output_plan: dirty_window_plan(state, digest: 'digest-2', window: dirty_window(0, 0, 0, 0)),
+      feature_context: { featureGeometryDigest: 'feature-digest' }
+    )
+
+    assert_equal('generated', result.fetch(:outcome))
+    assert_equal(0, cdt_backend.calls)
+  end
+
+  def test_malformed_feature_geometry_does_not_enable_dirty_window_cdt
+    model = build_semantic_model
+    owner = model.active_entities.add_group
+    state = build_state(columns: 3, rows: 3, revision: 1)
+    identity_generator.generate(
+      owner: owner,
+      state: state,
+      terrain_state_summary: { digest: 'digest-1', revision: 1 }
+    )
+    cdt_backend = RecordingCdtBackend.new(status: 'accepted')
+
+    result = generator_with_cdt(cdt_backend).regenerate(
+      owner: owner,
+      state: state,
+      terrain_state_summary: { digest: 'digest-2', revision: 2 },
+      output_plan: dirty_window_plan(state, digest: 'digest-2', window: dirty_window(0, 0, 0, 0)),
+      feature_context: { featureGeometry: {} }
+    )
+
+    assert_equal('generated', result.fetch(:outcome))
+    assert_equal(0, cdt_backend.calls)
+  end
+
   private
 
   def assert_derived_output(entity)
@@ -866,6 +1076,13 @@ class TerrainMeshGeneratorTest < Minitest::Test # rubocop:disable Metrics/ClassL
   def identity_generator
     SU_MCP::Terrain::TerrainMeshGenerator.new(
       length_converter: ScalingLengthConverter.new(multiplier: 1.0)
+    )
+  end
+
+  def generator_with_cdt(cdt_backend)
+    SU_MCP::Terrain::TerrainMeshGenerator.new(
+      length_converter: ScalingLengthConverter.new(multiplier: 1.0),
+      cdt_backend: cdt_backend
     )
   end
 
@@ -1021,6 +1238,40 @@ class TerrainMeshGeneratorTest < Minitest::Test # rubocop:disable Metrics/ClassL
 
   class EdgeWithFaces
     attr_accessor :faces
+  end
+
+  class RecordingCdtBackend
+    attr_reader :calls
+
+    def initialize(status:, mesh: nil, fallback_reason: nil)
+      @status = status
+      @mesh = mesh
+      @fallback_reason = fallback_reason
+      @calls = 0
+    end
+
+    def build(...)
+      @calls += 1
+      if @status == 'accepted'
+        {
+          status: 'accepted',
+          mesh: @mesh || { vertices: [], triangles: [] },
+          metrics: {}
+        }
+      else
+        {
+          status: 'fallback',
+          fallbackReason: @fallback_reason,
+          metrics: {}
+        }
+      end
+    end
+  end
+
+  class RaisingCdtBackend
+    def build(...)
+      raise 'boom'
+    end
   end
 end
 # rubocop:enable Metrics/AbcSize

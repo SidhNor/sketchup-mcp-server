@@ -25,6 +25,22 @@ class CdtTerrainCandidateBackendTest < Minitest::Test
     refute_includes(JSON.generate(result), 'Sketchup::')
   end
 
+  def test_candidate_backend_wraps_production_residual_engine_without_changing_row_shape
+    engine = ResidualEngineSpy.new
+    result = SU_MCP::Terrain::CdtTerrainCandidateBackend.new(
+      residual_engine: engine
+    ).run(state: state, feature_geometry: feature_geometry,
+          base_tolerance: 0.05, max_point_budget: 256,
+          max_face_budget: 128, max_runtime_budget: 10.0)
+
+    assert_equal(1, engine.calls)
+    assert_candidate_identity(result)
+    assert_candidate_mesh_and_digests(result)
+    assert_candidate_constraint_summary(result)
+    assert_includes(result.fetch(:metrics).keys, :residualRefinement)
+    assert_equal('ruby_bowyer_watson_constraint_recovery', result.fetch(:triangulatorKind))
+  end
+
   def assert_candidate_identity(result)
     assert_equal('mta24_constrained_delaunay_cdt_prototype', result.fetch(:backend))
     assert_equal(1, result.fetch(:resultSchemaVersion))
@@ -53,7 +69,7 @@ class CdtTerrainCandidateBackendTest < Minitest::Test
                          max_face_budget: 128, max_runtime_budget: 10.0)
 
     assert_operator(result.dig(:mesh, :triangles).length, :>, 0)
-    assert_equal('hard_output_geometry_violation', result.fetch(:failureCategory))
+    assert_equal('none', result.fetch(:failureCategory))
     assert_operator(result.fetch(:constrainedEdgeCoverage), :<, 1.0)
     assert_includes(JSON.generate(result.fetch(:limitations)), 'intersecting_constraint')
   end
@@ -144,6 +160,7 @@ class CdtTerrainCandidateBackendTest < Minitest::Test
     assert_equal(0, residual.fetch(:residualCount))
     assert_equal('residual_satisfied', residual.fetch(:stopReason))
     assert_operator(result.fetch(:selectedPointCount), :<=, 12)
+    assert_operator(result.fetch(:selectedPointCount), :<, 17 * 17)
   end
 
   def test_residual_refinement_settings_are_reported_for_cap_sweeps
@@ -462,6 +479,68 @@ class CdtTerrainCandidateBackendTest < Minitest::Test
             reason: 'over-shared triangulation edge was repaired by bounded local retriangulation'
           }
         ]
+      }
+    end
+  end
+
+  class ResidualEngineSpy
+    attr_reader :calls
+
+    def initialize
+      @calls = 0
+    end
+
+    def run(state:, feature_geometry:, **)
+      @calls += 1
+      dense_source_point_count =
+        state.dimensions.fetch('columns') * state.dimensions.fetch('rows')
+      {
+        status: 'accepted',
+        mesh: { vertices: [[0.0, 0.0, 0.0], [1.0, 0.0, 1.0], [0.0, 1.0, 1.0]],
+                triangles: [[0, 1, 2]] },
+        metrics: {
+          faceCount: 1,
+          vertexCount: 3,
+          selectedPointCount: 3,
+          denseSourcePointCount: dense_source_point_count,
+          denseEquivalentFaceCount: 32,
+          denseRatio: 0.03125,
+          maxHeightError: 0.0,
+          protectedCrossingCount: 0,
+          hardViolationCounts: {},
+          topologyChecks: { downFaceCount: 0, nonManifoldEdgeCount: 0, invalidFaceCount: 0 },
+          topologyResiduals: {},
+          timing: {},
+          budgetStatus: 'ok',
+          residualRefinement: {
+            enabled: true,
+            residualCount: 0,
+            seedCount: 3,
+            stopReason: 'residual_satisfied'
+          }
+        },
+        featureGeometryDigest: feature_geometry.feature_geometry_digest,
+        referenceGeometryDigest: feature_geometry.reference_geometry_digest,
+        stateDigest: JSON.generate(id: state.state_id, dimensions: state.dimensions,
+                                   spacing: state.spacing, revision: state.revision),
+        constraintSourceSummary: {
+          anchors: 1,
+          protectedRegions: 1,
+          pressureRegions: 1,
+          referenceSegments: 1,
+          affectedWindows: 1
+        },
+        constraintCount: 7,
+        selectedPointCount: 3,
+        denseSourcePointCount: dense_source_point_count,
+        sourceDimensions: state.dimensions,
+        denseEquivalentFaceCount: 32,
+        budgetStatus: 'ok',
+        failureCategory: 'none',
+        constrainedEdgeCoverage: 1.0,
+        constrainedEdges: [],
+        delaunayViolationCount: 0,
+        limitations: []
       }
     end
   end

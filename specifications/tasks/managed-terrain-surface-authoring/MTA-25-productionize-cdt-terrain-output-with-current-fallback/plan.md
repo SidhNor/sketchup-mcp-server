@@ -76,9 +76,15 @@ behavior with automated and hosted SketchUp acceptance.
 - Current implementation research identified `TerrainMeshGenerator#regenerate` as the production
   insertion point. `TerrainSurfaceCommands` remains command/use-case orchestration; public MCP
   registration and dispatch are not expected to change.
-- Existing MTA-24 `Cdt*` classes provide reusable triangulation, point-planning, and residual
-  metering logic, but MTA-24 candidate rows and hosted-probe classes are validation artifacts, not
-  production result shapes.
+- MTA-24's CDT recommendation depended on the complete residual-driven stack, not just the
+  triangulator. `CdtTerrainPointPlanner`, `CdtHeightErrorMeter`, `CdtTriangulator`, and the
+  residual refinement loop must be promoted, refined, or extracted into production-owned
+  components. Reimplementing a parallel seed-only or one-shot CDT wrapper is out of scope unless it
+  first proves behavioral equivalence to the MTA-24 evidence.
+- Existing MTA-24 `Cdt*` classes provide the evidence-backed algorithmic baseline, but MTA-24
+  candidate rows and hosted-probe classes are validation artifacts, not production result shapes.
+  MTA-25 should keep the algorithmic behavior while replacing prototype vocabulary, row shapes,
+  task provenance, and harness ownership with production names and contracts.
 - SketchUp API research supports keeping bulk output generation under the existing operation and
   mutation conventions. `Entities#build` remains appropriate for bulk geometry generation, and
   `Model#start_operation` semantics mean MTA-25 should avoid nested operation assumptions.
@@ -126,8 +132,12 @@ behavior with automated and hosted SketchUp acceptance.
   - existing public `derivedMesh` summary shape
 - CDT compute/result collaborators are data-only and must not mutate SketchUp entities.
 - Introduce or extract production-owned collaborators behind the generator for:
-  - feature/state-to-primitive CDT input normalization
-  - triangulation adapter invocation
+  - residual-driven CDT planning and orchestration
+  - production seed planning refined from `CdtTerrainPointPlanner`
+  - final-heightmap residual metering and residual-point selection refined from
+    `CdtHeightErrorMeter`
+  - triangulation adapter invocation through `CdtTriangulator` or a conforming replacement
+  - residual-refinement loop budgeting and stop-reason handling
   - residual/topology/hard-geometry gate evaluation
   - result envelope assembly
 - The triangulation adapter accepts normalized primitive data:
@@ -139,6 +149,9 @@ behavior with automated and hosted SketchUp acceptance.
   - local tolerance policy
   - epsilon policy
   - budget envelope
+- `CdtTerrainCandidateBackend` is not the desired production shape as-is. Implementation must
+  either split it into a production residual CDT engine plus a thin comparison wrapper, or rename and
+  refactor it into production ownership while preserving validation-only harness isolation.
 - Ruby CDT is the first implementation. A native/poly2tri adapter may be added only behind the same
   primitive request and result envelope.
 
@@ -183,6 +196,12 @@ task artifacts, plan, and size ledger in the same change.
   class names, stack traces, native crash details, or solver internals to public responses.
 - Native-unavailable and native-input-violation paths must be deterministic and safe even if no
   native adapter ships in MTA-25.
+- Intersecting constraints are expected in real bounded terrain intents and were part of the MTA-24
+  accepted evidence. They should be recorded as deterministic limitations and gate inputs, not used
+  as an automatic Ruby-CDT pre-triangulation fallback. A native adapter may reject unsupported
+  intersecting inputs only through an adapter-specific deterministic fallback, and Ruby CDT should
+  fall back only when measured residual, runtime, topology, hard-geometry, invalid-mesh, or budget
+  gates fail.
 
 ### State Management
 
@@ -206,11 +225,18 @@ task artifacts, plan, and size ledger in the same change.
   context to evaluate CDT and emit either accepted CDT or current fallback output.
 - `src/su_mcp/terrain/terrain_feature_geometry_builder.rb`: remains production feature geometry
   source. CDT code must not read raw SketchUp objects directly.
-- `src/su_mcp/terrain/cdt_terrain_candidate_backend.rb`,
-  `src/su_mcp/terrain/cdt_terrain_point_planner.rb`,
-  `src/su_mcp/terrain/cdt_height_error_meter.rb`, and
-  `src/su_mcp/terrain/cdt_triangulator.rb`: may provide reusable internals, but production code must
-  not depend on MTA-24 candidate rows or task harnesses.
+- `src/su_mcp/terrain/output/cdt_terrain_candidate_backend.rb`: source of the validated residual
+  refinement orchestration. Split, rename, or wrap it so the production runtime owns the residual
+  engine while any comparison row output stays validation-only.
+- `src/su_mcp/terrain/output/cdt_terrain_point_planner.rb`: promote/refine the seed planner into a
+  production-owned planner with deterministic limits and limitation reporting; keep it seed-only and
+  do not reintroduce fixed-ratio dense policy selection.
+- `src/su_mcp/terrain/output/cdt_height_error_meter.rb`: promote/refine the final-heightmap
+  residual meter for production residual gates and point selection, including bounded spatial index,
+  tolerance, edge-case, and performance behavior.
+- `src/su_mcp/terrain/output/cdt_triangulator.rb`: keep as the first Ruby triangulation adapter
+  implementation, improve constraint recovery/topology diagnostics where needed, and keep
+  prototype/MTA-24 vocabulary out of production envelopes and public responses.
 - `src/su_mcp/terrain/mta24_three_way_terrain_comparison.rb` and
   `src/su_mcp/terrain/mta24_hosted_bakeoff_probe.rb`: remain validation/test artifacts or are moved
   out of production runtime ownership.
@@ -286,6 +312,8 @@ flowchart TD
 
 - Production terrain output can select CDT internally for eligible managed terrain states without
   public backend controls or schema changes.
+- Production CDT is based on a promoted/refined MTA-24 residual-driven algorithm, not a parallel
+  seed-only or one-shot CDT approximation.
 - Production CDT consumes final terrain state and production `TerrainFeatureGeometry`, not raw
   SketchUp objects, MTA-24 comparison rows, or hosted-probe payloads.
 - Production CDT returns a JSON-safe internal envelope with either accepted mesh data or a closed
@@ -322,10 +350,12 @@ test skeleton, may split or expand items, and must not silently shrink the cover
 Boundary tests for thresholds must exist, but concrete constant values may be chosen during
 implementation; the required planning commitment is just-under and just-over behavior coverage.
 
-Implementation order should start with failing tests for the production result envelope, fallback
-enum, adapter normalization/conformance, and public no-leak behavior. Generator mutation ordering
-and fallback tests should go red before production wiring. Hosted acceptance can be represented by a
-skipping/acceptance artifact early, then closed with live evidence before summary.
+Implementation order must start with failing tests for the promoted/refined residual CDT engine,
+not the production envelope. A seed-only or one-shot triangulation wrapper must fail before
+generator wiring begins. After residual behavior is proven red, implementation can add the
+production result envelope, fallback enum, adapter normalization/conformance, generator mutation
+ordering, public no-leak behavior, and hosted acceptance artifact. Hosted acceptance can be
+represented by a pending evidence artifact early, then closed with live evidence before summary.
 
 ### Required Test Coverage
 
@@ -362,13 +392,29 @@ skipping/acceptance artifact early, then closed with live evidence before summar
   - native unavailable path returns `native_unavailable` and falls back safely
   - packaged/no-native environment exercises the native-unavailable path without depending on a
     native binary
+- Residual CDT engine tests:
+  - tests go red before production envelope or generator wiring and fail any seed-only or one-shot
+    triangulation implementation
+  - production engine uses the promoted/refined `CdtTerrainPointPlanner` seed behavior for domain
+    corners, hard anchors, protected rectangles, and reference support
+  - production engine uses `CdtHeightErrorMeter`-style final-heightmap residuals to select added
+    points after seed triangulation
+  - smooth final terrain remains sparse without unnecessary residual points
+  - rough/high-relief terrain adds residual points until tolerance, budget, safety cap, stalled, or
+    runtime stop conditions are reached
+  - flat feature-rich terrain stays seed-sparse instead of becoming dense through feature pressure
+  - bounded/intersecting feature cases are attempted through Ruby CDT and produce deterministic
+    limitations plus accepted or measured-gated fallback results
+  - tests fail if production CDT can pass by only triangulating initial seeds without residual
+    refinement
 - CDT gate tests:
   - pre-triangulation gates cover disabled CDT, point budget, projected face budget, runtime budget,
     and normalization failure before expensive work
   - residual-loop runtime gate stops deterministic retriangulation before exceeding the envelope
   - residual gate covers max residual, normalized residual excess, and local hard/firm/soft tolerance
-  - constraint recovery gate covers incomplete constrained-edge coverage, intersecting constraints,
-    unsupported recovery, and required protected/reference geometry
+  - constraint recovery gate covers incomplete constrained-edge coverage, unsupported recovery, and
+    required protected/reference geometry; intersecting constraints are diagnostic limitations
+    unless measured output fails a production gate
   - hard-geometry gate covers anchor miss, protected-region crossing, fixed-anchor distance, and
     corridor/reference preservation
   - topology gate covers down faces, non-manifold edges, invalid/degenerate faces, empty mesh,
@@ -455,25 +501,54 @@ skipping/acceptance artifact early, then closed with live evidence before summar
 - Hosted evidence fields: timing, topology, residuals, fallback reason, face/vertex counts, dense
   ratio, undo, save-copy/save-reopen status, and top-level entity preservation.
 
+## Implementation Sequencing Guardrails
+
+- Residual-engine proof comes first. Do not start with result-envelope or generator tests that can
+  pass while the residual loop is absent.
+- The first red tests must prove:
+  - rough/high-relief terrain adds residual points beyond seeds and records residual stop status
+  - smooth or flat terrain remains sparse and stops without unnecessary dense point growth
+  - bounded/intersecting Ruby-CDT cases record limitations and attempt measured output instead of
+    preflight fallback
+  - a validation wrapper over the production engine preserves MTA-24 candidate-row evidence shape
+    until cleanup
+- `TerrainProductionCdtBackend` translates engine output to production envelopes only after the
+  residual engine exists.
+- `TerrainMeshGenerator` wiring starts only after residual-engine accepted/fallback behavior is
+  proven at the data-only layer.
+- MTA-24 harness cleanup is late. Keep comparison/probe wrappers as parity oracles until the
+  production engine has local parity, hosted evidence, package/no-leak checks, and public contract
+  stability coverage.
+- Current fallback remains retained through implementation and hosted validation. Fallback
+  narrowing is a summary disposition, not an implementation assumption.
+
 ## Implementation Phases
 
-1. Add failing tests for the production CDT envelope, fallback enum, adapter conformance, public
-   no-leak behavior, and hosted acceptance artifact.
-2. Implement production-owned result envelope, fallback enum, primitive request normalizer, and Ruby
-   adapter wrapper around reusable CDT internals without production dependency on MTA-24 harnesses.
-3. Add pre-triangulation gates and runtime/residual/constraint/hard-geometry/topology gate
+1. Add failing residual-engine tests first: smooth sparse output, rough/high-relief residual point
+   addition, bounded/intersecting diagnostic-not-blanket-fallback behavior, and MTA-24 wrapper
+   parity. These tests must fail for a seed-only or one-shot CDT implementation.
+2. Promote/refine the MTA-24 residual CDT stack into production-owned components: seed planning,
+   final-heightmap residual metering, residual point selection, residual loop stop reasons, and Ruby
+   triangulation adapter boundaries. Keep comparison rows and hosted probes validation-only.
+3. Rebuild `CdtTerrainCandidateBackend` or its replacement wrapper over the production residual
+   engine so MTA-24 evidence shape remains available until cleanup.
+4. Implement production-owned result envelope, fallback enum, primitive/adapter request shape, and
+   translation from residual CDT engine output into the internal production envelope.
+5. Add pre-triangulation gates and runtime/residual/constraint/hard-geometry/topology gate
    evaluators with focused boundary tests.
-4. Wire CDT eligibility into `TerrainMeshGenerator#regenerate` so preflight, in-memory CDT compute,
+6. Wire CDT eligibility into `TerrainMeshGenerator#regenerate` so preflight, in-memory CDT compute,
    fallback selection, and erase timing are deterministic.
-5. Emit accepted CDT meshes through `TerrainMeshGenerator`; keep CDT full-regeneration only and
+7. Emit accepted CDT meshes through `TerrainMeshGenerator`; keep CDT full-regeneration only and
    preserve current-backend partial regeneration behavior.
-6. Wire `TerrainSurfaceCommands` state/feature context as needed without public input or output
+8. Wire `TerrainSurfaceCommands` state/feature context as needed without public input or output
    shape changes, and cover operation/save/undo semantics.
-7. Isolate, relocate, or leave validation-only MTA-24 harnesses outside the production call graph;
-   strengthen package and no-leak checks.
-8. Run local CI/package checks and hosted SketchUp acceptance. Summarize whether Ruby CDT meets
+9. Strengthen public contract, package/no-native, and no-leak checks after production wiring is in
+   place.
+10. Run local CI/package checks and hosted SketchUp acceptance. Summarize whether Ruby CDT meets
    gates, whether native/poly2tri is required or deferred, and whether fallback can narrow or must
    remain.
+11. Clean up, relocate, or retain MTA-24 harnesses only after production engine parity, hosted
+    evidence, package/no-leak checks, and public contract stability checks are recorded.
 
 ## Rollout Approach
 
@@ -502,6 +577,10 @@ skipping/acceptance artifact early, then closed with live evidence before summar
 - Public contract drift: internal diagnostics could leak CDT, native, fallback, or MTA-24 terms.
   Control with no public delta, accepted/fallback no-leak tests, and coordinated artifact updates if
   public contract change becomes unavoidable.
+- Parallel implementation drift: a simplified production CDT wrapper could appear to satisfy the
+  envelope and fallback tests while bypassing the residual-driven behavior that justified MTA-24.
+  Control by making the promoted/refined residual engine a required integration point and adding
+  tests that fail seed-only or one-shot triangulation implementations.
 - Harness ownership risk: MTA-24 validation helpers could become production dependencies. Control
   with call-graph/package checks and validation-only isolation.
 - Threshold calibration: runtime, residual, topology, hard-anchor, and dense-ratio values may need

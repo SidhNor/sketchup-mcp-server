@@ -3,6 +3,7 @@
 require 'set'
 
 require_relative '../../semantic/length_converter'
+require_relative 'terrain_production_cdt_backend'
 require_relative 'terrain_output_plan'
 
 module SU_MCP
@@ -17,12 +18,22 @@ module SU_MCP
       GRID_CELL_COLUMN_KEY = 'gridCellColumn'
       GRID_CELL_ROW_KEY = 'gridCellRow'
       GRID_TRIANGLE_INDEX_KEY = 'gridTriangleIndex'
+      DEFAULT_CDT_BACKEND = Object.new.freeze
+      DEFAULT_CDT_ENABLED = false
 
-      def initialize(length_converter: Semantic::LengthConverter.new)
+      def initialize(
+        length_converter: Semantic::LengthConverter.new,
+        cdt_backend: DEFAULT_CDT_BACKEND
+      )
         @length_converter = length_converter
+        @cdt_backend = if default_cdt_backend?(cdt_backend)
+                         default_cdt_backend
+                       else
+                         cdt_backend
+                       end
       end
 
-      def generate(owner:, state:, terrain_state_summary:, output_plan: nil)
+      def generate(owner:, state:, terrain_state_summary:, output_plan: nil, feature_context: nil)
         return no_data_refusal if adaptive_state?(state) && state.elevations.any?(&:nil?)
 
         # Create/adopt generation emits the complete derived grid; edit regeneration may be partial.
@@ -30,6 +41,15 @@ module SU_MCP
           state: state,
           terrain_state_summary: terrain_state_summary
         )
+        cdt_result = generate_cdt(
+          owner: owner,
+          state: state,
+          terrain_state_summary: terrain_state_summary,
+          plan: plan,
+          feature_context: feature_context
+        )
+        return cdt_result if cdt_result
+
         if plan.execution_strategy == :adaptive_tin
           return generate_adaptive(owner: owner, state: state, output_plan: plan)
         end
@@ -69,10 +89,11 @@ module SU_MCP
         generated_result(output_plan).merge(validationOnly: true)
       end
 
+      def cdt_enabled?
+        !cdt_backend.nil?
+      end
+
       def regenerate(owner:, state:, terrain_state_summary:, output_plan: nil, feature_context: nil)
-        # Runtime-only context is accepted for MTA-20 planning; first-slice generation keeps
-        # existing TerrainOutputPlan behavior until a feature-aware generator consumes it.
-        _feature_context = feature_context
         unsupported = unsupported_child_types(owner.entities)
         return unsupported_children_refusal(unsupported) unless unsupported.empty?
         return no_data_refusal if adaptive_state?(state) && state.elevations.any?(&:nil?)
@@ -81,6 +102,15 @@ module SU_MCP
           state: state,
           terrain_state_summary: terrain_state_summary
         )
+        cdt_result = regenerate_cdt(
+          owner: owner,
+          state: state,
+          terrain_state_summary: terrain_state_summary,
+          plan: plan,
+          feature_context: feature_context
+        )
+        return cdt_result if cdt_result
+
         if plan.execution_strategy == :adaptive_tin
           return regenerate_adaptive(owner: owner, state: state, output_plan: plan)
         end
@@ -103,7 +133,37 @@ module SU_MCP
 
       private
 
-      attr_reader :length_converter
+      attr_reader :length_converter, :cdt_backend
+
+      def default_cdt_backend?(candidate)
+        candidate.equal?(DEFAULT_CDT_BACKEND)
+      end
+
+      def default_cdt_backend
+        return nil unless DEFAULT_CDT_ENABLED
+
+        TerrainProductionCdtBackend.new
+      end
+
+      def generate_cdt(owner:, state:, terrain_state_summary:, plan:, feature_context:)
+        return nil unless cdt_regeneration_eligible?(plan, feature_context)
+
+        result = cdt_backend.build(
+          state: feature_context[:terrainState] || feature_context['terrainState'] || state,
+          feature_geometry: feature_context[:featureGeometry] || feature_context['featureGeometry'],
+          primitive_request: feature_context[:primitiveRequest] ||
+            feature_context['primitiveRequest'] ||
+            {},
+          state_digest: terrain_state_summary.fetch(:digest, nil)
+        )
+      rescue StandardError
+        nil
+      else
+        return nil unless result.fetch(:status) == 'accepted'
+
+        emit_cdt_mesh_via_builder(owner.entities, result.fetch(:mesh))
+        cdt_generated_result(result, terrain_state_summary)
+      end
 
       def generated_result(output_plan)
         {
@@ -114,6 +174,76 @@ module SU_MCP
 
       def adaptive_state?(state)
         state.respond_to?(:tiles) && state.respond_to?(:tile_size)
+      end
+
+      def regenerate_cdt(owner:, state:, terrain_state_summary:, plan:, feature_context:)
+        return nil unless cdt_regeneration_eligible?(plan, feature_context)
+
+        result = cdt_backend.build(
+          state: feature_context[:terrainState] || feature_context['terrainState'] || state,
+          feature_geometry: feature_context[:featureGeometry] || feature_context['featureGeometry'],
+          primitive_request: feature_context[:primitiveRequest] ||
+            feature_context['primitiveRequest'] ||
+            {},
+          state_digest: terrain_state_summary.fetch(:digest, nil)
+        )
+      rescue StandardError
+        nil
+      else
+        return nil unless result.fetch(:status) == 'accepted'
+
+        erase_entities(owner.entities, derived_output_entities(owner.entities))
+        emit_cdt_mesh_via_builder(owner.entities, result.fetch(:mesh))
+        cdt_generated_result(result, terrain_state_summary)
+      end
+
+      def cdt_regeneration_eligible?(plan, feature_context)
+        return false unless cdt_backend
+        return false unless feature_context
+        return false if plan.intent == :dirty_window && !cdt_feature_geometry?(feature_context)
+
+        true
+      end
+
+      def cdt_feature_geometry?(feature_context)
+        feature_geometry = feature_context[:featureGeometry] || feature_context['featureGeometry']
+        feature_geometry.respond_to?(:feature_geometry_digest) &&
+          feature_geometry.respond_to?(:protected_regions) &&
+          feature_geometry.respond_to?(:reference_segments)
+      end
+
+      def cdt_generated_result(result, terrain_state_summary)
+        mesh = result.fetch(:mesh)
+        {
+          outcome: 'generated',
+          summary: {
+            derivedMesh: {
+              meshType: 'adaptive_tin',
+              vertexCount: mesh.fetch(:vertices).length,
+              faceCount: mesh.fetch(:triangles).length,
+              derivedFromStateDigest: terrain_state_summary.fetch(:digest, nil)
+            }
+          }
+        }
+      end
+
+      def emit_cdt_mesh_via_builder(entities, mesh)
+        return emit_cdt_mesh(entities, mesh) unless entities.respond_to?(:build)
+
+        entities.build { |builder| emit_cdt_mesh(builder, mesh) }
+      end
+
+      def emit_cdt_mesh(face_target, mesh)
+        vertices = mesh.fetch(:vertices).map do |vertex|
+          vertex.map { |coordinate| internal_length(coordinate) }
+        end
+        mesh.fetch(:triangles).each do |triangle|
+          add_derived_face(
+            face_target,
+            *triangle.map { |index| vertices.fetch(index) },
+            ownership: nil
+          )
+        end
       end
 
       def generate_adaptive(owner:, state:, output_plan:)

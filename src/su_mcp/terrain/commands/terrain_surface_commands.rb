@@ -182,7 +182,7 @@ module SU_MCP
         feature_plan = post_save_feature_plan(state, saved)
         return feature_plan if refused?(feature_plan)
 
-        output = regenerate_edit_output(context, saved, feature_plan)
+        output = regenerate_edit_output(context, saved, feature_plan, state)
         return output_refusal(output) if refused?(output)
 
         edit_success_response(context, saved, output, state)
@@ -203,19 +203,30 @@ module SU_MCP
       def post_save_feature_plan(state, saved)
         terrain_feature_planner.prepare(
           state: state,
-          terrain_state_summary: saved.fetch(:summary)
+          terrain_state_summary: saved.fetch(:summary),
+          include_feature_geometry: cdt_output_enabled?
         )
       end
 
-      def regenerate_edit_output(context, saved, feature_plan)
+      def regenerate_edit_output(context, saved, feature_plan, feature_state)
         output_state = context.fetch(:edit_result).fetch(:state)
         mesh_generator.regenerate(
           owner: context.fetch(:owner),
           state: output_state,
           terrain_state_summary: saved.fetch(:summary),
           output_plan: edit_output_plan(context, saved, feature_plan, output_state),
-          feature_context: feature_plan.fetch(:context)
+          feature_context: cdt_feature_context(feature_plan, feature_state)
         )
+      end
+
+      def cdt_feature_context(feature_plan, feature_state)
+        return nil unless cdt_output_enabled?
+
+        feature_plan.fetch(:context).merge(terrainState: feature_state)
+      end
+
+      def cdt_output_enabled?
+        mesh_generator.respond_to?(:cdt_enabled?) && mesh_generator.cdt_enabled?
       end
 
       def finish_edit_refusal(result)
@@ -550,10 +561,19 @@ module SU_MCP
         saved = save_state_or_refusal(owner, state)
         return [saved, nil] if refused?(saved)
 
+        feature_context = nil
+        if state.respond_to?(:feature_intent) && cdt_output_enabled?
+          feature_plan = post_save_feature_plan(state, saved)
+          return [feature_plan, nil] if refused?(feature_plan)
+
+          feature_context = cdt_feature_context(feature_plan, state)
+        end
+
         output = mesh_generator.generate(
           owner: owner,
           state: state,
-          terrain_state_summary: saved.fetch(:summary)
+          terrain_state_summary: saved.fetch(:summary),
+          feature_context: feature_context
         )
         [saved, output]
       end

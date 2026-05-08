@@ -5,6 +5,7 @@ require 'rake'
 require 'tmpdir'
 require 'zip'
 require_relative '../test_helper'
+require_relative '../../src/su_mcp/terrain/output/terrain_triangulation_adapter'
 
 class RuntimePackageTasksTest < Minitest::Test
   def setup
@@ -34,6 +35,22 @@ class RuntimePackageTasksTest < Minitest::Test
     assert_includes(package_rake, 'RuntimePackageManifest.load_default')
     refute_includes(package_rake, "task rbz: ['package:clean', 'version:assert']")
     refute_includes(package_rake, 'task ruby_native:')
+  end
+
+  def test_package_verification_covers_no_native_triangulator_fallback_posture
+    package_rake = File.read(File.expand_path('../../rakelib/package.rake', __dir__),
+                             encoding: 'utf-8')
+    result = SU_MCP::Terrain::TerrainTriangulationAdapter.native_unavailable.call(
+      points: [[0.0, 0.0], [1.0, 0.0], [0.0, 1.0]],
+      segments: [],
+      limits: {},
+      limitations: []
+    )
+
+    assert_equal('fallback', result.fetch(:status))
+    assert_equal('native_unavailable', result.fetch(:fallbackReason))
+    refute_includes(package_rake, 'native_unavailable')
+    refute_includes(package_rake, 'poly2tri')
   end
 
   def test_release_prepare_no_longer_depends_on_uv_lock_refresh

@@ -1,13 +1,17 @@
 # frozen_string_literal: true
 
 require_relative '../../test_helper'
+require_relative '../../support/semantic_test_support'
 require_relative '../../support/terrain_output_planning_diagnostics'
 require_relative '../../../src/su_mcp/terrain/state/tiled_heightmap_state'
 require_relative '../../../src/su_mcp/terrain/state/heightmap_state'
+require_relative '../../../src/su_mcp/terrain/commands/terrain_surface_commands'
 require_relative '../../../src/su_mcp/terrain/evidence/terrain_edit_evidence_builder'
+require_relative '../../../src/su_mcp/terrain/output/terrain_mesh_generator'
 require_relative '../../../src/su_mcp/terrain/storage/terrain_state_serializer'
 
 class TerrainContractStabilityTest < Minitest::Test
+  include SemanticTestSupport
   include TerrainOutputPlanningDiagnostics
 
   BASIS = {
@@ -250,7 +254,108 @@ class TerrainContractStabilityTest < Minitest::Test
     end
   end
 
+  def test_full_edit_response_path_hides_each_internal_cdt_fallback_reason
+    internal_reasons = %w[
+      cdt_disabled feature_geometry_failed native_unavailable native_input_violation
+      input_normalization_failed unsupported_constraint_shape intersecting_constraints
+      pre_triangulate_budget_exceeded point_budget_exceeded face_budget_exceeded
+      runtime_budget_exceeded residual_gate_failed constraint_recovery_failed
+      hard_geometry_gate_failed topology_gate_failed invalid_mesh adapter_exception
+    ]
+
+    internal_reasons.each do |reason|
+      result = full_public_edit_response_for_internal_cdt_result(
+        status: 'fallback',
+        fallback_reason: reason
+      )
+      serialized = JSON.generate(result)
+
+      refute_includes(serialized, reason)
+      refute_internal_output_vocabulary(result)
+    end
+  end
+
+  def test_full_edit_response_path_hides_accepted_cdt_details
+    result = full_public_edit_response_for_internal_cdt_result(
+      status: 'accepted',
+      fallback_reason: nil
+    )
+
+    assert_equal('edited', result.fetch(:outcome))
+    assert_includes(result.fetch(:output).keys, :derivedMesh)
+    refute_internal_output_vocabulary(result)
+  end
+
+  def test_cdt_attempt_does_not_change_public_refusal_envelope
+    attempted = public_refusal_with_cdt_attempted
+    disabled = public_refusal_with_cdt_disabled
+
+    assert_equal(disabled, attempted)
+  end
+
   private
+
+  def full_public_edit_response_for_internal_cdt_result(status:, fallback_reason:)
+    model = build_semantic_model
+    managed_terrain_owner(model)
+    commands = cdt_contract_commands(
+      model: model,
+      cdt_backend: ContractCdtBackend.new(status: status, fallback_reason: fallback_reason)
+    )
+
+    commands.edit_terrain_surface(contract_edit_request)
+  end
+
+  def public_refusal_with_cdt_attempted
+    model = build_semantic_model
+    owner = managed_terrain_owner(model)
+    owner.entities.add_group
+    commands = cdt_contract_commands(
+      model: model,
+      cdt_backend: ContractCdtBackend.new(status: 'accepted', fallback_reason: nil)
+    )
+
+    commands.edit_terrain_surface(contract_edit_request)
+  end
+
+  def public_refusal_with_cdt_disabled
+    model = build_semantic_model
+    owner = managed_terrain_owner(model)
+    owner.entities.add_group
+    commands = cdt_contract_commands(model: model, cdt_backend: nil)
+
+    commands.edit_terrain_surface(contract_edit_request)
+  end
+
+  def cdt_contract_commands(model:, cdt_backend:)
+    SU_MCP::Terrain::TerrainSurfaceCommands.new(
+      model: model,
+      repository: ContractRepository.new(build_state),
+      mesh_generator: SU_MCP::Terrain::TerrainMeshGenerator.new(cdt_backend: cdt_backend),
+      edit_request_validator: ContractEditValidator.new,
+      grade_editor: ContractGradeEditor.new,
+      terrain_feature_intent_emitter: ContractFeatureIntentEmitter.new,
+      terrain_feature_planner: ContractFeaturePlanner.new
+    )
+  end
+
+  def managed_terrain_owner(model)
+    owner = model.active_entities.add_group
+    owner.set_attribute('su_mcp', 'sourceElementId', 'terrain-main')
+    owner.set_attribute('su_mcp', 'semanticType', 'managed_terrain_surface')
+    owner
+  end
+
+  def contract_edit_request
+    {
+      'targetReference' => { 'sourceElementId' => 'terrain-main' },
+      'operation' => { 'mode' => 'target_height', 'targetElevation' => 2.0 },
+      'region' => {
+        'type' => 'rectangle',
+        'bounds' => { 'minX' => 0.0, 'minY' => 0.0, 'maxX' => 1.0, 'maxY' => 1.0 }
+      }
+    }
+  end
 
   def serializer
     @serializer ||= SU_MCP::Terrain::TerrainStateSerializer.new
@@ -266,6 +371,106 @@ class TerrainContractStabilityTest < Minitest::Test
       revision: 1,
       state_id: 'terrain-state-1'
     )
+  end
+
+  class ContractRepository
+    def initialize(state)
+      @state = state
+    end
+
+    def load(_owner)
+      { outcome: 'loaded', state: @state, summary: { digest: 'digest-before', revision: 1 } }
+    end
+
+    def save(_owner, state)
+      { outcome: 'saved', state: state, summary: { digest: 'digest-after', revision: 2 } }
+    end
+  end
+
+  class ContractEditValidator
+    def validate(params)
+      { outcome: 'ready', params: params }
+    end
+  end
+
+  class ContractGradeEditor
+    def apply(state:, request:)
+      _request = request
+      {
+        outcome: 'edited',
+        state: SU_MCP::Terrain::HeightmapState.new(
+          basis: state.basis,
+          origin: state.origin,
+          spacing: state.spacing,
+          dimensions: state.dimensions,
+          elevations: state.elevations.map { |value| value + 1.0 },
+          revision: state.revision + 1,
+          state_id: state.state_id
+        ),
+        diagnostics: {
+          changedRegion: { min: { column: 0, row: 0 }, max: { column: 1, row: 1 } },
+          samples: [],
+          fixedControls: { controls: [] },
+          preserveZones: {},
+          warnings: []
+        }
+      }
+    end
+  end
+
+  class ContractFeatureIntentEmitter
+    def emit(...)
+      {}
+    end
+  end
+
+  class ContractFeaturePlanner
+    def pre_save(state:)
+      { outcome: 'ready', state: state }
+    end
+
+    def prepare(state:, terrain_state_summary:, include_feature_geometry: false)
+      _include_feature_geometry = include_feature_geometry
+      {
+        outcome: 'prepared',
+        state: state,
+        context: {
+          terrainStateDigest: terrain_state_summary.fetch(:digest),
+          primitiveRequest: { points: [[0.0, 0.0], [1.0, 0.0], [0.0, 1.0]] }
+        },
+        outputWindowReconciliation: { mode: 'full_grid' }
+      }
+    end
+  end
+
+  class ContractCdtBackend
+    def initialize(status:, fallback_reason:)
+      @status = status
+      @fallback_reason = fallback_reason
+    end
+
+    def build(...)
+      return accepted if @status == 'accepted'
+
+      {
+        status: 'fallback',
+        fallbackReason: @fallback_reason,
+        metrics: { timing: { internal: true } },
+        limitations: [{ category: 'native_unavailable' }]
+      }
+    end
+
+    def accepted
+      {
+        status: 'accepted',
+        mesh: {
+          vertices: [[0.0, 0.0, 1.0], [1.0, 0.0, 1.0], [0.0, 1.0, 1.0]],
+          triangles: [[0, 1, 2]]
+        },
+        metrics: { triangulatorKind: 'ruby_bowyer_watson_constraint_recovery' },
+        limitations: [{ category: 'rawTriangles' }]
+      }
+    end
   end
 
   def edit_evidence_result(diagnostics: edit_diagnostics, edit_summary: nil)

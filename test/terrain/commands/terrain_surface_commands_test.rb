@@ -24,6 +24,28 @@ class TerrainSurfaceCommandsTest < Minitest::Test # rubocop:disable Metrics/Clas
     refute_includes(JSON.generate(result), 'Sketchup::')
   end
 
+  def test_create_mode_passes_feature_context_to_initial_output_generation
+    model = build_semantic_model
+    mesh_generator = RecordingMeshGenerator.new(cdt_enabled: true)
+    commands = build_commands(
+      model: model,
+      state_builder: FeatureIntentStateBuilder.new,
+      mesh_generator: mesh_generator,
+      terrain_feature_planner: FullFallbackFeaturePlanner.new
+    )
+
+    result = commands.create_terrain_surface(create_request)
+
+    assert_equal('created', result.fetch(:outcome))
+    feature_context = mesh_generator.last_generate_args.fetch(:feature_context)
+    assert_equal('digest-1', feature_context.fetch(:terrainStateDigest))
+    assert_same(
+      mesh_generator.last_generate_args.fetch(:state),
+      feature_context.fetch(:terrainState),
+      'production CDT must receive saved terrain state during initial generation'
+    )
+  end
+
   def test_create_mode_applies_optional_owner_placement_origin
     model = build_semantic_model
     length_converter = RecordingLengthConverter.new(multiplier: 10.0)
@@ -514,10 +536,7 @@ class TerrainSurfaceCommandsTest < Minitest::Test # rubocop:disable Metrics/Clas
 
     assert_equal('edited', result.fetch(:outcome))
     assert_equal(:full_grid, mesh_generator.last_regenerate_args.fetch(:output_plan).intent)
-    assert_equal(
-      { constraintCount: 1, terrainStateDigest: 'digest-1' },
-      mesh_generator.last_regenerate_args.fetch(:feature_context)
-    )
+    assert_nil(mesh_generator.last_regenerate_args.fetch(:feature_context))
   end
 
   def test_feature_context_expands_dirty_window_before_partial_regeneration
@@ -543,6 +562,32 @@ class TerrainSurfaceCommandsTest < Minitest::Test # rubocop:disable Metrics/Clas
         max_row: 2
       ),
       mesh_generator.last_regenerate_args.fetch(:output_plan).window
+    )
+  end
+
+  def test_cdt_state_coherence_uses_saved_feature_state_for_output_generation
+    model = build_semantic_model
+    managed_terrain_owner(model)
+    mesh_generator = RecordingRegeneratingMeshGenerator.new(cdt_enabled: true)
+    commands = build_edit_commands(
+      model: model,
+      repository: EditRepository.new(state),
+      mesh_generator: mesh_generator,
+      terrain_feature_intent_emitter: RecordingFeatureIntentEmitter.new,
+      terrain_feature_planner: FullFallbackFeaturePlanner.new
+    )
+
+    result = commands.edit_terrain_surface(edit_request)
+
+    assert_equal('edited', result.fetch(:outcome))
+    assert_equal(
+      mesh_generator.last_regenerate_args.dig(:feature_context, :terrainStateDigest),
+      mesh_generator.last_regenerate_args.fetch(:terrain_state_summary).fetch(:digest)
+    )
+    assert_respond_to(
+      mesh_generator.last_regenerate_args.dig(:feature_context, :terrainState),
+      :feature_intent,
+      'production CDT must receive the saved feature-merged terrain state in its feature context'
     )
   end
 
@@ -579,18 +624,25 @@ class TerrainSurfaceCommandsTest < Minitest::Test # rubocop:disable Metrics/Clas
   end
 
   def build_commands(model:, repository: RecordingRepository.new,
+                     state_builder: StateBuilder.new,
                      mesh_generator: RecordingMeshGenerator.new,
                      adoption_sampler: RecordingAdoptionSampler.new,
-                     length_converter: ScalingLengthConverter.new(multiplier: 10.0))
-    SU_MCP::Terrain::TerrainSurfaceCommands.new(
+                     length_converter: ScalingLengthConverter.new(multiplier: 10.0),
+                     terrain_feature_planner: nil)
+    options = {
       model: model,
       validator: AcceptingValidator.new,
-      state_builder: StateBuilder.new,
+      state_builder: state_builder,
       repository: repository,
       mesh_generator: mesh_generator,
       evidence_builder: EvidenceBuilder.new,
       adoption_sampler: adoption_sampler,
       length_converter: length_converter
+    }
+    options[:terrain_feature_planner] = terrain_feature_planner if terrain_feature_planner
+
+    SU_MCP::Terrain::TerrainSurfaceCommands.new(
+      **options
     )
   end
 
@@ -815,6 +867,16 @@ class TerrainSurfaceCommandsTest < Minitest::Test # rubocop:disable Metrics/Clas
     end
   end
 
+  class FeatureIntentStateBuilder < StateBuilder
+    def build_create_state(...)
+      state = super
+      state.define_singleton_method(:feature_intent) do
+        SU_MCP::Terrain::FeatureIntentSet.default_h
+      end
+      state
+    end
+  end
+
   class RecordingRepository
     def save(owner, state)
       owner.set_attribute('su_mcp_terrain', 'statePayload', '{"payloadKind":"heightmap_grid"}')
@@ -851,14 +913,26 @@ class TerrainSurfaceCommandsTest < Minitest::Test # rubocop:disable Metrics/Clas
   end
 
   class RecordingMeshGenerator
-    attr_reader :calls
+    attr_reader :calls, :last_generate_args
 
-    def initialize
+    def initialize(cdt_enabled: false)
       @calls = []
+      @cdt_enabled = cdt_enabled
     end
 
-    def generate(...)
+    def cdt_enabled?
+      @cdt_enabled
+    end
+
+    def generate(owner:, state:, terrain_state_summary:, output_plan: nil, feature_context: nil)
       @calls << :generate
+      @last_generate_args = {
+        owner: owner,
+        state: state,
+        terrain_state_summary: terrain_state_summary,
+        output_plan: output_plan,
+        feature_context: feature_context
+      }
       { outcome: 'generated', summary: { derivedMesh: { derivedFromStateDigest: 'digest-1' } } }
     end
   end
@@ -981,7 +1055,8 @@ class TerrainSurfaceCommandsTest < Minitest::Test # rubocop:disable Metrics/Clas
       { outcome: 'ready', state: state }
     end
 
-    def prepare(state:, terrain_state_summary:)
+    def prepare(state:, terrain_state_summary:, include_feature_geometry: false)
+      _include_feature_geometry = include_feature_geometry
       {
         outcome: 'prepared',
         state: state,
@@ -999,7 +1074,8 @@ class TerrainSurfaceCommandsTest < Minitest::Test # rubocop:disable Metrics/Clas
       { outcome: 'ready', state: state }
     end
 
-    def prepare(state:, terrain_state_summary:)
+    def prepare(state:, terrain_state_summary:, include_feature_geometry: false)
+      _include_feature_geometry = include_feature_geometry
       {
         outcome: 'prepared',
         state: state,

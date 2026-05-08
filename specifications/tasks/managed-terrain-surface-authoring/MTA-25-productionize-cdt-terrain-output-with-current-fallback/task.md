@@ -1,7 +1,7 @@
 # Task: MTA-25 Productionize CDT Terrain Output With Current Backend Fallback
 **Task ID**: `MTA-25`
 **Title**: `Productionize CDT Terrain Output With Current Backend Fallback`
-**Status**: `planned`
+**Status**: `closed-disabled-by-default-enablement-deferred`
 **Priority**: `P1`
 **Date**: `2026-05-07`
 

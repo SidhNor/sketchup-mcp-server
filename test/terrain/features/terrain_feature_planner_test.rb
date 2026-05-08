@@ -119,13 +119,30 @@ class TerrainFeaturePlannerTest < Minitest::Test
   end
 
   def test_prepare_returns_runtime_context_with_explicit_features_and_saved_digest
-    result = planner.prepare(state: state_with_features([feature('fixed_control')]),
-                             terrain_state_summary: { digest: 'digest-feature' })
+    result = planner.prepare(
+      state: state_with_features([feature('fixed_control')]),
+      terrain_state_summary: { digest: 'digest-feature' },
+      include_feature_geometry: true
+    )
 
     assert_equal('prepared', result.fetch(:outcome))
     assert_equal('digest-feature', result.dig(:context, :terrainStateDigest))
     assert_equal(1, result.dig(:context, :constraintCount))
     assert_equal('explicit_edit', result.dig(:context, :constraints, 0, :sourceMode))
+    assert_equal('feature_window', result.dig(:outputWindowReconciliation, :mode))
+    assert_respond_to(result.dig(:context, :featureGeometry), :feature_geometry_digest)
+    assert_match(/\A[a-f0-9]{64}\z/, result.dig(:context, :featureGeometryDigest))
+  end
+
+  def test_prepare_omits_feature_geometry_when_cdt_output_is_not_enabled
+    result = planner.prepare(state: state_with_features([feature('fixed_control')]),
+                             terrain_state_summary: { digest: 'digest-feature' })
+
+    assert_equal('prepared', result.fetch(:outcome))
+    assert_equal(1, result.dig(:context, :constraintCount))
+    refute(result.fetch(:context).key?(:featureGeometry))
+    refute(result.fetch(:context).key?(:featureGeometryDigest))
+    refute(result.fetch(:context).key?(:referenceGeometryDigest))
   end
 
   def test_prepare_adds_runtime_only_inferred_heightfield_candidate_without_persisting_it

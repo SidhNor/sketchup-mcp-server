@@ -1,17 +1,20 @@
 # frozen_string_literal: true
 
 require_relative 'feature_intent_set'
+require_relative 'terrain_feature_geometry_builder'
 
 module SU_MCP
   module Terrain
     # Runtime-only feature planning, validation, and diagnostic context.
     class TerrainFeaturePlanner
-      def initialize(max_lane_samples_per_feature: nil, max_lane_samples_per_plan: nil)
+      def initialize(max_lane_samples_per_feature: nil, max_lane_samples_per_plan: nil,
+                     feature_geometry_builder: TerrainFeatureGeometryBuilder.new)
         defaults = FeatureIntentSet::DEFAULT_GENERATION
         @max_lane_samples_per_feature = max_lane_samples_per_feature ||
                                         defaults.fetch('maxLaneSamplesPerFeature')
         @max_lane_samples_per_plan = max_lane_samples_per_plan ||
                                      defaults.fetch('maxLaneSamplesPerPlan')
+        @feature_geometry_builder = feature_geometry_builder
       end
 
       def pre_save(state:)
@@ -32,20 +35,27 @@ module SU_MCP
         )
       end
 
-      def prepare(state:, terrain_state_summary:)
+      def prepare(state:, terrain_state_summary:, include_feature_geometry: false)
         explicit_constraints = FeatureIntentSet.new(state.feature_intent).features.map do |feature|
           runtime_constraint_for(feature)
         end
         inferred_constraints = explicit_constraints.empty? ? inferred_constraints_for(state) : []
         constraints = explicit_constraints + inferred_constraints
+        context = {
+          terrainStateDigest: terrain_state_summary.fetch(:digest),
+          constraintCount: constraints.length,
+          constraints: constraints
+        }
+        if include_feature_geometry
+          feature_geometry = feature_geometry_builder.build(state: state)
+          context[:featureGeometry] = feature_geometry
+          context[:featureGeometryDigest] = feature_geometry.feature_geometry_digest
+          context[:referenceGeometryDigest] = feature_geometry.reference_geometry_digest
+        end
         {
           outcome: 'prepared',
           state: state,
-          context: {
-            terrainStateDigest: terrain_state_summary.fetch(:digest),
-            constraintCount: constraints.length,
-            constraints: constraints
-          },
+          context: context,
           outputWindowReconciliation: {
             mode: constraints.empty? ? 'dirty_window' : 'feature_window'
           }
@@ -82,7 +92,8 @@ module SU_MCP
 
       private
 
-      attr_reader :max_lane_samples_per_feature, :max_lane_samples_per_plan
+      attr_reader :max_lane_samples_per_feature, :max_lane_samples_per_plan,
+                  :feature_geometry_builder
 
       def diagnostics_for(set)
         projected = projected_samples(set)
