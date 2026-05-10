@@ -4,7 +4,7 @@ require_relative '../../test_helper'
 require_relative '../../../src/su_mcp/terrain/ui/installer'
 
 class TerrainUiInstallerTest < Minitest::Test
-  def test_installs_toolbar_command_with_packaged_svg_icon
+  def test_installs_toolbar_command_with_packaged_svg_icon # rubocop:disable Metrics/AbcSize
     host = RecordingUiHost.new
     installer = SU_MCP::Terrain::UI::Installer.new(ui_host: host, session: RecordingSession.new)
 
@@ -18,8 +18,18 @@ class TerrainUiInstallerTest < Minitest::Test
     assert_equal(SU_MCP::Terrain::UI::Installer::LOCAL_FAIRING_ICON_PATH, fairing.small_icon)
     assert_equal(SU_MCP::Terrain::UI::Installer::LOCAL_FAIRING_ICON_PATH, fairing.large_icon)
     assert(File.file?(fairing.small_icon), 'expected local fairing toolbar SVG icon to be packaged')
+    corridor = host.commands.fetch('Corridor Transition')
     assert_equal(
-      ['Target Height Brush', 'Local Fairing'],
+      SU_MCP::Terrain::UI::Installer::CORRIDOR_TRANSITION_ICON_PATH,
+      corridor.small_icon
+    )
+    assert_equal(
+      SU_MCP::Terrain::UI::Installer::CORRIDOR_TRANSITION_ICON_PATH,
+      corridor.large_icon
+    )
+    assert(File.file?(corridor.small_icon), 'expected corridor toolbar SVG icon to be packaged')
+    assert_equal(
+      ['Target Height Brush', 'Local Fairing', 'Corridor Transition'],
       host.toolbars.fetch('Managed Terrain').items.map(&:text)
     )
   end
@@ -28,7 +38,7 @@ class TerrainUiInstallerTest < Minitest::Test
     host = RecordingUiHost.new
     SU_MCP::Terrain::UI::Installer.new(ui_host: host, session: RecordingSession.new).install
 
-    assert_equal(['Target Height Brush', 'Local Fairing'], host.menu_items)
+    assert_equal(['Target Height Brush', 'Local Fairing', 'Corridor Transition'], host.menu_items)
     assert_empty(host.menu_commands)
   end
 
@@ -62,6 +72,74 @@ class TerrainUiInstallerTest < Minitest::Test
     assert_equal(1, host.dialog_show_calls)
     assert_equal(1, dialog.push_state_calls)
     assert_instance_of(SU_MCP::Terrain::UI::TargetHeightBrushTool, host.selected_tool)
+  end
+
+  def test_corridor_transition_activation_uses_same_dialog_and_corridor_tool
+    host = RecordingUiHost.new
+    session = RecordingSession.new
+    dialog = RecordingDialog.new
+    corridor_tool = RecordingTool.new
+    installer = SU_MCP::Terrain::UI::Installer.new(
+      ui_host: host,
+      session: session,
+      dialog: dialog,
+      corridor_tool_factory: -> { corridor_tool }
+    )
+
+    installer.install
+    host.commands.fetch('Corridor Transition').call
+
+    assert_equal(['corridor_transition'], session.activations)
+    assert_equal(1, host.dialog_show_calls)
+    assert_equal(1, dialog.push_state_calls)
+    assert_same(corridor_tool, host.selected_tool)
+  end
+
+  def test_default_tool_factories_bind_sketchup_tools_to_owned_subsessions
+    brush_session = RecordingSession.new
+    corridor_session = RecordingSession.new
+    router = SU_MCP::Terrain::UI::ManagedTerrainToolSession.new(
+      brush_session: brush_session,
+      corridor_session: corridor_session
+    )
+    installer = SU_MCP::Terrain::UI::Installer.new(
+      ui_host: RecordingUiHost.new,
+      session: router
+    )
+
+    brush_tool = installer.send(:brush_tool)
+    corridor_tool = installer.send(:corridor_tool)
+
+    assert_same(brush_session, brush_tool.instance_variable_get(:@session))
+    assert_same(corridor_session, corridor_tool.instance_variable_get(:@session))
+  end
+
+  def test_installer_refuses_unknown_managed_terrain_tool_routing
+    installer = SU_MCP::Terrain::UI::Installer.new(
+      ui_host: RecordingUiHost.new,
+      session: SU_MCP::Terrain::UI::ManagedTerrainToolSession.new(
+        brush_session: RecordingSession.new,
+        corridor_session: RecordingSession.new
+      )
+    )
+
+    assert_raises(ArgumentError) { installer.send(:session_for_tool, 'unknown_tool') }
+    assert_raises(ArgumentError) { installer.send(:sketchup_tool_for, 'unknown_tool') }
+  end
+
+  def test_managed_tool_session_forwards_corridor_preview_hover_point
+    hover_point = Object.new
+    brush_session = RecordingSession.new
+    corridor_session = RecordingSession.new
+    router = SU_MCP::Terrain::UI::ManagedTerrainToolSession.new(
+      brush_session: brush_session,
+      corridor_session: corridor_session
+    )
+    router.activate_tool('corridor_transition')
+
+    router.preview_context(hover_point)
+
+    assert_equal([hover_point], corridor_session.preview_points)
   end
 
   def test_activation_refreshes_toolbar_validation_state
@@ -99,12 +177,19 @@ class TerrainUiInstallerTest < Minitest::Test
     installer.install
     command = host.commands.fetch('Target Height Brush')
     assert_equal(SU_MCP::Terrain::UI::Installer::ICON_PATH, command.small_icon)
+    corridor = host.commands.fetch('Corridor Transition')
+    assert_equal(SU_MCP::Terrain::UI::Installer::CORRIDOR_TRANSITION_ICON_PATH,
+                 corridor.small_icon)
 
     command.call
     assert_equal(SU_MCP::Terrain::UI::Installer::ICON_PATH, command.small_icon)
+    assert_equal(SU_MCP::Terrain::UI::Installer::CORRIDOR_TRANSITION_ICON_PATH,
+                 corridor.small_icon)
 
     host.selected_tool.deactivate(nil)
     assert_equal(SU_MCP::Terrain::UI::Installer::ICON_PATH, command.small_icon)
+    assert_equal(SU_MCP::Terrain::UI::Installer::CORRIDOR_TRANSITION_ICON_PATH,
+                 corridor.small_icon)
   end
 
   def test_activation_reuses_same_click_tool_instance
@@ -159,7 +244,7 @@ class TerrainUiInstallerTest < Minitest::Test
     assert_equal(:checked, checked_validation)
   end
 
-  def test_command_validation_tracks_checked_state_per_active_tool
+  def test_command_validation_tracks_checked_state_per_active_tool # rubocop:disable Metrics/AbcSize
     host = RecordingUiHost.new
     session = RecordingSession.new
     SU_MCP::Terrain::UI::Installer.new(ui_host: host, session: session).install
@@ -168,6 +253,13 @@ class TerrainUiInstallerTest < Minitest::Test
 
     assert_equal(:unchecked, host.commands.fetch('Target Height Brush').validation.call)
     assert_equal(:checked, host.commands.fetch('Local Fairing').validation.call)
+    assert_equal(:unchecked, host.commands.fetch('Corridor Transition').validation.call)
+
+    session.activate_tool('corridor_transition')
+
+    assert_equal(:unchecked, host.commands.fetch('Target Height Brush').validation.call)
+    assert_equal(:unchecked, host.commands.fetch('Local Fairing').validation.call)
+    assert_equal(:checked, host.commands.fetch('Corridor Transition').validation.call)
   end
 
   def test_install_is_idempotent
@@ -177,8 +269,8 @@ class TerrainUiInstallerTest < Minitest::Test
     installer.install
     installer.install
 
-    assert_equal(2, host.toolbars.fetch('Managed Terrain').items.length)
-    assert_equal(['Target Height Brush', 'Local Fairing'], host.menu_items)
+    assert_equal(3, host.toolbars.fetch('Managed Terrain').items.length)
+    assert_equal(['Target Height Brush', 'Local Fairing', 'Corridor Transition'], host.menu_items)
   end
 
   def test_real_ui_host_uses_string_constant_lookup_for_sketchup_ui_classes
@@ -193,12 +285,13 @@ class TerrainUiInstallerTest < Minitest::Test
 
   class RecordingSession
     attr_accessor :active, :active_tool
-    attr_reader :activations
+    attr_reader :activations, :preview_points
 
     def initialize
       @active = false
       @active_tool = nil
       @activations = []
+      @preview_points = []
     end
 
     def activate
@@ -221,6 +314,15 @@ class TerrainUiInstallerTest < Minitest::Test
 
     def deactivate
       @active = false
+    end
+
+    def preview_context(point = nil)
+      @preview_points << point if point
+      { outcome: 'ready' }
+    end
+
+    def state_snapshot
+      { activeTool: @active_tool || 'target_height' }
     end
   end
 

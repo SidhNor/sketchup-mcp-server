@@ -2,13 +2,13 @@
 
 **Task ID**: `MTA-28`  
 **Title**: `Add Managed Terrain Corridor Transition UI Tool`  
-**Status**: `challenged`
+**Status**: `calibrated`
 **Created**: `2026-05-08`  
-**Last Updated**: `2026-05-08`  
+**Last Updated**: `2026-05-10`  
 
 **Related Task**: [task.md](./task.md)  
 **Related Plan**: [plan.md](./plan.md)
-**Related Summary**: none yet  
+**Related Summary**: [summary.md](./summary.md)  
 
 ---
 
@@ -221,7 +221,29 @@
 <!-- SIZE:ACTUAL:START -->
 ## Actual Profile
 
-> Not filled yet.
+> Filled at the end of implementation. Do not overwrite predicted values.
+
+| Dimension | Score (0-4) | Notes |
+|---|---:|---|
+| Functional Scope | 3 | Shipped one large behavior-visible SketchUp workflow: toolbar command, two endpoint capture/editing, corridor parameters, overlay, reset/apply, and command-backed durable edit. Survey, planar, point-list, hardscape, and public MCP workflows stayed out of scope. |
+| Technical Change Surface | 3 | Touched layered UI surfaces: installer/tool selection, shared dialog callbacks, HTML/CSS/JS panel state, corridor session/tool/overlay classes, owner-local XYZ conversion, preview sampling, package assets, docs, and focused tests. Terrain math and public runtime contracts were not changed. |
+| Actual Implementation Friction | 3 | Significant resistance came from Ruby/JS state synchronization, endpoint provenance, owned sub-session routing, overlay geometry/readability, and hover performance. The implementation stayed within the planned architecture without a deeper redesign. |
+| Actual Validation Burden | 4 | Hosted validation dominated closeout through repeated fix/redeploy/restart/reload loops for hidden corridor controls, missing overlay visibility, slider recenter/flicker behavior, overlay persistence/readability, translucent side surfaces, and hover sluggishness. |
+| Actual Dependency Drag | 2 | Delivery depended on MTA-26/MTA-27/MTA-05 behavior and live SketchUp deployment/reload access, but no external service, public client, migration, or cross-owner coordination blocked completion. |
+| Actual Discovery Encountered | 3 | Live evidence exposed host-sensitive issues that local tests did not fully predict: HtmlDialog hover clearing, slider transient update feedback, round-brush control leakage, side-blend default ergonomics, overlay 3D legibility, and sampler-cache performance. |
+| Actual Scope Volatility | 2 | The task shape stayed bounded to corridor UI, but details shifted inside the accepted workflow: no forced side blend, hidden brush radius/blend controls, nonlinear sliders, persistent overlay on dialog hover, translucent corridor side surfaces, and sampler caching. |
+| Actual Rework | 3 | Completed UI and overlay slices were revisited several times after hosted feedback and review findings, including slider behavior, overlay visibility/persistence, session routing, unknown-tool routing, tolerance naming, and performance caching. |
+| Final Confidence in Completeness | 4 | Full Ruby tests, lint, package verification, focused post-review checks, Grok 4.3 review disposition, and final hosted user verification all passed with no remaining public contract gap. |
+
+### Actual Signals
+- First non-round managed terrain tool required distinct Ruby-owned corridor session/tool/overlay behavior rather than a brush variant.
+- The strongest actual resistance was host-visible feedback: controls shown/hidden correctly, transient slider updates, overlay persistence/readability, and hover redraw cost.
+- The public contract boundary held: no MCP tool/schema/dispatcher/request-shape changes were needed.
+- Side blend became optional by default, matching the product goal of minimal values that still let the corridor tool apply.
+
+### Actual Notes
+- Validation burden is scored higher than implementation friction because the expensive part was discovering and retesting live SketchUp behavior, not rewriting the core architecture.
+- The drift log remains empty because the task did not materially change direction during implementation; the validation cost is captured in actual calibration.
 <!-- SIZE:ACTUAL:END -->
 
 ---
@@ -229,7 +251,33 @@
 <!-- SIZE:VALIDATION-EVIDENCE:START -->
 ## Validation Evidence Summary
 
-> Not filled yet.
+> Fill only the sections that are relevant. Say `not applicable` where needed.
+
+### Automated Validation
+- `bundle exec rake ruby:test`: `1264 runs, 12371 assertions, 0 failures, 0 errors, 37 skips`.
+- `bundle exec rake ruby:lint`: `313 files inspected, no offenses detected`.
+- `bundle exec rake package:verify`: passed and produced `dist/su_mcp-1.6.1.rbz`.
+- Focused post-review checks for installer, settings dialog, and corridor overlay preview: `39 runs, 241 assertions, 0 failures, 0 errors, 0 skips`.
+
+### Hosted / Manual Validation
+- Hosted SketchUp verification completed after repeated redeploy/restart/reload loops.
+- User verified toolbar/panel workflow, endpoint capture/editing, corridor apply behavior, side-blend defaults, slider behavior, overlay persistence/readability, translucent side surfaces, and sampler-cache performance.
+- Final user status recorded in `summary.md`: "I've verified all, happy with the tool now".
+
+### Performance Validation
+- Hosted feedback identified sluggish hover behavior.
+- Corridor preview sampling now caches terrain sampler state during hover redraw; user verified the final behavior was acceptable.
+
+### Migration / Compatibility Validation
+- Not applicable: no migration, persisted state format change, public MCP schema change, dispatcher route, or native catalog change was introduced.
+
+### Operational / Rollout Validation
+- Package verification confirmed the RBZ staging includes the new corridor UI assets.
+- Live reload/deployment was exercised in the SketchUp runtime; hosted evidence is intentionally recorded in `summary.md` rather than a separate mandatory artifact.
+
+### Validation Notes
+- Grok 4.3 final review found only low-severity maintainability issues; all were addressed before the final full validation run.
+- Contract guard coverage confirms UI-only metadata and overlay concepts do not leak into public requests or native fixtures.
 <!-- SIZE:VALIDATION-EVIDENCE:END -->
 
 ---
@@ -237,7 +285,16 @@
 <!-- SIZE:DELTA:START -->
 ## Estimation Delta Review
 
-> Not filled yet.
+- **Most Underestimated Dimension**: Actual Validation Burden. Prediction was `3`, but hosted closeout behaved like `4` because multiple independent live defects required fix/redeploy/restart/reload loops and final user retesting.
+- **Most Overestimated Dimension**: None materially. Functional scope, technical surface, dependency drag, and scope volatility were close to the prediction.
+- **Signal Present Early But Underweighted**: MTA-18/MTA-26/MTA-27 already showed that SketchUp UI and overlay work can fail only in live host feedback loops. The estimate named that risk, but did not weight slider state, dialog-hover overlay persistence, and overlay 3D readability strongly enough.
+- **Genuinely Unknowable Factor**: The exact hosted interaction defects were not knowable from local fakes: invisible overlay after clean redeploy, high-frequency slider flicker/recentering, and hover redraw sluggishness needed the SketchUp runtime to expose them.
+- **Future Similar Tasks Should Assume**: New SketchUp terrain UI tools with HtmlDialog controls plus transient 3D overlays should reserve capacity for at least one hosted retest loop, and should escalate to `4` validation burden once more than one live-only issue requires redeploy/restart/reload.
+
+### Calibration Notes
+- Dominant actual failure mode: host-visible state/overlay feedback mismatch, not public contract or terrain-kernel uncertainty.
+- Future analog retrieval should find this task for non-brush SketchUp UI tools, transient overlay readability, HtmlDialog slider feedback loops, optional/default parameter ergonomics, and hosted performance tuning.
+- No public contract drift occurred; the no-public-shape-change assumption was correct.
 <!-- SIZE:DELTA:END -->
 
 ---
@@ -247,22 +304,16 @@
 
 - `archetype:feature`
 - `scope:managed-terrain`
-- `systems:command-layer`
-- `systems:target-resolution`
+- `unclassified:sketchup-ui`
 - `systems:surface-sampling`
 - `systems:terrain-state`
-- `systems:packaging`
 - `validation:hosted-smoke`
-- `host:routine-smoke`
+- `host:repeated-fix-loop`
 - `contract:no-public-shape-change`
-- `risk:host-api-mismatch`
-- `risk:unit-conversion`
-- `risk:transform-semantics`
 - `risk:visibility-semantics`
-- `risk:undo-semantics`
+- `risk:performance-scaling`
 - `risk:partial-state`
-- `volatility:medium`
 - `friction:high`
-- `rework:medium`
-- `confidence:medium`
+- `rework:high`
+- `confidence:high`
 <!-- SIZE:TAGS:END -->

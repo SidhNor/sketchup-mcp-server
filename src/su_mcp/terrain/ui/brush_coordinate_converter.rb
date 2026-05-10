@@ -21,6 +21,15 @@ module SU_MCP
           }
         end
 
+        def owner_local_xyz(point, owner:)
+          local = owner_local_point(point, owner)
+          {
+            'x' => length_converter.internal_to_public_meters(local.fetch(:x)),
+            'y' => length_converter.internal_to_public_meters(local.fetch(:y)),
+            'z' => length_converter.internal_to_public_meters(local.fetch(:z))
+          }
+        end
+
         def owner_world_point(point, owner:)
           internal = public_meter_point_to_internal(point)
           components = owner_world_components(internal, owner)

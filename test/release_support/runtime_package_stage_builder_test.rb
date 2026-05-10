@@ -45,6 +45,7 @@ class RuntimePackageStageBuilderTest < Minitest::Test
       %w[
         target_height_brush.svg
         local_fairing.svg
+        corridor_transition.svg
         managed_terrain_panel.html
         target_height_brush.html
         target_height_brush.css
@@ -58,6 +59,12 @@ class RuntimePackageStageBuilderTest < Minitest::Test
       assert_equal(
         File.join('su_mcp', 'terrain', 'ui', 'assets', 'target_height_brush.svg'),
         Pathname.new(SU_MCP::Terrain::UI::Installer::ICON_PATH)
+                .relative_path_from(ReleaseSupport::SRC_DIR)
+                .to_s
+      )
+      assert_equal(
+        File.join('su_mcp', 'terrain', 'ui', 'assets', 'corridor_transition.svg'),
+        Pathname.new(SU_MCP::Terrain::UI::Installer::CORRIDOR_TRANSITION_ICON_PATH)
                 .relative_path_from(ReleaseSupport::SRC_DIR)
                 .to_s
       )

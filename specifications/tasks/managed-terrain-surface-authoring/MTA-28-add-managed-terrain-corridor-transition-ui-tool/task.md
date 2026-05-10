@@ -1,7 +1,7 @@
 # Task: MTA-28 Add Managed Terrain Corridor Transition UI Tool
 **Task ID**: `MTA-28`
 **Title**: `Add Managed Terrain Corridor Transition UI Tool`
-**Status**: `planned`
+**Status**: `implemented`
 **Priority**: `P1`
 **Date**: `2026-05-08`
 

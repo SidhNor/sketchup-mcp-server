@@ -37,6 +37,7 @@ body {
   gap: 6px;
 }
 
+.controls[hidden],
 .tool-panel[hidden] {
   display: none;
 }
@@ -53,8 +54,32 @@ body {
   align-items: center;
 }
 
+.axis-grid,
+.button-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 8px;
+}
+
+.endpoint-section {
+  display: grid;
+  gap: 6px;
+  padding-block: 2px 6px;
+  border-bottom: 1px solid #d9dee3;
+}
+
+.optional-controls {
+  display: grid;
+  gap: 6px;
+}
+
+.optional-controls[open] {
+  padding-block: 2px 4px;
+}
+
 input,
-select {
+select,
+button {
   width: 100%;
   min-height: 28px;
 }

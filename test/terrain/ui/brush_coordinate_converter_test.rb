@@ -43,6 +43,31 @@ class TerrainUiBrushCoordinateConverterTest < Minitest::Test
     assert_equal({ 'x' => 1.0, 'y' => 0.0 }, result)
   end
 
+  def test_converts_identity_world_internal_point_to_public_meter_xyz
+    result = converter.owner_local_xyz(
+      point(78.74015748031496, 39.37007874015748, 118.11023622047244),
+      owner: owner_with_transform(nil)
+    )
+
+    assert_equal({ 'x' => 2.0, 'y' => 1.0, 'z' => 3.0 }, result)
+  end
+
+  def test_owner_local_xyz_applies_inverse_transform_before_meter_conversion
+    transform = FakeTransform.new(
+      translation: [39.37007874015748, 0.0, 39.37007874015748],
+      scale: 2.0
+    )
+
+    result = converter.owner_local_xyz(
+      point(118.11023622047244, 78.74015748031496, 157.48031496062993),
+      owner: owner_with_transform(transform)
+    )
+
+    assert_in_delta(1.0, result.fetch('x'), 1e-9)
+    assert_in_delta(1.0, result.fetch('y'), 1e-9)
+    assert_in_delta(1.5, result.fetch('z'), 1e-9)
+  end
+
   def test_converts_owner_local_public_meter_xyz_back_to_world_internal_point
     transform = FakeTransform.new(translation: [39.37007874015748, 0.0, 0.0], scale: 1.0)
 

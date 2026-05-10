@@ -5,7 +5,15 @@
     'blendDistanceNumber',
     'strengthNumber',
     'neighborhoodRadiusSamples',
-    'iterations'
+    'iterations',
+    'corridorStartX',
+    'corridorStartY',
+    'corridorStartElevation',
+    'corridorEndX',
+    'corridorEndY',
+    'corridorEndElevation',
+    'corridorWidth',
+    'corridorSideBlendDistance'
   ];
   const pairedControls = [
     ['radiusSlider', 'radiusNumber', 'radius', 'meters'],
@@ -23,6 +31,7 @@
   }
 
   function readSettings() {
+    normalizeCorridorSideBlendControls();
     return {
       activeTool: byId('mode').dataset.activeTool || 'target_height',
       targetElevation: numberValue('targetElevation'),
@@ -31,8 +40,33 @@
       falloff: byId('falloff').value,
       strength: numberValue('strengthNumber'),
       neighborhoodRadiusSamples: numberValue('neighborhoodRadiusSamples'),
-      iterations: numberValue('iterations')
+      iterations: numberValue('iterations'),
+      selectedEndpoint: selectedEndpoint(),
+      startControl: {
+        point: { x: numberValue('corridorStartX'), y: numberValue('corridorStartY') },
+        elevation: numberValue('corridorStartElevation')
+      },
+      endControl: {
+        point: { x: numberValue('corridorEndX'), y: numberValue('corridorEndY') },
+        elevation: numberValue('corridorEndElevation')
+      },
+      width: numberValue('corridorWidth'),
+      sideBlend: {
+        distance: numberValue('corridorSideBlendDistance'),
+        falloff: byId('corridorSideBlendFalloff').value
+      }
     };
+  }
+
+  function selectedEndpoint() {
+    const active = document.activeElement && document.activeElement.id;
+    if (active && active.indexOf('corridorStart') === 0) {
+      return 'start';
+    }
+    if (active && active.indexOf('corridorEnd') === 0) {
+      return 'end';
+    }
+    return byId('corridorTransitionPanel').dataset.selectedEndpoint || null;
   }
 
   function clampForSlider(input, value) {
@@ -78,6 +112,39 @@
     return clampForSlider(slider, 50 + (local * 50));
   }
 
+  function sliderToElevation(slider) {
+    const minValue = Number(slider.dataset.minElevation || -5);
+    const midValue = Number(slider.dataset.midElevation || 0);
+    const maxValue = Number(slider.dataset.maxElevation || 5);
+    const position = Number(slider.value) / 100;
+    if (position <= 0.5) {
+      const local = position / 0.5;
+      return minValue + ((midValue - minValue) * local * local);
+    }
+    const local = (position - 0.5) / 0.5;
+    return midValue + ((maxValue - midValue) * local * local);
+  }
+
+  function elevationToSlider(slider, elevation) {
+    const minValue = Number(slider.dataset.minElevation || -5);
+    const midValue = Number(slider.dataset.midElevation || 0);
+    const maxValue = Number(slider.dataset.maxElevation || 5);
+    const value = Number(elevation);
+    if (!Number.isFinite(value)) {
+      return 50;
+    }
+    if (value <= midValue) {
+      const span = midValue - minValue;
+      const ratio = span <= 0 ? 0 : Math.min(1, Math.max(0, (value - minValue) / span));
+      const local = Math.sqrt(ratio);
+      return Math.min(50, Math.max(0, local * 50));
+    }
+    const span = maxValue - midValue;
+    const ratio = span <= 0 ? 0 : Math.min(1, Math.max(0, (value - midValue) / span));
+    const local = Math.sqrt(ratio);
+    return Math.min(100, Math.max(50, 50 + (local * 50)));
+  }
+
   function snapMetersForSlider(slider, meters) {
     const config = sliderConfig(slider);
     const snapped = Math.round(Number(meters) * 10) / 10;
@@ -86,9 +153,18 @@
 
   function setControlValue(id, value) {
     if (value === null || value === undefined) {
+      byId(id).value = '';
       return;
     }
     byId(id).value = value;
+  }
+
+  function setOptionalSliderValue(slider, value) {
+    if (value === null || value === undefined) {
+      slider.value = 50;
+      return;
+    }
+    slider.value = value;
   }
 
   function setSliderValue(sliderId, value) {
@@ -107,8 +183,10 @@
     const activeTool = state.activeTool || state.mode || 'target_height';
     byId('mode').dataset.activeTool = activeTool;
     byId('mode').textContent = activeTool;
+    byId('roundBrushSharedControls').hidden = activeTool === 'corridor_transition';
     byId('targetHeightPanel').hidden = activeTool !== 'target_height';
     byId('localFairingPanel').hidden = activeTool !== 'local_fairing';
+    byId('corridorTransitionPanel').hidden = activeTool !== 'corridor_transition';
 
     setControlValue('targetElevation', state.targetElevation);
     setControlValue('radiusNumber', state.radius);
@@ -125,6 +203,25 @@
     setControlValue('neighborhoodRadiusSamples', fairing.neighborhoodRadiusSamples);
     setControlValue('iterations', fairing.iterations);
 
+    const corridor = state.corridor || {};
+    const start = corridor.startControl || {};
+    const end = corridor.endControl || {};
+    byId('corridorTransitionPanel').dataset.selectedEndpoint = corridor.selectedEndpoint || '';
+    setControlValue('corridorStartX', start.x);
+    setControlValue('corridorStartY', start.y);
+    setControlValue('corridorStartElevation', start.elevation);
+    setElevationSlider('corridorStartElevationSlider', start.elevation, corridor, 'start');
+    setControlValue('corridorEndX', end.x);
+    setControlValue('corridorEndY', end.y);
+    setControlValue('corridorEndElevation', end.elevation);
+    setElevationSlider('corridorEndElevationSlider', end.elevation, corridor, 'end');
+    setControlValue('corridorWidth', corridor.width);
+    const sideBlend = corridor.sideBlend || {};
+    setControlValue('corridorSideBlendDistance', sideBlend.distance);
+    if (sideBlend.falloff) {
+      byId('corridorSideBlendFalloff').value = sideBlend.falloff;
+    }
+
     const invalid = state.invalidSetting || {};
     numberControls.forEach(function (id) {
       byId(id).setCustomValidity('');
@@ -137,6 +234,46 @@
     byId('selectedTerrain').textContent = state.selectedTerrain || 'No terrain selected';
   }
 
+  function setElevationSlider(id, value, corridor, endpoint) {
+    const slider = byId(id);
+    if (value === null || value === undefined) {
+      delete slider.dataset.minElevation;
+      delete slider.dataset.midElevation;
+      delete slider.dataset.maxElevation;
+      setOptionalSliderValue(slider, null);
+      return;
+    }
+    const ranges = corridor.elevationSliderRanges || {};
+    const range = ranges[endpoint] || corridor.elevationSliderRange || {};
+    if (Number.isFinite(Number(range.min)) && Number.isFinite(Number(range.max))) {
+      slider.dataset.minElevation = range.min;
+      slider.dataset.midElevation = Number.isFinite(Number(range.mid)) ? range.mid : value;
+      slider.dataset.maxElevation = range.max;
+    }
+    slider.value = elevationToSlider(slider, value);
+  }
+
+  function normalizeCorridorSideBlendControls() {
+    const distance = numberValue('corridorSideBlendDistance');
+    const falloff = byId('corridorSideBlendFalloff');
+    if (Number.isFinite(distance) && distance <= 0) {
+      falloff.value = 'none';
+      return;
+    }
+    if (Number.isFinite(distance) && distance > 0 && falloff.value === 'none') {
+      falloff.value = 'cosine';
+    }
+  }
+
+  function resetCorridorSideBlendControls() {
+    byId('corridorSideBlendDistance').value = '0.0';
+    byId('corridorSideBlendFalloff').value = 'none';
+    const options = byId('corridorSideBlendOptions');
+    if (options) {
+      options.open = false;
+    }
+  }
+
   function fieldControlIds(field) {
     if (field === 'radius') {
       return ['radiusNumber'];
@@ -146,6 +283,15 @@
     }
     if (field === 'strength') {
       return ['strengthNumber'];
+    }
+    if (field === 'region.width') {
+      return ['corridorWidth'];
+    }
+    if (field === 'region.sideBlend.distance') {
+      return ['corridorSideBlendDistance'];
+    }
+    if (field === 'region.sideBlend.falloff') {
+      return ['corridorSideBlendFalloff'];
     }
     return field ? [field].filter(function (id) { return byId(id); }) : [];
   }
@@ -183,6 +329,76 @@
       byId(id).addEventListener('change', function () {
         sendSettings();
       });
+    });
+
+    [
+      'corridorStartX',
+      'corridorStartY',
+      'corridorStartElevation',
+      'corridorEndX',
+      'corridorEndY',
+      'corridorEndElevation',
+      'corridorWidth',
+      'corridorSideBlendDistance',
+      'corridorSideBlendFalloff'
+    ].forEach(function (id) {
+      byId(id).addEventListener('change', function () {
+        if (id === 'corridorSideBlendDistance' || id === 'corridorSideBlendFalloff') {
+          normalizeCorridorSideBlendControls();
+        }
+        sendSettings();
+      });
+    });
+
+    [
+      ['corridorStartElevationSlider', 'corridorStartElevation', 'start'],
+      ['corridorEndElevationSlider', 'corridorEndElevation', 'end']
+    ].forEach(function (pair) {
+      const slider = byId(pair[0]);
+      slider.addEventListener('input', function () {
+        const elevation = sliderToElevation(slider);
+        byId(pair[1]).value = (Math.round(elevation * 100) / 100).toFixed(2);
+        sendSettings({ selectedEndpoint: pair[2], source: 'corridorElevationSlider' });
+      });
+      slider.addEventListener('change', function () {
+        sendSettings({ selectedEndpoint: pair[2] });
+      });
+    });
+
+    byId('recaptureCorridorStart').addEventListener('click', function () {
+      if (window.sketchup && window.sketchup.recaptureCorridorEndpoint) {
+        window.sketchup.recaptureCorridorEndpoint('start');
+      }
+    });
+    byId('recaptureCorridorEnd').addEventListener('click', function () {
+      if (window.sketchup && window.sketchup.recaptureCorridorEndpoint) {
+        window.sketchup.recaptureCorridorEndpoint('end');
+      }
+    });
+    byId('sampleCorridorStart').addEventListener('click', function () {
+      if (window.sketchup && window.sketchup.sampleCorridorTerrain) {
+        window.sketchup.sampleCorridorTerrain('start');
+      }
+    });
+    byId('sampleCorridorEnd').addEventListener('click', function () {
+      if (window.sketchup && window.sketchup.sampleCorridorTerrain) {
+        window.sketchup.sampleCorridorTerrain('end');
+      }
+    });
+    byId('resetCorridor').addEventListener('click', function () {
+      if (window.sketchup && window.sketchup.resetCorridor) {
+        window.sketchup.resetCorridor();
+      }
+    });
+    byId('resetCorridorSideBlend').addEventListener('click', function () {
+      resetCorridorSideBlendControls();
+      sendSettings();
+    });
+    byId('applyCorridor').addEventListener('click', function () {
+      normalizeCorridorSideBlendControls();
+      if (window.sketchup && window.sketchup.applyCorridor) {
+        window.sketchup.applyCorridor();
+      }
     });
 
     if (window.sketchup && window.sketchup.ready) {

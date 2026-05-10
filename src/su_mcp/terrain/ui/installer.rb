@@ -1,6 +1,8 @@
 # frozen_string_literal: true
 
 require_relative 'brush_edit_session'
+require_relative 'corridor_transition_tool'
+require_relative 'managed_terrain_tool_session'
 require_relative 'settings_dialog'
 require_relative 'target_height_brush_tool'
 
@@ -12,9 +14,14 @@ module SU_MCP
         TOOLBAR_NAME = 'Managed Terrain'
         COMMAND_TEXT = 'Target Height Brush'
         LOCAL_FAIRING_COMMAND_TEXT = 'Local Fairing'
+        CORRIDOR_TRANSITION_COMMAND_TEXT = 'Corridor Transition'
         # rubocop:disable SketchupSuggestions/FileEncoding
         ICON_PATH = File.expand_path('assets/target_height_brush.svg', __dir__)
         LOCAL_FAIRING_ICON_PATH = File.expand_path('assets/local_fairing.svg', __dir__)
+        CORRIDOR_TRANSITION_ICON_PATH = File.expand_path(
+          'assets/corridor_transition.svg',
+          __dir__
+        )
         # rubocop:enable SketchupSuggestions/FileEncoding
         COMMANDS = [
           {
@@ -28,6 +35,12 @@ module SU_MCP
             text: LOCAL_FAIRING_COMMAND_TEXT,
             icon: LOCAL_FAIRING_ICON_PATH,
             status: 'Apply a circular managed terrain local fairing brush.'
+          },
+          {
+            tool: 'corridor_transition',
+            text: CORRIDOR_TRANSITION_COMMAND_TEXT,
+            icon: CORRIDOR_TRANSITION_ICON_PATH,
+            status: 'Apply a managed terrain corridor transition.'
           }
         ].freeze
 
@@ -35,19 +48,28 @@ module SU_MCP
           ui_host: nil,
           session: nil,
           dialog: nil,
-          tool_factory: nil
+          tool_factory: nil,
+          corridor_tool_factory: nil
         )
           @ui_host = ui_host || RealUiHost.new
-          @session = session || BrushEditSession.new
+          @session = session || ManagedTerrainToolSession.new
           @dialog = dialog
           @tool_factory = tool_factory || lambda {
             TargetHeightBrushTool.new(
-              session: @session,
+              session: session_for_tool('target_height'),
               after_apply: -> { @dialog&.push_state },
               after_state_change: -> { refresh_active_ui_state }
             )
           }
-          @tool = nil
+          @corridor_tool_factory = corridor_tool_factory || lambda {
+            CorridorTransitionTool.new(
+              session: session_for_tool('corridor_transition'),
+              after_apply: -> { @dialog&.push_state },
+              after_state_change: -> { refresh_active_ui_state }
+            )
+          }
+          @brush_tool = nil
+          @corridor_tool = nil
           @commands = {}
           @installed = false
         end
@@ -71,7 +93,7 @@ module SU_MCP
 
         private
 
-        attr_reader :ui_host, :session, :tool_factory
+        attr_reader :ui_host, :session, :tool_factory, :corridor_tool_factory
 
         def build_command(definition)
           command = ui_host.command(definition.fetch(:text)) do
@@ -90,7 +112,7 @@ module SU_MCP
             session.activate
           end
           show_dialog
-          reselect_tool
+          reselect_tool(tool)
           refresh_active_ui_state
         end
 
@@ -100,8 +122,8 @@ module SU_MCP
           dialog.show
         end
 
-        def reselect_tool
-          ui_host.select_tool(tool)
+        def reselect_tool(tool_name = active_tool_name)
+          ui_host.select_tool(sketchup_tool_for(tool_name))
         end
 
         def refresh_command_state
@@ -114,8 +136,45 @@ module SU_MCP
           @dialog&.push_state
         end
 
+        def sketchup_tool_for(tool_name)
+          case tool_name
+          when 'corridor_transition'
+            corridor_tool
+          when 'target_height', 'local_fairing'
+            brush_tool
+          else
+            raise ArgumentError, "Unknown managed terrain tool: #{tool_name}"
+          end
+        end
+
+        def session_for_tool(tool_name)
+          return session unless session.is_a?(ManagedTerrainToolSession)
+
+          case tool_name
+          when 'corridor_transition'
+            session.corridor_session
+          when 'target_height', 'local_fairing'
+            session.brush_session
+          else
+            raise ArgumentError, "Unknown managed terrain tool: #{tool_name}"
+          end
+        end
+
+        def active_tool_name
+          snapshot = session.respond_to?(:state_snapshot) ? session.state_snapshot : {}
+          snapshot.fetch(:activeTool, snapshot.fetch('activeTool', 'target_height'))
+        end
+
+        def brush_tool
+          @brush_tool ||= tool_factory.call
+        end
+
         def tool
-          @tool ||= tool_factory.call
+          brush_tool
+        end
+
+        def corridor_tool
+          @corridor_tool ||= corridor_tool_factory.call
         end
 
         def update_command_icon
@@ -132,8 +191,14 @@ module SU_MCP
           @dialog ||= SettingsDialog.new(
             session: session,
             after_update: -> { reselect_tool },
-            after_close: -> { tool.clear_overlay if tool.respond_to?(:clear_overlay) }
+            after_close: -> { clear_tool_overlays }
           )
+        end
+
+        def clear_tool_overlays
+          [brush_tool, @corridor_tool].compact.each do |active_tool|
+            active_tool.clear_overlay if active_tool.respond_to?(:clear_overlay)
+          end
         end
 
         def configure_validation(command, tool)
@@ -201,9 +266,8 @@ module SU_MCP
           private
 
           def status_for(text)
-            if text == LOCAL_FAIRING_COMMAND_TEXT
-              return 'Apply a circular managed terrain local fairing brush.'
-            end
+            definition = COMMANDS.find { |entry| entry.fetch(:text) == text }
+            return definition.fetch(:status) if definition
 
             'Apply a circular managed terrain target-height brush.'
           end

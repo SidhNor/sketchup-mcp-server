@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" role="img" aria-label="Corridor Transition">
+  <path d="M6 22 L26 10" fill="none" stroke="#1a73e8" stroke-width="3" stroke-linecap="round"/>
+  <path d="M6 17 L26 5" fill="none" stroke="#34a853" stroke-width="1.8" stroke-linecap="round" stroke-dasharray="3 2"/>
+  <path d="M6 27 L26 15" fill="none" stroke="#34a853" stroke-width="1.8" stroke-linecap="round" stroke-dasharray="3 2"/>
+  <circle cx="6" cy="22" r="3" fill="#ffffff" stroke="#1a73e8" stroke-width="2"/>
+  <circle cx="26" cy="10" r="3" fill="#ffffff" stroke="#1a73e8" stroke-width="2"/>
+</svg>

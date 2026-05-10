@@ -67,12 +67,15 @@ The extension loader is `src/su_mcp.rb`, which registers `src/su_mcp/main.rb` wi
 For local development, load the extension from this repository by symlinking or copying `src/` into SketchUp's `Plugins` directory.
 
 When loaded in SketchUp, the extension adds one **Managed Terrain** toolbar for
-managed-terrain tools. It contains **Target Height Brush** and **Local Fairing**
-buttons. Both open the shared Managed Terrain panel, which keeps selected-terrain
-and status feedback visible while switching between `target_height` and
-`local_fairing` settings. Bounded brush controls use slider plus numeric input
+managed-terrain tools. It contains **Target Height Brush**, **Local Fairing**,
+and **Corridor Transition** buttons. All three open the shared Managed Terrain
+panel, which keeps selected-terrain and status feedback visible while switching
+between tool settings. Bounded brush controls use slider plus numeric input
 pairs; direct numeric radius and blend values can exceed the slider's ergonomic
-`100m` range when otherwise valid. Applies route through the existing managed
+`100m` range when otherwise valid. Corridor Transition captures explicit start
+and end controls, supports numeric endpoint X/Y/elevation edits, includes
+Recapture and Sample Terrain actions for each endpoint, and exposes width plus
+side-blend settings before Apply. Applies route through the existing managed
 terrain edit command path for the currently selected managed terrain surface.
 
 Build the RBZ package:

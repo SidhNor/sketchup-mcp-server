@@ -9,6 +9,7 @@ class TerrainUiAssetsSourceTest < Minitest::Test
     assert_path_exists(SU_MCP::Terrain::UI::SettingsDialog::DIALOG_FILE)
     assert_path_exists(SU_MCP::Terrain::UI::Installer::ICON_PATH)
     assert_path_exists(SU_MCP::Terrain::UI::Installer::LOCAL_FAIRING_ICON_PATH)
+    assert_path_exists(SU_MCP::Terrain::UI::Installer::CORRIDOR_TRANSITION_ICON_PATH)
     assert_path_exists(File.expand_path('target_height_brush.css',
                                         File.dirname(SU_MCP::Terrain::UI::SettingsDialog::DIALOG_FILE)))
     assert_path_exists(File.expand_path('target_height_brush.js',
@@ -20,17 +21,23 @@ class TerrainUiAssetsSourceTest < Minitest::Test
 
     %w[
       targetElevation radiusSlider radiusNumber blendDistanceSlider blendDistanceNumber
-      falloff selectedTerrain status targetHeightPanel localFairingPanel strengthSlider
-      strengthNumber neighborhoodRadiusSamples iterations
+      falloff selectedTerrain status roundBrushSharedControls targetHeightPanel
+      localFairingPanel strengthSlider strengthNumber neighborhoodRadiusSamples
+      iterations corridorTransitionPanel
+      corridorStartX corridorStartY corridorStartElevation corridorStartElevationSlider
+      corridorEndX corridorEndY corridorEndElevation corridorEndElevationSlider
+      corridorWidth corridorSideBlendOptions corridorSideBlendDistance
+      corridorSideBlendFalloff resetCorridorSideBlend applyCorridor resetCorridor
+      recaptureCorridorStart recaptureCorridorEnd sampleCorridorStart sampleCorridorEnd
     ].each do |control_id|
       assert_includes(source, control_id)
     end
-    %w[none linear smooth].each do |falloff|
+    %w[none linear smooth cosine].each do |falloff|
       assert_includes(source, falloff)
     end
     assert_includes(source, 'target_height')
     assert_includes(source, 'local_fairing')
-    refute_includes(source, 'corridor_transition')
+    assert_includes(source, 'corridor_transition')
     refute_includes(source, 'survey_point_constraint')
     refute_includes(source, 'planar_region_fit')
   end
@@ -62,6 +69,54 @@ class TerrainUiAssetsSourceTest < Minitest::Test
     assert_includes(script, 'midMeters')
   end
 
+  def test_dialog_javascript_maps_corridor_elevation_sliders_non_linearly_per_endpoint
+    script = File.read(
+      File.expand_path('target_height_brush.js',
+                       File.dirname(SU_MCP::Terrain::UI::SettingsDialog::DIALOG_FILE)),
+      encoding: 'utf-8'
+    )
+
+    assert_includes(script, 'sliderToElevation')
+    assert_includes(script, 'elevationToSlider')
+    assert_includes(script, 'elevationSliderRanges')
+    assert_includes(script, "source: 'corridorElevationSlider'")
+    assert_includes(script, "['corridorStartElevationSlider', 'corridorStartElevation', 'start']")
+    assert_includes(script, "['corridorEndElevationSlider', 'corridorEndElevation', 'end']")
+  end
+
+  def test_dialog_javascript_hides_round_brush_controls_for_corridor_tool
+    script = File.read(
+      File.expand_path('target_height_brush.js',
+                       File.dirname(SU_MCP::Terrain::UI::SettingsDialog::DIALOG_FILE)),
+      encoding: 'utf-8'
+    )
+
+    assert_includes(
+      script,
+      "byId('roundBrushSharedControls').hidden = activeTool === 'corridor_transition'"
+    )
+
+    css = File.read(
+      File.expand_path('target_height_brush.css',
+                       File.dirname(SU_MCP::Terrain::UI::SettingsDialog::DIALOG_FILE)),
+      encoding: 'utf-8'
+    )
+    assert_includes(css, '.controls[hidden]')
+  end
+
+  def test_dialog_javascript_defaults_optional_corridor_side_blend_controls
+    script = File.read(
+      File.expand_path('target_height_brush.js',
+                       File.dirname(SU_MCP::Terrain::UI::SettingsDialog::DIALOG_FILE)),
+      encoding: 'utf-8'
+    )
+
+    assert_includes(script, 'normalizeCorridorSideBlendControls')
+    assert_includes(script, 'resetCorridorSideBlendControls')
+    assert_includes(script, "falloff.value = 'cosine'")
+    assert_includes(script, "byId('corridorSideBlendDistance').value = '0.0'")
+  end
+
   def test_dialog_assets_do_not_introduce_out_of_scope_controls
     asset_root = File.dirname(SU_MCP::Terrain::UI::SettingsDialog::DIALOG_FILE)
     combined = %w[
@@ -70,7 +125,7 @@ class TerrainUiAssetsSourceTest < Minitest::Test
       target_height_brush.js
     ].map { |asset| File.read(File.join(asset_root, asset), encoding: 'utf-8') }.join("\n").downcase
 
-    %w[sculpt pressure stroke redrape validate sampling labels capture].each do |out_of_scope|
+    %w[sculpt pressure stroke redrape validate labels].each do |out_of_scope|
       refute_includes(combined, out_of_scope)
     end
   end
@@ -78,7 +133,8 @@ class TerrainUiAssetsSourceTest < Minitest::Test
   def test_toolbar_svgs_leave_transparent_margin_for_native_checked_state
     [
       SU_MCP::Terrain::UI::Installer::ICON_PATH,
-      SU_MCP::Terrain::UI::Installer::LOCAL_FAIRING_ICON_PATH
+      SU_MCP::Terrain::UI::Installer::LOCAL_FAIRING_ICON_PATH,
+      SU_MCP::Terrain::UI::Installer::CORRIDOR_TRANSITION_ICON_PATH
     ].each do |icon_path|
       source = File.read(icon_path, encoding: 'utf-8')
 

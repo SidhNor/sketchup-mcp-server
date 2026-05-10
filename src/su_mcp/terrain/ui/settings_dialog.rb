@@ -54,19 +54,61 @@ module SU_MCP
           dialog.add_action_callback('ready') { |_context| refresh_and_push_state }
           dialog.add_action_callback('requestState') { |_context| refresh_and_push_state }
           dialog.add_action_callback('updateSettings') do |_context, payload|
-            session.update_settings(JSON.parse(payload.to_s))
-            push_state
-            after_update.call
+            values = JSON.parse(payload.to_s)
+            session.update_settings(values)
+            unless transient_slider_update?(values)
+              push_state
+              after_update.call
+            end
           end
+          register_corridor_callbacks(dialog)
           dialog.add_action_callback('close') do |_context|
             close
             after_close.call
           end
         end
 
+        def register_corridor_callbacks(dialog)
+          dialog.add_action_callback('recaptureCorridorEndpoint') do |_context, endpoint|
+            update_corridor_action { session.start_recapture(endpoint.to_s) }
+          end
+          dialog.add_action_callback('sampleCorridorTerrain') do |_context, endpoint|
+            update_corridor_action { session.sample_terrain(endpoint.to_s) }
+          end
+          dialog.add_action_callback('resetCorridor') do |_context|
+            update_corridor_action { reset_corridor }
+          end
+          dialog.add_action_callback('applyCorridor') do |_context|
+            update_corridor_action { apply_corridor }
+          end
+        end
+
+        def update_corridor_action
+          yield
+          push_state
+          after_update.call
+        end
+
+        def reset_corridor
+          return session.reset_corridor if session.respond_to?(:reset_corridor)
+
+          session.reset if session.respond_to?(:reset)
+        end
+
+        def apply_corridor
+          return session.apply_corridor if session.respond_to?(:apply_corridor)
+
+          session.apply if session.respond_to?(:apply)
+        end
+
         def refresh_and_push_state
           session.refresh_selection if session.respond_to?(:refresh_selection)
           push_state
+        end
+
+        def transient_slider_update?(values)
+          source = values['source']
+          source && %w[slider corridorElevationSlider].include?(source.to_s)
         end
 
         def script_safe_json(payload)
@@ -84,10 +126,10 @@ module SU_MCP
           {
             dialog_title: 'Managed Terrain Tools',
             preferences_key: 'com.su-mcp.terrain.tools',
-            scrollable: false,
-            resizable: false,
+            scrollable: true,
+            resizable: true,
             width: 320,
-            height: 520
+            height: 640
           }
         end
 

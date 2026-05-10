@@ -14,7 +14,19 @@ class TerrainUiSettingsDialogTest < Minitest::Test
     dialog.show
 
     assert_equal(SU_MCP::Terrain::UI::SettingsDialog::DIALOG_FILE, factory.dialog.file)
-    assert_equal(%w[close ready requestState updateSettings], factory.dialog.callbacks.sort)
+    assert_equal(
+      %w[
+        applyCorridor
+        close
+        ready
+        recaptureCorridorEndpoint
+        requestState
+        resetCorridor
+        sampleCorridorTerrain
+        updateSettings
+      ],
+      factory.dialog.callbacks.sort
+    )
     assert_equal(1, factory.dialog.show_calls)
   end
 
@@ -83,6 +95,28 @@ class TerrainUiSettingsDialogTest < Minitest::Test
     assert_equal([:reselected], calls)
   end
 
+  def test_transient_slider_update_does_not_push_state_or_reselect_tool
+    calls = []
+    factory = RecordingDialogFactory.new
+    session = RecordingSession.new
+    dialog = SU_MCP::Terrain::UI::SettingsDialog.new(
+      session: session,
+      dialog_factory: factory,
+      after_update: -> { calls << :reselected }
+    )
+
+    dialog.show
+    factory.dialog.invoke(
+      'updateSettings',
+      JSON.generate('source' => 'corridorElevationSlider', 'selectedEndpoint' => 'start')
+    )
+
+    assert_equal([{ 'source' => 'corridorElevationSlider',
+                    'selectedEndpoint' => 'start' }], session.settings_updates)
+    assert_empty(calls)
+    assert_empty(factory.dialog.scripts)
+  end
+
   def test_close_callback_runs_after_close_hook_for_overlay_cleanup
     calls = []
     factory = RecordingDialogFactory.new
@@ -111,8 +145,18 @@ class TerrainUiSettingsDialogTest < Minitest::Test
     dialog.show
 
     refute_same(first_dialog, factory.dialog)
-    assert_equal(%w[close ready requestState updateSettings], first_dialog.callbacks.sort)
-    assert_equal(%w[close ready requestState updateSettings], factory.dialog.callbacks.sort)
+    expected_callbacks = %w[
+      applyCorridor
+      close
+      ready
+      recaptureCorridorEndpoint
+      requestState
+      resetCorridor
+      sampleCorridorTerrain
+      updateSettings
+    ]
+    assert_equal(expected_callbacks, first_dialog.callbacks.sort)
+    assert_equal(expected_callbacks, factory.dialog.callbacks.sort)
   end
 
   def test_state_push_escapes_script_sensitive_json_sequences
@@ -149,6 +193,24 @@ class TerrainUiSettingsDialogTest < Minitest::Test
       iterations
       targetHeightPanel
       localFairingPanel
+      corridorTransitionPanel
+      corridorStartX
+      corridorStartY
+      corridorStartElevation
+      corridorStartElevationSlider
+      corridorEndX
+      corridorEndY
+      corridorEndElevation
+      corridorEndElevationSlider
+      corridorWidth
+      corridorSideBlendDistance
+      corridorSideBlendFalloff
+      applyCorridor
+      resetCorridor
+      recaptureCorridorStart
+      recaptureCorridorEnd
+      sampleCorridorStart
+      sampleCorridorEnd
       selectedTerrain
       status
     ].each do |control_id|
@@ -156,8 +218,9 @@ class TerrainUiSettingsDialogTest < Minitest::Test
     end
     assert_includes(source, 'target_height')
     assert_includes(source, 'local_fairing')
+    assert_includes(source, 'corridor_transition')
     out_of_scope_terms = %w[
-      sculpt pressure stroke redrape validate sampling labels capture corridor survey planar
+      sculpt pressure stroke redrape validate labels survey planar
     ]
     out_of_scope_terms.each do |out_of_scope|
       refute_includes(source.downcase, out_of_scope)
@@ -178,13 +241,36 @@ class TerrainUiSettingsDialogTest < Minitest::Test
     assert_includes(script, 'radiusSlider')
   end
 
+  def test_corridor_panel_action_callbacks_reach_session_and_push_state
+    factory = RecordingDialogFactory.new
+    session = RecordingSession.new
+    dialog = SU_MCP::Terrain::UI::SettingsDialog.new(session: session, dialog_factory: factory)
+
+    dialog.show
+    factory.dialog.invoke('recaptureCorridorEndpoint', 'start')
+    factory.dialog.invoke('sampleCorridorTerrain', 'end')
+    factory.dialog.invoke('resetCorridor')
+    factory.dialog.invoke('applyCorridor')
+
+    assert_equal(['start'], session.recapture_requests)
+    assert_equal(['end'], session.sample_requests)
+    assert_equal(1, session.reset_calls)
+    assert_equal(1, session.apply_calls)
+    assert_operator(factory.dialog.scripts.length, :>=, 4)
+  end
+
   class RecordingSession
-    attr_reader :settings_updates, :selection_refreshes
+    attr_reader :settings_updates, :selection_refreshes, :recapture_requests, :sample_requests,
+                :reset_calls, :apply_calls
 
     def initialize(status: 'Ready')
       @status = status
       @settings_updates = []
       @selection_refreshes = 0
+      @recapture_requests = []
+      @sample_requests = []
+      @reset_calls = 0
+      @apply_calls = 0
     end
 
     def state_snapshot
@@ -198,6 +284,26 @@ class TerrainUiSettingsDialogTest < Minitest::Test
     def update_settings(payload)
       @settings_updates << payload
       { outcome: 'ready' }
+    end
+
+    def start_recapture(endpoint)
+      @recapture_requests << endpoint
+      { outcome: 'ready' }
+    end
+
+    def sample_terrain(endpoint)
+      @sample_requests << endpoint
+      { outcome: 'ready' }
+    end
+
+    def reset_corridor
+      @reset_calls += 1
+      { outcome: 'ready' }
+    end
+
+    def apply_corridor
+      @apply_calls += 1
+      { outcome: 'edited' }
     end
   end
 
