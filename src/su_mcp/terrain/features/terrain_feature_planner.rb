@@ -2,6 +2,7 @@
 
 require_relative 'feature_intent_set'
 require_relative 'effective_feature_view'
+require_relative 'patch_relevant_feature_selector'
 require_relative 'terrain_feature_geometry_builder'
 
 module SU_MCP
@@ -9,13 +10,15 @@ module SU_MCP
     # Runtime-only feature planning, validation, and diagnostic context.
     class TerrainFeaturePlanner
       def initialize(max_lane_samples_per_feature: nil, max_lane_samples_per_plan: nil,
-                     feature_geometry_builder: TerrainFeatureGeometryBuilder.new)
+                     feature_geometry_builder: TerrainFeatureGeometryBuilder.new,
+                     patch_relevant_feature_selector: PatchRelevantFeatureSelector.new)
         defaults = FeatureIntentSet::DEFAULT_GENERATION
         @max_lane_samples_per_feature = max_lane_samples_per_feature ||
                                         defaults.fetch('maxLaneSamplesPerFeature')
         @max_lane_samples_per_plan = max_lane_samples_per_plan ||
                                      defaults.fetch('maxLaneSamplesPerPlan')
         @feature_geometry_builder = feature_geometry_builder
+        @patch_relevant_feature_selector = patch_relevant_feature_selector
       end
 
       def pre_save(state:)
@@ -38,29 +41,16 @@ module SU_MCP
 
       def prepare(state:, terrain_state_summary:, include_feature_geometry: false,
                   selection_window: nil)
-        selection = EffectiveFeatureView.new(state.feature_intent).selection(
-          window: selection_window
-        )
-        selected_features = selection.fetch(:features)
+        feature_plan = selected_feature_plan(state, selection_window)
+        selected_features = feature_plan.fetch(:features)
         explicit_constraints = selected_features.map do |feature|
           runtime_constraint_for(feature)
         end
         inferred_constraints = explicit_constraints.empty? ? inferred_constraints_for(state) : []
         constraints = explicit_constraints + inferred_constraints
-        context = {
-          terrainStateDigest: terrain_state_summary.fetch(:digest),
-          constraintCount: constraints.length,
-          constraints: constraints,
-          featureSelectionDiagnostics: selection.fetch(:diagnostics)
-        }
+        context = prepare_context(terrain_state_summary, constraints, feature_plan)
         if include_feature_geometry
-          feature_geometry = feature_geometry_builder.build(
-            state: state,
-            features: selected_features
-          )
-          context[:featureGeometry] = feature_geometry
-          context[:featureGeometryDigest] = feature_geometry.feature_geometry_digest
-          context[:referenceGeometryDigest] = feature_geometry.reference_geometry_digest
+          append_selected_feature_geometry!(context, state, selected_features, feature_plan)
         end
         {
           outcome: 'prepared',
@@ -109,7 +99,7 @@ module SU_MCP
       private
 
       attr_reader :max_lane_samples_per_feature, :max_lane_samples_per_plan,
-                  :feature_geometry_builder
+                  :feature_geometry_builder, :patch_relevant_feature_selector
 
       def diagnostics_for(set)
         projected = projected_samples(set)
@@ -240,6 +230,68 @@ module SU_MCP
         set.features.to_h do |feature|
           [feature.fetch('id'), projected_sample_count(feature)]
         end
+      end
+
+      def selected_feature_plan(state, selection_window)
+        effective_selection = EffectiveFeatureView.new(state.feature_intent).selection
+        selection = patch_relevant_feature_selector.select(
+          state: state,
+          features: effective_selection.fetch(:features),
+          window: selection_window
+        )
+        plan = {
+          features: selection.fetch(:features),
+          diagnostics: selection.fetch(:diagnostics).merge(
+            excludedByStatus: effective_selection.fetch(:diagnostics).fetch(:excludedByStatus)
+          ),
+          cdt_participation: selection.fetch(:cdtParticipation)
+        }
+        apply_selected_budget_gate!(
+          plan.fetch(:features),
+          plan.fetch(:diagnostics),
+          plan.fetch(:cdt_participation)
+        )
+        plan
+      end
+
+      def prepare_context(terrain_state_summary, constraints, feature_plan)
+        {
+          terrainStateDigest: terrain_state_summary.fetch(:digest),
+          constraintCount: constraints.length,
+          constraints: constraints,
+          featureSelectionDiagnostics: feature_plan.fetch(:diagnostics),
+          cdtParticipation: feature_plan.fetch(:cdt_participation)
+        }
+      end
+
+      def append_selected_feature_geometry!(context, state, selected_features, feature_plan)
+        feature_geometry = feature_geometry_builder.build(
+          state: state,
+          features: selected_features
+        )
+        apply_feature_geometry_gate!(
+          feature_geometry,
+          feature_plan.fetch(:diagnostics),
+          feature_plan.fetch(:cdt_participation)
+        )
+        context[:featureGeometry] = feature_geometry
+        context[:featureGeometryDigest] = feature_geometry.feature_geometry_digest
+        context[:referenceGeometryDigest] = feature_geometry.reference_geometry_digest
+      end
+
+      def apply_selected_budget_gate!(selected_features, diagnostics, cdt_participation)
+        projected_count = selected_features.sum { |feature| projected_sample_count(feature) }
+        return unless projected_count > max_lane_samples_per_plan
+
+        diagnostics.fetch(:cdtFallbackTriggers)[:patch_relevant_budget_overflow] += 1
+        cdt_participation[:status] = 'skip'
+      end
+
+      def apply_feature_geometry_gate!(feature_geometry, diagnostics, cdt_participation)
+        return unless feature_geometry.failure_category == 'feature_geometry_failed'
+
+        diagnostics.fetch(:cdtFallbackTriggers)[:patch_relevant_feature_geometry_failed] += 1
+        cdt_participation[:status] = 'skip'
       end
 
       def diagnostic_feature(feature, projected)

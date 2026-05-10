@@ -894,6 +894,37 @@ class TerrainMeshGeneratorTest < Minitest::Test # rubocop:disable Metrics/ClassL
     refute_includes(owner.entities.faces, old_face)
   end
 
+  def test_cdt_participation_skip_uses_current_output_path_without_calling_cdt_backend
+    model = build_semantic_model
+    owner = model.active_entities.add_group
+    state = build_state(columns: 3, rows: 3, revision: 1)
+    identity_generator.generate(
+      owner: owner,
+      state: state,
+      terrain_state_summary: { digest: 'digest-1', revision: 1 }
+    )
+    cdt_backend = RecordingCdtBackend.new(status: 'accepted')
+
+    result = generator_with_cdt(cdt_backend).regenerate(
+      owner: owner,
+      state: state,
+      terrain_state_summary: { digest: 'digest-2', revision: 2 },
+      output_plan: dirty_window_plan(state, digest: 'digest-2', window: dirty_window(0, 0, 1, 1)),
+      feature_context: {
+        featureGeometry: SU_MCP::Terrain::TerrainFeatureGeometry.new,
+        cdtParticipation: { status: 'skip' },
+        featureSelectionDiagnostics: {
+          cdtFallbackTriggers: { patch_relevant_feature_geometry_failed: 1 }
+        }
+      }
+    )
+
+    assert_equal('generated', result.fetch(:outcome))
+    assert_equal(0, cdt_backend.calls)
+    assert_equal('regular_grid', result.dig(:summary, :derivedMesh, :meshType))
+    refute_includes(JSON.generate(result), 'patch_relevant_feature_geometry_failed')
+  end
+
   def test_cdt_is_not_used_for_dirty_window_partial_regeneration
     model = build_semantic_model
     owner = model.active_entities.add_group

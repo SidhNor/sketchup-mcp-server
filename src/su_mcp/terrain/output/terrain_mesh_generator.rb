@@ -200,9 +200,17 @@ module SU_MCP
       def cdt_regeneration_eligible?(plan, feature_context)
         return false unless cdt_backend
         return false unless feature_context
+        return false if cdt_participation_skipped?(feature_context)
         return false if plan.intent == :dirty_window && !cdt_feature_geometry?(feature_context)
 
         true
+      end
+
+      def cdt_participation_skipped?(feature_context)
+        participation = feature_context[:cdtParticipation] || feature_context['cdtParticipation']
+        return false unless participation.is_a?(Hash)
+
+        (participation[:status] || participation['status']) == 'skip'
       end
 
       def cdt_feature_geometry?(feature_context)

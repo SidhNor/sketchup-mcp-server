@@ -611,6 +611,73 @@ class TerrainSurfaceCommandsTest < Minitest::Test # rubocop:disable Metrics/Clas
     assert(mesh_generator.last_regenerate_args.fetch(:feature_context))
   end
 
+  def test_cdt_feature_context_uses_patch_relevant_selector_geometry
+    model = build_semantic_model
+    managed_terrain_owner(model)
+    mesh_generator = RecordingRegeneratingMeshGenerator.new(cdt_enabled: true)
+    commands = build_edit_commands(
+      model: model,
+      repository: EditRepository.new(state_20x20),
+      mesh_generator: mesh_generator,
+      terrain_feature_intent_emitter: PatchRelevantFeatureIntentEmitter.new,
+      terrain_feature_planner: SU_MCP::Terrain::TerrainFeaturePlanner.new
+    )
+
+    result = commands.edit_terrain_surface(edit_request)
+
+    assert_equal('edited', result.fetch(:outcome))
+    feature_context = mesh_generator.last_regenerate_args.fetch(:feature_context)
+    geometry = feature_context.fetch(:featureGeometry)
+    diagnostics = feature_context.fetch(:featureSelectionDiagnostics)
+    assert_empty(
+      geometry.output_anchor_candidates,
+      'far fixed hard control must not reach CDT feature geometry for this local patch'
+    )
+    assert_equal(1, geometry.pressure_regions.length)
+    assert_equal({ hard: 0, firm: 0, soft: 1 }, diagnostics.fetch(:includedByStrength))
+    assert_equal({ hard: 1, firm: 0, soft: 0 }, diagnostics.fetch(:excludedByStrength))
+  end
+
+  def test_valid_edit_succeeds_when_feature_planner_skips_cdt_participation
+    model = build_semantic_model
+    managed_terrain_owner(model)
+    mesh_generator = RecordingRegeneratingMeshGenerator.new(cdt_enabled: true)
+    commands = build_edit_commands(
+      model: model,
+      repository: EditRepository.new(state_4x4),
+      mesh_generator: mesh_generator,
+      terrain_feature_intent_emitter: RecordingFeatureIntentEmitter.new,
+      terrain_feature_planner: CdtSkippingFeaturePlanner.new
+    )
+
+    result = commands.edit_terrain_surface(edit_request)
+
+    assert_equal('edited', result.fetch(:outcome))
+    assert_equal('skip', mesh_generator.last_regenerate_args
+      .dig(:feature_context, :cdtParticipation, :status))
+    refute_feature_leak(result)
+    refute_includes(JSON.generate(result), 'patch_relevant_feature_geometry_failed')
+  end
+
+  def test_repeated_cdt_skips_do_not_expand_dirty_window_beyond_changed_region
+    model = build_semantic_model
+    managed_terrain_owner(model)
+    repository = EditRepository.new(state_4x4)
+    mesh_generator = RecordingRegeneratingMeshGenerator.new(cdt_enabled: true)
+    commands = build_edit_commands(
+      model: model,
+      repository: repository,
+      mesh_generator: mesh_generator,
+      terrain_feature_intent_emitter: RecordingFeatureIntentEmitter.new,
+      terrain_feature_planner: CdtSkippingFeaturePlanner.new
+    )
+
+    2.times { assert_equal('edited', commands.edit_terrain_surface(edit_request).fetch(:outcome)) }
+
+    windows = mesh_generator.regenerate_args.map { |args| args.fetch(:output_plan).window }
+    assert_equal([expected_changed_region_window, expected_changed_region_window], windows)
+  end
+
   private
 
   def refute_feature_leak(result)
@@ -852,6 +919,23 @@ class TerrainSurfaceCommandsTest < Minitest::Test # rubocop:disable Metrics/Clas
     )
   end
 
+  def state_20x20
+    SU_MCP::Terrain::HeightmapState.new(
+      basis: {
+        'xAxis' => [1.0, 0.0, 0.0],
+        'yAxis' => [0.0, 1.0, 0.0],
+        'zAxis' => [0.0, 0.0, 1.0],
+        'vertical' => 'z_up'
+      },
+      origin: { 'x' => 0.0, 'y' => 0.0, 'z' => 0.0 },
+      spacing: { 'x' => 1.0, 'y' => 1.0 },
+      dimensions: { 'columns' => 20, 'rows' => 20 },
+      elevations: Array.new(400, 1.0),
+      revision: 1,
+      state_id: 'state-20x20'
+    )
+  end
+
   class AcceptingValidator
     def validate(params)
       { outcome: 'ready', lifecycle_mode: params.dig('lifecycle', 'mode'), params: params }
@@ -958,7 +1042,12 @@ class TerrainSurfaceCommandsTest < Minitest::Test # rubocop:disable Metrics/Clas
   end
 
   class RecordingRegeneratingMeshGenerator < RecordingMeshGenerator
-    attr_reader :last_regenerate_args
+    attr_reader :last_regenerate_args, :regenerate_args
+
+    def initialize(...)
+      super
+      @regenerate_args = []
+    end
 
     def regenerate(owner:, state:, terrain_state_summary:, output_plan: nil, feature_context: nil)
       @calls << :regenerate
@@ -969,6 +1058,7 @@ class TerrainSurfaceCommandsTest < Minitest::Test # rubocop:disable Metrics/Clas
         output_plan: output_plan,
         feature_context: feature_context
       }
+      @regenerate_args << @last_regenerate_args
       { outcome: 'generated', summary: { derivedMesh: { derivedFromStateDigest: 'digest-2' } } }
     end
   end
@@ -1001,6 +1091,63 @@ class TerrainSurfaceCommandsTest < Minitest::Test # rubocop:disable Metrics/Clas
             'provenance' => {
               'originClass' => 'edit_terrain_surface',
               'originOperation' => 'target_height',
+              'createdAtRevision' => 2,
+              'updatedAtRevision' => 2
+            }
+          }
+        ]
+      }
+    end
+  end
+
+  class PatchRelevantFeatureIntentEmitter
+    def emit(...)
+      {
+        'upsert_features' => [
+          {
+            'id' => 'feature:target_region:explicit_edit:local-target:aaaaaaaaaaaa',
+            'kind' => 'target_region',
+            'sourceMode' => 'explicit_edit',
+            'semanticScope' => 'local-target',
+            'roles' => %w[support falloff],
+            'priority' => 30,
+            'payload' => {
+              'semanticScope' => 'local-target',
+              'region' => {
+                'type' => 'rectangle',
+                'bounds' => { 'minX' => 0.0, 'minY' => 0.0, 'maxX' => 1.0, 'maxY' => 1.0 }
+              }
+            },
+            'affectedWindow' => { 'min' => { 'column' => 0, 'row' => 0 },
+                                  'max' => { 'column' => 1, 'row' => 1 } },
+            'relevanceWindow' => { 'min' => { 'column' => 0, 'row' => 0 },
+                                   'max' => { 'column' => 1, 'row' => 1 } },
+            'provenance' => {
+              'originClass' => 'edit_terrain_surface',
+              'originOperation' => 'target_height',
+              'createdAtRevision' => 2,
+              'updatedAtRevision' => 2
+            }
+          },
+          {
+            'id' => 'feature:fixed_control:explicit_edit:far-fixed:bbbbbbbbbbbb',
+            'kind' => 'fixed_control',
+            'sourceMode' => 'explicit_edit',
+            'semanticScope' => 'far-fixed',
+            'strengthClass' => 'hard',
+            'roles' => %w[control protected],
+            'priority' => 80,
+            'payload' => {
+              'semanticScope' => 'far-fixed',
+              'control' => { 'point' => { 'x' => 12.0, 'y' => 12.0 } }
+            },
+            'affectedWindow' => { 'min' => { 'column' => 12, 'row' => 12 },
+                                  'max' => { 'column' => 12, 'row' => 12 } },
+            'relevanceWindow' => { 'min' => { 'column' => 12, 'row' => 12 },
+                                   'max' => { 'column' => 12, 'row' => 12 } },
+            'provenance' => {
+              'originClass' => 'edit_terrain_surface',
+              'originOperation' => 'fixed_control',
               'createdAtRevision' => 2,
               'updatedAtRevision' => 2
             }
@@ -1140,6 +1287,32 @@ class TerrainSurfaceCommandsTest < Minitest::Test # rubocop:disable Metrics/Clas
           featureGeometry: SU_MCP::Terrain::TerrainFeatureGeometry.new
         },
         outputWindowReconciliation: { mode: 'feature_window' }
+      }
+    end
+  end
+
+  class CdtSkippingFeaturePlanner
+    def pre_save(state:)
+      { outcome: 'ready', state: state }
+    end
+
+    def prepare(state:, terrain_state_summary:, include_feature_geometry: false,
+                selection_window: nil)
+      _include_feature_geometry = include_feature_geometry
+      _selection_window = selection_window
+      {
+        outcome: 'prepared',
+        state: state,
+        context: {
+          constraintCount: 0,
+          terrainStateDigest: terrain_state_summary.fetch(:digest),
+          featureGeometry: SU_MCP::Terrain::TerrainFeatureGeometry.new,
+          cdtParticipation: { status: 'skip' },
+          featureSelectionDiagnostics: {
+            cdtFallbackTriggers: { patch_relevant_feature_geometry_failed: 1 }
+          }
+        },
+        outputWindowReconciliation: { mode: 'dirty_window' }
       }
     end
   end

@@ -1,7 +1,7 @@
 # Task: MTA-33 Implement Patch-Relevant Terrain Feature Constraints
 **Task ID**: `MTA-33`
 **Title**: `Implement Patch-Relevant Terrain Feature Constraints`
-**Status**: `defined`
+**Status**: `implemented`
 **Priority**: `P1`
 **Date**: `2026-05-09`
 
@@ -45,9 +45,10 @@ Scenario: Patch-relevant selection excludes far hard constraints
 Scenario: Touched protected geometry is not silently weakened
   Given a dirty patch or edit influence overlaps a protected region or hard boundary
   When patch-relevant feature selection evaluates the feature set
-  Then the protected geometry is included, clipped, refused, or expands the patch according to a documented internal rule
+  Then the protected geometry is included, clipped, expands the patch, or causes internal CDT fallback according to a documented internal rule
   And the selection does not silently drop a touched hard constraint
   And the resulting internal evidence identifies the selected rule and affected feature strength
+  And a valid heightmap edit is not publicly refused solely because CDT patch selection or output generation cannot represent the touched geometry
 
 Scenario: Firm and soft features remain local pressure, not global point inflation
   Given active firm and soft feature intents inside and outside the patch influence area
@@ -92,7 +93,37 @@ Scenario: Public terrain contracts remain stable
 - Selection outputs must be JSON-serializable and suitable for production CDT feature geometry.
 - Far hard-feature exclusion must be based on patch relevance, not only strength class.
 - Diagnostics must be internal and must not alter public request schemas or response shapes.
+- Valid heightmap edits must not be publicly refused solely because CDT patch selection or output
+  generation cannot represent a touched or protecting feature; that condition should become
+  internal CDT fallback or safe-output behavior.
 - Stale effective-index refusal or fallback behavior must remain deterministic.
+
+## Refusal Semantics
+
+For this task, `refused` means a public managed terrain command returns a refusal outcome and does
+not apply the requested terrain edit. That is appropriate only for invalid request/state conditions
+or existing deterministic feature-state invalidity such as a stale effective index.
+
+CDT patch-selection or output-generation limitations are not public refusals when the requested
+heightmap edit is otherwise valid. In those cases, the CDT path may produce internal fallback
+evidence, skip CDT participation, or route to the existing safe terrain output path while the public
+edit still succeeds.
+
+For implementation planning, an internal CDT fallback means the CDT output path must not emit a CDT
+mesh for that regeneration attempt and the command must continue with the existing non-CDT terrain
+output generator. MTA-33-owned CDT fallback triggers are limited to concrete feature-selection and
+feature-geometry conditions such as:
+
+- a patch-relevant hard/protected feature has a selected primitive kind the CDT input path cannot
+  normalize into supported point, rectangular/circular region, or segment geometry
+- a patch-relevant hard/protected segment or region intersects the patch but clipping would produce
+  degenerate CDT input, such as a zero-length segment or empty region
+- selected hard/protected feature geometry derivation reports `feature_geometry_failed`
+
+These are output-backend fallback triggers, not edit-request refusals.
+
+Budget-related CDT fallback behavior is intentionally left to the technical plan because falling
+back to full-grid output can be more expensive than the failed local CDT path.
 
 ## Dependencies
 
@@ -111,14 +142,14 @@ Scenario: Public terrain contracts remain stable
 
 ## Related Technical Plan
 
-- none yet
+- [Technical Plan](./plan.md)
 
 ## Success Metrics
 
 - A feature-heavy MTA-31-style case shows materially lower hard-feature participation for a small
   patch than the prior global hard-feature selection.
-- Touched hard/protected geometry is included, clipped, refused, or expanded by explicit internal
-  rule.
+- Touched hard/protected geometry is included, clipped, expanded, or routed to internal CDT fallback
+  by explicit internal rule without refusing an otherwise valid heightmap edit.
 - Firm and soft feature input cardinality is bounded by patch relevance.
 - Existing feature lifecycle and stale-index tests remain valid.
 - Public MCP response shape remains unchanged.

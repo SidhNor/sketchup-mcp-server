@@ -275,6 +275,34 @@ class TerrainContractStabilityTest < Minitest::Test
     end
   end
 
+  def test_public_response_hides_patch_relevant_feature_selection_diagnostics
+    result = edit_evidence_result(
+      diagnostics: edit_diagnostics.merge(
+        featureSelectionDiagnostics: {
+          selectionMode: 'patch_relevant',
+          patchWindow: { minColumn: 2, minRow: 2, maxColumn: 7, maxRow: 7 },
+          cdtFallbackTriggers: {
+            patch_relevant_feature_geometry_failed: 1,
+            patch_relevant_hard_primitive_unsupported: 1,
+            patch_relevant_hard_clip_degenerate: 1
+          },
+          includedByReason: { intersects_patch: 1 },
+          excludedByReason: { outside_patch_relevance: 1 },
+          featureIds: ['feature:fixed_control:explicit_edit:a:aaaaaaaaaaaa']
+        },
+        cdtParticipation: { status: 'skip' }
+      )
+    )
+    serialized = JSON.generate(result)
+
+    %w[
+      featureSelectionDiagnostics patch_relevant patchWindow cdtParticipation
+      patch_relevant_feature_geometry_failed patch_relevant_hard_primitive_unsupported
+      patch_relevant_hard_clip_degenerate intersects_patch outside_patch_relevance feature:
+    ].each { |term| refute_includes(serialized, term) }
+    refute_internal_output_vocabulary(result)
+  end
+
   def test_full_edit_response_path_hides_accepted_cdt_details
     result = full_public_edit_response_for_internal_cdt_result(
       status: 'accepted',
@@ -503,7 +531,8 @@ class TerrainContractStabilityTest < Minitest::Test
       firmResidualsByRole topologyResiduals splitReasonHistogram
       cdt constrainedDelaunay breakline constrained_delaunay expandedConstraints
       solverPredicates constraintGraph delaunayViolationCount triangulatorKind
-      triangulatorVersion ruby_bowyer_watson
+      triangulatorVersion ruby_bowyer_watson featureSelectionDiagnostics
+      cdtParticipation patch_relevant patchWindow outside_patch_relevance
     ].each { |term| refute_includes(serialized, term) }
     refute_includes(serialized_output, 'regeneration')
   end

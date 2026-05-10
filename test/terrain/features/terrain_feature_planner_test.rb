@@ -218,13 +218,13 @@ class TerrainFeaturePlannerTest < Minitest::Test
     assert_equal(1, result.dig(:context, :featureGeometry).output_anchor_candidates.length)
   end
 
-  def test_prepare_keeps_hard_features_and_bounds_soft_features_by_selection_window
+  def test_prepare_filters_hard_firm_and_soft_features_by_patch_relevance
     hard = feature('fixed_control').merge(
       'id' => 'feature:fixed_control:explicit_edit:hard-far:aaaaaaaaaaaa',
       'semanticScope' => 'hard-far',
       'affectedWindow' => far_window,
       'relevanceWindow' => far_window,
-      'payload' => { 'control' => { 'point' => { 'x' => 1.0, 'y' => 1.0 } } }
+      'payload' => { 'control' => { 'point' => { 'x' => 10.0, 'y' => 10.0 } } }
     )
     soft_near = feature('target_region').merge(
       'id' => 'feature:target_region:explicit_edit:soft-near:bbbbbbbbbbbb',
@@ -250,11 +250,47 @@ class TerrainFeaturePlannerTest < Minitest::Test
 
     assert_equal(
       %w[
-        feature:fixed_control:explicit_edit:hard-far:aaaaaaaaaaaa
         feature:target_region:explicit_edit:soft-near:bbbbbbbbbbbb
       ],
       result.dig(:context, :constraints).map { |item| item.fetch(:id) }.sort
     )
+    diagnostics = result.dig(:context, :featureSelectionDiagnostics)
+    assert_equal('patch_relevant', diagnostics.fetch(:selectionMode))
+    assert_equal(1, diagnostics.fetch(:excludedByStrength).fetch(:hard))
+  end
+
+  def test_prepare_keeps_all_active_effective_features_for_full_grid_generation
+    hard = feature('fixed_control').merge(
+      'id' => 'feature:fixed_control:explicit_edit:hard-far:aaaaaaaaaaaa',
+      'semanticScope' => 'hard-far',
+      'affectedWindow' => far_window,
+      'relevanceWindow' => far_window,
+      'payload' => { 'control' => { 'point' => { 'x' => 10.0, 'y' => 10.0 } } }
+    )
+    soft = feature('target_region').merge(
+      'id' => 'feature:target_region:explicit_edit:soft-far:bbbbbbbbbbbb',
+      'semanticScope' => 'soft-far',
+      'roles' => %w[support falloff],
+      'affectedWindow' => far_window,
+      'relevanceWindow' => far_window
+    )
+
+    result = normal_planner.prepare(
+      state: state_with_features([hard, soft]),
+      terrain_state_summary: { digest: 'digest-feature' },
+      include_feature_geometry: true,
+      selection_window: nil
+    )
+
+    assert_equal(
+      %w[
+        feature:fixed_control:explicit_edit:hard-far:aaaaaaaaaaaa
+        feature:target_region:explicit_edit:soft-far:bbbbbbbbbbbb
+      ],
+      result.dig(:context, :constraints).map { |item| item.fetch(:id) }.sort
+    )
+    assert_equal('full_grid', result.dig(:context, :featureSelectionDiagnostics, :selectionMode))
+    assert_equal({ status: 'eligible' }, result.dig(:context, :cdtParticipation))
   end
 
   def test_prepare_reports_effective_selection_diagnostics_for_large_history
@@ -297,17 +333,73 @@ class TerrainFeaturePlannerTest < Minitest::Test
       selection_window: output_window
     )
 
-    assert_equal(
-      {
-        active: 3,
-        included: 2,
-        excludedByStatus: 240,
-        excludedByRelevance: 1,
-        includedByStrength: { hard: 1, firm: 0, soft: 1 }
-      },
+    assert_large_history_selection_diagnostics(
       result.dig(:context, :featureSelectionDiagnostics)
     )
     assert_equal(2, result.dig(:context, :constraintCount))
+  end
+
+  def test_prepare_marks_cdt_skip_for_patch_relevant_unsupported_hard_geometry
+    unsupported = feature('preserve_region').merge(
+      'id' => 'feature:preserve_region:explicit_edit:unsupported:aaaaaaaaaaaa',
+      'semanticScope' => 'unsupported',
+      'roles' => %w[protected boundary],
+      'payload' => { 'region' => { 'type' => 'polygon' } },
+      'affectedWindow' => output_window,
+      'relevanceWindow' => output_window
+    )
+
+    result = normal_planner.prepare(
+      state: state_with_features([unsupported]),
+      terrain_state_summary: { digest: 'digest-feature' },
+      include_feature_geometry: true,
+      selection_window: output_window
+    )
+
+    assert_equal('prepared', result.fetch(:outcome))
+    assert_equal({ status: 'skip' }, result.dig(:context, :cdtParticipation))
+    assert_equal('feature_geometry_failed',
+                 result.dig(:context, :featureGeometry).failure_category)
+    assert_equal(
+      1,
+      result.dig(
+        :context, :featureSelectionDiagnostics, :cdtFallbackTriggers,
+        :patch_relevant_feature_geometry_failed
+      )
+    )
+  end
+
+  def test_prepare_budget_overflow_skips_cdt_with_internal_missed_locality_diagnostics
+    broad = feature('linear_corridor').merge(
+      'id' => 'feature:linear_corridor:explicit_edit:broad:aaaaaaaaaaaa',
+      'semanticScope' => 'broad',
+      'payload' => {
+        'sampleEstimate' => 9000,
+        'startControl' => { 'point' => { 'x' => 0.0, 'y' => 0.0 } },
+        'endControl' => { 'point' => { 'x' => 1.0, 'y' => 1.0 } },
+        'width' => 1.0,
+        'sideBlend' => { 'distance' => 1.0, 'falloff' => 'cosine' }
+      },
+      'affectedWindow' => output_window,
+      'relevanceWindow' => output_window
+    )
+
+    result = normal_planner.prepare(
+      state: state_with_features([broad]),
+      terrain_state_summary: { digest: 'digest-feature' },
+      include_feature_geometry: true,
+      selection_window: output_window
+    )
+
+    assert_equal('prepared', result.fetch(:outcome))
+    assert_equal({ status: 'skip' }, result.dig(:context, :cdtParticipation))
+    assert_equal(
+      1,
+      result.dig(
+        :context, :featureSelectionDiagnostics, :cdtFallbackTriggers,
+        :patch_relevant_budget_overflow
+      )
+    )
   end
 
   def test_prepare_refuses_stale_effective_index_without_public_feature_leak
@@ -435,5 +527,16 @@ class TerrainFeaturePlannerTest < Minitest::Test
     ].each do |term|
       refute_includes(serialized, term)
     end
+  end
+
+  def assert_large_history_selection_diagnostics(diagnostics)
+    assert_equal('patch_relevant', diagnostics.fetch(:selectionMode))
+    assert_equal(3, diagnostics.fetch(:active))
+    assert_equal(2, diagnostics.fetch(:included))
+    assert_equal(240, diagnostics.fetch(:excludedByStatus))
+    assert_equal(1, diagnostics.fetch(:excludedByRelevance))
+    assert_equal({ hard: 1, firm: 0, soft: 1 }, diagnostics.fetch(:includedByStrength))
+    assert_equal({ hard: 0, firm: 0, soft: 1 }, diagnostics.fetch(:excludedByStrength))
+    assert_equal({ outside_patch_relevance: 1 }, diagnostics.fetch(:excludedByReason))
   end
 end
