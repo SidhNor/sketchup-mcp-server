@@ -2,6 +2,14 @@
 
 <!-- version list -->
 
+## v1.7.0 (2026-05-10)
+
+### Features
+
+- **MTA-32**: Dirty region patch local CDT baseline
+  ([`5115e01`](https://github.com/SidhNor/sketchup-mcp-server/commit/5115e010c89a567e4f4dc7c969764b063612ccb5))
+
+
 ## v1.6.1 (2026-05-08)
 
 ### Documentation
