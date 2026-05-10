@@ -56,6 +56,8 @@ The current task order proves terrain authoring through concrete, testable incre
   feature history
 - CDT patch replacement and seam validation over existing partial-output ownership before any
   default CDT enablement decision
+- cached CDT patch output lifecycle productization after MTA-34 exposed that replacement requires
+  stable CDT-owned patch output to exist before local mutation can be proven
 
 ## Current Task Order
 
@@ -92,7 +94,8 @@ The current task order proves terrain authoring through concrete, testable incre
 31. [MTA-31 Enable CDT Terrain Output After Disabled Scaffold](MTA-31-enable-cdt-terrain-output-after-disabled-scaffold/task.md)
 32. [MTA-32 Implement Patch-Local Incremental Residual CDT Proof](MTA-32-implement-patch-local-incremental-residual-cdt-proof/task.md)
 33. [MTA-33 Implement Patch-Relevant Terrain Feature Constraints](MTA-33-implement-patch-relevant-terrain-feature-constraints/task.md)
-34. [MTA-34 Implement CDT Patch Replacement And Seam Validation](MTA-34-implement-cdt-patch-replacement-and-seam-validation/task.md)
+34. [MTA-34 Implement CDT Patch Replacement And Seam Validation](MTA-34-implement-cdt-patch-replacement-and-seam-validation/task.md) - closed-blocked; partial replacement infrastructure retained for MTA-35 planning
+35. [MTA-35 Productize Cached CDT Patch Output Lifecycle For Windowed Terrain Edits](MTA-35-productize-cached-cdt-patch-output-lifecycle-for-windowed-terrain-edits/task.md)
 
 ## Deferred Follow-Ons
 
@@ -180,5 +183,12 @@ Deferred work is not promoted into active task folders in this iteration:
   patch-relevance to hard, firm, and soft feature constraints so local CDT solves do not pay for
   unrelated global hard-feature history.
 - `MTA-34` closes the local-output loop by reusing partial-output ownership lessons from MTA-10 for
-  CDT patch replacement, seam validation, fallback/refusal, and hosted undo evidence. It still does
-  not default-enable CDT.
+- `MTA-34` attempted to close the local-output loop by reusing partial-output ownership lessons from
+  MTA-10 for CDT patch replacement, seam validation, fallback/refusal, and hosted undo evidence. It
+  is closed-blocked rather than accepted: it produced useful replacement infrastructure, but hosted
+  investigation exposed the missing production precondition that no stable CDT-owned patch output
+  lifecycle exists for the replacement logic to operate on.
+- `MTA-35` follows directly from MTA-34 and the external CDT review. It must productize cached
+  CDT-owned patch output, stable patch identity, dirty-window-to-patch mapping, repeated-edit
+  metadata lifecycle, and real command-path replacement through MTA-33, MTA-32, and retained/adapted
+  MTA-34 infrastructure before any default CDT enablement decision.

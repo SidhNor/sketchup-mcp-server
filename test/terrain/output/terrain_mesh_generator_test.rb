@@ -925,6 +925,226 @@ class TerrainMeshGeneratorTest < Minitest::Test # rubocop:disable Metrics/ClassL
     refute_includes(JSON.generate(result), 'patch_relevant_feature_geometry_failed')
   end
 
+  def test_dirty_window_cdt_patch_replacement_replaces_only_owned_patch_faces
+    model = build_semantic_model
+    owner = model.active_entities.add_group
+    old_patch_face = add_owned_cdt_patch_face(
+      owner.entities,
+      patch_domain_digest: 'patch-a',
+      face_index: 0,
+      points: [[0.0, 0.0, 1.0], [2.0, 0.0, 1.0], [2.0, 2.0, 1.0]]
+    )
+    preserved_neighbor = add_owned_cdt_patch_face(
+      owner.entities,
+      patch_domain_digest: 'patch-b',
+      face_index: 0,
+      border_side: 'west',
+      points: [[2.0, 0.0, 1.0], [4.0, 0.0, 1.0], [2.0, 2.0, 1.0]]
+    )
+    provider = RecordingPatchReplacementProvider.accepted(domain_digest: 'patch-a')
+
+    plan = dirty_window_plan(
+      build_state(columns: 3, rows: 3),
+      digest: 'digest-2',
+      window: dirty_window(0, 0, 1, 1)
+    )
+
+    result = generator_with_patch_provider(provider).regenerate(
+      owner: owner,
+      state: build_state(columns: 3, rows: 3, revision: 2),
+      terrain_state_summary: { digest: 'digest-2', revision: 2 },
+      output_plan: plan,
+      feature_context: {
+        featureGeometry: SU_MCP::Terrain::TerrainFeatureGeometry.new,
+        cdtParticipation: { status: 'eligible' }
+      }
+    )
+
+    assert_equal('generated', result.fetch(:outcome))
+    assert_equal(1, provider.calls)
+    refute_includes(owner.entities.faces, old_patch_face)
+    assert_includes(owner.entities.faces, preserved_neighbor)
+    assert_equal(3, owner.entities.faces.length)
+    replacement_faces = owner.entities.faces.reject { |face| face.equal?(preserved_neighbor) }
+    assert(replacement_faces.all? do |face|
+      terrain_attribute(face, 'outputKind') == 'cdt_patch_face'
+    end)
+    assert(replacement_faces.all? do |face|
+      terrain_attribute(face, 'cdtPatchDomainDigest') == 'patch-a'
+    end)
+    refute_includes(JSON.generate(result), 'local_patch_replacement')
+    refute_includes(JSON.generate(result), 'seam')
+  end
+
+  def test_dirty_window_cdt_patch_replacement_falls_back_without_provider_for_skip
+    model = build_semantic_model
+    owner = model.active_entities.add_group
+    state = build_state(columns: 3, rows: 3, revision: 1)
+    identity_generator.generate(owner: owner, state: state,
+                                terrain_state_summary: { digest: 'digest-1', revision: 1 })
+    provider = RecordingPatchReplacementProvider.accepted(domain_digest: 'patch-a')
+
+    result = generator_with_patch_provider(provider).regenerate(
+      owner: owner,
+      state: state,
+      terrain_state_summary: { digest: 'digest-2', revision: 2 },
+      output_plan: dirty_window_plan(state, digest: 'digest-2', window: dirty_window(0, 0, 1, 1)),
+      feature_context: {
+        featureGeometry: SU_MCP::Terrain::TerrainFeatureGeometry.new,
+        cdtParticipation: { status: 'skip' }
+      }
+    )
+
+    assert_equal('generated', result.fetch(:outcome))
+    assert_equal(0, provider.calls)
+    assert_equal('regular_grid', result.dig(:summary, :derivedMesh, :meshType))
+  end
+
+  def test_dirty_window_cdt_patch_replacement_falls_back_for_incomplete_result
+    model = build_semantic_model
+    owner = model.active_entities.add_group
+    old_patch_face = add_owned_cdt_patch_face(
+      owner.entities,
+      patch_domain_digest: 'patch-a',
+      face_index: 0
+    )
+    provider = RecordingPatchReplacementProvider.failed('patch_result_incomplete')
+    state = build_state(columns: 3, rows: 3, revision: 2)
+
+    result = generator_with_patch_provider(provider).regenerate(
+      owner: owner,
+      state: state,
+      terrain_state_summary: { digest: 'digest-2', revision: 2 },
+      output_plan: dirty_window_plan(state, digest: 'digest-2', window: dirty_window(0, 0, 1, 1)),
+      feature_context: {
+        featureGeometry: SU_MCP::Terrain::TerrainFeatureGeometry.new,
+        cdtParticipation: { status: 'eligible' }
+      }
+    )
+
+    assert_equal('generated', result.fetch(:outcome))
+    refute_includes(owner.entities.faces, old_patch_face)
+    assert_equal('regular_grid', result.dig(:summary, :derivedMesh, :meshType))
+    refute_includes(JSON.generate(result), 'patch_result_incomplete')
+  end
+
+  def test_dirty_window_cdt_patch_replacement_refuses_duplicate_ownership_without_erasing
+    model = build_semantic_model
+    owner = model.active_entities.add_group
+    first = add_owned_cdt_patch_face(owner.entities, patch_domain_digest: 'patch-a', face_index: 0)
+    second = add_owned_cdt_patch_face(owner.entities, patch_domain_digest: 'patch-a', face_index: 0)
+    provider = RecordingPatchReplacementProvider.accepted(domain_digest: 'patch-a')
+
+    plan = dirty_window_plan(
+      build_state(columns: 3, rows: 3),
+      digest: 'digest-2',
+      window: dirty_window(0, 0, 1, 1)
+    )
+
+    result = generator_with_patch_provider(provider).regenerate(
+      owner: owner,
+      state: build_state(columns: 3, rows: 3, revision: 2),
+      terrain_state_summary: { digest: 'digest-2', revision: 2 },
+      output_plan: plan,
+      feature_context: {
+        featureGeometry: SU_MCP::Terrain::TerrainFeatureGeometry.new,
+        cdtParticipation: { status: 'eligible' }
+      }
+    )
+
+    assert_equal('refused', result.fetch(:outcome))
+    assert_equal('terrain_output_ownership_invalid', result.dig(:refusal, :code))
+    assert_includes(owner.entities.faces, first)
+    assert_includes(owner.entities.faces, second)
+  end
+
+  def test_dirty_window_cdt_patch_replacement_falls_back_for_seam_mismatch
+    model = build_semantic_model
+    owner = model.active_entities.add_group
+    add_owned_cdt_patch_face(owner.entities, patch_domain_digest: 'patch-a', face_index: 0)
+    add_owned_cdt_patch_face(
+      owner.entities,
+      patch_domain_digest: 'patch-b',
+      face_index: 0,
+      border_side: 'west',
+      points: [[2.0, 0.0, 1.0], [4.0, 0.0, 1.0], [2.0, 2.0, 2.0]]
+    )
+    provider = RecordingPatchReplacementProvider.accepted(domain_digest: 'patch-a')
+    state = build_state(columns: 3, rows: 3, revision: 2)
+
+    result = generator_with_patch_provider(provider).regenerate(
+      owner: owner,
+      state: state,
+      terrain_state_summary: { digest: 'digest-2', revision: 2 },
+      output_plan: dirty_window_plan(state, digest: 'digest-2', window: dirty_window(0, 0, 1, 1)),
+      feature_context: {
+        featureGeometry: SU_MCP::Terrain::TerrainFeatureGeometry.new,
+        cdtParticipation: { status: 'eligible' }
+      }
+    )
+
+    assert_equal('generated', result.fetch(:outcome))
+    assert_equal('regular_grid', result.dig(:summary, :derivedMesh, :meshType))
+    refute_includes(JSON.generate(result), 'seam_mismatch')
+  end
+
+  def test_dirty_window_cdt_patch_replacement_raises_mutation_failure_after_erase_begins
+    model = build_semantic_model
+    owner = model.active_entities.add_group
+    old_patch_face = add_owned_cdt_patch_face(
+      owner.entities,
+      patch_domain_digest: 'patch-a',
+      face_index: 0
+    )
+    provider = RecordingPatchReplacementProvider.accepted(domain_digest: 'patch-a')
+    state = build_state(columns: 3, rows: 3, revision: 2)
+    raise_once_on_next_face_add(owner.entities)
+
+    assert_raises(RuntimeError) do
+      generator_with_patch_provider(provider).regenerate(
+        owner: owner,
+        state: state,
+        terrain_state_summary: { digest: 'digest-2', revision: 2 },
+        output_plan: dirty_window_plan(state, digest: 'digest-2',
+                                              window: dirty_window(0, 0, 1, 1)),
+        feature_context: {
+          featureGeometry: SU_MCP::Terrain::TerrainFeatureGeometry.new,
+          cdtParticipation: { status: 'eligible' }
+        }
+      )
+    end
+    refute_includes(
+      owner.entities.faces,
+      old_patch_face,
+      'local fake entities cannot roll back, but the exception must reach the SketchUp operation'
+    )
+  end
+
+  def test_cdt_neighbor_snapshots_convert_sketchup_internal_points_to_public_meters
+    face = FaceWithVertices.new(
+      vertices: [
+        PointObject.new(20.0, 0.0, 10.0),
+        PointObject.new(20.0, 20.0, 10.0),
+        PointObject.new(30.0, 20.0, 10.0)
+      ]
+    )
+    face.set_attribute('su_mcp_terrain', 'derivedOutput', true)
+    face.set_attribute('su_mcp_terrain', 'outputKind', 'cdt_patch_face')
+    face.set_attribute('su_mcp_terrain', 'cdtOwnershipSchemaVersion', 1)
+    face.set_attribute('su_mcp_terrain', 'cdtPatchDomainDigest', 'neighbor')
+    face.set_attribute('su_mcp_terrain', 'cdtReplacementBatchId', 'batch')
+    face.set_attribute('su_mcp_terrain', 'cdtPatchFaceIndex', 0)
+    face.set_attribute('su_mcp_terrain', 'cdtBorderSide', 'west')
+    entities = EntityList.new([face])
+    generator = SU_MCP::Terrain::TerrainMeshGenerator.new(
+      length_converter: ScalingLengthConverter.new(multiplier: 10.0)
+    )
+
+    spans = generator.send(:preserved_cdt_neighbor_spans, entities, 'patch-a')
+
+    assert_equal([[2.0, 0.0, 1.0], [2.0, 2.0, 1.0]], spans.first.fetch(:vertices))
+  end
+
   def test_cdt_is_not_used_for_dirty_window_partial_regeneration
     model = build_semantic_model
     owner = model.active_entities.add_group
@@ -1117,6 +1337,27 @@ class TerrainMeshGeneratorTest < Minitest::Test # rubocop:disable Metrics/ClassL
     )
   end
 
+  def generator_with_patch_provider(provider)
+    SU_MCP::Terrain::TerrainMeshGenerator.new(
+      length_converter: ScalingLengthConverter.new(multiplier: 1.0),
+      cdt_patch_replacement_provider: provider
+    )
+  end
+
+  def add_owned_cdt_patch_face(entities, patch_domain_digest:, face_index:, points: nil,
+                               border_side: 'east')
+    face = entities.add_face(*(points || [[0.0, 0.0, 1.0], [2.0, 0.0, 1.0], [2.0, 2.0, 1.0]]))
+    face.set_attribute('su_mcp_terrain', 'derivedOutput', true)
+    face.set_attribute('su_mcp_terrain', 'outputKind', 'cdt_patch_face')
+    face.set_attribute('su_mcp_terrain', 'cdtOwnershipSchemaVersion', 1)
+    face.set_attribute('su_mcp_terrain', 'cdtPatchDomainDigest', patch_domain_digest)
+    face.set_attribute('su_mcp_terrain', 'cdtReplacementBatchId', 'old-batch')
+    face.set_attribute('su_mcp_terrain', 'cdtPatchFaceIndex', face_index)
+    face.set_attribute('su_mcp_terrain', 'cdtBorderSide', border_side)
+    face.set_attribute('su_mcp_terrain', 'cdtBorderSpanId', "#{border_side}-0")
+    face
+  end
+
   def assert_all_faces_point_up(faces)
     assert(
       faces.all? { |face| face.normal.z.positive? },
@@ -1130,6 +1371,19 @@ class TerrainMeshGeneratorTest < Minitest::Test # rubocop:disable Metrics/ClassL
       face = original_add_face.call(*points)
       face.reverse! if face.normal.z.positive?
       face
+    end
+  end
+
+  def raise_once_on_next_face_add(entities)
+    original_add_face = entities.method(:add_face)
+    raised = false
+    entities.define_singleton_method(:add_face) do |*points|
+      unless raised
+        raised = true
+        raise 'replacement emit failed'
+      end
+
+      original_add_face.call(*points)
     end
   end
 
@@ -1215,6 +1469,10 @@ class TerrainMeshGeneratorTest < Minitest::Test # rubocop:disable Metrics/ClassL
     def public_meters_to_internal(value)
       value.to_f * @multiplier
     end
+
+    def internal_to_public_meters(value)
+      value.to_f / @multiplier
+    end
   end
 
   class OwnerWithoutBuilder
@@ -1271,6 +1529,52 @@ class TerrainMeshGeneratorTest < Minitest::Test # rubocop:disable Metrics/ClassL
     attr_accessor :faces
   end
 
+  class EntityList
+    def initialize(entities)
+      @entities = entities
+    end
+
+    def to_a
+      @entities
+    end
+  end
+
+  class PointObject
+    attr_reader :x, :y, :z
+
+    def initialize(x, y, z)
+      @x = x
+      @y = y
+      @z = z
+    end
+  end
+
+  class VertexObject
+    attr_reader :position
+
+    def initialize(position)
+      @position = position
+    end
+  end
+
+  class FaceWithVertices < Sketchup::Face
+    attr_reader :vertices
+
+    def initialize(vertices:)
+      super()
+      @vertices = vertices.map { |point| VertexObject.new(point) }
+      @attributes = Hash.new { |hash, key| hash[key] = {} }
+    end
+
+    def set_attribute(dictionary, key, value)
+      @attributes[dictionary][key] = value
+    end
+
+    def get_attribute(dictionary, key, default = nil)
+      @attributes.fetch(dictionary, {}).fetch(key, default)
+    end
+  end
+
   class RecordingCdtBackend
     attr_reader :calls
 
@@ -1302,6 +1606,80 @@ class TerrainMeshGeneratorTest < Minitest::Test # rubocop:disable Metrics/ClassL
   class RaisingCdtBackend
     def build(...)
       raise 'boom'
+    end
+  end
+
+  class RecordingPatchReplacementProvider
+    attr_reader :calls
+
+    def self.accepted(domain_digest:)
+      new(replacement_result: PatchReplacementResultStub.accepted(domain_digest: domain_digest))
+    end
+
+    def self.failed(reason)
+      new(replacement_result: PatchReplacementResultStub.failed(reason))
+    end
+
+    def initialize(replacement_result:)
+      @replacement_result = replacement_result
+      @calls = 0
+    end
+
+    def build(...)
+      @calls += 1
+      @replacement_result
+    end
+  end
+
+  class PatchReplacementResultStub
+    attr_reader :status, :mesh, :border_spans, :patch_domain_digest, :replacement_batch_id,
+                :stop_reason
+
+    def self.accepted(domain_digest:)
+      new(
+        status: 'accepted',
+        patch_domain_digest: domain_digest,
+        stop_reason: nil,
+        mesh: {
+          vertices: [
+            [0.0, 0.0, 1.0],
+            [2.0, 0.0, 1.0],
+            [2.0, 2.0, 1.0],
+            [0.0, 2.0, 1.0]
+          ],
+          triangles: [[0, 1, 2], [0, 2, 3]]
+        },
+        border_spans: [
+          { side: 'east', spanId: 'east-0', patchDomainDigest: domain_digest,
+            fresh: true, vertices: [[2.0, 0.0, 1.0], [2.0, 2.0, 1.0]] }
+        ],
+        replacement_batch_id: 'new-batch'
+      )
+    end
+
+    def self.failed(reason)
+      new(
+        status: 'failed',
+        patch_domain_digest: 'patch-a',
+        stop_reason: reason,
+        mesh: { vertices: [], triangles: [] },
+        border_spans: [],
+        replacement_batch_id: 'failed-batch'
+      )
+    end
+
+    def initialize(status:, patch_domain_digest:, stop_reason:, mesh:, border_spans:,
+                   replacement_batch_id:)
+      @status = status
+      @patch_domain_digest = patch_domain_digest
+      @stop_reason = stop_reason
+      @mesh = mesh
+      @border_spans = border_spans
+      @replacement_batch_id = replacement_batch_id
+    end
+
+    def accepted?
+      status == 'accepted'
     end
   end
 end

@@ -303,6 +303,29 @@ class TerrainContractStabilityTest < Minitest::Test
     refute_internal_output_vocabulary(result)
   end
 
+  def test_public_response_hides_cdt_patch_replacement_and_seam_internals
+    result = edit_evidence_result(
+      diagnostics: edit_diagnostics.merge(
+        patchCdtReplacement: {
+          mutationMode: 'local_patch_replacement',
+          patchDomainDigest: 'patch-a',
+          replacementBatchId: 'batch-1',
+          cdtPatchOwnership: { missing: 0, duplicate: 0 },
+          seamValidation: { status: 'failed', reason: 'seam_mismatch' },
+          fallbackReason: 'ownership_integrity_mismatch',
+          rawTriangles: [[0, 1, 2]]
+        }
+      )
+    )
+    serialized = JSON.generate(result)
+
+    %w[
+      patchCdtReplacement local_patch_replacement patchDomainDigest replacementBatchId
+      cdtPatchOwnership seamValidation seam_mismatch ownership_integrity_mismatch rawTriangles
+    ].each { |term| refute_includes(serialized, term) }
+    refute_internal_output_vocabulary(result)
+  end
+
   def test_full_edit_response_path_hides_accepted_cdt_details
     result = full_public_edit_response_for_internal_cdt_result(
       status: 'accepted',
@@ -533,6 +556,8 @@ class TerrainContractStabilityTest < Minitest::Test
       solverPredicates constraintGraph delaunayViolationCount triangulatorKind
       triangulatorVersion ruby_bowyer_watson featureSelectionDiagnostics
       cdtParticipation patch_relevant patchWindow outside_patch_relevance
+      patchCdtReplacement local_patch_replacement patchDomainDigest replacementBatchId
+      cdtPatchOwnership seamValidation seam_mismatch ownership_integrity_mismatch
     ].each { |term| refute_includes(serialized, term) }
     refute_includes(serialized_output, 'regeneration')
   end

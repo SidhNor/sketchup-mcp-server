@@ -26,6 +26,9 @@ class TerrainCdtStructureTest < Minitest::Test
         patch_affected_region_updater.rb
         patch_boundary_topology.rb
         patch_cdt_domain.rb
+        patch_cdt_replacement_provider.rb
+        patch_cdt_replacement_result.rb
+        patch_cdt_seam_validator.rb
         patch_debug_mesh_renderer.rb
         patch_height_error_meter.rb
         patch_local_cdt_proof.rb

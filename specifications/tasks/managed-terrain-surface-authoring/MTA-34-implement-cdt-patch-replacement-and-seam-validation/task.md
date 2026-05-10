@@ -1,7 +1,7 @@
 # Task: MTA-34 Implement CDT Patch Replacement And Seam Validation
 **Task ID**: `MTA-34`
 **Title**: `Implement CDT Patch Replacement And Seam Validation`
-**Status**: `defined`
+**Status**: `closed-blocked`
 **Priority**: `P1`
 **Date**: `2026-05-09`
 
@@ -19,6 +19,18 @@ small edit would preserve a large part of the MTA-31 failure mode.
 This task must turn a proven patch CDT result into safe local SketchUp output mutation by reusing
 the partial-output ownership lessons from MTA-10, validating seams against preserved neighboring
 output, and keeping fallback/undo behavior safe.
+
+## Closure Disposition
+
+MTA-34 is closed as blocked/incomplete, not accepted as product behavior. The implementation produced useful internal
+replacement, seam-validation, ownership, fallback, and public no-leak infrastructure, but hosted
+validation exposed a missing production precondition: normal terrain output does not create or
+maintain stable CDT-owned patch output for MTA-34 to replace.
+
+The task did not prove the full product loop required by the plan: a normal command-path edit using
+real MTA-33 feature planning, real MTA-32 patch proof generation, and local CDT patch replacement
+over stable production-owned patch output. The remaining lifecycle problem is defined in
+[MTA-35 Productize Cached CDT Patch Output Lifecycle For Windowed Terrain Edits](../MTA-35-productize-cached-cdt-patch-output-lifecycle-for-windowed-terrain-edits/task.md).
 
 ## Goals
 
@@ -112,19 +124,19 @@ Scenario: Default production behavior remains unchanged
 - follows `MTA-32` and `MTA-33` because local replacement needs a proven patch result shape and
   patch-relevant feature constraints
 - reuses lessons from `MTA-10` partial terrain output regeneration
-- may unblock a later hosted default-enable bakeoff only after local replacement, seams, fallback,
-  and undo are proven
+- hands off product-loop proof to `MTA-35`, which owns stable CDT patch output bootstrap,
+  patch identity, dirty-window-to-patch mapping, repeated-edit lifecycle, and hosted visual proof
 
 ## Related Technical Plan
 
-- none yet
+- [Technical Plan](./plan.md)
 
 ## Success Metrics
 
-- Hosted validation shows a CDT patch edit replacing only affected output while preserving
-  neighboring derived geometry.
-- Seam diagnostics show no cracks, duplicate overlapping border faces, or unacceptable border Z
-  gaps on accepted cases.
-- Unsafe ownership or topology cases fall back or refuse before corrupting existing output.
-- SketchUp undo restores prior terrain state and output geometry.
-- Public MCP terrain contracts remain unchanged.
+- Not met for accepted product behavior. Hosted validation did not prove a real command-path CDT
+  patch lifecycle over stable production-owned patch output.
+- Retained as partial infrastructure: replacement result adaptation, seam validator groundwork,
+  ownership metadata conventions, no-delete-before-safe mutation ordering, fallback/refusal routing,
+  and public no-leak coverage.
+- Carried to MTA-35: stable patch output bootstrap, patch identity, dirty-window mapping, repeated
+  replacement over newly emitted metadata, hosted visual proof, undo, and timing evidence.

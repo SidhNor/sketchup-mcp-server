@@ -18,12 +18,28 @@ module SU_MCP
       GRID_CELL_COLUMN_KEY = 'gridCellColumn'
       GRID_CELL_ROW_KEY = 'gridCellRow'
       GRID_TRIANGLE_INDEX_KEY = 'gridTriangleIndex'
+      OUTPUT_KIND_KEY = 'outputKind'
+      CDT_PATCH_OUTPUT_KIND = 'cdt_patch_face'
+      CDT_OWNERSHIP_SCHEMA_VERSION_KEY = 'cdtOwnershipSchemaVersion'
+      CDT_PATCH_DOMAIN_DIGEST_KEY = 'cdtPatchDomainDigest'
+      CDT_REPLACEMENT_BATCH_ID_KEY = 'cdtReplacementBatchId'
+      CDT_PATCH_FACE_INDEX_KEY = 'cdtPatchFaceIndex'
+      CDT_BORDER_SIDE_KEY = 'cdtBorderSide'
+      CDT_BORDER_SPAN_ID_KEY = 'cdtBorderSpanId'
+      CDT_BORDER_SIDE_DEFINITIONS = [
+        ['west', 0, :min],
+        ['east', 0, :max],
+        ['south', 1, :min],
+        ['north', 1, :max]
+      ].freeze
       DEFAULT_CDT_BACKEND = Object.new.freeze
       DEFAULT_CDT_ENABLED = false
 
       def initialize(
         length_converter: Semantic::LengthConverter.new,
-        cdt_backend: DEFAULT_CDT_BACKEND
+        cdt_backend: DEFAULT_CDT_BACKEND,
+        cdt_patch_replacement_provider: nil,
+        seam_validator: nil
       )
         @length_converter = length_converter
         @cdt_backend = if default_cdt_backend?(cdt_backend)
@@ -31,6 +47,8 @@ module SU_MCP
                        else
                          cdt_backend
                        end
+        @cdt_patch_replacement_provider = cdt_patch_replacement_provider
+        @seam_validator = seam_validator
       end
 
       def generate(owner:, state:, terrain_state_summary:, output_plan: nil, feature_context: nil)
@@ -90,7 +108,7 @@ module SU_MCP
       end
 
       def cdt_enabled?
-        !cdt_backend.nil?
+        !cdt_backend.nil? || !cdt_patch_replacement_provider.nil?
       end
 
       def regenerate(owner:, state:, terrain_state_summary:, output_plan: nil, feature_context: nil)
@@ -133,7 +151,8 @@ module SU_MCP
 
       private
 
-      attr_reader :length_converter, :cdt_backend
+      attr_reader :length_converter, :cdt_backend, :cdt_patch_replacement_provider,
+                  :seam_validator
 
       def default_cdt_backend?(candidate)
         candidate.equal?(DEFAULT_CDT_BACKEND)
@@ -146,6 +165,7 @@ module SU_MCP
       end
 
       def generate_cdt(owner:, state:, terrain_state_summary:, plan:, feature_context:)
+        return nil unless cdt_backend
         return nil unless cdt_regeneration_eligible?(plan, feature_context)
 
         result = cdt_backend.build(
@@ -177,9 +197,33 @@ module SU_MCP
       end
 
       def regenerate_cdt(owner:, state:, terrain_state_summary:, plan:, feature_context:)
-        return nil unless cdt_regeneration_eligible?(plan, feature_context)
+        patch_attempt = cdt_patch_regeneration_attempt(
+          owner: owner,
+          state: state,
+          terrain_state_summary: terrain_state_summary,
+          plan: plan,
+          feature_context: feature_context
+        )
+        return nil if patch_attempt == :fallback
+        return patch_attempt if patch_attempt
 
-        result = cdt_backend.build(
+        result = build_global_cdt_result(
+          state: state,
+          terrain_state_summary: terrain_state_summary,
+          plan: plan,
+          feature_context: feature_context
+        )
+        return nil unless result&.fetch(:status) == 'accepted'
+
+        erase_entities(owner.entities, derived_output_entities(owner.entities))
+        emit_cdt_mesh_via_builder(owner.entities, result.fetch(:mesh))
+        cdt_generated_result(result, terrain_state_summary)
+      end
+
+      def build_global_cdt_result(state:, terrain_state_summary:, plan:, feature_context:)
+        return nil unless global_cdt_regeneration_eligible?(plan, feature_context)
+
+        cdt_backend.build(
           state: feature_context[:terrainState] || feature_context['terrainState'] || state,
           feature_geometry: feature_context[:featureGeometry] || feature_context['featureGeometry'],
           primitive_request: feature_context[:primitiveRequest] ||
@@ -189,21 +233,90 @@ module SU_MCP
         )
       rescue StandardError
         nil
-      else
-        return nil unless result.fetch(:status) == 'accepted'
+      end
 
-        erase_entities(owner.entities, derived_output_entities(owner.entities))
-        emit_cdt_mesh_via_builder(owner.entities, result.fetch(:mesh))
-        cdt_generated_result(result, terrain_state_summary)
+      def cdt_patch_regeneration_attempt(owner:, state:, terrain_state_summary:, plan:,
+                                         feature_context:)
+        return nil unless cdt_patch_replacement_eligible?(plan, feature_context)
+
+        regenerate_cdt_patch(
+          owner: owner,
+          state: state,
+          terrain_state_summary: terrain_state_summary,
+          plan: plan,
+          feature_context: feature_context
+        )
+      end
+
+      def global_cdt_regeneration_eligible?(plan, feature_context)
+        cdt_backend && cdt_regeneration_eligible?(plan, feature_context)
       end
 
       def cdt_regeneration_eligible?(plan, feature_context)
-        return false unless cdt_backend
         return false unless feature_context
         return false if cdt_participation_skipped?(feature_context)
         return false if plan.intent == :dirty_window && !cdt_feature_geometry?(feature_context)
 
         true
+      end
+
+      def cdt_patch_replacement_eligible?(plan, feature_context)
+        # MTA-34 retained infrastructure: this must stay dormant until MTA-35
+        # supplies stable CDT-owned patch output and injects a real provider.
+        return false unless cdt_patch_replacement_provider
+        return false unless plan.intent == :dirty_window
+
+        cdt_regeneration_eligible?(plan, feature_context)
+      end
+
+      def regenerate_cdt_patch(owner:, state:, terrain_state_summary:, plan:, feature_context:)
+        mutation_started = false
+        replacement = cdt_patch_replacement_provider.build(
+          state: state,
+          feature_geometry: feature_context[:featureGeometry] || feature_context['featureGeometry'],
+          output_plan: plan,
+          terrain_state_summary: terrain_state_summary,
+          feature_context: feature_context
+        )
+        return :fallback unless replacement_accepted?(replacement)
+
+        ownership = owned_cdt_patch_faces(owner.entities, replacement.patch_domain_digest)
+        return cdt_ownership_refusal if ownership.fetch(:outcome) == :refused
+        return :fallback unless ownership.fetch(:outcome) == :owned
+
+        seam = cdt_patch_seam_validator.validate(
+          replacement_spans: replacement.border_spans,
+          preserved_neighbor_spans: preserved_cdt_neighbor_spans(
+            owner.entities,
+            replacement.patch_domain_digest
+          )
+        )
+        return :fallback unless seam.fetch(:status) == 'passed'
+
+        mutation_started = true
+        erase_partial_output(owner.entities, ownership.fetch(:faces))
+        emit_cdt_mesh_via_builder(
+          owner.entities,
+          replacement.mesh,
+          ownership: cdt_patch_ownership_context(replacement)
+        )
+        cleanup_orphan_derived_edges(owner.entities)
+        cdt_generated_result({ mesh: replacement.mesh }, terrain_state_summary)
+      rescue StandardError
+        raise if mutation_started
+
+        :fallback
+      end
+
+      def replacement_accepted?(replacement)
+        replacement.respond_to?(:accepted?) && replacement.accepted?
+      end
+
+      def cdt_patch_seam_validator
+        return seam_validator if seam_validator
+
+        require_relative 'cdt/patches/patch_cdt_seam_validator'
+        @seam_validator = PatchCdtSeamValidator.new
       end
 
       def cdt_participation_skipped?(feature_context)
@@ -235,21 +348,24 @@ module SU_MCP
         }
       end
 
-      def emit_cdt_mesh_via_builder(entities, mesh)
-        return emit_cdt_mesh(entities, mesh) unless entities.respond_to?(:build)
+      def emit_cdt_mesh_via_builder(entities, mesh, ownership: nil)
+        unless entities.respond_to?(:build)
+          return emit_cdt_mesh(entities, mesh,
+                               ownership: ownership)
+        end
 
-        entities.build { |builder| emit_cdt_mesh(builder, mesh) }
+        entities.build { |builder| emit_cdt_mesh(builder, mesh, ownership: ownership) }
       end
 
-      def emit_cdt_mesh(face_target, mesh)
+      def emit_cdt_mesh(face_target, mesh, ownership:)
         vertices = mesh.fetch(:vertices).map do |vertex|
           vertex.map { |coordinate| internal_length(coordinate) }
         end
-        mesh.fetch(:triangles).each do |triangle|
+        mesh.fetch(:triangles).each_with_index do |triangle, index|
           add_derived_face(
             face_target,
             *triangle.map { |index| vertices.fetch(index) },
-            ownership: nil
+            ownership: cdt_face_ownership(ownership, index, vertices, triangle)
           )
         end
       end
@@ -491,6 +607,8 @@ module SU_MCP
       end
 
       def mark_ownership(entity, ownership)
+        return mark_cdt_ownership(entity, ownership) if ownership[:kind] == :cdt_patch
+
         entity.set_attribute(
           DERIVED_OUTPUT_DICTIONARY,
           OUTPUT_SCHEMA_VERSION_KEY,
@@ -507,6 +625,32 @@ module SU_MCP
           GRID_TRIANGLE_INDEX_KEY,
           ownership.fetch(:triangle_index)
         )
+      end
+
+      def mark_cdt_ownership(entity, ownership)
+        entity.set_attribute(DERIVED_OUTPUT_DICTIONARY, OUTPUT_KIND_KEY, CDT_PATCH_OUTPUT_KIND)
+        entity.set_attribute(
+          DERIVED_OUTPUT_DICTIONARY,
+          CDT_OWNERSHIP_SCHEMA_VERSION_KEY,
+          OUTPUT_SCHEMA_VERSION
+        )
+        entity.set_attribute(
+          DERIVED_OUTPUT_DICTIONARY,
+          CDT_PATCH_DOMAIN_DIGEST_KEY,
+          ownership.fetch(:patch_domain_digest)
+        )
+        entity.set_attribute(
+          DERIVED_OUTPUT_DICTIONARY,
+          CDT_REPLACEMENT_BATCH_ID_KEY,
+          ownership.fetch(:replacement_batch_id)
+        )
+        entity.set_attribute(
+          DERIVED_OUTPUT_DICTIONARY,
+          CDT_PATCH_FACE_INDEX_KEY,
+          ownership.fetch(:patch_face_index)
+        )
+        entity.set_attribute(DERIVED_OUTPUT_DICTIONARY, CDT_BORDER_SIDE_KEY, ownership[:side])
+        entity.set_attribute(DERIVED_OUTPUT_DICTIONARY, CDT_BORDER_SPAN_ID_KEY, ownership[:span_id])
       end
 
       def no_data_refusal
@@ -559,6 +703,86 @@ module SU_MCP
         }
       end
 
+      def owned_cdt_patch_faces(entities, patch_domain_digest)
+        faces = derived_output_entities(entities).select do |entity|
+          derived_face_entity?(entity) &&
+            output_attribute(entity, OUTPUT_KIND_KEY) == CDT_PATCH_OUTPUT_KIND &&
+            output_attribute(entity, CDT_PATCH_DOMAIN_DIGEST_KEY) == patch_domain_digest
+        end
+        return fallback_ownership(:missing_ownership) if faces.empty?
+
+        by_index = {}
+        faces.each do |face|
+          return { outcome: :refused, reason: :ownership_integrity_mismatch } unless
+            cdt_owned_face_complete?(face)
+
+          index = output_attribute(face, CDT_PATCH_FACE_INDEX_KEY)
+          return { outcome: :refused, reason: :ownership_integrity_mismatch } if
+            by_index.key?(index)
+
+          by_index[index] = face
+        end
+        { outcome: :owned, faces: faces }
+      end
+
+      def cdt_owned_face_complete?(face)
+        [
+          CDT_OWNERSHIP_SCHEMA_VERSION_KEY,
+          CDT_PATCH_DOMAIN_DIGEST_KEY,
+          CDT_REPLACEMENT_BATCH_ID_KEY,
+          CDT_PATCH_FACE_INDEX_KEY
+        ].all? { |key| !output_attribute(face, key).nil? }
+      end
+
+      def preserved_cdt_neighbor_spans(entities, patch_domain_digest)
+        # MTA-35 must replace this one-face-per-side snapshot with ordered seam
+        # stitching that can represent multiple preserved neighbor spans.
+        derived_output_entities(entities).filter_map do |entity|
+          next unless derived_face_entity?(entity)
+          next unless output_attribute(entity, OUTPUT_KIND_KEY) == CDT_PATCH_OUTPUT_KIND
+          next if output_attribute(entity, CDT_PATCH_DOMAIN_DIGEST_KEY) == patch_domain_digest
+
+          side = output_attribute(entity, CDT_BORDER_SIDE_KEY)
+          next unless side
+
+          {
+            side: side,
+            spanId: output_attribute(entity, CDT_BORDER_SPAN_ID_KEY) || "#{side}-0",
+            patchDomainDigest: output_attribute(entity, CDT_PATCH_DOMAIN_DIGEST_KEY),
+            fresh: cdt_owned_face_complete?(entity),
+            protectedBoundaryCrossing: false,
+            vertices: border_points_for_side(entity_points(entity), side)
+          }
+        end
+      end
+
+      def border_points_for_side(points, side)
+        axis = %w[east west].include?(side) ? 0 : 1
+        value = if %w[east north].include?(side)
+                  points.map { |point| point[axis] }.max
+                else
+                  points.map { |point| point[axis] }.min
+                end
+        points.select { |point| (point[axis].to_f - value.to_f).abs <= 1e-6 }
+              .sort_by { |point| axis.zero? ? point[1] : point[0] }
+      end
+
+      def entity_points(entity)
+        return entity.points if entity.respond_to?(:points)
+        return entity.vertices.map { |vertex| point_to_a(vertex.position) } if
+          entity.respond_to?(:vertices)
+
+        []
+      end
+
+      def point_to_a(point)
+        [
+          length_converter.internal_to_public_meters(point.x),
+          length_converter.internal_to_public_meters(point.y),
+          length_converter.internal_to_public_meters(point.z)
+        ]
+      end
+
       def legacy_owned_face?(face)
         [
           OUTPUT_SCHEMA_VERSION_KEY,
@@ -577,6 +801,44 @@ module SU_MCP
 
       def output_attribute(entity, key)
         entity.get_attribute(DERIVED_OUTPUT_DICTIONARY, key)
+      end
+
+      def cdt_patch_ownership_context(replacement)
+        {
+          kind: :cdt_patch,
+          patch_domain_digest: replacement.patch_domain_digest,
+          replacement_batch_id: replacement.replacement_batch_id
+        }
+      end
+
+      def cdt_face_ownership(ownership, index, vertices, triangle)
+        return nil unless ownership
+
+        side = cdt_border_side_for(vertices, triangle)
+        ownership.merge(
+          patch_face_index: index,
+          side: side,
+          span_id: side ? "#{side}-0" : nil
+        )
+      end
+
+      def cdt_border_side_for(vertices, triangle)
+        points = triangle.map { |vertex_index| vertices.fetch(vertex_index) }
+        bounds = mesh_bounds(vertices)
+        definition = CDT_BORDER_SIDE_DEFINITIONS.find do |_side, axis, limit|
+          values = points.map { |point| point[axis] }
+          values.count { |value| value == bounds.fetch(axis).fetch(limit) } >= 2
+        end
+        definition&.first
+      end
+
+      def mesh_bounds(vertices)
+        {
+          0 => { min: vertices.map { |point| point[0] }.min,
+                 max: vertices.map { |point| point[0] }.max },
+          1 => { min: vertices.map { |point| point[1] }.min,
+                 max: vertices.map { |point| point[1] }.max }
+        }
       end
 
       def erase_partial_output(entities, faces)
@@ -667,6 +929,20 @@ module SU_MCP
             details: {
               unsupportedChildTypes: types.uniq,
               action: 'remove unsupported children or recreate the managed terrain output'
+            }
+          }
+        }
+      end
+
+      def cdt_ownership_refusal
+        {
+          outcome: 'refused',
+          refusal: {
+            code: 'terrain_output_ownership_invalid',
+            message: 'Terrain output ownership metadata is invalid.',
+            details: {
+              category: 'derived_output_ownership',
+              action: 'recreate the managed terrain output'
             }
           }
         }
