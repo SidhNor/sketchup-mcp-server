@@ -50,6 +50,12 @@ The current task order proves terrain authoring through concrete, testable incre
 - CDT terrain output enablement after the disabled MTA-25 scaffold, including large feature-history
   performance, geometry containment, module ownership cleanup, and Ruby-versus-native triangulation
   evidence
+- patch-local incremental residual CDT proof after MTA-31 showed that feature selection is no
+  longer the dominant blocker and repeated whole-point-set retriangulation remains too expensive
+- patch-relevant feature constraints so local CDT solves do not carry unrelated hard, firm, or soft
+  feature history
+- CDT patch replacement and seam validation over existing partial-output ownership before any
+  default CDT enablement decision
 
 ## Current Task Order
 
@@ -84,6 +90,9 @@ The current task order proves terrain authoring through concrete, testable incre
 29. [MTA-29 Add Managed Terrain Survey Point Constraint UI Tool](MTA-29-add-managed-terrain-survey-point-constraint-ui-tool/task.md)
 30. [MTA-30 Add Managed Terrain Planar Region Fit UI Tool](MTA-30-add-managed-terrain-planar-region-fit-ui-tool/task.md)
 31. [MTA-31 Enable CDT Terrain Output After Disabled Scaffold](MTA-31-enable-cdt-terrain-output-after-disabled-scaffold/task.md)
+32. [MTA-32 Implement Patch-Local Incremental Residual CDT Proof](MTA-32-implement-patch-local-incremental-residual-cdt-proof/task.md)
+33. [MTA-33 Implement Patch-Relevant Terrain Feature Constraints](MTA-33-implement-patch-relevant-terrain-feature-constraints/task.md)
+34. [MTA-34 Implement CDT Patch Replacement And Seam Validation](MTA-34-implement-cdt-patch-replacement-and-seam-validation/task.md)
 
 ## Deferred Follow-Ons
 
@@ -97,6 +106,24 @@ Deferred work is not promoted into active task folders in this iteration:
 - new public Unreal-style terrain tools beyond the existing managed edit modes
 - polygon/freeform terrain edit regions
 - accepting `boundary_preserving_patch_edit` as a separate mode before current regional correction plus `preserveZones` recipes are evaluated
+- native/C++ CDT triangulation implementation or packaging. The adapter seam stays important, but
+  native work should be planned only after the patch-local residual path has quality and timing
+  evidence that shows what native code must improve.
+- broad incremental/native bakeoffs across many terrain families. MTA-32 through MTA-34 should first
+  prove the local patch solve, patch-relevant constraints, and SketchUp replacement loop; a later
+  bakeoff can compare Ruby patch-local CDT, native CDT, and any further residual strategy once those
+  baselines exist.
+- default CDT terrain output enablement. CDT should remain disabled by default until patch-local
+  residual quality, patch-relevant feature selection, seam-safe SketchUp replacement, fallback, undo,
+  and hosted performance evidence all support a default change.
+- public terrain output backend selectors, simplification knobs, or CDT diagnostics. Backend choice
+  and solver metrics should remain internal until there is a stable product posture and a separate
+  contract task justifies exposing controls or telemetry.
+- background/global rebuild or export-quality CDT passes. The immediate iteration is about normal
+  interactive local edits; explicit full-output rebuild/export behavior should be planned separately
+  if patch-local editing succeeds.
+- visual smoothing/fairing over CDT output. Smoothing must remain deferred until hard constraints,
+  protected boundaries, and patch seams are stable enough that smoothing cannot weaken them.
 
 ## Notes
 
@@ -145,3 +172,13 @@ Deferred work is not promoted into active task folders in this iteration:
   closeout. It should prove large feature-history performance, effective feature-intent selection,
   geometry containment, module ownership cleanup, and the Ruby-versus-native triangulation decision
   before CDT is considered for default production output.
+- `MTA-32` follows MTA-31 with a narrower architectural proof: patch-local incremental residual CDT.
+  It must materially change both locality and the residual refinement loop, because MTA-31 showed
+  that accurate output requires residual point insertion but repeated full retriangulation of the
+  growing point set is not interactive.
+- `MTA-33` keeps feature selection separate from the MTA-32 cost/quality proof. It applies
+  patch-relevance to hard, firm, and soft feature constraints so local CDT solves do not pay for
+  unrelated global hard-feature history.
+- `MTA-34` closes the local-output loop by reusing partial-output ownership lessons from MTA-10 for
+  CDT patch replacement, seam validation, fallback/refusal, and hosted undo evidence. It still does
+  not default-enable CDT.

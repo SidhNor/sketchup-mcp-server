@@ -106,6 +106,35 @@ class TerrainOutputPlanTest < Minitest::Test
     )
   end
 
+  def test_v2_dirty_window_plan_preserves_dirty_sample_window_for_internal_patch_consumers
+    v2_state = build_v2_state(columns: 9, rows: 9, elevations: Array.new(81, 1.0))
+    window = SU_MCP::Terrain::SampleWindow.new(
+      min_column: 3,
+      min_row: 3,
+      max_column: 4,
+      max_row: 5
+    )
+
+    plan = SU_MCP::Terrain::TerrainOutputPlan.dirty_window(
+      state: v2_state,
+      terrain_state_summary: { digest: 'digest-v2', revision: 1 },
+      window: window
+    )
+
+    assert_equal(:dirty_window, plan.intent)
+    assert_equal(:adaptive_tin, plan.execution_strategy)
+    assert_equal(window, plan.window)
+    assert_equal(
+      SU_MCP::Terrain::TerrainOutputCellWindow.from_sample_window(
+        window: window,
+        state: v2_state
+      ),
+      plan.cell_window
+    )
+    refute_includes(JSON.generate(plan.to_summary), 'dirtyWindow')
+    refute_includes(JSON.generate(plan.to_summary), 'sampleWindow')
+  end
+
   def test_v2_adaptive_plan_adds_boundary_vertices_where_mixed_resolution_edges_would_hang
     plan = adaptive_plan(mixed_resolution_state)
     split_cell = plan.adaptive_cells.find { |cell| cell_bounds(cell) == [0, 0, 2, 2] }

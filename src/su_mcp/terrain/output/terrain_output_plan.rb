@@ -51,6 +51,7 @@ module SU_MCP
         if adaptive_state?(state)
           return build_adaptive(
             intent,
+            window,
             state,
             terrain_state_summary,
             previous_terrain_state_summary
@@ -78,14 +79,14 @@ module SU_MCP
         state.respond_to?(:tiles) && state.respond_to?(:tile_size)
       end
 
-      def self.build_adaptive(intent, state, terrain_state_summary, previous_state_summary)
+      def self.build_adaptive(intent, window, state, terrain_state_summary, previous_state_summary)
         cells = AdaptiveOutputConformity.cells(adaptive_cells_for(state))
         summary = adaptive_summary_for(state, cells, terrain_state_summary, previous_state_summary)
         new(
           intent: intent,
-          window: SampleWindow.full_grid(state),
+          window: window,
           cell_window: TerrainOutputCellWindow.from_sample_window(
-            window: SampleWindow.full_grid(state),
+            window: window,
             state: state
           ),
           execution_strategy: :adaptive_tin,
