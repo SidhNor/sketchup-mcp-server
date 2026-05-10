@@ -2,6 +2,24 @@
 
 <!-- version list -->
 
+## v1.8.0 (2026-05-10)
+
+### Documentation
+
+- **terrain**: Define mta-35 and close mta-34 as blocked
+  ([`751eb70`](https://github.com/SidhNor/sketchup-mcp-server/commit/751eb70e6309598a1f013dfe4e390e9fa9696da5))
+
+### Features
+
+- **MTA-28**: Corridor terrain ui tool
+  ([`f35078c`](https://github.com/SidhNor/sketchup-mcp-server/commit/f35078c5d6b56d30beae38851f1b0da2738f536b))
+
+### Refactoring
+
+- **MTA-33**: Dirty window feature intents
+  ([`1b40ce7`](https://github.com/SidhNor/sketchup-mcp-server/commit/1b40ce71f6563d4af2a389c8e9a8a13583df6179))
+
+
 ## v1.7.0 (2026-05-10)
 
 ### Features
