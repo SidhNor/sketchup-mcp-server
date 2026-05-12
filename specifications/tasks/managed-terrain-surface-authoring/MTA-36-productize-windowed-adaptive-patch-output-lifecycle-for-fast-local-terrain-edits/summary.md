@@ -67,6 +67,10 @@ metadata, and updates only affected registry records.
 - Kept `AdaptivePatches` as compatibility adapters over the generic lifecycle layer so existing
   adaptive metadata keys and hosted output remain unchanged while MTA-35/CDT can consume the
   generic policy/resolver/registry/timing seams without inheriting adaptive names.
+- Fixed the legacy regular-grid migration fallback: when an edit migrates old non-tiled state to
+  current tiled state but accepted output is still regular-grid derived faces, adaptive fallback now
+  rebuilds from a full-grid plan instead of reusing the dirty-window plan and shrinking output to
+  the local edit domain.
 - Kept public terrain MCP contracts unchanged. Public responses do not expose patch IDs, registry internals, adaptive patch lifecycle fields, fallback categories, dirty windows, timing buckets, adaptive cells, or raw triangles.
 
 ## Validation Evidence
@@ -106,6 +110,19 @@ metadata, and updates only affected registry records.
     - `343 files inspected, no offenses detected`
   - `bundle exec rake ruby:test`
     - `1343 runs, 15335 assertions, 0 failures, 0 errors, 37 skips`
+  - `bundle exec rake package:verify`
+    - produced `dist/su_mcp-1.7.0.rbz`
+- Post-legacy-migration fallback regression validation:
+  - `bundle exec ruby -Itest test/terrain/output/terrain_mesh_generator_test.rb`
+    - `64 runs, 1589 assertions, 0 failures, 0 errors`
+  - `bundle exec ruby -Itest test/terrain/commands/terrain_surface_commands_test.rb`
+    - `39 runs, 296 assertions, 0 failures, 0 errors`
+  - `bundle exec ruby -Itest test/terrain/contracts/terrain_contract_stability_test.rb`
+    - `15 runs, 5161 assertions, 0 failures, 0 errors`
+  - `bundle exec rake ruby:lint`
+    - `343 files inspected, no offenses detected`
+  - `bundle exec rake ruby:test`
+    - `1344 runs, 15343 assertions, 0 failures, 0 errors, 37 skips`
   - `bundle exec rake package:verify`
     - produced `dist/su_mcp-1.7.0.rbz`
 
@@ -309,6 +326,13 @@ Completed hosted rows for the single-mesh implementation:
     each row kept one owner child mesh group, 0 patch-container groups, valid registry JSON,
     complete face metadata, registry face-count matches, orphan edges `0`, duplicate faces `0`,
     duplicate coincident XY edges `0`, Z-mismatch duplicate edges `0`, and no public leak tokens.
+- legacy non-tiled migration regression row `MTA36-LEGACY-V1-MIGRATION-1778600686`:
+  - started with a hand-built schema-v1 `HeightmapState` payload and regular-grid derived output;
+  - normal `edit_terrain_surface` migrated saved state to schema v3 with tiles;
+  - fallback rebuilt one full-size `adaptive_patch_mesh` with 0 patch-container groups and registry
+    as a JSON string;
+  - selected output bounds remained `x=0..16m`, `y=0..16m` for the `17x17` terrain, proving the
+    dirty edit window no longer shrinks the fallback rebuild.
 - invalidated dense setup row:
   - `MTA36-SINGLE-MESH-DENSE-PERF-1778585590` is discarded because the script accidentally changed
     the local terrain origin between before and after states, producing artificial unmatched

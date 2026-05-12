@@ -412,6 +412,7 @@ module SU_MCP
       end
 
       def generate_adaptive_patches(owner:, state:, output_plan:)
+        output_plan = full_adaptive_rebuild_plan(state, output_plan)
         erase_entities(owner.entities, derived_output_entities(owner.entities))
         mesh = owner.entities.add_group
         mark_adaptive_patch_mesh(
@@ -710,6 +711,19 @@ module SU_MCP
 
       def adaptive_replacement_batch_id(output_plan)
         "adaptive-batch-#{output_plan.state_digest}"
+      end
+
+      def full_adaptive_rebuild_plan(state, output_plan)
+        return output_plan unless output_plan.intent == :dirty_window
+
+        TerrainOutputPlan.full_grid(
+          state: state,
+          terrain_state_summary: {
+            digest: output_plan.state_digest,
+            revision: output_plan.state_revision
+          },
+          adaptive_patch_policy: output_plan.adaptive_patch_policy
+        )
       end
 
       def vertices_for(state, columns, rows)

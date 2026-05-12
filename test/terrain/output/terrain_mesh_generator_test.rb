@@ -1332,6 +1332,48 @@ class TerrainMeshGeneratorTest < Minitest::Test # rubocop:disable Metrics/ClassL
     assert_equal(16, adaptive_registry(owner).fetch(:patches).length)
   end
 
+  def test_v2_adaptive_dirty_window_fallback_rebuilds_full_mesh_for_legacy_regular_output
+    model = build_semantic_model
+    owner = model.active_entities.add_group
+    legacy_state = build_state(columns: 17, rows: 17, elevations: Array.new(289, 1.0))
+    migrated_state = build_v2_state(
+      columns: 17,
+      rows: 17,
+      elevations: hill_elevations(17, amplitude: 0.2),
+      revision: 2
+    )
+    policy = SU_MCP::Terrain::AdaptivePatches::AdaptivePatchPolicy.new(patch_cell_size: 4)
+    identity_generator.generate(
+      owner: owner,
+      state: legacy_state,
+      terrain_state_summary: { digest: 'digest-1', revision: 1 }
+    )
+
+    result = identity_generator.regenerate(
+      owner: owner,
+      state: migrated_state,
+      terrain_state_summary: { digest: 'digest-2', revision: 2 },
+      output_plan: adaptive_dirty_plan(
+        migrated_state,
+        'digest-2',
+        policy,
+        dirty_window(1, 1, 1, 1)
+      )
+    )
+
+    assert_equal('generated', result.fetch(:outcome))
+    mesh = owner.entities.groups.first
+    assert_equal([mesh], owner.entities.groups)
+    assert_equal('adaptive_patch_mesh', terrain_attribute(mesh, 'outputKind'))
+    xs = mesh.entities.faces.flat_map { |face| face.points.map { |point| point[0] } }
+    ys = mesh.entities.faces.flat_map { |face| face.points.map { |point| point[1] } }
+    assert_equal(0.0, xs.min)
+    assert_equal(16.0, xs.max)
+    assert_equal(0.0, ys.min)
+    assert_equal(16.0, ys.max)
+    assert_equal(16, adaptive_registry(owner).fetch(:patches).length)
+  end
+
   def test_v2_adaptive_dirty_window_refuses_unsupported_child_inside_mesh_before_erasing
     model = build_semantic_model
     owner = model.active_entities.add_group
