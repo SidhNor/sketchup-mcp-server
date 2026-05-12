@@ -17,6 +17,7 @@ require_relative '../edits/survey_point_constraint_edit'
 require_relative '../features/terrain_feature_intent_emitter'
 require_relative '../features/terrain_feature_planner'
 require_relative '../evidence/terrain_edit_evidence_builder'
+require_relative '../output/patch_lifecycle/patch_grid_policy'
 require_relative '../output/terrain_mesh_generator'
 require_relative '../output/terrain_output_plan'
 require_relative '../storage/terrain_repository'
@@ -373,7 +374,8 @@ module SU_MCP
         if full_grid_feature_reconciliation?(feature_plan)
           return TerrainOutputPlan.full_grid(
             state: state,
-            terrain_state_summary: saved.fetch(:summary)
+            terrain_state_summary: saved.fetch(:summary),
+            adaptive_patch_policy: adaptive_patch_policy_for(state)
           )
         end
 
@@ -383,7 +385,18 @@ module SU_MCP
           state: state,
           terrain_state_summary: saved.fetch(:summary),
           previous_terrain_state_summary: context.fetch(:loaded).fetch(:summary),
-          window: window
+          window: window,
+          adaptive_patch_policy: adaptive_patch_policy_for(state)
+        )
+      end
+
+      def adaptive_patch_policy_for(state)
+        return nil if cdt_output_enabled?
+        return nil unless TerrainOutputPlan.adaptive_state?(state)
+
+        PatchLifecycle::PatchGridPolicy.new(
+          patch_id_prefix: 'adaptive-patch',
+          fingerprint_kind: 'adaptive-patch'
         )
       end
 
@@ -578,9 +591,21 @@ module SU_MCP
           owner: owner,
           state: state,
           terrain_state_summary: saved.fetch(:summary),
+          output_plan: full_output_plan_for(state, saved),
           feature_context: feature_context
         )
         [saved, output]
+      end
+
+      def full_output_plan_for(state, saved)
+        policy = adaptive_patch_policy_for(state)
+        return nil unless policy
+
+        TerrainOutputPlan.full_grid(
+          state: state,
+          terrain_state_summary: saved.fetch(:summary),
+          adaptive_patch_policy: policy
+        )
       end
 
       def adoption_success_response(context)

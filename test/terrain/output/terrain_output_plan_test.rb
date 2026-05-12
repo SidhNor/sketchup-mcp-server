@@ -5,9 +5,10 @@ require_relative '../../../src/su_mcp/terrain/state/tiled_heightmap_state'
 require_relative '../../../src/su_mcp/terrain/state/heightmap_state'
 require_relative '../../../src/su_mcp/terrain/regions/sample_window'
 require_relative '../../../src/su_mcp/terrain/output/terrain_output_cell_window'
+require_relative '../../../src/su_mcp/terrain/output/adaptive_patches/adaptive_patch_policy'
 require_relative '../../../src/su_mcp/terrain/output/terrain_output_plan'
 
-class TerrainOutputPlanTest < Minitest::Test
+class TerrainOutputPlanTest < Minitest::Test # rubocop:disable Metrics/ClassLength
   BASIS = {
     'xAxis' => [1.0, 0.0, 0.0],
     'yAxis' => [0.0, 1.0, 0.0],
@@ -200,7 +201,201 @@ class TerrainOutputPlanTest < Minitest::Test
     end
   end
 
+  def test_v2_adaptive_plan_splits_cells_on_stable_patch_boundaries_before_conformance
+    state = build_v2_state(columns: 9, rows: 9, elevations: gaussian_elevations(9, amplitude: 1.0))
+    plan = SU_MCP::Terrain::TerrainOutputPlan.full_grid(
+      state: state,
+      terrain_state_summary: { digest: 'digest-v2', revision: 1 },
+      adaptive_patch_policy: SU_MCP::Terrain::AdaptivePatches::AdaptivePatchPolicy.new(
+        patch_cell_size: 4
+      )
+    )
+
+    boundary_crossing = plan.adaptive_cells.find do |cell|
+      cell.fetch(:min_column) < 4 && cell.fetch(:max_column) > 4
+    end
+    refute(boundary_crossing, 'adaptive cells must not cross stable patch column boundaries')
+  end
+
+  def test_v2_one_neighbor_ring_conformance_invariant_after_hard_patch_boundaries
+    plan = SU_MCP::Terrain::TerrainOutputPlan.full_grid(
+      state: mixed_resolution_state,
+      terrain_state_summary: { digest: 'digest-v2', revision: 1 },
+      adaptive_patch_policy: SU_MCP::Terrain::AdaptivePatches::AdaptivePatchPolicy.new(
+        patch_cell_size: 2,
+        conformance_ring: 1
+      )
+    )
+
+    invariant = plan.adaptive_patch_plan.conformance_dependency_report(
+      affected_patch_ids: ['adaptive-patch-v1-c1-r1']
+    )
+
+    assert_equal('passed', invariant.fetch(:status))
+    assert_equal(1, invariant.fetch(:requiredRing))
+  end
+
+  def test_v2_adaptive_dirty_patch_plan_subdivides_only_replacement_context
+    state = build_v2_state(columns: 97, rows: 97, elevations: wave_elevations(97, 97))
+    policy = SU_MCP::Terrain::AdaptivePatches::AdaptivePatchPolicy.new(patch_cell_size: 16)
+    window = SU_MCP::Terrain::SampleWindow.new(
+      min_column: 40,
+      min_row: 40,
+      max_column: 42,
+      max_row: 42
+    )
+
+    full_plan = SU_MCP::Terrain::TerrainOutputPlan.full_grid(
+      state: state,
+      terrain_state_summary: { digest: 'digest-v2', revision: 1 },
+      adaptive_patch_policy: policy
+    )
+    dirty_plan = SU_MCP::Terrain::TerrainOutputPlan.dirty_window(
+      state: state,
+      terrain_state_summary: { digest: 'digest-v3', revision: 2 },
+      previous_terrain_state_summary: { digest: 'digest-v2', revision: 1 },
+      window: window,
+      adaptive_patch_policy: policy
+    )
+
+    assert_operator(dirty_plan.adaptive_cells.length, :<, full_plan.adaptive_cells.length)
+    assert(dirty_plan.adaptive_patch_plan)
+    assert(
+      dirty_plan.adaptive_cells.all? { |cell| cell_within_patch_range?(cell, 0..4, 0..4) },
+      'dirty adaptive planning should only include replacement patches plus planning context'
+    )
+    refute(
+      dirty_plan.adaptive_cells.any? { |cell| cell_within_patch_range?(cell, 5..5, 5..5) },
+      'dirty adaptive planning should not subdivide far patches'
+    )
+  end
+
+  def test_v2_adaptive_dirty_patch_plan_matches_global_cells_for_replacement_patches
+    state = build_v2_state(columns: 97, rows: 97, elevations: wave_elevations(97, 97))
+    policy = SU_MCP::Terrain::AdaptivePatches::AdaptivePatchPolicy.new(patch_cell_size: 16)
+    window = SU_MCP::Terrain::SampleWindow.new(
+      min_column: 40,
+      min_row: 40,
+      max_column: 42,
+      max_row: 42
+    )
+    replacement_patch_ids = %w[
+      adaptive-patch-v1-c1-r1 adaptive-patch-v1-c1-r2 adaptive-patch-v1-c1-r3
+      adaptive-patch-v1-c2-r1 adaptive-patch-v1-c2-r2 adaptive-patch-v1-c2-r3
+      adaptive-patch-v1-c3-r1 adaptive-patch-v1-c3-r2 adaptive-patch-v1-c3-r3
+    ]
+
+    full_plan = SU_MCP::Terrain::TerrainOutputPlan.full_grid(
+      state: state,
+      terrain_state_summary: { digest: 'digest-v2', revision: 1 },
+      adaptive_patch_policy: policy
+    )
+    dirty_plan = SU_MCP::Terrain::TerrainOutputPlan.dirty_window(
+      state: state,
+      terrain_state_summary: { digest: 'digest-v3', revision: 2 },
+      previous_terrain_state_summary: { digest: 'digest-v2', revision: 1 },
+      window: window,
+      adaptive_patch_policy: policy
+    )
+
+    full_replacement_cells = cells_for_patch_ids(
+      full_plan,
+      policy,
+      state.dimensions,
+      replacement_patch_ids
+    )
+    dirty_replacement_cells = cells_for_patch_ids(
+      dirty_plan,
+      policy,
+      state.dimensions,
+      replacement_patch_ids
+    )
+
+    assert_equal(
+      canonical_cells(full_replacement_cells),
+      canonical_cells(dirty_replacement_cells)
+    )
+  end
+
+  def test_v2_adaptive_dirty_patch_planning_rejects_invalid_internal_patch_ids
+    policy = SU_MCP::Terrain::AdaptivePatches::AdaptivePatchPolicy.new(patch_cell_size: 16)
+
+    error = assert_raises(ArgumentError) do
+      SU_MCP::Terrain::TerrainOutputPlan.send(
+        :expanded_patch_domains,
+        policy,
+        { 'columns' => 33, 'rows' => 33 },
+        ['not-a-patch-id']
+      )
+    end
+
+    assert_match(/invalid adaptive patch id/, error.message)
+  end
+
+  def test_v2_adaptive_max_cell_error_reports_exact_error
+    state = error_probe_state(
+      columns: 3,
+      rows: 3,
+      elevations: [
+        0.0, 0.0, 0.0,
+        0.0, 2.5, 0.0,
+        0.0, 0.0, 0.0
+      ]
+    )
+
+    error = SU_MCP::Terrain::TerrainOutputPlan.send(
+      :max_cell_error,
+      state,
+      0,
+      0,
+      2,
+      2
+    )
+
+    assert_in_delta(2.5, error, 0.0001)
+  end
+
+  def test_v2_adaptive_max_cell_error_probe_short_circuits_after_threshold_exceeded
+    elevations = CountingElevations.new(
+      [
+        0.0, 1.0, 0.0, 0.0, 0.0,
+        0.0, 0.0, 0.0, 0.0, 0.0,
+        0.0, 0.0, 0.0, 0.0, 0.0,
+        0.0, 0.0, 0.0, 0.0, 0.0,
+        0.0, 0.0, 0.0, 0.0, 0.0
+      ]
+    )
+    state = error_probe_state(columns: 5, rows: 5, elevations: elevations)
+
+    probe = SU_MCP::Terrain::TerrainOutputPlan.send(
+      :max_cell_error_probe,
+      state,
+      0,
+      0,
+      4,
+      4,
+      0.01
+    )
+
+    assert_equal(true, probe.fetch(:exceeded))
+    assert_operator(elevations.read_count, :<, 25)
+  end
+
   private
+
+  class CountingElevations
+    attr_reader :read_count
+
+    def initialize(values)
+      @values = values
+      @read_count = 0
+    end
+
+    def [](index)
+      @read_count += 1
+      @values.fetch(index)
+    end
+  end
 
   def expected_summary(digest)
     {
@@ -241,6 +436,13 @@ class TerrainOutputPlanTest < Minitest::Test
       elevations: elevations,
       revision: 1,
       state_id: 'terrain-state-1'
+    )
+  end
+
+  def error_probe_state(columns:, rows:, elevations:)
+    Struct.new(:dimensions, :elevations).new(
+      { 'columns' => columns, 'rows' => rows },
+      elevations
     )
   end
 
@@ -299,6 +501,48 @@ class TerrainOutputPlanTest < Minitest::Test
       dy = (row - center).to_f / center
       amplitude * Math.exp(-4 * ((dx * dx) + (dy * dy)))
     end
+  end
+
+  def wave_elevations(columns, rows)
+    Array.new(columns * rows) do |index|
+      column = index % columns
+      row = index / columns
+      (Math.sin(column / 4.0) * 0.08) + (Math.cos(row / 5.0) * 0.06) +
+        Math.exp(-(((column - 43)**2) + ((row - 51)**2)) / 180.0)
+    end
+  end
+
+  def cell_within_patch_range?(cell, columns, rows)
+    patch_columns = (cell.fetch(:min_column) / 16)..((cell.fetch(:max_column) - 1) / 16)
+    patch_rows = (cell.fetch(:min_row) / 16)..((cell.fetch(:max_row) - 1) / 16)
+    patch_columns.all? { |column| columns.cover?(column) } &&
+      patch_rows.all? { |row| rows.cover?(row) }
+  end
+
+  def cells_for_patch_ids(plan, policy, dimensions, patch_ids)
+    patches = policy.patch_domains(dimensions)
+                    .select { |patch| patch_ids.include?(patch.fetch(:patchId)) }
+    patches.flat_map do |patch|
+      bounds = patch.fetch(:cell_bounds)
+      plan.adaptive_cells.select do |cell|
+        cell.fetch(:min_column) >= bounds.fetch(:min_column) &&
+          cell.fetch(:min_row) >= bounds.fetch(:min_row) &&
+          cell.fetch(:max_column) <= bounds.fetch(:max_column) + 1 &&
+          cell.fetch(:max_row) <= bounds.fetch(:max_row) + 1
+      end
+    end
+  end
+
+  def canonical_cells(cells)
+    canonical = cells.map do |cell|
+      {
+        bounds: cell_bounds(cell),
+        boundary: cell.fetch(:boundary_vertices),
+        fan: cell[:fan_center],
+        triangles: cell.fetch(:emission_triangles)
+      }
+    end
+    canonical.sort_by { |cell| cell.fetch(:bounds) }
   end
 
   def boundary_fan_cells(plan)

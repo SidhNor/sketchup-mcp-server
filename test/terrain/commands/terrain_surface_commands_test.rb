@@ -3,6 +3,7 @@
 require_relative '../../test_helper'
 require_relative '../../support/semantic_test_support'
 require_relative '../../../src/su_mcp/terrain/state/heightmap_state'
+require_relative '../../../src/su_mcp/terrain/state/tiled_heightmap_state'
 require_relative '../../../src/su_mcp/terrain/commands/terrain_surface_commands'
 require_relative '../../../src/su_mcp/terrain/output/cdt/patches/patch_cdt_replacement_provider'
 
@@ -44,6 +45,30 @@ class TerrainSurfaceCommandsTest < Minitest::Test # rubocop:disable Metrics/Clas
       mesh_generator.last_generate_args.fetch(:state),
       feature_context.fetch(:terrainState),
       'production CDT must receive saved terrain state during initial generation'
+    )
+  end
+
+  def test_create_mode_wires_adaptive_patch_policy_for_tiled_adaptive_output
+    model = build_semantic_model
+    mesh_generator = RecordingMeshGenerator.new
+    commands = build_commands(
+      model: model,
+      state_builder: TiledStateBuilder.new,
+      mesh_generator: mesh_generator
+    )
+
+    result = commands.create_terrain_surface(create_request)
+
+    assert_equal('created', result.fetch(:outcome))
+    plan = mesh_generator.last_generate_args.fetch(:output_plan)
+    assert_equal(:adaptive_tin, plan.execution_strategy)
+    assert_instance_of(
+      SU_MCP::Terrain::PatchLifecycle::PatchGridPolicy,
+      plan.adaptive_patch_policy
+    )
+    assert_equal(
+      'adaptive-patch-v1-c0-r0',
+      plan.adaptive_patch_policy.patch_id_for(column: 0, row: 0)
     )
   end
 
@@ -135,6 +160,33 @@ class TerrainSurfaceCommandsTest < Minitest::Test # rubocop:disable Metrics/Clas
     assert_equal(
       [[:start_operation, 'Edit Terrain Surface', true], [:commit_operation]],
       model.operations
+    )
+  end
+
+  def test_edit_mode_wires_adaptive_patch_policy_for_tiled_dirty_window_output
+    model = build_semantic_model
+    managed_terrain_owner(model)
+    mesh_generator = RecordingRegeneratingMeshGenerator.new
+    commands = build_edit_commands(
+      model: model,
+      repository: EditRepository.new(tiled_state_20x20),
+      mesh_generator: mesh_generator,
+      grade_editor: SU_MCP::Terrain::BoundedGradeEdit.new
+    )
+
+    result = commands.edit_terrain_surface(edit_request)
+
+    assert_equal('edited', result.fetch(:outcome))
+    plan = mesh_generator.last_regenerate_args.fetch(:output_plan)
+    assert_equal(:dirty_window, plan.intent)
+    assert_equal(:adaptive_tin, plan.execution_strategy)
+    assert_instance_of(
+      SU_MCP::Terrain::PatchLifecycle::PatchGridPolicy,
+      plan.adaptive_patch_policy
+    )
+    assert_equal(
+      'adaptive-patch-v1-c0-r0',
+      plan.adaptive_patch_policy.patch_id_for(column: 0, row: 0)
     )
   end
 
@@ -1205,6 +1257,23 @@ class TerrainSurfaceCommandsTest < Minitest::Test # rubocop:disable Metrics/Clas
     )
   end
 
+  def tiled_state_20x20
+    SU_MCP::Terrain::TiledHeightmapState.new(
+      basis: {
+        'xAxis' => [1.0, 0.0, 0.0],
+        'yAxis' => [0.0, 1.0, 0.0],
+        'zAxis' => [0.0, 0.0, 1.0],
+        'vertical' => 'z_up'
+      },
+      origin: { 'x' => 0.0, 'y' => 0.0, 'z' => 0.0 },
+      spacing: { 'x' => 1.0, 'y' => 1.0 },
+      dimensions: { 'columns' => 20, 'rows' => 20 },
+      elevations: Array.new(400, 1.0),
+      revision: 1,
+      state_id: 'tiled-state-20x20'
+    )
+  end
+
   class AcceptingValidator
     def validate(params)
       { outcome: 'ready', lifecycle_mode: params.dig('lifecycle', 'mode'), params: params }
@@ -1247,6 +1316,25 @@ class TerrainSurfaceCommandsTest < Minitest::Test # rubocop:disable Metrics/Clas
         SU_MCP::Terrain::FeatureIntentSet.default_h
       end
       state
+    end
+  end
+
+  class TiledStateBuilder < StateBuilder
+    def build_create_state(...)
+      SU_MCP::Terrain::TiledHeightmapState.new(
+        basis: {
+          'xAxis' => [1.0, 0.0, 0.0],
+          'yAxis' => [0.0, 1.0, 0.0],
+          'zAxis' => [0.0, 0.0, 1.0],
+          'vertical' => 'z_up'
+        },
+        origin: { 'x' => 0.0, 'y' => 0.0, 'z' => 0.0 },
+        spacing: { 'x' => 1.0, 'y' => 1.0 },
+        dimensions: { 'columns' => 20, 'rows' => 20 },
+        elevations: Array.new(400, 1.0),
+        revision: 1,
+        state_id: 'tiled-state-20x20'
+      )
     end
   end
 

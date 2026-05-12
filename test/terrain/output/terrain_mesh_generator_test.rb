@@ -6,6 +6,7 @@ require_relative '../../../src/su_mcp/terrain/state/tiled_heightmap_state'
 require_relative '../../../src/su_mcp/terrain/state/heightmap_state'
 require_relative '../../../src/su_mcp/terrain/features/terrain_feature_geometry'
 require_relative '../../../src/su_mcp/terrain/output/terrain_mesh_generator'
+require_relative '../../../src/su_mcp/terrain/output/adaptive_patches/adaptive_patch_policy'
 require_relative '../../../src/su_mcp/terrain/output/terrain_output_cell_window'
 require_relative '../../../src/su_mcp/terrain/output/terrain_output_plan'
 
@@ -114,6 +115,20 @@ class TerrainMeshGeneratorTest < Minitest::Test # rubocop:disable Metrics/ClassL
       refute(terrain_attribute(edge, 'terrainStateDigest'))
       refute(terrain_attribute(edge, 'terrainStateRevision'))
     end
+  end
+
+  def test_batch_edge_marking_marks_shared_edges_once
+    edge = CountingEdge.new
+    faces = [
+      FaceWithEdges.new([edge]),
+      FaceWithEdges.new([edge])
+    ]
+
+    identity_generator.send(:mark_unique_derived_edges, faces)
+
+    assert_equal(1, edge.attribute_write_count)
+    assert_derived_output(edge)
+    assert(edge.hidden?)
   end
 
   def test_generate_summary_matches_full_grid_output_plan
@@ -1191,6 +1206,339 @@ class TerrainMeshGeneratorTest < Minitest::Test # rubocop:disable Metrics/ClassL
     assert_equal(0, cdt_backend.calls)
   end
 
+  def test_v2_adaptive_generation_bootstraps_single_mesh_registry_and_face_ownership
+    model = build_semantic_model
+    owner = model.active_entities.add_group
+    state = build_v2_state(columns: 9, rows: 9, elevations: hill_elevations(9, amplitude: 0.3))
+    policy = SU_MCP::Terrain::AdaptivePatches::AdaptivePatchPolicy.new(patch_cell_size: 4)
+
+    result = identity_generator.generate(
+      owner: owner,
+      state: state,
+      terrain_state_summary: { digest: 'digest-v2', revision: 1 },
+      output_plan: adaptive_full_plan(state, 'digest-v2', policy)
+    )
+
+    assert_equal('generated', result.fetch(:outcome))
+    assert_equal(1, owner.entities.groups.length)
+    mesh = owner.entities.groups.first
+    assert_equal('adaptive_patch_mesh', terrain_attribute(mesh, 'outputKind'))
+    refute(terrain_attribute(mesh, 'adaptivePatchId'))
+    assert_equal('digest-v2', terrain_attribute(mesh, 'terrainStateDigest'))
+    mesh.entities.faces.each do |face|
+      assert_equal('adaptive_patch_face', terrain_attribute(face, 'outputKind'))
+      assert(terrain_attribute(face, 'adaptivePatchId'))
+      assert(terrain_attribute(face, 'adaptivePatchFaceIndex'))
+    end
+    assert_instance_of(String, owner.get_attribute('su_mcp_terrain', 'adaptivePatchRegistry'))
+    refute_internal_output_fields(result)
+  end
+
+  def test_v2_adaptive_patch_planning_reuses_projected_vertices
+    state = build_v2_state(columns: 2, rows: 2, elevations: [0.0, 0.1, 0.2, 0.3])
+    policy = SU_MCP::Terrain::AdaptivePatches::AdaptivePatchPolicy.new(patch_cell_size: 1)
+    output_plan = Struct.new(
+      :adaptive_cells,
+      :state_digest,
+      :adaptive_patch_policy
+    ).new(
+      [
+        {
+          min_column: 0,
+          min_row: 0,
+          max_column: 1,
+          max_row: 1,
+          emission_triangles: [
+            [[0, 0], [1, 0], [1, 1]],
+            [[0, 0], [1, 1], [0, 1]]
+          ]
+        }
+      ],
+      'digest-v2',
+      policy
+    )
+    patch = {
+      patchId: 'adaptive-patch-v1-c0-r0',
+      bounds: {},
+      cell_bounds: { min_column: 0, min_row: 0, max_column: 0, max_row: 0 }
+    }
+    generator = CountingAdaptiveVertexGenerator.new
+
+    planned = generator.send(
+      :planned_adaptive_patch_batch,
+      state: state,
+      output_plan: output_plan,
+      patches: [patch]
+    )
+
+    assert_equal(2, planned.fetch(:faces).length)
+    assert_equal(4, generator.adaptive_vertex_call_count)
+  end
+
+  def test_v2_adaptive_patch_face_count_uses_sketchup_entities_enumeration
+    model = build_semantic_model
+    owner = model.active_entities.add_group
+    face = owner.entities.add_face([0, 0, 0], [1, 0, 0], [0, 1, 0])
+    host_like_entities = Class.new do
+      include Enumerable
+
+      def initialize(entities)
+        @entities = entities
+      end
+
+      def each(&block)
+        @entities.each(&block)
+      end
+    end.new([face])
+
+    assert_equal([face], identity_generator.send(:entity_faces, host_like_entities))
+  end
+
+  def test_v2_adaptive_dirty_window_replaces_only_affected_logical_patch_faces
+    model = build_semantic_model
+    owner = model.active_entities.add_group
+    before_state = build_v2_state(columns: 17, rows: 17, elevations: Array.new(289, 1.0))
+    after_state = build_v2_state(
+      columns: 17,
+      rows: 17,
+      elevations: hill_elevations(17, amplitude: 0.2)
+    )
+    policy = SU_MCP::Terrain::AdaptivePatches::AdaptivePatchPolicy.new(patch_cell_size: 4)
+    identity_generator.generate(
+      owner: owner,
+      state: before_state,
+      terrain_state_summary: { digest: 'digest-1', revision: 1 },
+      output_plan: adaptive_full_plan(before_state, 'digest-1', policy)
+    )
+    mesh = owner.entities.groups.first
+    preserved = mesh.entities.faces.find do |face|
+      adaptive_patch_id(face) == 'adaptive-patch-v1-c3-r0'
+    end
+
+    identity_generator.regenerate(
+      owner: owner,
+      state: after_state,
+      terrain_state_summary: { digest: 'digest-2', revision: 2 },
+      output_plan: adaptive_dirty_plan(after_state, 'digest-2', policy, dirty_window(1, 1, 1, 1))
+    )
+
+    assert_equal([mesh], owner.entities.groups)
+    assert_includes(mesh.entities.faces, preserved)
+    assert(mesh.entities.faces.any? do |face|
+      adaptive_patch_id(face) == 'adaptive-patch-v1-c0-r0' &&
+        terrain_attribute(face, 'terrainStateDigest') == 'digest-2'
+    end)
+    assert_equal(mesh.entities.faces.length, terrain_attribute(mesh, 'faceCount'))
+    assert_equal(16, adaptive_registry(owner).fetch(:patches).length)
+  end
+
+  def test_v2_adaptive_dirty_window_refuses_unsupported_child_inside_mesh_before_erasing
+    model = build_semantic_model
+    owner = model.active_entities.add_group
+    before_state = build_v2_state(columns: 9, rows: 9, elevations: Array.new(81, 1.0))
+    after_state = build_v2_state(
+      columns: 9,
+      rows: 9,
+      elevations: hill_elevations(9, amplitude: 0.2)
+    )
+    policy = SU_MCP::Terrain::AdaptivePatches::AdaptivePatchPolicy.new(patch_cell_size: 4)
+    identity_generator.generate(
+      owner: owner,
+      state: before_state,
+      terrain_state_summary: { digest: 'digest-1', revision: 1 },
+      output_plan: adaptive_full_plan(before_state, 'digest-1', policy)
+    )
+    mesh = owner.entities.groups.first
+    old_faces = mesh.entities.faces.dup
+    unsupported = mesh.entities.add_cpoint([0.0, 0.0, 0.0])
+
+    result = identity_generator.regenerate(
+      owner: owner,
+      state: after_state,
+      terrain_state_summary: { digest: 'digest-2', revision: 2 },
+      output_plan: adaptive_dirty_plan(after_state, 'digest-2', policy, dirty_window(1, 1, 1, 1))
+    )
+
+    assert_equal('refused', result.fetch(:outcome))
+    assert_equal('terrain_output_contains_unsupported_entities', result.dig(:refusal, :code))
+    old_faces.each { |face| assert_includes(mesh.entities.faces, face) }
+    assert_includes(mesh.entities.construction_points, unsupported)
+  end
+
+  def test_v2_adaptive_dirty_window_refuses_duplicate_face_index_before_erasing
+    model = build_semantic_model
+    owner = model.active_entities.add_group
+    before_state = build_v2_state(columns: 9, rows: 9, elevations: Array.new(81, 1.0))
+    after_state = build_v2_state(
+      columns: 9,
+      rows: 9,
+      elevations: hill_elevations(9, amplitude: 0.2),
+      revision: 2
+    )
+    policy = SU_MCP::Terrain::AdaptivePatches::AdaptivePatchPolicy.new(patch_cell_size: 4)
+    identity_generator.generate(
+      owner: owner,
+      state: before_state,
+      terrain_state_summary: { digest: 'digest-1', revision: 1 },
+      output_plan: adaptive_full_plan(before_state, 'digest-1', policy)
+    )
+    mesh = owner.entities.groups.first
+    patch_faces = mesh.entities.faces.select do |face|
+      adaptive_patch_id(face) == 'adaptive-patch-v1-c0-r0'
+    end
+    patch_faces.fetch(1).set_attribute(
+      'su_mcp_terrain',
+      'adaptivePatchFaceIndex',
+      terrain_attribute(patch_faces.fetch(0), 'adaptivePatchFaceIndex')
+    )
+    old_faces = mesh.entities.faces.dup
+
+    result = identity_generator.regenerate(
+      owner: owner,
+      state: after_state,
+      terrain_state_summary: { digest: 'digest-2', revision: 2 },
+      output_plan: adaptive_dirty_plan(after_state, 'digest-2', policy, dirty_window(1, 1, 1, 1))
+    )
+
+    assert_equal('refused', result.fetch(:outcome))
+    assert_equal('terrain_output_ownership_invalid', result.dig(:refusal, :code))
+    old_faces.each { |face| assert_includes(mesh.entities.faces, face) }
+    assert_equal(1, terrain_attribute(mesh, 'terrainStateRevision'))
+  end
+
+  def test_v2_adaptive_dirty_window_refuses_registry_face_count_mismatch_before_erasing
+    model = build_semantic_model
+    owner = model.active_entities.add_group
+    before_state = build_v2_state(columns: 9, rows: 9, elevations: Array.new(81, 1.0))
+    after_state = build_v2_state(
+      columns: 9,
+      rows: 9,
+      elevations: hill_elevations(9, amplitude: 0.2),
+      revision: 2
+    )
+    policy = SU_MCP::Terrain::AdaptivePatches::AdaptivePatchPolicy.new(patch_cell_size: 4)
+    identity_generator.generate(
+      owner: owner,
+      state: before_state,
+      terrain_state_summary: { digest: 'digest-1', revision: 1 },
+      output_plan: adaptive_full_plan(before_state, 'digest-1', policy)
+    )
+    registry = adaptive_registry(owner)
+    registry.fetch(:patches).find do |patch|
+      patch.fetch(:patchId) == 'adaptive-patch-v1-c0-r0'
+    end[:faceCount] += 1
+    owner.set_attribute('su_mcp_terrain', 'adaptivePatchRegistry', JSON.generate(registry))
+    mesh = owner.entities.groups.first
+    old_faces = mesh.entities.faces.dup
+
+    result = identity_generator.regenerate(
+      owner: owner,
+      state: after_state,
+      terrain_state_summary: { digest: 'digest-2', revision: 2 },
+      output_plan: adaptive_dirty_plan(after_state, 'digest-2', policy, dirty_window(1, 1, 1, 1))
+    )
+
+    assert_equal('refused', result.fetch(:outcome))
+    assert_equal('terrain_output_ownership_invalid', result.dig(:refusal, :code))
+    old_faces.each { |face| assert_includes(mesh.entities.faces, face) }
+    assert_equal(1, terrain_attribute(mesh, 'terrainStateRevision'))
+  end
+
+  def test_v2_adaptive_repeated_edits_use_newly_emitted_patch_metadata
+    model = build_semantic_model
+    owner = model.active_entities.add_group
+    policy = SU_MCP::Terrain::AdaptivePatches::AdaptivePatchPolicy.new(patch_cell_size: 4)
+    first_state = build_v2_state(columns: 9, rows: 9, elevations: Array.new(81, 1.0))
+    second_state = build_v2_state(columns: 9, rows: 9,
+                                  elevations: hill_elevations(9, amplitude: 0.2),
+                                  revision: 2)
+    third_state = build_v2_state(columns: 9, rows: 9,
+                                 elevations: hill_elevations(9, amplitude: 0.3),
+                                 revision: 3)
+
+    identity_generator.generate(
+      owner: owner,
+      state: first_state,
+      terrain_state_summary: { digest: 'digest-1', revision: 1 },
+      output_plan: adaptive_full_plan(first_state, 'digest-1', policy)
+    )
+    identity_generator.regenerate(
+      owner: owner,
+      state: second_state,
+      terrain_state_summary: { digest: 'digest-2', revision: 2 },
+      output_plan: adaptive_dirty_plan(second_state, 'digest-2', policy, dirty_window(1, 1, 1, 1))
+    )
+    identity_generator.regenerate(
+      owner: owner,
+      state: third_state,
+      terrain_state_summary: { digest: 'digest-3', revision: 3 },
+      output_plan: adaptive_dirty_plan(third_state, 'digest-3', policy, dirty_window(2, 1, 2, 1))
+    )
+
+    mesh = owner.entities.groups.first
+    rebuilt = mesh.entities.faces.select do |face|
+      adaptive_patch_id(face) == 'adaptive-patch-v1-c0-r0'
+    end
+    refute_empty(rebuilt)
+    assert(rebuilt.all? { |face| terrain_attribute(face, 'terrainStateDigest') == 'digest-3' })
+    assert_equal(
+      rebuilt.length,
+      rebuilt.map { |face| terrain_attribute(face, 'adaptivePatchFaceIndex') }.uniq.length
+    )
+    assert_equal(3, terrain_attribute(mesh, 'terrainStateRevision'))
+  end
+
+  def test_v2_adaptive_local_failure_preserves_old_output_until_safe_fallback
+    model = build_semantic_model
+    owner = model.active_entities.add_group
+    owner.entities.add_group
+    old_face = owner.entities.add_face([0, 0, 1], [1, 0, 1], [1, 1, 1])
+    old_face.set_attribute('su_mcp_terrain', 'derivedOutput', true)
+    policy = SU_MCP::Terrain::AdaptivePatches::AdaptivePatchPolicy.new(patch_cell_size: 4)
+    state = build_v2_state(columns: 9, rows: 9, elevations: Array.new(81, 1.0))
+
+    result = identity_generator.regenerate(
+      owner: owner,
+      state: state,
+      terrain_state_summary: { digest: 'digest-2', revision: 2 },
+      output_plan: adaptive_dirty_plan(state, 'digest-2', policy, dirty_window(1, 1, 1, 1))
+    )
+
+    assert_equal('refused', result.fetch(:outcome))
+    assert_includes(owner.entities.faces, old_face)
+    refute_includes(JSON.generate(result), 'adaptive-patch-v1')
+  end
+
+  def test_v2_adaptive_replacement_does_not_rewrite_unaffected_face_metadata
+    model = build_semantic_model
+    owner = model.active_entities.add_group
+    before_state = build_v2_state(columns: 17, rows: 17, elevations: Array.new(289, 1.0))
+    after_state = build_v2_state(columns: 17, rows: 17,
+                                 elevations: hill_elevations(17, amplitude: 0.2))
+    policy = SU_MCP::Terrain::AdaptivePatches::AdaptivePatchPolicy.new(patch_cell_size: 4)
+    identity_generator.generate(
+      owner: owner,
+      state: before_state,
+      terrain_state_summary: { digest: 'digest-1', revision: 1 },
+      output_plan: adaptive_full_plan(before_state, 'digest-1', policy)
+    )
+    mesh = owner.entities.groups.first
+    preserved_face = mesh.entities.faces.find do |face|
+      adaptive_patch_id(face) == 'adaptive-patch-v1-c3-r0'
+    end
+    preserved_face.set_attribute('su_mcp_terrain', 'sentinelRetainedMetadata', 'unchanged')
+
+    identity_generator.regenerate(
+      owner: owner,
+      state: after_state,
+      terrain_state_summary: { digest: 'digest-2', revision: 2 },
+      output_plan: adaptive_dirty_plan(after_state, 'digest-2', policy, dirty_window(1, 1, 1, 1))
+    )
+
+    assert_equal('unchanged', terrain_attribute(preserved_face, 'sentinelRetainedMetadata'))
+    assert_equal('digest-1', terrain_attribute(preserved_face, 'terrainStateDigest'))
+  end
+
   private
 
   def assert_derived_output(entity)
@@ -1216,6 +1564,17 @@ class TerrainMeshGeneratorTest < Minitest::Test # rubocop:disable Metrics/ClassL
       terrain_attribute(face, 'gridCellRow'),
       terrain_attribute(face, 'gridTriangleIndex')
     ]
+  end
+
+  def adaptive_patch_id(face)
+    terrain_attribute(face, 'adaptivePatchId')
+  end
+
+  def adaptive_registry(owner)
+    JSON.parse(
+      owner.get_attribute('su_mcp_terrain', 'adaptivePatchRegistry'),
+      symbolize_names: true
+    )
   end
 
   def output_cell_window(min_column, min_row, max_column, max_row)
@@ -1405,7 +1764,7 @@ class TerrainMeshGeneratorTest < Minitest::Test # rubocop:disable Metrics/ClassL
     )
   end
 
-  def build_v2_state(columns:, rows:, elevations:)
+  def build_v2_state(columns:, rows:, elevations:, revision: 1)
     SU_MCP::Terrain::TiledHeightmapState.new(
       basis: {
         'xAxis' => [1.0, 0.0, 0.0],
@@ -1417,7 +1776,7 @@ class TerrainMeshGeneratorTest < Minitest::Test # rubocop:disable Metrics/ClassL
       spacing: { 'x' => 1.0, 'y' => 1.0 },
       dimensions: { 'columns' => columns, 'rows' => rows },
       elevations: elevations,
-      revision: 1,
+      revision: revision,
       state_id: 'terrain-state-1'
     )
   end
@@ -1450,6 +1809,34 @@ class TerrainMeshGeneratorTest < Minitest::Test # rubocop:disable Metrics/ClassL
         max_row: 0
       )
     )
+  end
+
+  def adaptive_full_plan(state, digest, policy)
+    SU_MCP::Terrain::TerrainOutputPlan.full_grid(
+      state: state,
+      terrain_state_summary: { digest: digest, revision: state.revision },
+      adaptive_patch_policy: policy
+    )
+  end
+
+  def adaptive_dirty_plan(state, digest, policy, window)
+    SU_MCP::Terrain::TerrainOutputPlan.dirty_window(
+      state: state,
+      terrain_state_summary: { digest: digest, revision: state.revision },
+      window: window,
+      adaptive_patch_policy: policy
+    )
+  end
+
+  def hill_elevations(size, amplitude:)
+    center = size / 2
+    Array.new(size * size) do |index|
+      column = index % size
+      row = index / size
+      dx = (column - center).to_f / center
+      dy = (row - center).to_f / center
+      amplitude * Math.exp(-4 * ((dx * dx) + (dy * dy)))
+    end
   end
 
   def previous_state_summary(digest, revision)
@@ -1527,6 +1914,37 @@ class TerrainMeshGeneratorTest < Minitest::Test # rubocop:disable Metrics/ClassL
 
   class EdgeWithFaces
     attr_accessor :faces
+  end
+
+  class CountingEdge < SemanticTestSupport::FakeEdge
+    attr_reader :attribute_write_count
+
+    def initialize
+      super
+      @attribute_write_count = 0
+    end
+
+    def set_attribute(dictionary_name, key, value)
+      @attribute_write_count += 1 if dictionary_name == 'su_mcp_terrain' &&
+                                     key == 'derivedOutput'
+      super
+    end
+  end
+
+  class CountingAdaptiveVertexGenerator < SU_MCP::Terrain::TerrainMeshGenerator
+    attr_reader :adaptive_vertex_call_count
+
+    def initialize
+      super
+      @adaptive_vertex_call_count = 0
+    end
+
+    private
+
+    def adaptive_vertex_for_planned_point(state, point)
+      @adaptive_vertex_call_count += 1
+      super
+    end
   end
 
   class EntityList

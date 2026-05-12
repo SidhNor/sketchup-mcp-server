@@ -344,6 +344,39 @@ class TerrainContractStabilityTest < Minitest::Test
     assert_equal(disabled, attempted)
   end
 
+  def test_public_response_hides_adaptive_patch_lifecycle_registry_timing_and_fallback_internals
+    result = edit_evidence_result(
+      diagnostics: edit_diagnostics.merge(
+        adaptivePatchLifecycle: {
+          selectedPatchIds: %w[adaptive-patch-v1-c0-r0],
+          replacementPatchIds: %w[adaptive-patch-v1-c0-r0 adaptive-patch-v1-c1-r0],
+          registryStatus: 'stale',
+          fallbackCategory: 'registry_integrity_mismatch',
+          replacementBatchId: 'batch-2',
+          timingBuckets: {
+            dirtyWindowMapping: 0.001,
+            adaptivePlanning: 0.002,
+            conformance: 0.003,
+            mutation: 0.004
+          }
+        },
+        adaptivePatchRegistry: {
+          outputPolicyFingerprint: 'fingerprint-a',
+          patches: [{ patchId: 'adaptive-patch-v1-c0-r0' }]
+        },
+        adaptivePatchFaceIndex: 3
+      )
+    )
+
+    refute_internal_output_vocabulary(result)
+    %w[
+      adaptivePatch adaptivePatchLifecycle adaptivePatchRegistry adaptive-patch-v1
+      selectedPatchIds replacementPatchIds registryStatus fallbackCategory
+      registry_integrity_mismatch timingBuckets dirtyWindowMapping adaptivePlanning
+      conformance mutation outputPolicyFingerprint patchId adaptivePatchFaceIndex
+    ].each { |term| refute_includes(JSON.generate(result), term) }
+  end
+
   private
 
   def full_public_edit_response_for_internal_cdt_result(status:, fallback_reason:)
@@ -558,6 +591,10 @@ class TerrainContractStabilityTest < Minitest::Test
       cdtParticipation patch_relevant patchWindow outside_patch_relevance
       patchCdtReplacement local_patch_replacement patchDomainDigest replacementBatchId
       cdtPatchOwnership seamValidation seam_mismatch ownership_integrity_mismatch
+      adaptivePatch adaptivePatchLifecycle adaptivePatchRegistry adaptive-patch-v1
+      selectedPatchIds replacementPatchIds registryStatus fallbackCategory timingBuckets
+      dirtyWindowMapping adaptivePlanning conformance registryLookup ownershipLookup
+      registryWrites outputPolicyFingerprint adaptivePatchFaceIndex adaptivePatchId
     ].each { |term| refute_includes(serialized, term) }
     refute_includes(serialized_output, 'regeneration')
   end
