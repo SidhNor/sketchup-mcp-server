@@ -103,17 +103,20 @@ module SU_MCP
       end
 
       def firm_influence_at?(state, feature_geometry, sample)
-        affected_window_at?(feature_geometry, sample) ||
-          influencing_items(feature_geometry).any? do |item|
-            item.fetch('strength', nil) == 'firm' && item_influences_point?(state, item,
-                                                                            sample.fetch(:point))
-          end
+        return true if affected_window_at?(feature_geometry, sample)
+
+        influencing_item_at?(state, feature_geometry, sample.fetch(:point), 'firm')
       end
 
       def soft_influence_at?(state, feature_geometry, sample)
-        influencing_items(feature_geometry).any? do |item|
-          item.fetch('strength', nil) == 'soft' && item_influences_point?(state, item,
-                                                                          sample.fetch(:point))
+        influencing_item_at?(state, feature_geometry, sample.fetch(:point), 'soft')
+      end
+
+      def influencing_item_at?(state, feature_geometry, point, strength)
+        feature_geometry.pressure_regions.any? do |item|
+          item.fetch('strength', nil) == strength && item_influences_point?(state, item, point)
+        end || feature_geometry.reference_segments.any? do |item|
+          item.fetch('strength', nil) == strength && item_influences_point?(state, item, point)
         end
       end
 
@@ -129,10 +132,6 @@ module SU_MCP
           sample.fetch(:column).between?(window.fetch('minCol'), window.fetch('maxCol')) &&
             sample.fetch(:row).between?(window.fetch('minRow'), window.fetch('maxRow'))
         end
-      end
-
-      def influencing_items(feature_geometry)
-        feature_geometry.pressure_regions + feature_geometry.reference_segments
       end
 
       def item_influences_point?(state, item, point)
@@ -234,22 +233,25 @@ module SU_MCP
       end
 
       def triangle_spatial_index(state, mesh)
-        buckets = Hash.new { |hash, key| hash[key] = [] }
+        column_count = columns(state)
+        buckets = Array.new(column_count * rows(state))
         mesh.fetch(:triangles).each do |triangle|
           triangle_bucket_bounds(state, mesh, triangle).then do |min_column, min_row, max_column,
                                                                 max_row|
             (min_row..max_row).each do |row|
               (min_column..max_column).each do |column|
-                buckets[[column, row]] << triangle
+                index = (row * column_count) + column
+                (buckets[index] ||= []) << triangle
               end
             end
           end
         end
-        { buckets: buckets, fallback: mesh.fetch(:triangles) }
+        { buckets: buckets, columns: column_count, fallback: mesh.fetch(:triangles) }
       end
 
       def candidate_triangles(spatial_index, column, row)
-        spatial_index.fetch(:buckets).fetch([column, row], spatial_index.fetch(:fallback))
+        index = (row * spatial_index.fetch(:columns)) + column
+        spatial_index.fetch(:buckets).fetch(index) || spatial_index.fetch(:fallback)
       end
 
       def triangle_bucket_bounds(state, mesh, triangle)

@@ -42,6 +42,14 @@ class McpRuntimeConfigTest < Minitest::Test
     end
   end
 
+  def test_reads_private_terrain_output_mode_switch
+    with_env('SKETCHUP_MCP_TERRAIN_SIMPLIFIER' => 'cdt_patch') do
+      config = SU_MCP::McpRuntimeConfig.new
+
+      assert_equal('cdt_patch', config.terrain_output_mode)
+    end
+  end
+
   private
 
   def with_env(overrides)

@@ -5,7 +5,9 @@ require_relative '../../support/semantic_test_support'
 require_relative '../../../src/su_mcp/terrain/state/heightmap_state'
 require_relative '../../../src/su_mcp/terrain/state/tiled_heightmap_state'
 require_relative '../../../src/su_mcp/terrain/commands/terrain_surface_commands'
-require_relative '../../../src/su_mcp/terrain/output/cdt/patches/patch_cdt_replacement_provider'
+require_relative '../../../src/su_mcp/terrain/output/cdt/patches/cdt_patch_policy'
+require_relative '../../../src/su_mcp/terrain/output/cdt/patches/' \
+                 'stable_domain_cdt_replacement_provider'
 
 class TerrainSurfaceCommandsTest < Minitest::Test # rubocop:disable Metrics/ClassLength
   include SemanticTestSupport
@@ -186,6 +188,31 @@ class TerrainSurfaceCommandsTest < Minitest::Test # rubocop:disable Metrics/Clas
     )
     assert_equal(
       'adaptive-patch-v1-c0-r0',
+      plan.adaptive_patch_policy.patch_id_for(column: 0, row: 0)
+    )
+  end
+
+  def test_edit_mode_wires_cdt_patch_policy_for_internal_cdt_output
+    model = build_semantic_model
+    managed_terrain_owner(model)
+    mesh_generator = RecordingRegeneratingMeshGenerator.new(cdt_enabled: true)
+    commands = build_edit_commands(
+      model: model,
+      repository: EditRepository.new(tiled_state_20x20),
+      mesh_generator: mesh_generator,
+      grade_editor: SU_MCP::Terrain::BoundedGradeEdit.new,
+      terrain_feature_planner: EligibleCdtFeaturePlanner.new
+    )
+
+    result = commands.edit_terrain_surface(edit_request)
+
+    assert_equal('edited', result.fetch(:outcome))
+    plan = mesh_generator.last_regenerate_args.fetch(:output_plan)
+    assert_equal(:dirty_window, plan.intent)
+    assert_kind_of(SU_MCP::Terrain::CdtPatchPolicy, plan.adaptive_patch_policy)
+    assert_equal(0, plan.adaptive_patch_policy.conformance_ring)
+    assert_equal(
+      'cdt-patch-v1-c0-r0',
       plan.adaptive_patch_policy.patch_id_for(column: 0, row: 0)
     )
   end
@@ -734,16 +761,17 @@ class TerrainSurfaceCommandsTest < Minitest::Test # rubocop:disable Metrics/Clas
   def test_edit_command_drives_eligible_feature_context_into_cdt_patch_replacement
     model = build_semantic_model
     owner = managed_terrain_owner(model)
-    old_face = add_owned_cdt_patch_face(owner.entities, patch_domain_digest: 'patch-a',
-                                                        face_index: 0)
-    provider = RecordingPatchReplacementProvider.accepted(domain_digest: 'patch-a')
+    patch_id = 'cdt-patch-v1-c0-r0'
+    old_face = add_owned_cdt_patch_face(owner.entities, patch_id: patch_id, face_index: 0)
+    write_cdt_registry(owner, patch_id: patch_id, face_count: 1)
+    provider = RecordingPatchReplacementProvider.accepted(patch_id: patch_id)
     mesh_generator = SU_MCP::Terrain::TerrainMeshGenerator.new(
       length_converter: ScalingLengthConverter.new(multiplier: 1.0),
       cdt_patch_replacement_provider: provider
     )
     commands = build_edit_commands(
       model: model,
-      repository: EditRepository.new(state_4x4),
+      repository: EditRepository.new(tiled_state_20x20),
       mesh_generator: mesh_generator,
       terrain_feature_planner: EligibleCdtFeaturePlanner.new
     )
@@ -765,11 +793,12 @@ class TerrainSurfaceCommandsTest < Minitest::Test # rubocop:disable Metrics/Clas
     assert_equal('edited', result.fetch(:outcome))
     assert(context.fetch(:mesh_generator).cdt_enabled?)
     assert_equal(1, context.fetch(:provider).calls)
-    assert_equal(1, context.fetch(:proof_runner).calls)
+    assert_equal(1, context.fetch(:solver).calls)
     assert_real_mta33_context_reached_provider(context.fetch(:provider))
-    assert_real_provider_called_proof_boundary(context)
-    assert_dirty_patch_plan(context.fetch(:provider).last_build_args.fetch(:output_plan))
+    assert_real_provider_called_stable_domain_solver(context)
+    assert_dirty_patch_batch_plan(context.fetch(:provider).last_build_args.fetch(:batch_plan))
     assert_real_cdt_junction_mutation(context)
+    assert_real_cdt_timing_buckets(context)
     assert_equal('adaptive_tin', result.dig(:output, :derivedMesh, :meshType))
     refute_cdt_patch_public_leak(result)
   end
@@ -777,30 +806,30 @@ class TerrainSurfaceCommandsTest < Minitest::Test # rubocop:disable Metrics/Clas
   def build_real_cdt_junction_context
     model = build_semantic_model
     owner = managed_terrain_owner(model)
-    proof_result = junction_proof_result
-    patch_digest = replacement_digest_for(proof_result)
+    patch_id = 'cdt-patch-v1-c0-r0'
     old_patch_face = add_owned_cdt_patch_face(
       owner.entities,
-      patch_domain_digest: patch_digest,
+      patch_id: patch_id,
       face_index: 0,
-      points: [[0.0, 0.0, 1.0], [3.0, 0.0, 1.0], [3.0, 3.0, 1.0]]
+      points: [[0.0, 0.0, 2.0], [16.0, 0.0, 2.0], [16.0, 16.0, 2.0]]
     )
     preserved_neighbor = add_owned_cdt_patch_face(
       owner.entities,
-      patch_domain_digest: 'neighbor-patch',
+      patch_id: 'cdt-patch-v1-c1-r0',
       face_index: 0,
       border_side: 'west',
-      points: [[3.0, 0.0, 1.0], [5.0, 0.0, 1.0], [3.0, 3.0, 1.0]]
+      points: [[16.0, 0.0, 2.0], [18.0, 0.0, 2.0], [16.0, 16.0, 2.0]]
     )
-    proof_runner = RecordingProofRunner.new(proof_result)
-    provider = RecordingRealPatchCdtReplacementProvider.new(proof_runner: proof_runner)
+    write_cdt_registry(owner, patch_id: patch_id, face_count: 1)
+    solver = RecordingStableDomainSolver.new
+    provider = RecordingStableDomainCdtReplacementProvider.new(solver: solver)
     mesh_generator = SU_MCP::Terrain::TerrainMeshGenerator.new(
       length_converter: ScalingLengthConverter.new(multiplier: 1.0),
       cdt_patch_replacement_provider: provider
     )
     commands = build_edit_commands(
       model: model,
-      repository: EditRepository.new(state_20x20),
+      repository: EditRepository.new(tiled_state_20x20),
       mesh_generator: mesh_generator,
       edit_evidence_builder: SU_MCP::Terrain::TerrainEditEvidenceBuilder.new,
       terrain_feature_intent_emitter: PatchRelevantFeatureIntentEmitter.new,
@@ -811,9 +840,9 @@ class TerrainSurfaceCommandsTest < Minitest::Test # rubocop:disable Metrics/Clas
       owner: owner,
       old_patch_face: old_patch_face,
       preserved_neighbor: preserved_neighbor,
-      patch_digest: patch_digest,
+      patch_id: patch_id,
       provider: provider,
-      proof_runner: proof_runner,
+      solver: solver,
       mesh_generator: mesh_generator,
       commands: commands
     }
@@ -822,17 +851,19 @@ class TerrainSurfaceCommandsTest < Minitest::Test # rubocop:disable Metrics/Clas
   def test_edit_aborts_operation_when_cdt_patch_mutation_fails_after_erase_begins
     model = build_semantic_model
     owner = managed_terrain_owner(model)
-    add_owned_cdt_patch_face(owner.entities, patch_domain_digest: 'patch-a', face_index: 0)
+    patch_id = 'cdt-patch-v1-c0-r0'
+    add_owned_cdt_patch_face(owner.entities, patch_id: patch_id, face_index: 0)
+    write_cdt_registry(owner, patch_id: patch_id, face_count: 1)
     raise_once_on_next_face_add(owner.entities)
     mesh_generator = SU_MCP::Terrain::TerrainMeshGenerator.new(
       length_converter: ScalingLengthConverter.new(multiplier: 1.0),
       cdt_patch_replacement_provider: RecordingPatchReplacementProvider.accepted(
-        domain_digest: 'patch-a'
+        patch_id: patch_id
       )
     )
     commands = build_edit_commands(
       model: model,
-      repository: EditRepository.new(state_4x4),
+      repository: EditRepository.new(tiled_state_20x20),
       mesh_generator: mesh_generator,
       terrain_feature_planner: EligibleCdtFeaturePlanner.new
     )
@@ -864,7 +895,8 @@ class TerrainSurfaceCommandsTest < Minitest::Test # rubocop:disable Metrics/Clas
   end
 
   def assert_cdt_patch_provider_received_eligible_dirty_window(provider)
-    assert_equal(:dirty_window, provider.last_build_args.fetch(:output_plan).intent)
+    batch_plan = provider.last_build_args.fetch(:batch_plan)
+    assert_includes(batch_plan.replacement_patch_ids, 'cdt-patch-v1-c0-r0')
     assert_equal(
       'eligible',
       provider.last_build_args.fetch(:feature_context).dig(:cdtParticipation, :status)
@@ -892,25 +924,34 @@ class TerrainSurfaceCommandsTest < Minitest::Test # rubocop:disable Metrics/Clas
     assert_equal(1, geometry.pressure_regions.length)
   end
 
-  def assert_real_provider_called_proof_boundary(context)
+  def assert_real_provider_called_stable_domain_solver(context)
     provider_args = context.fetch(:provider).last_build_args
-    proof_args = context.fetch(:proof_runner).last_run_args
+    solver_args = context.fetch(:solver).last_solve_args
 
-    assert_same(provider_args.fetch(:state), proof_args.fetch(:state))
-    assert_same(provider_args.fetch(:feature_geometry), proof_args.fetch(:feature_geometry))
-    assert_same(provider_args.fetch(:output_plan), proof_args.fetch(:output_plan))
-    assert_equal(true, proof_args.fetch(:include_debug_mesh))
+    assert_same(provider_args.fetch(:state), solver_args.fetch(:state))
+    assert_same(provider_args.fetch(:feature_geometry), solver_args.fetch(:feature_geometry))
     assert_equal(
-      SU_MCP::Terrain::PatchCdtReplacementProvider::DEFAULT_BASE_TOLERANCE,
-      proof_args.fetch(:base_tolerance)
+      provider_args.fetch(:batch_plan).replacement_patches,
+      solver_args.fetch(:replacement_patches)
     )
+    refute_includes(JSON.generate(solver_args), 'PatchCdtDomain')
+    refute_includes(JSON.generate(solver_args), 'debugMesh')
   end
 
-  def assert_dirty_patch_plan(plan)
-    assert_equal(:dirty_window, plan.intent)
-    refute(plan.cell_window.empty?)
-    refute(plan.cell_window.whole_grid?)
-    assert_equal(expected_changed_region_window, plan.window)
+  def assert_dirty_patch_batch_plan(batch_plan)
+    assert_includes(batch_plan.affected_patch_ids, 'cdt-patch-v1-c0-r0')
+    assert_includes(batch_plan.replacement_patch_ids, 'cdt-patch-v1-c0-r0')
+    refute_empty(batch_plan.replacement_patches)
+    feature_plan = batch_plan.feature_plan
+    assert(feature_plan.key?(:selectedFeaturePool))
+    refute_empty(feature_plan.fetch(:patchFeatureBundles))
+    assert_match(/\A[a-f0-9]{64}\z/, feature_plan.fetch(:featureSelectionDigest))
+    retained_spans = batch_plan.retained_boundary_spans
+    refute_empty(retained_spans)
+    assert_includes(
+      retained_spans.map { |span| span.fetch(:patchId) },
+      'cdt-patch-v1-c1-r0'
+    )
   end
 
   def assert_real_cdt_junction_mutation(context)
@@ -921,15 +962,35 @@ class TerrainSurfaceCommandsTest < Minitest::Test # rubocop:disable Metrics/Clas
     replacement_faces = owner.entities.faces.reject { |face| face.equal?(preserved_neighbor) }
 
     assert_equal(2, replacement_faces.length)
-    assert_replacement_faces_metadata(replacement_faces, context.fetch(:patch_digest))
+    assert_replacement_faces_metadata(replacement_faces, context.fetch(:patch_id))
   end
 
-  def assert_replacement_faces_metadata(replacement_faces, patch_digest)
+  def assert_real_cdt_timing_buckets(context)
+    buckets = context.fetch(:mesh_generator).last_cdt_patch_timing.fetch(:buckets)
+    %i[
+      command_prep
+      feature_selection
+      cdt_input_build
+      retained_boundary_snapshot
+      solve
+      topology_validation
+      ownership_lookup
+      seam_validation
+      mutation
+      registry_write
+      audit
+      total
+    ].each do |bucket|
+      assert(buckets.key?(bucket), "missing #{bucket} timing bucket")
+    end
+  end
+
+  def assert_replacement_faces_metadata(replacement_faces, patch_id)
     assert(replacement_faces.all? do |face|
       terrain_attribute(face, 'outputKind') == 'cdt_patch_face'
     end)
     assert(replacement_faces.all? do |face|
-      terrain_attribute(face, 'cdtPatchDomainDigest') == patch_digest
+      terrain_attribute(face, 'cdtPatchId') == patch_id
     end)
     assert(replacement_faces.all? do |face|
       terrain_attribute(face, 'cdtReplacementBatchId')
@@ -1140,57 +1201,40 @@ class TerrainSurfaceCommandsTest < Minitest::Test # rubocop:disable Metrics/Clas
     owner
   end
 
-  def add_owned_cdt_patch_face(entities, patch_domain_digest:, face_index:, points: nil,
-                               border_side: nil)
+  def add_owned_cdt_patch_face(entities, face_index:, patch_id:, points: nil, border_side: nil)
     face = entities.add_face(*(points || [[0.0, 0.0, 1.0], [2.0, 0.0, 1.0], [2.0, 2.0, 1.0]]))
     face.set_attribute('su_mcp_terrain', 'derivedOutput', true)
     face.set_attribute('su_mcp_terrain', 'outputKind', 'cdt_patch_face')
     face.set_attribute('su_mcp_terrain', 'cdtOwnershipSchemaVersion', 1)
-    face.set_attribute('su_mcp_terrain', 'cdtPatchDomainDigest', patch_domain_digest)
+    face.set_attribute('su_mcp_terrain', 'cdtPatchId', patch_id)
     face.set_attribute('su_mcp_terrain', 'cdtReplacementBatchId', 'old-batch')
     face.set_attribute('su_mcp_terrain', 'cdtPatchFaceIndex', face_index)
     face.set_attribute('su_mcp_terrain', 'cdtBorderSide', border_side) if border_side
     face
   end
 
-  def replacement_digest_for(proof_result)
-    SU_MCP::Terrain::PatchCdtReplacementResult.from_proof(
-      proof_result: proof_result,
-      feature_geometry: SU_MCP::Terrain::TerrainFeatureGeometry.new
-    ).patch_domain_digest
-  end
-
-  def junction_proof_result
-    {
-      status: 'accepted',
-      proofType: 'patch_local_incremental_residual_cdt_proof',
-      patchDomain: {
-        ownerLocalBounds: { minX: 0.0, minY: 0.0, maxX: 3.0, maxY: 3.0 },
-        sampleBounds: {
-          minColumn: 0,
-          minRow: 0,
-          maxColumn: 3,
-          maxRow: 3,
-          dirty: { minColumn: 0, minRow: 0, maxColumn: 1, maxRow: 1 }
-        },
-        sourceDimensions: { columns: 20, rows: 20 },
-        marginSamples: 2,
-        patchSampleCount: 16
-      },
-      topology: { passed: true, areaCoverageRatio: 1.0 },
-      residualQuality: { maxHeightError: 0.0 },
-      debugMesh: {
-        vertices: [
-          [0.0, 0.0, 1.0],
-          [3.0, 0.0, 1.0],
-          [3.0, 3.0, 1.0],
-          [0.0, 3.0, 1.0]
-        ],
-        triangles: [[0, 1, 2], [0, 2, 3]]
-      },
-      stopReason: 'residual_satisfied',
-      timing: { totalSeconds: 0.01 }
-    }
+  def write_cdt_registry(owner, patch_id:, face_count:)
+    SU_MCP::Terrain::PatchLifecycle::PatchRegistryStore.new(
+      registry_key: SU_MCP::Terrain::TerrainMeshGenerator::ADAPTIVE_PATCH_REGISTRY_KEY
+    ).write!(
+      owner: owner,
+      registry: {
+        outputPolicyFingerprint: nil,
+        stateDigest: 'digest-1',
+        stateRevision: 1,
+        ownerTransformSignature: nil,
+        patches: [
+          {
+            patchId: patch_id,
+            bounds: { minColumn: 0, minRow: 0, maxColumn: 15, maxRow: 15 },
+            outputBounds: { minColumn: 0, minRow: 0, maxColumn: 15, maxRow: 15 },
+            replacementBatchId: 'old-batch',
+            faceCount: face_count,
+            status: 'valid'
+          }
+        ]
+      }
+    )
   end
 
   def raise_once_on_next_face_add(entities)
@@ -1700,30 +1744,33 @@ class TerrainSurfaceCommandsTest < Minitest::Test # rubocop:disable Metrics/Clas
   class RecordingPatchReplacementProvider
     attr_reader :calls, :last_build_args
 
-    def self.accepted(domain_digest:)
-      new(PatchReplacementResultStub.accepted(domain_digest: domain_digest))
+    def self.accepted(patch_id: nil, domain_digest: nil)
+      new(accepted_patch_id: patch_id || domain_digest)
     end
 
-    def initialize(result)
-      @result = result
+    def initialize(accepted_patch_id:)
+      @accepted_patch_id = accepted_patch_id
       @calls = 0
     end
 
-    def build(state:, feature_geometry:, output_plan:, terrain_state_summary:, feature_context:)
+    def build(batch_plan:, state:, feature_geometry:, feature_context:, **)
       @calls += 1
       @last_build_args = {
+        batch_plan: batch_plan,
         state: state,
         feature_geometry: feature_geometry,
-        output_plan: output_plan,
-        terrain_state_summary: terrain_state_summary,
         feature_context: feature_context
       }
-      @result
+      PatchReplacementResultStub.accepted(
+        patch_id: @accepted_patch_id,
+        replacement_patch_ids: batch_plan.replacement_patch_ids,
+        replacement_patches: batch_plan.replacement_patches
+      )
     end
   end
 
-  class RecordingRealPatchCdtReplacementProvider <
-    SU_MCP::Terrain::PatchCdtReplacementProvider
+  class RecordingStableDomainCdtReplacementProvider <
+    SU_MCP::Terrain::StableDomainCdtReplacementProvider
     attr_reader :calls, :last_build_args
 
     def initialize(...)
@@ -1731,45 +1778,70 @@ class TerrainSurfaceCommandsTest < Minitest::Test # rubocop:disable Metrics/Clas
       @calls = 0
     end
 
-    def build(state:, feature_geometry:, output_plan:, terrain_state_summary:, feature_context:)
+    def build(batch_plan:, state:, feature_geometry:, feature_context:, **)
       @calls += 1
       @last_build_args = {
+        batch_plan: batch_plan,
         state: state,
         feature_geometry: feature_geometry,
-        output_plan: output_plan,
-        terrain_state_summary: terrain_state_summary,
         feature_context: feature_context
       }
       super
     end
   end
 
-  class RecordingProofRunner
-    attr_reader :calls, :last_run_args
+  class RecordingStableDomainSolver
+    attr_reader :calls, :last_solve_args
 
-    def initialize(proof_result)
-      @proof_result = proof_result
+    def initialize
       @calls = 0
     end
 
-    def run(**arguments)
+    def solve(**arguments)
       @calls += 1
-      @last_run_args = arguments
-      @proof_result
+      @last_solve_args = arguments
+      {
+        status: 'accepted',
+        topology: { passed: true },
+        mesh: {
+          vertices: [
+            [0.0, 0.0, 2.0],
+            [16.0, 0.0, 2.0],
+            [16.0, 16.0, 2.0],
+            [0.0, 16.0, 2.0]
+          ],
+          triangles: [[0, 1, 2], [0, 2, 3]]
+        },
+        borderSpans: [
+          {
+            side: 'east',
+            spanId: 'east-0',
+            patchId: 'cdt-patch-v1-c0-r0',
+            fresh: true,
+            protectedBoundaryCrossing: false,
+            vertices: [[16.0, 0.0, 2.0], [16.0, 16.0, 2.0]]
+          }
+        ],
+        residualQuality: { maxHeightError: 0.0 }
+      }
     end
   end
 
   class PatchReplacementResultStub
-    attr_reader :status, :mesh, :border_spans, :patch_domain_digest, :replacement_batch_id
+    attr_reader :status, :mesh, :border_spans, :replacement_patch_ids, :replacement_patches,
+                :replacement_batch_id, :state_digest, :policy_fingerprint
 
-    def self.accepted(domain_digest:)
-      new(domain_digest)
+    def self.accepted(patch_id:, replacement_patch_ids:, replacement_patches:)
+      new(patch_id, replacement_patch_ids, replacement_patches)
     end
 
-    def initialize(domain_digest)
+    def initialize(patch_id, replacement_patch_ids, replacement_patches)
       @status = 'accepted'
-      @patch_domain_digest = domain_digest
+      @replacement_patch_ids = replacement_patch_ids
+      @replacement_patches = replacement_patches
       @replacement_batch_id = 'new-batch'
+      @state_digest = 'digest-2'
+      @policy_fingerprint = 'fingerprint-2'
       @mesh = {
         vertices: [
           [0.0, 0.0, 1.0],
@@ -1779,7 +1851,16 @@ class TerrainSurfaceCommandsTest < Minitest::Test # rubocop:disable Metrics/Clas
         ],
         triangles: [[0, 1, 2], [0, 2, 3]]
       }
-      @border_spans = []
+      @border_spans = [
+        {
+          side: 'east',
+          spanId: 'east-0',
+          patchId: patch_id,
+          fresh: true,
+          protectedBoundaryCrossing: false,
+          vertices: [[2.0, 0.0, 1.0], [2.0, 2.0, 1.0]]
+        }
+      ]
     end
 
     def accepted?

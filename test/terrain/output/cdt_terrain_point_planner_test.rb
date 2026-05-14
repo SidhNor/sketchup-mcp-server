@@ -133,6 +133,32 @@ class CdtTerrainPointPlannerTest < Minitest::Test
     )
   end
 
+  def test_hard_protected_region_crossing_patch_domain_is_clipped_without_hard_failure
+    result = planner.plan(
+      state: planar_state(columns: 5, rows: 5),
+      feature_geometry: SU_MCP::Terrain::TerrainFeatureGeometry.new(
+        protectedRegions: [
+          { id: 'wide-preserve', featureId: 'preserve', role: 'protected',
+            strength: 'hard', primitive: 'rectangle',
+            ownerLocalBounds: [[-2.0, 1.0], [2.0, 3.0]] }
+        ]
+      ),
+      base_tolerance: 1.0,
+      max_point_budget: 4096
+    )
+
+    refute_includes(
+      result.fetch(:limitations).map { |item| item.fetch(:category) },
+      'hard_domain_violation'
+    )
+    assert_includes(result.fetch(:points), [0.0, 1.0])
+    assert_includes(result.fetch(:points), [2.0, 3.0])
+    assert_includes(
+      result.fetch(:limitations).map { |item| item.fetch(:category) },
+      'protected_region_clipped'
+    )
+  end
+
   private
 
   def assert_required_feature_seed_points(points)

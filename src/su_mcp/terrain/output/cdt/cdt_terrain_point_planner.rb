@@ -62,10 +62,8 @@ module SU_MCP
 
         strength = region.fetch('strength', 'hard')
         corners = protected_region_corners(region)
-        if strength == 'hard' && corners.any? { |point| !inside_domain?(point) }
-          hard_domain_violation(region.fetch('id', 'protected_region'))
-          return
-        end
+        corners = clipped_protected_corners(corners, region) if
+          strength == 'hard' && corners.any? { |point| !inside_domain?(point) }
 
         add_protected_corner_support(region, contain_corners(corners, region, strength), strength)
       end
@@ -84,6 +82,31 @@ module SU_MCP
         corners.map do |point|
           contain_point(point, strength: strength, source: region.fetch('id', 'protected_region'))
         end.compact
+      end
+
+      def clipped_protected_corners(corners, region)
+        min_x_value = corners.map(&:first).min.clamp(min_x, max_x)
+        max_x_value = corners.map(&:first).max.clamp(min_x, max_x)
+        min_y_value = corners.map(&:last).min.clamp(min_y, max_y)
+        max_y_value = corners.map(&:last).max.clamp(min_y, max_y)
+        if min_x_value >= max_x_value || min_y_value >= max_y_value
+          limitations << {
+            category: 'protected_region_outside_domain',
+            source: region.fetch('id', 'protected_region')
+          }
+          return []
+        end
+
+        limitations << {
+          category: 'protected_region_clipped',
+          source: region.fetch('id', 'protected_region')
+        }
+        [
+          [min_x_value, min_y_value],
+          [max_x_value, min_y_value],
+          [max_x_value, max_y_value],
+          [min_x_value, max_y_value]
+        ]
       end
 
       def add_protected_corner_support(region, corners, strength)

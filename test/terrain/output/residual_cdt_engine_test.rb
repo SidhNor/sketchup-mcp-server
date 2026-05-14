@@ -61,6 +61,26 @@ class ResidualCdtEngineTest < Minitest::Test
     assert_equal(probes.fetch(:passCount), probes.fetch(:pointCountByPass).length)
   end
 
+  def test_residual_refinement_spatially_thins_candidate_insertions
+    result = run_engine(
+      state: smooth_state(columns: 17, rows: 17),
+      height_error_meter: ClusteredResidualHeightErrorMeter.new,
+      residual_refinement_max_passes: 1,
+      residual_refinement_batch_size: 16,
+      residual_refinement_insert_batch_size: 3,
+      residual_refinement_spacing_factor: 2.0
+    )
+    residual = result.dig(:metrics, :residualRefinement)
+    probes = residual.fetch(:probes)
+
+    assert_equal(3, probes.fetch(:pointsAddedByPass).first)
+    assert_equal(7, result.fetch(:selectedPointCount))
+    assert_equal(3, residual.fetch(:insertBatchSize))
+    assert_equal(2.0, residual.fetch(:spacingFactor))
+    assert_equal(3, probes.fetch(:insertBatchSize))
+    assert_equal(2.0, probes.fetch(:spacingFactor))
+  end
+
   def test_residual_passes_use_injected_triangulation_adapter
     adapter = RecordingTriangulationAdapter.new
     result = run_engine(
@@ -84,6 +104,24 @@ class ResidualCdtEngineTest < Minitest::Test
     assert_operator(result.fetch(:selectedPointCount), :<, 17 * 17)
     assert_operator(result.dig(:metrics, :denseRatio), :<=, 0.25)
     assert_operator(result.dig(:metrics, :maxHeightError), :<=, 0.05)
+  end
+
+  def test_spatially_thinned_residuals_reduce_faces_without_breaking_tolerance
+    terrain_state = moderate_state(columns: 17, rows: 17)
+    old_like = run_engine(
+      state: terrain_state,
+      residual_refinement_insert_batch_size: 128,
+      residual_refinement_spacing_factor: 1.0
+    )
+    thinned = run_engine(state: terrain_state)
+
+    assert_operator(thinned.dig(:metrics, :faceCount), :<,
+                    old_like.dig(:metrics, :faceCount))
+    assert_operator(thinned.fetch(:selectedPointCount), :<,
+                    old_like.fetch(:selectedPointCount))
+    assert_operator(thinned.dig(:metrics, :maxHeightError), :<=, 0.05)
+    assert_equal('residual_satisfied',
+                 thinned.dig(:metrics, :residualRefinement, :stopReason))
   end
 
   def test_reports_phase_timing_for_cdt_compute_path
@@ -146,6 +184,23 @@ class ResidualCdtEngineTest < Minitest::Test
     assert_includes(JSON.generate(result.fetch(:limitations)), 'hard_domain_violation')
   end
 
+  def test_hard_protected_region_crossing_patch_domain_is_clipped_without_rejection
+    result = run_engine(
+      state: smooth_state(columns: 5, rows: 5),
+      feature_geometry: SU_MCP::Terrain::TerrainFeatureGeometry.new(
+        protectedRegions: [
+          { id: 'wide-preserve', featureId: 'preserve', role: 'protected',
+            strength: 'hard', primitive: 'rectangle',
+            ownerLocalBounds: [[-2.0, 1.0], [2.0, 3.0]] }
+        ]
+      )
+    )
+
+    assert_equal('accepted', result.fetch(:status))
+    assert_equal('none', result.fetch(:failureCategory))
+    refute_includes(JSON.generate(result.fetch(:limitations)), 'hard_domain_violation')
+  end
+
   def test_residual_stop_reason_can_report_max_passes
     result = run_engine(
       state: rough_state(columns: 33, rows: 33),
@@ -162,6 +217,20 @@ class ResidualCdtEngineTest < Minitest::Test
     ).run(**engine_input(state: rough_state(columns: 9, rows: 9)))
 
     assert_equal('stalled', result.dig(:metrics, :residualRefinement, :stopReason))
+  end
+
+  def test_recovery_path_runs_final_scan_after_last_insertion
+    result = SU_MCP::Terrain::ResidualCdtEngine.new(
+      height_error_meter: RecoveryFinalScanHeightErrorMeter.new,
+      residual_refinement_max_passes: 1,
+      residual_refinement_batch_size: 1,
+      residual_refinement_insert_batch_size: 1
+    ).run(**engine_input(state: smooth_state(columns: 17, rows: 17)))
+    residual = result.dig(:metrics, :residualRefinement)
+
+    assert_equal('residual_satisfied', residual.fetch(:stopReason))
+    assert_operator(residual.dig(:probes, :recoveryPassCount), :>, 0)
+    assert_operator(residual.dig(:probes, :finalScanCount), :>, 1)
   end
 
   def test_point_budget_exhaustion_returns_before_triangulation
@@ -226,6 +295,15 @@ class ResidualCdtEngineTest < Minitest::Test
     state_with(columns: columns, rows: rows, elevations: elevations, id: 'rough-cdt-state')
   end
 
+  def moderate_state(columns:, rows:)
+    elevations = Array.new(columns * rows) do |index|
+      column = index % columns
+      row = index / columns
+      (Math.sin(column * 0.45) * 2.0) + (Math.cos(row * 0.37) * 1.5)
+    end
+    state_with(columns: columns, rows: rows, elevations: elevations, id: 'moderate-cdt-state')
+  end
+
   def state_with(columns:, rows:, elevations:, id:)
     SU_MCP::Terrain::TiledHeightmapState.new(
       basis: BASIS,
@@ -275,6 +353,50 @@ class ResidualCdtEngineTest < Minitest::Test
 
     def max_error(...)
       1.0
+    end
+  end
+
+  class ClusteredResidualHeightErrorMeter
+    SAMPLES = [
+      { point: [4.0, 4.0], column: 4, row: 4, error: 1.0, residualExcess: 0.95 },
+      { point: [4.0, 5.0], column: 4, row: 5, error: 0.95, residualExcess: 0.90 },
+      { point: [5.0, 4.0], column: 5, row: 4, error: 0.90, residualExcess: 0.85 },
+      { point: [15.0, 15.0], column: 15, row: 15, error: 0.85, residualExcess: 0.80 },
+      { point: [15.0, 16.0], column: 15, row: 16, error: 0.80, residualExcess: 0.75 },
+      { point: [8.0, 8.0], column: 8, row: 8, error: 0.75, residualExcess: 0.70 }
+    ].freeze
+
+    def initialize
+      @sample_calls = 0
+    end
+
+    def worst_samples_with_local_tolerance(limit:, **)
+      @sample_calls += 1
+      return [] if @sample_calls > 1
+
+      SAMPLES.first(limit)
+    end
+
+    def max_error(...)
+      0.05
+    end
+  end
+
+  class RecoveryFinalScanHeightErrorMeter
+    def initialize
+      @sample_calls = 0
+    end
+
+    def worst_samples_with_local_tolerance(limit:, **)
+      @sample_calls += 1
+      return [] if @sample_calls > 3
+
+      [{ point: [@sample_calls.to_f, @sample_calls.to_f], residualExcess: 1.0 }]
+        .first(limit)
+    end
+
+    def max_error(...)
+      0.05
     end
   end
 

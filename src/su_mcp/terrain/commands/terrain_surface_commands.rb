@@ -17,8 +17,12 @@ require_relative '../edits/survey_point_constraint_edit'
 require_relative '../features/terrain_feature_intent_emitter'
 require_relative '../features/terrain_feature_planner'
 require_relative '../evidence/terrain_edit_evidence_builder'
+require_relative '../output/cdt/patches/cdt_patch_policy'
 require_relative '../output/patch_lifecycle/patch_grid_policy'
+require_relative '../output/patch_lifecycle/patch_timing'
+require_relative '../output/patch_lifecycle/patch_window_resolver'
 require_relative '../output/terrain_mesh_generator'
+require_relative '../output/terrain_output_stack_factory'
 require_relative '../output/terrain_output_plan'
 require_relative '../storage/terrain_repository'
 require_relative '../adoption/terrain_surface_adoption_sampler'
@@ -40,7 +44,7 @@ module SU_MCP
         validator: nil,
         state_builder: TerrainSurfaceStateBuilder.new,
         repository: TerrainRepository.new,
-        mesh_generator: TerrainMeshGenerator.new,
+        mesh_generator: TerrainOutputStackFactory.new.mesh_generator,
         evidence_builder: TerrainSurfaceEvidenceBuilder.new,
         adoption_sampler: TerrainSurfaceAdoptionSampler.new,
         metadata_writer: Semantic::ManagedObjectMetadata.new,
@@ -216,12 +220,25 @@ module SU_MCP
 
       def regenerate_edit_output(context, saved, feature_plan, feature_state)
         output_state = context.fetch(:edit_result).fetch(:state)
+        output_state = feature_state if cdt_output_enabled?
+        timing = cdt_output_enabled? ? PatchLifecycle::PatchTiming.new : nil
+        output_plan = measure_cdt_timing(timing, :command_prep) do
+          edit_output_plan(context, saved, feature_plan, output_state)
+        end
+        feature_context = cdt_feature_context(feature_plan, feature_state)
+        feature_context = cdt_patch_feature_context(
+          state: feature_state,
+          saved: saved,
+          output_plan: output_plan,
+          feature_context: feature_context,
+          timing: timing
+        )
         mesh_generator.regenerate(
           owner: context.fetch(:owner),
           state: output_state,
           terrain_state_summary: saved.fetch(:summary),
-          output_plan: edit_output_plan(context, saved, feature_plan, output_state),
-          feature_context: cdt_feature_context(feature_plan, feature_state)
+          output_plan: output_plan,
+          feature_context: feature_context
         )
       end
 
@@ -229,6 +246,36 @@ module SU_MCP
         return nil unless cdt_output_enabled?
 
         feature_plan.fetch(:context).merge(terrainState: feature_state)
+      end
+
+      def cdt_patch_feature_context(state:, saved:, output_plan:, feature_context:, timing: nil)
+        return feature_context unless feature_context
+        return feature_context unless output_plan.adaptive_patch_policy
+        return feature_context unless output_plan.intent == :dirty_window
+        return feature_context unless terrain_feature_planner.respond_to?(:prepare_patch_batch)
+
+        resolver = PatchLifecycle::PatchWindowResolver.new(
+          policy: output_plan.adaptive_patch_policy,
+          dimensions: state.dimensions
+        )
+        resolution = resolver.resolve(cell_window: output_plan.cell_window)
+        feature_context.merge(
+          patchFeaturePlan: measure_cdt_timing(timing, :feature_selection) do
+            terrain_feature_planner.prepare_patch_batch(
+              state: state,
+              terrain_state_summary: saved.fetch(:summary),
+              lifecycle_resolution: resolution,
+              base_context: feature_context
+            )
+          end,
+          cdtTiming: timing&.to_h
+        )
+      end
+
+      def measure_cdt_timing(timing, bucket, &block)
+        return block.call unless timing
+
+        timing.measure(bucket, &block)
       end
 
       def cdt_output_enabled?
@@ -391,8 +438,12 @@ module SU_MCP
       end
 
       def adaptive_patch_policy_for(state)
-        return nil if cdt_output_enabled?
         return nil unless TerrainOutputPlan.adaptive_state?(state)
+
+        if cdt_output_enabled?
+          # CDT keeps unaffected neighbors as retained-boundary evidence, not replacement patches.
+          return CdtPatchPolicy.new
+        end
 
         PatchLifecycle::PatchGridPolicy.new(
           patch_id_prefix: 'adaptive-patch',

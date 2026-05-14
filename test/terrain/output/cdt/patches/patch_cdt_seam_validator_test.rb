@@ -10,7 +10,8 @@ class PatchCdtSeamValidatorTest < Minitest::Test
         span(:east, [[2.0, 0.0, 1.0], [2.0, 1.0, 1.5], [2.0, 2.0, 2.0]])
       ],
       preserved_neighbor_spans: [
-        span(:west, [[2.0, 2.0, 2.0], [2.0, 0.0, 1.0]], patch_domain_digest: 'neighbor')
+        span(:west, [[2.0, 2.0, 2.0], [2.0, 0.0, 1.0]],
+             patch_id: 'cdt-patch-v1-c1-r0')
       ]
     )
 
@@ -23,12 +24,62 @@ class PatchCdtSeamValidatorTest < Minitest::Test
     result = validator.validate(
       replacement_spans: [span(:east, [[2.0, 0.0, 1.0], [2.0, 2.0, 1.0]])],
       preserved_neighbor_spans: [
-        span(:west, [[2.0, 0.0, 1.0], [2.0, 2.0, 1.2]], patch_domain_digest: 'neighbor')
+        span(:west, [[2.0, 0.0, 1.0], [2.0, 2.0, 1.2]],
+             patch_id: 'cdt-patch-v1-c1-r0')
       ]
     )
 
     assert_equal('failed', result.fetch(:status))
     assert_equal('z_tolerance_exceeded', result.fetch(:reason))
+  end
+
+  def test_accepts_lifecycle_patch_id_neighbor_evidence
+    result = validator.validate(
+      replacement_spans: [
+        span(:east, [[2.0, 0.0, 1.0], [2.0, 2.0, 1.0]], patch_id: 'cdt-patch-v1-c0-r0')
+      ],
+      preserved_neighbor_spans: [
+        span(:west, [[2.0, 0.0, 1.0], [2.0, 2.0, 1.0]],
+             patch_id: 'cdt-patch-v1-c1-r0')
+      ]
+    )
+
+    assert_equal('passed', result.fetch(:status))
+  end
+
+  def test_accepts_ordered_multiple_neighbor_spans_per_side
+    result = validator.validate(
+      replacement_spans: [
+        span(:east, [[2.0, 0.0, 1.0], [2.0, 1.0, 1.2], [2.0, 2.0, 1.4]],
+             patch_id: 'cdt-patch-v1-c0-r0')
+      ],
+      preserved_neighbor_spans: [
+        span(:west, [[2.0, 0.0, 1.0], [2.0, 1.0, 1.2]],
+             patch_id: 'cdt-patch-v1-c1-r0', span_id: 'west-0'),
+        span(:west, [[2.0, 1.0, 1.2], [2.0, 2.0, 1.4]],
+             patch_id: 'cdt-patch-v1-c1-r1', span_id: 'west-1')
+      ]
+    )
+
+    assert_equal('passed', result.fetch(:status))
+  end
+
+  def test_rejects_gap_between_ordered_neighbor_spans
+    result = validator.validate(
+      replacement_spans: [
+        span(:east, [[2.0, 0.0, 1.0], [2.0, 2.0, 1.0]],
+             patch_id: 'cdt-patch-v1-c0-r0')
+      ],
+      preserved_neighbor_spans: [
+        span(:west, [[2.0, 0.0, 1.0], [2.0, 0.9, 1.0]],
+             patch_id: 'cdt-patch-v1-c1-r0', span_id: 'west-0'),
+        span(:west, [[2.0, 1.1, 1.0], [2.0, 2.0, 1.0]],
+             patch_id: 'cdt-patch-v1-c1-r1', span_id: 'west-1')
+      ]
+    )
+
+    assert_equal('failed', result.fetch(:status))
+    assert_equal('open_gap', result.fetch(:reason))
   end
 
   def test_rejects_duplicate_border_vertices
@@ -46,7 +97,7 @@ class PatchCdtSeamValidatorTest < Minitest::Test
       replacement_spans: [span(:east, [[2.0, 0.0, 1.0], [2.0, 2.0, 1.0]])],
       preserved_neighbor_spans: [
         span(:west, [[2.0, 0.0, 1.0], [2.0, 2.0, 1.0]], fresh: false,
-                                                        patch_domain_digest: 'neighbor')
+                                                        patch_id: 'cdt-patch-v1-c1-r0')
       ]
     )
 
@@ -54,15 +105,32 @@ class PatchCdtSeamValidatorTest < Minitest::Test
     assert_equal('stale_neighbor_evidence', result.fetch(:reason))
   end
 
-  def test_rejects_neighbor_snapshot_with_mismatched_expected_digest
+  def test_rejects_neighbor_snapshot_without_lifecycle_patch_id
+    result = validator.validate(
+      replacement_spans: [span(:east, [[2.0, 0.0, 1.0], [2.0, 2.0, 1.0]])],
+      preserved_neighbor_spans: [
+        {
+          side: 'west',
+          spanId: 'west-0',
+          fresh: true,
+          vertices: [[2.0, 0.0, 1.0], [2.0, 2.0, 1.0]]
+        }
+      ]
+    )
+
+    assert_equal('failed', result.fetch(:status))
+    assert_equal('stale_neighbor_evidence', result.fetch(:reason))
+  end
+
+  def test_rejects_neighbor_snapshot_with_mismatched_expected_patch_id
     result = validator.validate(
       replacement_spans: [span(:east, [[2.0, 0.0, 1.0], [2.0, 2.0, 1.0]])],
       preserved_neighbor_spans: [
         span(
           :west,
           [[2.0, 0.0, 1.0], [2.0, 2.0, 1.0]],
-          patch_domain_digest: 'stale-neighbor',
-          expected_patch_domain_digest: 'fresh-neighbor'
+          patch_id: 'stale-neighbor',
+          expected_patch_id: 'fresh-neighbor'
         )
       ]
     )
@@ -89,13 +157,14 @@ class PatchCdtSeamValidatorTest < Minitest::Test
     SU_MCP::Terrain::PatchCdtSeamValidator.new(xy_tolerance: 1e-6, z_tolerance: 0.05)
   end
 
-  def span(side, vertices, fresh: true, patch_domain_digest: 'replacement',
-           expected_patch_domain_digest: nil, protected_boundary_crossing: false)
+  def span(side, vertices, fresh: true, patch_id: nil,
+           span_id: nil,
+           expected_patch_id: nil, protected_boundary_crossing: false)
     {
       side: side.to_s,
-      spanId: "#{side}-0",
-      patchDomainDigest: patch_domain_digest,
-      expectedPatchDomainDigest: expected_patch_domain_digest,
+      spanId: span_id || "#{side}-0",
+      patchId: patch_id || 'replacement',
+      expectedPatchId: expected_patch_id,
       fresh: fresh,
       protectedBoundaryCrossing: protected_boundary_crossing,
       vertices: vertices

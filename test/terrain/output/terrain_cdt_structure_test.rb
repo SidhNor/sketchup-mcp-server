@@ -7,7 +7,7 @@ class TerrainCdtStructureTest < Minitest::Test
   CDT_ROOT = File.join(OUTPUT_ROOT, 'cdt')
   PROBES_ROOT = File.expand_path('../../../src/su_mcp/terrain/probes', __dir__)
 
-  def test_cdt_facade_files_remain_flat_and_patch_proof_has_named_ownership
+  def test_cdt_facade_files_remain_flat_and_patch_lifecycle_sources_are_current
     assert_equal(
       %w[
         cdt_height_error_meter.rb
@@ -23,18 +23,13 @@ class TerrainCdtStructureTest < Minitest::Test
     )
     assert_equal(
       %w[
-        patch_affected_region_updater.rb
-        patch_boundary_topology.rb
-        patch_cdt_domain.rb
-        patch_cdt_replacement_provider.rb
-        patch_cdt_replacement_result.rb
+        cdt_lifecycle_ownership.rb
+        cdt_patch_batch_plan.rb
+        cdt_patch_policy.rb
         patch_cdt_seam_validator.rb
-        patch_debug_mesh_renderer.rb
-        patch_height_error_meter.rb
-        patch_local_cdt_proof.rb
-        patch_residual_candidate_tracker.rb
-        patch_seed_topology_builder.rb
-        patch_topology_quality_meter.rb
+        stable_domain_cdt_replacement_provider.rb
+        stable_domain_cdt_replacement_result.rb
+        stable_domain_cdt_solver.rb
       ],
       basenames_under(File.join(CDT_ROOT, 'patches'))
     )

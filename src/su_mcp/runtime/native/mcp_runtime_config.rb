@@ -7,12 +7,22 @@ module SU_MCP
     DEFAULT_PORT = 9877
     HOST_KEYS = %w[SKETCHUP_MCP_RUNTIME_BIND_HOST SKETCHUP_MCP_SPIKE_BIND_HOST].freeze
     PORT_KEYS = %w[SKETCHUP_MCP_RUNTIME_PORT SKETCHUP_MCP_SPIKE_PORT].freeze
+    TERRAIN_OUTPUT_MODE_KEYS = %w[
+      SKETCHUP_MCP_TERRAIN_SIMPLIFIER
+      SKETCHUP_MCP_TERRAIN_OUTPUT_MODE
+    ].freeze
+    DEFAULT_TERRAIN_OUTPUT_MODE = 'adaptive'
 
-    attr_reader :host, :port
+    attr_reader :host, :port, :terrain_output_mode
 
     def initialize(env: ENV)
       @host = env_value(env, HOST_KEYS, DEFAULT_HOST)
       @port = integer_env_value(env, PORT_KEYS, DEFAULT_PORT)
+      @terrain_output_mode = env_value(
+        env,
+        TERRAIN_OUTPUT_MODE_KEYS,
+        DEFAULT_TERRAIN_OUTPUT_MODE
+      )
     end
 
     private

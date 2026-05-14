@@ -1,12 +1,12 @@
 # frozen_string_literal: true
 
-require_relative '../output/cdt/patches/patch_cdt_domain'
 require_relative 'feature_intent_set'
 
 module SU_MCP
   module Terrain
     # Filters active effective terrain features to the local patch they can affect.
     class PatchRelevantFeatureSelector
+      DEFAULT_MARGIN_SAMPLES = 2
       STRENGTH_KEYS = %i[hard firm soft].freeze
       DEFAULT_FALLBACK_TRIGGERS = {
         patch_relevant_hard_primitive_unsupported: 0,
@@ -15,7 +15,7 @@ module SU_MCP
         patch_relevant_budget_overflow: 0
       }.freeze
 
-      def initialize(margin_samples: PatchCdtDomain::DEFAULT_MARGIN_SAMPLES)
+      def initialize(margin_samples: DEFAULT_MARGIN_SAMPLES)
         @margin_samples = margin_samples
       end
 
@@ -71,13 +71,14 @@ module SU_MCP
       end
 
       def normalized_patch(state, window)
-        if patch_domain_like?(window)
+        if lifecycle_patch_domain_like?(window)
+          bounds = window.fetch(:bounds) { window.fetch('bounds') }
           return patch_hash(
             state,
-            min_column: window.min_column,
-            min_row: window.min_row,
-            max_column: window.max_column,
-            max_row: window.max_row
+            min_column: bounds.fetch(:minColumn) { bounds.fetch('minColumn') },
+            min_row: bounds.fetch(:minRow) { bounds.fetch('minRow') },
+            max_column: bounds.fetch(:maxColumn) { bounds.fetch('maxColumn') },
+            max_row: bounds.fetch(:maxRow) { bounds.fetch('maxRow') }
           )
         end
 
@@ -91,11 +92,10 @@ module SU_MCP
         )
       end
 
-      def patch_domain_like?(value)
-        value.respond_to?(:dirty_window) &&
-          %i[min_column min_row max_column max_row owner_local_bounds].all? do |method_name|
-            value.respond_to?(method_name)
-          end
+      def lifecycle_patch_domain_like?(value)
+        value.is_a?(Hash) &&
+          (value.key?(:patchId) || value.key?('patchId')) &&
+          (value.key?(:bounds) || value.key?('bounds'))
       end
 
       def normalized_window(value)

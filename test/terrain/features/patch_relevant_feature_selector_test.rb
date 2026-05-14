@@ -3,7 +3,6 @@
 require_relative '../../test_helper'
 require_relative '../../../src/su_mcp/terrain/features/feature_intent_set'
 require_relative '../../../src/su_mcp/terrain/features/patch_relevant_feature_selector'
-require_relative '../../../src/su_mcp/terrain/output/cdt/patches/patch_cdt_domain'
 require_relative '../../../src/su_mcp/terrain/regions/sample_window'
 require_relative '../../../src/su_mcp/terrain/state/tiled_heightmap_state'
 
@@ -15,7 +14,7 @@ class PatchRelevantFeatureSelectorTest < Minitest::Test
     'vertical' => 'z_up'
   }.freeze
 
-  def test_normalizes_hash_sample_window_and_patch_domain_to_same_expanded_patch
+  def test_normalizes_hash_sample_window_and_lifecycle_patch_domain_to_same_patch
     features = normalized_features([
                                      fixed_feature('inside-hard', point: [5.0, 5.0]),
                                      fixed_feature('far-hard', point: [14.0, 14.0],
@@ -23,15 +22,18 @@ class PatchRelevantFeatureSelectorTest < Minitest::Test
                                    ])
     hash_selection = selector.select(state: state, features: features, window: changed_region)
     sample_selection = selector.select(state: state, features: features, window: sample_window)
-    domain_selection = selector.select(
+    lifecycle_domain_selection = selector.select(
       state: state,
       features: features,
-      window: SU_MCP::Terrain::PatchCdtDomain.from_window(state: state, window: sample_window)
+      window: {
+        patchId: 'cdt-patch-v1-c0-r0',
+        bounds: { minColumn: 2, minRow: 2, maxColumn: 7, maxRow: 7 }
+      }
     )
 
     assert_equal(%w[inside-hard], selected_ids(hash_selection))
     assert_equal(selected_ids(hash_selection), selected_ids(sample_selection))
-    assert_equal(selected_ids(hash_selection), selected_ids(domain_selection))
+    assert_equal(selected_ids(hash_selection), selected_ids(lifecycle_domain_selection))
     assert_equal(
       { minColumn: 2, minRow: 2, maxColumn: 7, maxRow: 7 },
       hash_selection.fetch(:diagnostics).fetch(:patchWindow)

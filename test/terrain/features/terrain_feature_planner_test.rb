@@ -369,7 +369,7 @@ class TerrainFeaturePlannerTest < Minitest::Test
     )
   end
 
-  def test_prepare_budget_overflow_skips_cdt_with_internal_missed_locality_diagnostics
+  def test_prepare_budget_overflow_stays_cdt_eligible_with_internal_diagnostics
     broad = feature('linear_corridor').merge(
       'id' => 'feature:linear_corridor:explicit_edit:broad:aaaaaaaaaaaa',
       'semanticScope' => 'broad',
@@ -392,7 +392,10 @@ class TerrainFeaturePlannerTest < Minitest::Test
     )
 
     assert_equal('prepared', result.fetch(:outcome))
-    assert_equal({ status: 'skip' }, result.dig(:context, :cdtParticipation))
+    assert_equal(
+      { status: 'eligible', budgetStatus: 'over_limit' },
+      result.dig(:context, :cdtParticipation)
+    )
     assert_equal(
       1,
       result.dig(
@@ -452,6 +455,34 @@ class TerrainFeaturePlannerTest < Minitest::Test
 
     assert_equal(1, result.fetch(:expectedFeatureBreaks).length)
     assert_equal(1, result.fetch(:suspiciousCrossFeatureEdges).length)
+  end
+
+  def test_prepare_patch_batch_tags_conformance_retained_boundary_and_safety_roles
+    result = normal_planner.prepare_patch_batch(
+      state: state_with_features([feature('target_region')]),
+      terrain_state_summary: { digest: 'digest-feature' },
+      lifecycle_resolution: {
+        affectedPatchIds: ['cdt-patch-v1-c0-r0'],
+        replacementPatchIds: %w[cdt-patch-v1-c0-r0 cdt-patch-v1-c1-r0],
+        affectedPatches: [lifecycle_patch('cdt-patch-v1-c0-r0')],
+        replacementPatches: [
+          lifecycle_patch('cdt-patch-v1-c0-r0'),
+          lifecycle_patch('cdt-patch-v1-c1-r0')
+        ],
+        retainedBoundaryPatches: [lifecycle_patch('cdt-patch-v1-c0-r1')],
+        safetyMarginPatches: [lifecycle_patch('cdt-patch-v1-c1-r1')]
+      },
+      base_context: {}
+    )
+
+    bundles = result.fetch(:patchFeatureBundles)
+    assert_includes(bundles.fetch('cdt-patch-v1-c1-r0').fetch(:inclusionReasons), 'conformance')
+    assert_includes(
+      bundles.fetch('cdt-patch-v1-c0-r1').fetch(:inclusionReasons),
+      'retained_boundary'
+    )
+    assert_includes(bundles.fetch('cdt-patch-v1-c1-r1').fetch(:inclusionReasons),
+                    'safety_margin')
   end
 
   private
@@ -518,6 +549,14 @@ class TerrainFeaturePlannerTest < Minitest::Test
 
   def far_window
     { 'min' => { 'column' => 10, 'row' => 10 }, 'max' => { 'column' => 12, 'row' => 12 } }
+  end
+
+  def lifecycle_patch(patch_id)
+    {
+      patchId: patch_id,
+      bounds: { minColumn: 0, minRow: 0, maxColumn: 1, maxRow: 1 },
+      sampleBounds: { minColumn: 0, minRow: 0, maxColumn: 1, maxRow: 1 }
+    }
   end
 
   def refute_public_feature_leak(result)

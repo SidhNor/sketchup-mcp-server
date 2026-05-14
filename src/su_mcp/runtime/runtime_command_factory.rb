@@ -10,13 +10,15 @@ require_relative '../semantic/hierarchy_maintenance_commands'
 require_relative '../semantic/semantic_commands'
 require_relative '../staged_assets/staged_asset_commands'
 require_relative '../terrain/commands/terrain_surface_commands'
+require_relative '../terrain/output/terrain_output_stack_factory'
 
 module SU_MCP
   # Builds the shared Ruby command collaborators used by both runtime paths.
   class RuntimeCommandFactory
-    def initialize(logger: nil, model_adapter: nil)
+    def initialize(logger: nil, model_adapter: nil, terrain_output_stack_factory: nil)
       @logger = logger
       @model_adapter = model_adapter
+      @terrain_output_stack_factory = terrain_output_stack_factory
     end
 
     def build_command_targets
@@ -51,7 +53,8 @@ module SU_MCP
 
     def terrain_surface_commands
       @terrain_surface_commands ||= Terrain::TerrainSurfaceCommands.new(
-        model: Sketchup.active_model
+        model: Sketchup.active_model,
+        mesh_generator: terrain_output_stack_factory.mesh_generator
       )
     end
 
@@ -84,6 +87,10 @@ module SU_MCP
 
     def model_adapter
       @model_adapter ||= Adapters::ModelAdapter.new
+    end
+
+    def terrain_output_stack_factory
+      @terrain_output_stack_factory ||= Terrain::TerrainOutputStackFactory.new
     end
   end
 end

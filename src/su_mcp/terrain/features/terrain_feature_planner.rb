@@ -1,5 +1,8 @@
 # frozen_string_literal: true
 
+require 'digest'
+require 'json'
+
 require_relative 'feature_intent_set'
 require_relative 'effective_feature_view'
 require_relative 'patch_relevant_feature_selector'
@@ -8,6 +11,7 @@ require_relative 'terrain_feature_geometry_builder'
 module SU_MCP
   module Terrain
     # Runtime-only feature planning, validation, and diagnostic context.
+    # rubocop:disable Metrics/ClassLength
     class TerrainFeaturePlanner
       def initialize(max_lane_samples_per_feature: nil, max_lane_samples_per_plan: nil,
                      feature_geometry_builder: TerrainFeatureGeometryBuilder.new,
@@ -66,6 +70,33 @@ module SU_MCP
           message: 'Terrain feature intent effective index is invalid.',
           internal_details: { category: 'feature_effective_index', featureCount: 0 }
         )
+      end
+
+      def prepare_patch_batch(state:, terrain_state_summary:, lifecycle_resolution:,
+                              base_context:)
+        effective_features = EffectiveFeatureView
+                             .new(state.feature_intent)
+                             .selection
+                             .fetch(:features)
+        bundles = patch_feature_bundles(state, effective_features, lifecycle_resolution)
+        selected_ids = bundles.values.flat_map { |bundle| bundle.fetch(:featureIds) }.uniq.sort
+        selected_features = effective_features.select do |feature|
+          selected_ids.include?(feature.fetch('id'))
+        end
+        geometry = base_context[:featureGeometry] || base_context['featureGeometry'] ||
+                   feature_geometry_builder.build(state: state, features: selected_features)
+        {
+          selectedFeaturePool: selected_features.map { |feature| selected_feature_entry(feature) },
+          patchFeatureBundles: bundles,
+          featureGeometry: geometry,
+          featureGeometryDigest: geometry.feature_geometry_digest,
+          featureSelectionDigest: feature_selection_digest(selected_ids, lifecycle_resolution),
+          terrainStateDigest: terrain_state_summary.fetch(:digest),
+          counts: {
+            selectedFeatures: selected_features.length,
+            patchBundles: bundles.length
+          }
+        }
       end
 
       def classify_topology(context:, topology:)
@@ -254,6 +285,72 @@ module SU_MCP
         plan
       end
 
+      def patch_feature_bundles(state, features, lifecycle_resolution)
+        affected_ids = Array(lifecycle_resolution.fetch(:affectedPatchIds))
+        replacement_patches = Array(lifecycle_resolution.fetch(:replacementPatches))
+        role_patches = [
+          ['affected', Array(lifecycle_resolution.fetch(:affectedPatches))],
+          ['replacement', replacement_patches],
+          ['conformance', conformance_patches(replacement_patches, affected_ids)],
+          ['retained_boundary', optional_lifecycle_patches(
+            lifecycle_resolution,
+            :retainedBoundaryPatches
+          )],
+          ['safety_margin', optional_lifecycle_patches(lifecycle_resolution, :safetyMarginPatches)]
+        ]
+        role_patches.each_with_object({}) do |(role, patches), bundles|
+          patches.each do |patch|
+            selection = patch_relevant_feature_selector.select(
+              state: state,
+              features: features,
+              window: patch
+            )
+            patch_id = patch.fetch(:patchId)
+            bundle = bundles[patch_id] ||= {
+              patchId: patch_id,
+              featureIds: [],
+              inclusionReasons: []
+            }
+            bundle.fetch(:featureIds).concat(
+              selection.fetch(:features).map { |feature| feature.fetch('id') }
+            )
+            bundle.fetch(:featureIds).uniq!
+            bundle.fetch(:inclusionReasons) << role unless
+              bundle.fetch(:inclusionReasons).include?(role)
+          end
+        end
+      end
+
+      def conformance_patches(replacement_patches, affected_ids)
+        return [] if affected_ids.empty?
+
+        replacement_patches.reject { |patch| affected_ids.include?(patch.fetch(:patchId)) }
+      end
+
+      def optional_lifecycle_patches(lifecycle_resolution, key)
+        lifecycle_resolution.fetch(key) do
+          lifecycle_resolution.fetch(key.to_s, [])
+        end
+      end
+
+      def selected_feature_entry(feature)
+        {
+          id: feature.fetch('id'),
+          kind: feature.fetch('kind'),
+          roles: Array(feature.fetch('roles', []))
+        }
+      end
+
+      def feature_selection_digest(selected_ids, lifecycle_resolution)
+        Digest::SHA256.hexdigest(
+          JSON.generate(
+            selectedFeatureIds: selected_ids,
+            affectedPatchIds: lifecycle_resolution.fetch(:affectedPatchIds),
+            replacementPatchIds: lifecycle_resolution.fetch(:replacementPatchIds)
+          )
+        )
+      end
+
       def prepare_context(terrain_state_summary, constraints, feature_plan)
         {
           terrainStateDigest: terrain_state_summary.fetch(:digest),
@@ -284,7 +381,7 @@ module SU_MCP
         return unless projected_count > max_lane_samples_per_plan
 
         diagnostics.fetch(:cdtFallbackTriggers)[:patch_relevant_budget_overflow] += 1
-        cdt_participation[:status] = 'skip'
+        cdt_participation[:budgetStatus] = 'over_limit'
       end
 
       def apply_feature_geometry_gate!(feature_geometry, diagnostics, cdt_participation)
@@ -398,5 +495,6 @@ module SU_MCP
         state.elevations.fetch((row * state.dimensions.fetch('columns')) + column)
       end
     end
+    # rubocop:enable Metrics/ClassLength
   end
 end

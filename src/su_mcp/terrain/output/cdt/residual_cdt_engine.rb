@@ -12,6 +12,8 @@ module SU_MCP
     class ResidualCdtEngine # rubocop:disable Metrics/ClassLength
       RESIDUAL_REFINEMENT_POINT_RATIO = 1.0
       RESIDUAL_REFINEMENT_BATCH_SIZE = 128
+      RESIDUAL_REFINEMENT_INSERT_BATCH_SIZE = 32
+      RESIDUAL_REFINEMENT_SPACING_FACTOR = 2.0
       RESIDUAL_REFINEMENT_MAX_PASSES = 24
       POINT_KEY_PRECISION = 9
 
@@ -32,7 +34,9 @@ module SU_MCP
         triangulator: nil,
         residual_refinement_point_ratio: RESIDUAL_REFINEMENT_POINT_RATIO,
         residual_refinement_max_passes: RESIDUAL_REFINEMENT_MAX_PASSES,
-        residual_refinement_batch_size: RESIDUAL_REFINEMENT_BATCH_SIZE
+        residual_refinement_batch_size: RESIDUAL_REFINEMENT_BATCH_SIZE,
+        residual_refinement_insert_batch_size: RESIDUAL_REFINEMENT_INSERT_BATCH_SIZE,
+        residual_refinement_spacing_factor: RESIDUAL_REFINEMENT_SPACING_FACTOR
       )
         @point_planner = point_planner
         @height_error_meter = height_error_meter
@@ -48,6 +52,10 @@ module SU_MCP
         @residual_refinement_batch_size = normalized_residual_refinement_batch_size(
           residual_refinement_batch_size
         )
+        @residual_refinement_insert_batch_size =
+          normalized_residual_refinement_insert_batch_size(residual_refinement_insert_batch_size)
+        @residual_refinement_spacing_factor =
+          normalized_residual_refinement_spacing_factor(residual_refinement_spacing_factor)
       end
 
       def run(state:, feature_geometry:, base_tolerance:, max_point_budget:,
@@ -67,7 +75,8 @@ module SU_MCP
 
       attr_reader :point_planner, :height_error_meter, :triangulation_adapter,
                   :residual_refinement_point_ratio, :residual_refinement_max_passes,
-                  :residual_refinement_batch_size
+                  :residual_refinement_batch_size, :residual_refinement_insert_batch_size,
+                  :residual_refinement_spacing_factor
 
       def build_result(request)
         started = Process.clock_gettime(Process::CLOCK_MONOTONIC)
@@ -226,6 +235,11 @@ module SU_MCP
           request, normalized, constraints, [triangulation, mesh], limit
         )
         stop_reason ||= residual_refinement_final_stop_reason(request, mesh, normalized, limit)
+        if stop_reason == 'max_passes'
+          triangulation, mesh, stop_reason = run_residual_recovery_passes(
+            request, normalized, constraints, [triangulation, mesh], limit
+          )
+        end
         normalized[:residual_refinement_stop_reason] = stop_reason
         add_residual_refinement_budget_limitation(normalized)
         [triangulation, mesh]
@@ -265,7 +279,7 @@ module SU_MCP
             break
           end
 
-          added = timed_add_mesh_residual_points(normalized, samples, limit)
+          added = timed_add_mesh_residual_points(request.state, normalized, samples, limit)
           record_residual_pass_points(normalized, added: added)
           if added.zero?
             stop_reason = 'stalled'
@@ -280,6 +294,52 @@ module SU_MCP
           )
         end
         [triangulation, mesh, stop_reason]
+      end
+
+      def run_residual_recovery_passes(request, normalized, constraints, mesh_result, limit)
+        triangulation, mesh = mesh_result
+        residual_recovery_pass_limit(normalized, limit).times do
+          record_residual_recovery_pass_started(normalized)
+          samples = timed_residual_samples(
+            request,
+            mesh,
+            normalized,
+            residual_refinement_batch_size
+          )
+          normalized[:max_residual_excess] = sample_residual_excess(samples)
+          if samples.empty?
+            record_residual_recovery_pass_points(normalized, added: 0)
+            return [triangulation, mesh, 'residual_satisfied']
+          end
+          if normalized.fetch(:points).length >= limit
+            record_residual_recovery_pass_points(normalized, added: 0)
+            return [triangulation, mesh, 'safety_cap']
+          end
+
+          added = timed_add_mesh_residual_points(request.state, normalized, samples, limit,
+                                                 spatially_thin: false)
+          record_residual_recovery_pass_points(normalized, added: added)
+          return [triangulation, mesh, 'stalled'] if added.zero?
+
+          add_residual_refinement_recovery_limitation(normalized)
+          triangulation, mesh = timed_residual_retriangulated_mesh(
+            request.state,
+            normalized,
+            constraints
+          )
+        end
+        [triangulation, mesh, residual_refinement_final_stop_reason(request, mesh, normalized,
+                                                                    limit)]
+      end
+
+      def residual_recovery_pass_limit(normalized, limit)
+        remaining = limit - normalized.fetch(:points).length
+        return 0 unless remaining.positive?
+
+        (remaining.to_f / residual_refinement_batch_size).ceil.clamp(
+          1,
+          residual_refinement_max_passes
+        )
       end
 
       def residual_refinement_point_limit(normalized, max_point_budget)
@@ -331,9 +391,11 @@ module SU_MCP
         'max_passes'
       end
 
-      def timed_add_mesh_residual_points(normalized, samples, limit)
+      def timed_add_mesh_residual_points(state, normalized, samples, limit,
+                                         spatially_thin: true)
         started = Process.clock_gettime(Process::CLOCK_MONOTONIC)
-        added = add_mesh_residual_points(normalized, samples, limit)
+        added = add_mesh_residual_points(state, normalized, samples, limit,
+                                         spatially_thin: spatially_thin)
         residual_refinement_probes(normalized)[:pointInsertionSeconds] +=
           Process.clock_gettime(Process::CLOCK_MONOTONIC) - started
         added
@@ -349,10 +411,12 @@ module SU_MCP
         result
       end
 
-      def add_mesh_residual_points(normalized, samples, limit)
+      def add_mesh_residual_points(state, normalized, samples, limit, spatially_thin:)
         existing = normalized.fetch(:points).to_h { |point| [point_key(point), true] }
         added = 0
-        samples.each do |sample|
+        candidates = residual_insertion_candidates(state, normalized, samples, existing, limit,
+                                                   spatially_thin: spatially_thin)
+        candidates.each do |sample|
           break if normalized.fetch(:points).length >= limit
           next if existing[point_key(sample.fetch(:point))]
 
@@ -363,6 +427,68 @@ module SU_MCP
         normalized[:selected_point_count] = normalized.fetch(:points).length
         normalized[:residual_point_count] += added
         added
+      end
+
+      def residual_insertion_candidates(state, normalized, samples, existing, limit,
+                                        spatially_thin:)
+        available = samples.reject { |sample| existing[point_key(sample.fetch(:point))] }
+        return [] if available.empty?
+
+        cap = residual_insertion_cap(normalized, limit, spatially_thin: spatially_thin)
+        return available.first(cap) unless spatially_thin
+
+        primary = spaced_residual_samples(
+          available,
+          selected: [],
+          min_distance: nominal_spacing(state) * residual_refinement_spacing_factor,
+          cap: cap
+        )
+        return primary if primary.length >= cap || primary.length == available.length
+
+        spaced_residual_samples(
+          available,
+          selected: primary,
+          min_distance: nominal_spacing(state),
+          cap: cap
+        )
+      end
+
+      def residual_insertion_cap(normalized, limit, spatially_thin:)
+        remaining = limit - normalized.fetch(:points).length
+        batch_size = if spatially_thin
+                       residual_refinement_insert_batch_size
+                     else
+                       residual_refinement_batch_size
+                     end
+        [batch_size, remaining].min
+      end
+
+      def spaced_residual_samples(samples, selected:, min_distance:, cap:)
+        result = selected.dup
+        selected_keys = result.to_h { |sample| [point_key(sample.fetch(:point)), true] }
+        samples.each do |sample|
+          break if result.length >= cap
+
+          key = point_key(sample.fetch(:point))
+          next if selected_keys[key]
+          next if result.any? do |candidate|
+            xy_distance(candidate.fetch(:point), sample.fetch(:point)) < min_distance
+          end
+
+          result << sample
+          selected_keys[key] = true
+        end
+        result.empty? ? samples.first(1) : result
+      end
+
+      def nominal_spacing(state)
+        [state.spacing.fetch('x').abs, state.spacing.fetch('y').abs].min
+      end
+
+      def xy_distance(first, second)
+        dx = first.fetch(0) - second.fetch(0)
+        dy = first.fetch(1) - second.fetch(1)
+        Math.sqrt((dx * dx) + (dy * dy))
       end
 
       def add_residual_refinement_limitation(normalized)
@@ -381,6 +507,13 @@ module SU_MCP
         }
       end
 
+      def add_residual_refinement_recovery_limitation(normalized)
+        normalized.fetch(:limitations) << {
+          category: 'cdt_mesh_residual_recovery',
+          reason: 'broad residual insertion recovered the hard height-error gate after thinning'
+        }
+      end
+
       def empty_residual_refinement_probes
         {
           passCount: 0,
@@ -392,6 +525,11 @@ module SU_MCP
           pointInsertionSeconds: 0.0,
           retriangulationCount: 0,
           retriangulationSeconds: 0.0,
+          insertBatchSize: residual_refinement_insert_batch_size,
+          spacingFactor: residual_refinement_spacing_factor,
+          recoveryPassCount: 0,
+          recoveryPointsAddedByPass: [],
+          recoveryPointCountByPass: [],
           pointsAddedByPass: [],
           pointCountByPass: []
         }
@@ -411,6 +549,16 @@ module SU_MCP
         probes.fetch(:pointCountByPass) << normalized.fetch(:points).length
       end
 
+      def record_residual_recovery_pass_started(normalized)
+        residual_refinement_probes(normalized)[:recoveryPassCount] += 1
+      end
+
+      def record_residual_recovery_pass_points(normalized, added:)
+        probes = residual_refinement_probes(normalized)
+        probes.fetch(:recoveryPointsAddedByPass) << added
+        probes.fetch(:recoveryPointCountByPass) << normalized.fetch(:points).length
+      end
+
       def protected_region_segments(state, feature_geometry)
         feature_geometry.protected_regions.flat_map do |region|
           next [] unless region.fetch('primitive') == 'rectangle'
@@ -418,11 +566,29 @@ module SU_MCP
           strength = region.fetch('strength', 'hard')
           min, max = region.fetch('ownerLocalBounds')
           corners = [[min[0], min[1]], [max[0], min[1]], [max[0], max[1]], [min[0], max[1]]]
-          next [] if strength == 'hard' && corners.any? { |point| !inside_domain?(state, point) }
+          if strength == 'hard' && corners.any? { |point| !inside_domain?(state, point) }
+            corners = clipped_protected_corners(state, corners)
+            next [] if corners.empty?
+          end
 
           contained = corners.map { |point| contained_point(state, point, strength) }.compact
           segment_loop(contained, region.fetch('id'), strength)
         end
+      end
+
+      def clipped_protected_corners(state, corners)
+        min_x_value = corners.map(&:first).min.clamp(min_x(state), max_x(state))
+        max_x_value = corners.map(&:first).max.clamp(min_x(state), max_x(state))
+        min_y_value = corners.map(&:last).min.clamp(min_y(state), max_y(state))
+        max_y_value = corners.map(&:last).max.clamp(min_y(state), max_y(state))
+        return [] if min_x_value >= max_x_value || min_y_value >= max_y_value
+
+        [
+          [min_x_value, min_y_value],
+          [max_x_value, min_y_value],
+          [max_x_value, max_y_value],
+          [min_x_value, max_y_value]
+        ]
       end
 
       def reference_segments(state, feature_geometry)
@@ -578,6 +744,8 @@ module SU_MCP
             normalized.fetch(:dense_equivalent_face_count),
           maxPasses: residual_refinement_max_passes,
           batchSize: residual_refinement_batch_size,
+          insertBatchSize: residual_refinement_insert_batch_size,
+          spacingFactor: residual_refinement_spacing_factor,
           seedCount: normalized.fetch(:seed_point_count),
           mandatoryCount: normalized.fetch(:mandatory_point_count),
           residualCount: normalized.fetch(:residual_point_count),
@@ -806,6 +974,18 @@ module SU_MCP
         Integer(value).clamp(1, 256)
       rescue ArgumentError, TypeError
         RESIDUAL_REFINEMENT_BATCH_SIZE
+      end
+
+      def normalized_residual_refinement_insert_batch_size(value)
+        Integer(value).clamp(1, RESIDUAL_REFINEMENT_BATCH_SIZE)
+      rescue ArgumentError, TypeError
+        RESIDUAL_REFINEMENT_INSERT_BATCH_SIZE
+      end
+
+      def normalized_residual_refinement_spacing_factor(value)
+        Float(value).clamp(1.0, 4.0)
+      rescue ArgumentError, TypeError
+        RESIDUAL_REFINEMENT_SPACING_FACTOR
       end
     end
   end
