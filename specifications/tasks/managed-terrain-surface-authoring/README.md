@@ -7,6 +7,7 @@ These tasks are derived from:
 - [Managed Terrain Surface Authoring HLD](../../hlds/hld-managed-terrain-surface-authoring.md)
 - [PRD: Managed Terrain Surface Authoring](../../prds/prd-managed-terrain-surface-authoring.md)
 - [Managed Terrain Phase 1 UE Research Reference](../../research/managed-terrain/ue-reference-phase1.md)
+- [Recommended Backend Architecture for Feature-Aware Adaptive Terrain Output](../../research/managed-terrain/recommended_new_adaptive_backend_architecture.md)
 
 ## Task Set Intent
 
@@ -58,6 +59,13 @@ The current task order proves terrain authoring through concrete, testable incre
   default CDT enablement decision
 - cached CDT patch output lifecycle productization after MTA-34 exposed that replacement requires
   stable CDT-owned patch output to exist before local mutation can be proven
+- windowed adaptive patch output lifecycle productization as the proven production spine for fast
+  local terrain edits
+- failed/reverted CDT residual-frontier batching work retained only as negative evidence for why
+  production terrain output should not route through the current CDT backend
+- feature-aware adaptive backend planning that keeps the adaptive patch/cell production path and
+  makes feature intents operational through policy, local tolerance, density pressure, forced
+  subdivision, seam contracts, bounded patch components, and sparse local detail
 
 ## Current Task Order
 
@@ -96,6 +104,15 @@ The current task order proves terrain authoring through concrete, testable incre
 33. [MTA-33 Implement Patch-Relevant Terrain Feature Constraints](MTA-33-implement-patch-relevant-terrain-feature-constraints/task.md)
 34. [MTA-34 Implement CDT Patch Replacement And Seam Validation](MTA-34-implement-cdt-patch-replacement-and-seam-validation/task.md) - closed-blocked; partial replacement infrastructure retained for MTA-35 planning
 35. [MTA-35 Productize Cached CDT Patch Output Lifecycle For Windowed Terrain Edits](MTA-35-productize-cached-cdt-patch-output-lifecycle-for-windowed-terrain-edits/task.md)
+36. [MTA-36 Productize Windowed Adaptive Patch Output Lifecycle For Fast Local Terrain Edits](MTA-36-productize-windowed-adaptive-patch-output-lifecycle-for-fast-local-terrain-edits/task.md)
+37. [MTA-37 Implement CDT Patch Residual Frontier Batching](MTA-37-implement-cdt-patch-residual-frontier-batching/task.md) - failed/reverted; code removed, drift retained as negative evidence
+38. [MTA-38 Establish Feature-Aware Adaptive Baseline, Policy, And Validation Harness](MTA-38-establish-feature-aware-adaptive-baseline-policy-and-validation-harness/task.md)
+39. [MTA-39 Add Feature-Aware Tolerance And Density Fields](MTA-39-add-feature-aware-tolerance-and-density-fields/task.md)
+40. [MTA-40 Add Forced Subdivision Masks For Feature-Critical Geometry](MTA-40-add-forced-subdivision-masks-for-feature-critical-geometry/task.md)
+41. [MTA-41 Add Optional Deterministic Feature-Aware Diagonal Optimization](MTA-41-add-optional-deterministic-feature-aware-diagonal-optimization/task.md) - optional; not a dependency for MTA-42 through MTA-44
+42. [MTA-42 Upgrade Adaptive Seam Contracts For Feature-Driven Splits](MTA-42-upgrade-adaptive-seam-contracts-for-feature-driven-splits/task.md)
+43. [MTA-43 Add Patch Component Planner For Cross-Patch Features](MTA-43-add-patch-component-planner-for-cross-patch-features/task.md)
+44. [MTA-44 Add Sparse Local Detail Tiles And Composed Height Oracle](MTA-44-add-sparse-local-detail-tiles-and-composed-height-oracle/task.md)
 
 ## Deferred Follow-Ons
 
@@ -109,24 +126,26 @@ Deferred work is not promoted into active task folders in this iteration:
 - new public Unreal-style terrain tools beyond the existing managed edit modes
 - polygon/freeform terrain edit regions
 - accepting `boundary_preserving_patch_edit` as a separate mode before current regional correction plus `preserveZones` recipes are evaluated
-- native/C++ CDT triangulation implementation or packaging. The adapter seam stays important, but
-  native work should be planned only after the patch-local residual path has quality and timing
-  evidence that shows what native code must improve.
-- broad incremental/native bakeoffs across many terrain families. MTA-32 through MTA-34 should first
-  prove the local patch solve, patch-relevant constraints, and SketchUp replacement loop; a later
-  bakeoff can compare Ruby patch-local CDT, native CDT, and any further residual strategy once those
-  baselines exist.
-- default CDT terrain output enablement. CDT should remain disabled by default until patch-local
-  residual quality, patch-relevant feature selection, seam-safe SketchUp replacement, fallback, undo,
-  and hosted performance evidence all support a default change.
+- optional local CDT islands for bounded irregular hard geometry that adaptive cells and sparse
+  local detail cannot represent cleanly. CDT islands must remain an escape hatch behind the
+  adaptive backend boundary, not a global terrain architecture or public backend selector.
+- native acceleration for proven geometry hotspots only after profiling shows Ruby implementation
+  cost is the limiting factor. Native work should remain bounded to modules such as robust
+  intersections, clipping, local CDT islands, residual sampling, or validation kernels.
+- broad incremental/native bakeoffs across many terrain families. Future bakeoffs should compare
+  bounded modules only after the feature-aware adaptive path has stable baseline, seam, component,
+  and local-detail evidence.
+- default CDT terrain output enablement. Global CDT should remain disabled by default and is no
+  longer the planned production path for normal terrain output.
 - public terrain output backend selectors, simplification knobs, or CDT diagnostics. Backend choice
   and solver metrics should remain internal until there is a stable product posture and a separate
   contract task justifies exposing controls or telemetry.
 - background/global rebuild or export-quality CDT passes. The immediate iteration is about normal
-  interactive local edits; explicit full-output rebuild/export behavior should be planned separately
-  if patch-local editing succeeds.
-- visual smoothing/fairing over CDT output. Smoothing must remain deferred until hard constraints,
-  protected boundaries, and patch seams are stable enough that smoothing cannot weaken them.
+  feature-aware adaptive local edits; explicit full-output rebuild/export behavior should be planned
+  separately if product needs justify it.
+- visual smoothing/fairing over derived output. Smoothing must remain deferred until hard
+  constraints, protected boundaries, and patch seams are stable enough that smoothing cannot weaken
+  them.
 
 ## Notes
 
@@ -182,7 +201,6 @@ Deferred work is not promoted into active task folders in this iteration:
 - `MTA-33` keeps feature selection separate from the MTA-32 cost/quality proof. It applies
   patch-relevance to hard, firm, and soft feature constraints so local CDT solves do not pay for
   unrelated global hard-feature history.
-- `MTA-34` closes the local-output loop by reusing partial-output ownership lessons from MTA-10 for
 - `MTA-34` attempted to close the local-output loop by reusing partial-output ownership lessons from
   MTA-10 for CDT patch replacement, seam validation, fallback/refusal, and hosted undo evidence. It
   is closed-blocked rather than accepted: it produced useful replacement infrastructure, but hosted
@@ -192,3 +210,21 @@ Deferred work is not promoted into active task folders in this iteration:
   CDT-owned patch output, stable patch identity, dirty-window-to-patch mapping, repeated-edit
   metadata lifecycle, and real command-path replacement through MTA-33, MTA-32, and retained/adapted
   MTA-34 infrastructure before any default CDT enablement decision.
+- `MTA-36` is the primary positive production-path reference for the next backend sequence. It
+  proves windowed adaptive patch output, stable logical patch ownership, no-delete replacement,
+  repeated edit behavior, reload/readback, hosted timings, and the current adaptive PatchLifecycle
+  spine.
+- `MTA-37` is closed as failed/reverted CDT work. Its useful output is negative evidence: a heap or
+  residual batching wrapper around the current CDT backend did not address backend-call count,
+  scan/retriangulation economics, or production trust.
+- `MTA-38` through `MTA-44` follow the recommended feature-aware adaptive architecture. The sequence
+  is harness and policy scaffolding, feature-aware tolerance/density fields, forced subdivision
+  masks, adaptive seam contracts, patch component planning, and sparse local detail state. Each task
+  must end with hosted public-command replay evidence using the same baseline corpus, including
+  timing, face count, dirty-window/patch scope, fallback/refusal checks where relevant, and a clear
+  verdict.
+- `MTA-41` is optional diagonal optimization. It may be implemented when evidence shows value, but
+  no downstream feature-aware adaptive task depends on it.
+- Local CDT islands and native acceleration remain deferred and evidence-triggered. They should be
+  planned only as bounded modules after adaptive cells, seam contracts, component planning, and local
+  detail prove where they are insufficient.
