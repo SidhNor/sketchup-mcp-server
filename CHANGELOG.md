@@ -2,6 +2,38 @@
 
 <!-- version list -->
 
+## v1.9.0 (2026-05-15)
+
+### Bug Fixes
+
+- **MTA-36**: Terrain migration on first edit
+  ([`1ff64a3`](https://github.com/SidhNor/sketchup-mcp-server/commit/1ff64a3e25f0d24e5ee603636eeac754e19e44d5))
+
+### Documentation
+
+- **assets**: New slices for asset reuse
+  ([`c5b500d`](https://github.com/SidhNor/sketchup-mcp-server/commit/c5b500d3f394f5e3f312c2d4192737f28e070225))
+
+- **terrain**: New terrain direction and research
+  ([`61ed876`](https://github.com/SidhNor/sketchup-mcp-server/commit/61ed8766862508ea65c0b403eb9c2bc7fb634608))
+
+### Features
+
+- **MTA-35**: Cdt patch edits
+  ([`0a79f2b`](https://github.com/SidhNor/sketchup-mcp-server/commit/0a79f2bfdb2622858410f75413edaaf1393cef8b))
+
+- **MTA-36**: Local edits for adaptive grid
+  ([`9d585d1`](https://github.com/SidhNor/sketchup-mcp-server/commit/9d585d1efeba436188fbdb8848ceef152d77da2c))
+
+- **SAR-02**: Reusable asset instantiation
+  ([`f924858`](https://github.com/SidhNor/sketchup-mcp-server/commit/f924858ae9b5dafff0b37bcbaae3e9a4533f33e8))
+
+### Refactoring
+
+- **MTA-38**: Add repeatable terrain harness and timing fixture
+  ([`945d801`](https://github.com/SidhNor/sketchup-mcp-server/commit/945d801aeed9c145de58f7ff3a6dbd43c1ea37bd))
+
+
 ## v1.8.0 (2026-05-10)
 
 ### Documentation
