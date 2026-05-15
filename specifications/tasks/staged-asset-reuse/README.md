@@ -6,6 +6,7 @@ These tasks are derived from:
 
 - [Asset Exemplar Reuse HLD](../../hlds/hld-asset-exemplar-reuse.md)
 - [PRD: Staged Asset Reuse](../../prds/prd-staged-asset-reuse.md)
+- [Low-Poly Garden Vegetation Inventory](../../research/asset-reuse/low_poly_garden_vegetation_inventory.md)
 
 ## Task Set Intent
 
@@ -14,9 +15,9 @@ This task set covers the first staged asset reuse iteration. It starts from a ze
 The current task order proves the asset reuse capability through concrete, testable increments:
 
 - curation and discovery of approved Asset Exemplars already present in the model
-- instantiation of separate editable Asset Instances with source lineage
-- exemplar-aware mutation guardrails for normal editing paths
-- replacement of lower-fidelity proxies with staged assets while preserving workflow identity
+- instantiation of separate editable Asset Instances with source lineage and optional project asset-set metadata
+- exemplar-aware mutation guardrails for normal editing paths, including grouped component-instance libraries
+- replacement of lower-fidelity proxies with staged assets while preserving workflow identity and selected source asset-set lineage
 
 ## Current Task Order
 
@@ -40,4 +41,5 @@ Deferred work is not promoted into active task folders in this iteration:
 
 - User-curated 3D Warehouse assets are in scope only after they already exist in the SketchUp model.
 - Asset Exemplars and Asset Instances must remain distinct domain objects.
+- Project-scoped asset sets, such as a common group of low-poly vegetation component instances, are a supported staging pattern. Runtime behavior should rely on explicit metadata and approval state rather than one required group name, hierarchy, or SketchUp tag/layer convention.
 - Existing platform, targeting, semantic, editing, and validation tasks remain dependency history and should not be rewritten by this task set.
