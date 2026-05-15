@@ -1,7 +1,7 @@
 # Task: SAR-02 Instantiate Editable Asset Instances
 **Task ID**: `SAR-02`
 **Title**: `Instantiate Editable Asset Instances`
-**Status**: `draft`
+**Status**: `completed`
 **Priority**: `P1`
 **Date**: `2026-04-25`
 
@@ -23,8 +23,8 @@ This task delivers controlled instantiation from approved exemplars into the edi
 - create a separate editable Asset Instance without mutating the source exemplar
 - support position-only minimum placement into model root, with optional direct scale variation
 - support grouped project asset sets whose exemplars are component instances or groups organized inside a common library group
-- preserve source asset-set and category-specific asset metadata on the created Asset Instance where present
-- carry category-specific scale or height metadata as structured evidence when present, without auto-fitting target height
+- surface source asset-set and category-specific asset metadata as JSON-safe evidence where present
+- carry category-specific scale or height metadata as source evidence when present, without auto-fitting target height
 - write source asset lineage metadata on the created Asset Instance
 - mark created instances as editable Managed Scene Objects where required by the domain model
 - return JSON-safe instantiation evidence and structured refusals
@@ -65,7 +65,7 @@ Scenario: a project vegetation asset-set exemplar is instantiated
   When `instantiate_staged_asset` creates an Asset Instance from that exemplar
   Then the library exemplar remains in its original grouped staging context
   And the created Asset Instance records source exemplar lineage
-  And the created Asset Instance preserves source asset-set metadata needed for later discovery, validation, and replacement
+  And the result surfaces source asset-set metadata needed for later discovery, validation, and replacement
   And the result includes JSON-safe evidence of the selected exemplar and applied placement
 
 Scenario: instantiation does not depend on a fixed library hierarchy
@@ -102,7 +102,7 @@ Scenario: instantiation does not depend on a fixed library hierarchy
 - MCP tool registration, dispatcher behavior, tests, and user-facing docs must stay in sync for the new instantiation surface
 - instantiation must consume the metadata and approval contract established by `SAR-01`
 - created Asset Instances must require caller-supplied `metadata.sourceElementId`; SAR-02 must not silently generate workflow identity
-- instantiation must preserve JSON-safe asset metadata from SAR-01, including optional project asset-set and category-specific fields, without exposing raw SketchUp objects
+- instantiation must surface JSON-safe asset metadata from SAR-01, including optional project asset-set and category-specific fields, without exposing raw SketchUp objects or making those fields a universal instance schema
 - failures must not leave expected partial instance state
 
 ## Dependencies
@@ -121,7 +121,7 @@ Scenario: instantiation does not depend on a fixed library hierarchy
 
 ## Related Technical Plan
 
-- none yet
+- [Technical Plan](./plan.md)
 
 ## Success Metrics
 

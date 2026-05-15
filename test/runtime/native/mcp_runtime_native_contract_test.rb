@@ -259,6 +259,63 @@ class McpRuntimeNativeContractTest < Minitest::Test
     )
   end
 
+  def test_native_transport_preserves_instantiate_staged_asset_success_shape_from_shared_contract
+    skip_unless_staged_vendor_runtime!
+
+    contract_case = contract_case('instantiate_staged_asset_instantiated')
+    transport = @loader.build_transport(
+      handlers: {
+        instantiate_staged_asset: ->(_arguments) { contract_case.fetch('response').fetch('result') }
+      }
+    )
+
+    response = perform_raw_json_request(transport, contract_case.fetch('request'))
+
+    assert_equal(200, response[:status])
+    assert_equal(
+      contract_case.dig('response', 'result'),
+      response[:body].dig('result', 'structuredContent')
+    )
+  end
+
+  def test_native_transport_preserves_instantiate_staged_asset_metadata_refusal_shape
+    skip_unless_staged_vendor_runtime!
+
+    contract_case = contract_case('instantiate_staged_asset_missing_metadata_refused')
+    transport = @loader.build_transport(
+      handlers: {
+        instantiate_staged_asset: ->(_arguments) { contract_case.fetch('response').fetch('result') }
+      }
+    )
+
+    response = perform_raw_json_request(transport, contract_case.fetch('request'))
+
+    assert_equal(200, response[:status])
+    assert_equal(
+      { 'field' => 'metadata.sourceElementId' },
+      response[:body].dig('result', 'structuredContent', 'refusal', 'details')
+    )
+  end
+
+  def test_native_transport_preserves_instantiate_staged_asset_unapproved_refusal_shape
+    skip_unless_staged_vendor_runtime!
+
+    contract_case = contract_case('instantiate_staged_asset_unapproved_refused')
+    transport = @loader.build_transport(
+      handlers: {
+        instantiate_staged_asset: ->(_arguments) { contract_case.fetch('response').fetch('result') }
+      }
+    )
+
+    response = perform_raw_json_request(transport, contract_case.fetch('request'))
+
+    assert_equal(200, response[:status])
+    assert_equal(
+      contract_case.dig('response', 'result'),
+      response[:body].dig('result', 'structuredContent')
+    )
+  end
+
   def test_native_transport_preserves_list_staged_assets_success_shape_from_shared_contract
     skip_unless_staged_vendor_runtime!
 

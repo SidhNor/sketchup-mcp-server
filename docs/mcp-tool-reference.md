@@ -16,6 +16,7 @@ Current tools include:
 - `create_terrain_surface`
 - `edit_terrain_surface`
 - `curate_staged_asset`
+- `instantiate_staged_asset`
 - `list_staged_assets`
 - `create_site_element`
 - `set_entity_metadata`
@@ -257,6 +258,32 @@ Returns one JSON-safe `asset` summary.
 
 SAR-01 curation is metadata-only: it does not import, move, reparent, tag, layer, lock, duplicate, or delete source geometry.
 
+#### `instantiate_staged_asset`
+
+Creates a separate editable Asset Instance from one approved Asset Exemplar.
+
+Required fields:
+
+- `targetReference`
+- `placement.position`
+- `metadata.sourceElementId`
+
+Optional fields:
+
+- `placement.scale`
+- `outputOptions.includeBounds`
+
+`targetReference` identifies the approved source Asset Exemplar. `metadata.sourceElementId`
+is the identity for the created Asset Instance, not the source asset identity.
+`placement.position` is a model-root insertion position in public meters. `placement.scale`
+is an optional positive scalar for direct uniform variation only; it is not target-height
+fitting and does not consume category-specific height metadata.
+
+The created instance is marked as an editable Managed Scene Object with source lineage under
+`sourceAssetElementId`. Source asset-set and category-specific attributes remain JSON-safe
+evidence under `sourceAsset.metadata.attributes`; they are not promoted into a universal
+instance schema.
+
 #### `list_staged_assets`
 
 Supported filters/options:
@@ -338,6 +365,22 @@ between controls, not as a terrain validation verdict or pass/fail policy.
   },
   "approval": { "state": "approved" },
   "staging": { "mode": "metadata_only" },
+  "outputOptions": { "includeBounds": true }
+}
+```
+
+### `instantiate_staged_asset`
+
+```json
+{
+  "targetReference": { "sourceElementId": "asset-tree-oak-001" },
+  "placement": {
+    "position": [1.0, 2.0, 0.0],
+    "scale": 1.1
+  },
+  "metadata": {
+    "sourceElementId": "placed-asset-001"
+  },
   "outputOptions": { "includeBounds": true }
 }
 ```

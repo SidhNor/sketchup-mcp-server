@@ -3164,6 +3164,125 @@
           }
         }
       }
+    },
+    {
+      "case_id": "instantiate_staged_asset_instantiated",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "params": {
+          "name": "instantiate_staged_asset",
+          "arguments": {
+            "targetReference": { "sourceElementId": "asset-tree-oak-001" },
+            "placement": { "position": [1.0, 2.0, 0.0], "scale": 1.1 },
+            "metadata": { "sourceElementId": "placed-asset-001" },
+            "outputOptions": { "includeBounds": true }
+          }
+        },
+        "id": "instantiate-staged-asset-instantiated"
+      },
+      "response": {
+        "jsonrpc": "2.0",
+        "id": "instantiate-staged-asset-instantiated",
+        "result": {
+          "success": true,
+          "outcome": "instantiated",
+          "instance": {
+            "sourceElementId": "placed-asset-001",
+            "persistentId": "9901",
+            "entityId": "901",
+            "type": "componentinstance",
+            "semanticType": "asset_instance",
+            "assetRole": "instance"
+          },
+          "sourceAsset": {
+            "sourceElementId": "asset-tree-oak-001",
+            "persistentId": "8801",
+            "entityId": "801",
+            "type": "componentinstance",
+            "displayName": "Oak Tree Exemplar",
+            "category": "tree",
+            "approvalState": "approved",
+            "tags": ["tree", "deciduous"],
+            "metadata": {
+              "assetRole": "exemplar",
+              "stagingMode": "metadata_only",
+              "schemaVersion": 1,
+              "attributes": {
+                "assetSet": "garden-library",
+                "assetKey": "hedge-low-a",
+                "heightClass": "low"
+              }
+            }
+          },
+          "lineage": { "sourceAssetElementId": "asset-tree-oak-001" },
+          "placement": { "position": [1.0, 2.0, 0.0], "scale": 1.1 },
+          "bounds": {
+            "min": [1.0, 2.0, 0.0],
+            "max": [2.0, 4.0, 3.0],
+            "center": [1.5, 3.0, 1.5],
+            "size": [1.0, 2.0, 3.0]
+          }
+        }
+      }
+    },
+    {
+      "case_id": "instantiate_staged_asset_missing_metadata_refused",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "params": {
+          "name": "instantiate_staged_asset",
+          "arguments": {
+            "targetReference": { "sourceElementId": "asset-tree-oak-001" },
+            "placement": { "position": [1.0, 2.0, 0.0] },
+            "metadata": {}
+          }
+        },
+        "id": "instantiate-staged-asset-missing-metadata-refused"
+      },
+      "response": {
+        "jsonrpc": "2.0",
+        "id": "instantiate-staged-asset-missing-metadata-refused",
+        "result": {
+          "success": true,
+          "outcome": "refused",
+          "refusal": {
+            "code": "missing_required_metadata",
+            "message": "Created Asset Instance metadata.sourceElementId is required.",
+            "details": { "field": "metadata.sourceElementId" }
+          }
+        }
+      }
+    },
+    {
+      "case_id": "instantiate_staged_asset_unapproved_refused",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "params": {
+          "name": "instantiate_staged_asset",
+          "arguments": {
+            "targetReference": { "sourceElementId": "asset-draft-001" },
+            "placement": { "position": [1.0, 2.0, 0.0] },
+            "metadata": { "sourceElementId": "placed-asset-001" }
+          }
+        },
+        "id": "instantiate-staged-asset-unapproved-refused"
+      },
+      "response": {
+        "jsonrpc": "2.0",
+        "id": "instantiate-staged-asset-unapproved-refused",
+        "result": {
+          "success": true,
+          "outcome": "refused",
+          "refusal": {
+            "code": "unapproved_exemplar",
+            "message": "Target reference must resolve to an approved Asset Exemplar.",
+            "details": { "field": "targetReference" }
+          }
+        }
+      }
     }
   ]
 }

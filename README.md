@@ -24,7 +24,8 @@ Typical usage patterns include:
 - Author and update semantic site elements through stable MCP contracts
 - Build and edit managed terrain surfaces with create/adopt/edit flows backed by tiled heightmap
   state and adaptive derived SketchUp output
-- Orchestrate structured model edits (grouping, reparenting, transforms, materials, boolean ops)
+- Curate, discover, and instantiate staged asset exemplars as editable scene objects
+- Orchestrate structured model edits (grouping, reparenting, transforms, materials)
 - Integrate SketchUp into iterative, agent-assisted planning and design workflows
 
 ## Who this is for

@@ -191,6 +191,18 @@ module SU_MCP
           input_schema: curate_staged_asset_schema
         ),
         tool_entry(
+          name: 'instantiate_staged_asset',
+          title: 'Instantiate Staged Asset',
+          description: 'Create an editable model-root Asset Instance from an approved ' \
+                       'metadata-backed Asset Exemplar. Requires caller-supplied ' \
+                       'metadata.sourceElementId for the new instance, preserves lean ' \
+                       'source lineage, and supports position plus optional scalar scale.',
+          handler_key: :instantiate_staged_asset,
+          annotations: { read_only_hint: false, destructive_hint: false },
+          classification: 'first_class',
+          input_schema: instantiate_staged_asset_schema
+        ),
+        tool_entry(
           name: 'list_staged_assets',
           title: 'List Staged Assets',
           description: 'Discover approved metadata-backed Asset Exemplars with category, ' \
@@ -574,7 +586,11 @@ module SU_MCP
       {
         type: 'object',
         properties: {
-          includeBounds: boolean_schema
+          includeBounds: described_schema(
+            boolean_schema,
+            'When true or omitted, include JSON-safe bounds evidence in staged asset ' \
+            'responses. Set false for a smaller response.'
+          )
         },
         additionalProperties: false
       }
@@ -590,6 +606,70 @@ module SU_MCP
           approval: asset_approval_schema,
           staging: asset_staging_schema,
           outputOptions: staged_asset_output_options_schema
+        },
+        additionalProperties: false
+      }
+    end
+
+    def asset_instance_metadata_schema
+      {
+        type: 'object',
+        required: ['sourceElementId'],
+        properties: {
+          sourceElementId: described_schema(
+            string_schema,
+            'Required workflow identity for the created editable Asset Instance. This ' \
+            'is the new instance identity, not the source Asset Exemplar identity.'
+          )
+        },
+        additionalProperties: false
+      }
+    end
+
+    def asset_instance_placement_schema
+      {
+        type: 'object',
+        required: ['position'],
+        properties: {
+          position: described_schema(
+            numeric_array_schema.merge(minItems: 3, maxItems: 3),
+            'Required model-root insertion position as [x, y, z] in public meters. ' \
+            'This is origin placement only, not parent or collection placement.'
+          ),
+          scale: described_schema(
+            number_schema,
+            'Optional positive scalar for direct uniform scale variation. It is not ' \
+            'target-height fitting and does not use category height metadata.'
+          )
+        },
+        additionalProperties: false
+      }
+    end
+
+    def instantiate_staged_asset_schema
+      {
+        type: 'object',
+        required: %w[targetReference placement metadata],
+        properties: {
+          targetReference: described_schema(
+            target_reference_schema,
+            'Required compact reference to one approved Asset Exemplar source, using ' \
+            'sourceElementId, persistentId, or compatibility entityId.'
+          ),
+          placement: described_schema(
+            asset_instance_placement_schema,
+            'Required model-root placement intent for the created Asset Instance. ' \
+            'Only position and optional scalar scale are supported in this slice.'
+          ),
+          metadata: described_schema(
+            asset_instance_metadata_schema,
+            'Required identity metadata for the created editable Asset Instance. The ' \
+            'source exemplar identity stays under targetReference and lineage evidence.'
+          ),
+          outputOptions: described_schema(
+            staged_asset_output_options_schema,
+            'Optional response verbosity controls for instantiated Asset Instance evidence.'
+          )
         },
         additionalProperties: false
       }

@@ -22,6 +22,7 @@ class McpRuntimeLoaderTest < Minitest::Test
     create_terrain_surface
     edit_terrain_surface
     curate_staged_asset
+    instantiate_staged_asset
     list_staged_assets
     get_entity_info
     create_site_element
@@ -61,16 +62,61 @@ class McpRuntimeLoaderTest < Minitest::Test
 
   def test_staged_asset_tool_catalog_exposes_contract_options_and_annotations
     curate_tool = @loader.tool_catalog.find { |tool| tool.fetch(:name) == 'curate_staged_asset' }
+    instantiate_tool = @loader.tool_catalog.find do |tool|
+      tool.fetch(:name) == 'instantiate_staged_asset'
+    end
     list_tool = @loader.tool_catalog.find { |tool| tool.fetch(:name) == 'list_staged_assets' }
 
+    assert_staged_asset_curation_contract(curate_tool)
+    assert_staged_asset_instantiation_contract(instantiate_tool)
+    assert_staged_asset_listing_contract(list_tool)
+  end
+
+  def assert_staged_asset_curation_contract(curate_tool)
     assert_equal(false, curate_tool.dig(:metadata, :annotations, :read_only_hint))
     assert_equal(false, curate_tool.dig(:metadata, :annotations, :destructive_hint))
     assert_equal(%w[approved], nested_enum(curate_tool, :approval, :state))
     assert_equal(%w[metadata_only], nested_enum(curate_tool, :staging, :mode))
+  end
+
+  def assert_staged_asset_instantiation_contract(instantiate_tool)
+    assert_equal(false, instantiate_tool.dig(:metadata, :annotations, :read_only_hint))
+    assert_equal(false, instantiate_tool.dig(:metadata, :annotations, :destructive_hint))
+    assert_equal(
+      %w[targetReference placement metadata],
+      instantiate_tool.fetch(:input_schema).fetch(:required)
+    )
+    assert_schema_description(instantiate_tool, :targetReference)
+    assert_schema_description(instantiate_tool, :placement)
+    assert_schema_description(instantiate_tool, :metadata)
+    assert_schema_description(instantiate_tool, :outputOptions)
+    assert_schema_description(instantiate_tool, :placement, :position)
+    assert_schema_description(instantiate_tool, :placement, :scale)
+    assert_schema_description(instantiate_tool, :metadata, :sourceElementId)
+    assert_schema_description(instantiate_tool, :outputOptions, :includeBounds)
+  end
+
+  def assert_staged_asset_listing_contract(list_tool)
     assert_equal(true, list_tool.dig(:metadata, :annotations, :read_only_hint))
     assert_equal(false, list_tool.dig(:metadata, :annotations, :destructive_hint))
     assert_equal(%w[approved], nested_enum(list_tool, :filters, :approvalState))
   end
+
+  def assert_schema_description(tool, *keys)
+    schema = tool.fetch(:input_schema).fetch(:properties)
+    keys[0...-1].each do |key|
+      schema = schema.fetch(key).fetch(:properties)
+    end
+
+    description = schema.fetch(keys.last).fetch(:description)
+    message = "#{tool.fetch(:name)} #{keys.join('.')} needs description"
+    assert(description.length >= 20, message)
+  end
+
+  private :assert_schema_description,
+          :assert_staged_asset_curation_contract,
+          :assert_staged_asset_instantiation_contract,
+          :assert_staged_asset_listing_contract
 
   def nested_enum(tool, *keys)
     schema = tool.fetch(:input_schema).fetch(:properties)

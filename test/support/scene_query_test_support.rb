@@ -171,11 +171,20 @@ module SceneQueryTestSupport
     def area_scale
       scale * scale
     end
+
+    def to_a
+      [
+        scale, 0.0, 0.0, 0.0,
+        0.0, scale, 0.0, 0.0,
+        0.0, 0.0, scale, 0.0,
+        origin.x, origin.y, origin.z, 1.0
+      ]
+    end
   end
 
   module FakeEntityBehavior
-    attr_reader :entity_id, :bounds, :layer, :material, :name, :persistent_id, :details,
-                :attributes
+    attr_reader :entity_id, :bounds, :material, :persistent_id, :details, :attributes
+    attr_accessor :layer, :name
 
     def initialize(entity_id:, bounds:, layer:, material:, details: {})
       super()
@@ -247,6 +256,28 @@ module SceneQueryTestSupport
 
     def transform!(transformation)
       @transformations << transformation
+      @transformation = transformation if transformation.respond_to?(:origin)
+    end
+
+    def transformation=(transformation)
+      @transformations << transformation
+      @transformation = transformation
+    end
+
+    def copy
+      self.class.new(
+        entity_id: details.fetch(:copy_entity_id, entity_id + 100),
+        bounds: bounds,
+        layer: layer,
+        material: material,
+        details: details.merge(attributes: deep_copy_attributes(attributes))
+      )
+    end
+
+    private
+
+    def deep_copy_attributes(value)
+      Marshal.load(Marshal.dump(value))
     end
   end
 
@@ -282,6 +313,107 @@ module SceneQueryTestSupport
 
     def transform!(transformation)
       @transformations << transformation
+      @transformation = transformation if transformation.respond_to?(:origin)
+    end
+
+    def transformation=(transformation)
+      @transformations << transformation
+      @transformation = transformation
+    end
+  end
+
+  class FakeEntitiesCollection
+    attr_reader :items, :added_instances
+
+    def initialize(items = [])
+      @items = items.dup
+      @added_instances = []
+    end
+
+    def to_a
+      items.dup
+    end
+
+    def each(&block)
+      items.each(&block)
+    end
+
+    def +(other)
+      items + other
+    end
+
+    def add_instance(definition, transformation)
+      entity_id = next_entity_id
+      instance = FakeComponentInstance.new(
+        entity_id: entity_id,
+        bounds: bounds_from_transformation(transformation),
+        layer: FakeLayer.new('Layer0'),
+        material: nil,
+        details: {
+          name: definition.respond_to?(:name) ? definition.name : 'Component Instance',
+          persistent_id: entity_id + 7000,
+          attributes: {},
+          definition: definition,
+          transformation: transformation
+        }
+      )
+      items << instance
+      added_instances << {
+        definition: definition,
+        transformation: transformation,
+        position: transformation_origin(transformation),
+        scale: transformation_scale(transformation),
+        entity: instance
+      }
+      instance
+    end
+
+    def add_group(group = nil)
+      target = group || FakeGroup.new(
+        entity_id: next_entity_id,
+        bounds: default_bounds,
+        layer: FakeLayer.new('Layer0'),
+        material: nil,
+        details: { name: 'Copied Group', persistent_id: next_entity_id + 7000, entities: [] }
+      )
+      items << target
+      target
+    end
+
+    private
+
+    def next_entity_id
+      max_id = items.filter_map { |item| item.entityID if item.respond_to?(:entityID) }.max
+      (max_id || 900) + 1
+    end
+
+    def bounds_from_transformation(transformation)
+      origin = transformation.respond_to?(:origin) ? transformation.origin : FakePoint.new(0, 0, 0)
+      FakeBounds.new(
+        min: origin,
+        max: FakePoint.new(origin.x + 1, origin.y + 2, origin.z + 3),
+        center: FakePoint.new(origin.x + 0.5, origin.y + 1, origin.z + 1.5),
+        size: [1, 2, 3]
+      )
+    end
+
+    def transformation_origin(transformation)
+      return [0.0, 0.0, 0.0] unless transformation.respond_to?(:origin)
+
+      [transformation.origin.x, transformation.origin.y, transformation.origin.z]
+    end
+
+    def transformation_scale(transformation)
+      transformation.respond_to?(:scale) ? transformation.scale : 1.0
+    end
+
+    def default_bounds
+      FakeBounds.new(
+        min: FakePoint.new(0, 0, 0),
+        max: FakePoint.new(1, 2, 3),
+        center: FakePoint.new(0.5, 1.0, 1.5),
+        size: [1, 2, 3]
+      )
     end
   end
 

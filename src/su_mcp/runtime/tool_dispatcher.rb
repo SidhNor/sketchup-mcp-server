@@ -13,6 +13,7 @@ module SU_MCP
       'create_terrain_surface' => :create_terrain_surface,
       'edit_terrain_surface' => :edit_terrain_surface,
       'curate_staged_asset' => :curate_staged_asset,
+      'instantiate_staged_asset' => :instantiate_staged_asset,
       'list_staged_assets' => :list_staged_assets,
       'get_entity_info' => :get_entity_info,
       'create_site_element' => :create_site_element,

@@ -19,9 +19,20 @@ class PublicMcpContractPostureTest < Minitest::Test
 
     assert_includes(docs, 'transform_entities')
     assert_includes(docs, 'set_material')
+    assert_includes(docs, 'instantiate_staged_asset')
     assert_includes(docs, 'targetReference')
     refute_includes(docs, 'legacy `id`')
     refute_includes(docs, 'either legacy `id` or compact `targetReference`')
+  end
+
+  def test_user_facing_docs_describe_staged_asset_instantiation_contract
+    docs = read_repo_file('docs/mcp-tool-reference.md')
+
+    assert_includes(docs, 'metadata.sourceElementId')
+    assert_includes(docs, 'placement.position')
+    assert_includes(docs, 'placement.scale')
+    assert_includes(docs, 'model-root')
+    assert_includes(docs, 'sourceAssetElementId')
   end
 
   def test_boolean_operation_runtime_seams_are_removed_from_public_source

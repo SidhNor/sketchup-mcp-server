@@ -112,7 +112,134 @@ class StagedAssetCommandsTest < Minitest::Test
     assert_equal('unsupported_target_type', result.dig(:refusal, :code))
   end
 
+  def test_instantiates_approved_component_exemplar_as_managed_instance
+    source = build_asset_component(attributes: approved_exemplar_attributes)
+    created = build_asset_component(entity_id: 901, attributes: {})
+    Sketchup.active_model_override = staged_asset_model(source)
+    commands = SU_MCP::StagedAssets::StagedAssetCommands.new(
+      creator: RecordingInstanceCreator.new(created)
+    )
+
+    result = commands.instantiate_staged_asset(instantiate_request)
+
+    assert_equal(true, result.fetch(:success))
+    assert_equal('instantiated', result.fetch(:outcome))
+    assert_equal('placed-asset-001', result.dig(:instance, :sourceElementId))
+    assert_equal('asset_instance', result.dig(:instance, :semanticType))
+    assert_equal('asset-tree-oak-001', result.dig(:lineage, :sourceAssetElementId))
+    assert_equal({ position: [1.0, 2.0, 0.0], scale: 1.0 }, result.fetch(:placement))
+    assert_equal([[:start_operation, 'Instantiate Staged Asset', true], [:commit_operation]],
+                 Sketchup.active_model.operations)
+    assert_equal(true, source.get_attribute('su_mcp', 'assetExemplar'))
+  end
+
+  def test_instantiated_instance_is_not_returned_by_staged_asset_listing
+    source = build_asset_group(attributes: approved_exemplar_attributes)
+    created = build_asset_group(entity_id: 901, attributes: {})
+    Sketchup.active_model_override = staged_asset_model(source, created)
+    commands = SU_MCP::StagedAssets::StagedAssetCommands.new(
+      creator: RecordingInstanceCreator.new(created)
+    )
+
+    commands.instantiate_staged_asset(instantiate_request)
+    listed = commands.list_staged_assets('filters' => { 'category' => 'tree' })
+
+    assert_equal(['asset-tree-oak-001'], source_element_ids(listed))
+    refute_includes(source_element_ids(listed), 'placed-asset-001')
+  end
+
+  def test_refuses_unapproved_exemplar_before_mutation
+    source = build_asset_group(
+      attributes: approved_exemplar_attributes('approvalState' => 'draft')
+    )
+    Sketchup.active_model_override = staged_asset_model(source)
+
+    result = @commands.instantiate_staged_asset(instantiate_request)
+
+    assert_equal('unapproved_exemplar', result.dig(:refusal, :code))
+    assert_equal([], Sketchup.active_model.operations)
+  end
+
+  def test_refuses_missing_instance_identity_before_mutation
+    source = build_asset_group(attributes: approved_exemplar_attributes)
+    Sketchup.active_model_override = staged_asset_model(source)
+
+    result = @commands.instantiate_staged_asset(
+      instantiate_request.merge('metadata' => { 'sourceElementId' => ' ' })
+    )
+
+    assert_equal('missing_required_metadata', result.dig(:refusal, :code))
+    assert_equal({ field: 'metadata.sourceElementId' }, result.dig(:refusal, :details))
+    assert_equal([], Sketchup.active_model.operations)
+  end
+
+  def test_refuses_invalid_placement_position_before_mutation
+    source = build_asset_group(attributes: approved_exemplar_attributes)
+    Sketchup.active_model_override = staged_asset_model(source)
+
+    result = @commands.instantiate_staged_asset(
+      instantiate_request.merge('placement' => { 'position' => [1.0, 2.0] })
+    )
+
+    assert_equal('invalid_placement', result.dig(:refusal, :code))
+    assert_equal('placement.position', result.dig(:refusal, :details, :field))
+    assert_equal([1.0, 2.0], result.dig(:refusal, :details, :value))
+    assert_equal([], Sketchup.active_model.operations)
+  end
+
+  def test_refuses_invalid_scale_before_mutation
+    source = build_asset_group(attributes: approved_exemplar_attributes)
+    Sketchup.active_model_override = staged_asset_model(source)
+
+    result = @commands.instantiate_staged_asset(
+      instantiate_request.merge('placement' => { 'position' => [1.0, 2.0, 0.0], 'scale' => 0 })
+    )
+
+    assert_equal('invalid_scale', result.dig(:refusal, :code))
+    assert_equal(
+      { field: 'placement.scale', value: 0 },
+      result.dig(:refusal, :details)
+    )
+    assert_equal([], Sketchup.active_model.operations)
+  end
+
+  def test_aborts_sketchup_operation_when_creation_fails
+    source = build_asset_group(attributes: approved_exemplar_attributes)
+    Sketchup.active_model_override = staged_asset_model(source)
+    commands = SU_MCP::StagedAssets::StagedAssetCommands.new(
+      creator: RaisingInstanceCreator.new
+    )
+
+    assert_raises(RuntimeError) do
+      commands.instantiate_staged_asset(instantiate_request)
+    end
+
+    assert_equal([[:start_operation, 'Instantiate Staged Asset', true], [:abort_operation]],
+                 Sketchup.active_model.operations)
+    assert_nil(source.get_attribute('su_mcp', 'managedSceneObject'))
+  end
+
   private
+
+  class RecordingInstanceCreator
+    attr_reader :calls
+
+    def initialize(created)
+      @created = created
+      @calls = []
+    end
+
+    def create(source, placement:)
+      @calls << { source: source, placement: placement }
+      @created
+    end
+  end
+
+  class RaisingInstanceCreator
+    def create(_source, placement:)
+      raise "creation failed for #{placement.inspect}"
+    end
+  end
 
   def curation_request
     {
@@ -126,6 +253,15 @@ class StagedAssetCommandsTest < Minitest::Test
       },
       'approval' => { 'state' => 'approved' },
       'staging' => { 'mode' => 'metadata_only' },
+      'outputOptions' => { 'includeBounds' => true }
+    }
+  end
+
+  def instantiate_request
+    {
+      'targetReference' => { 'sourceElementId' => 'asset-tree-oak-001' },
+      'placement' => { 'position' => [1.0, 2.0, 0.0] },
+      'metadata' => { 'sourceElementId' => 'placed-asset-001' },
       'outputOptions' => { 'includeBounds' => true }
     }
   end

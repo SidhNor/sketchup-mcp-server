@@ -11,6 +11,7 @@
     "create_terrain_surface",
     "edit_terrain_surface",
     "curate_staged_asset",
+    "instantiate_staged_asset",
     "list_staged_assets",
     "get_entity_info",
     "create_site_element",
@@ -34,6 +35,7 @@
     "transform_entities": ["targetReference"],
     "set_material": ["targetReference"],
     "curate_staged_asset": ["targetReference"],
+    "instantiate_staged_asset": ["targetReference"],
     "edit_terrain_surface": ["targetReference"]
   },
   "role_reference_tools": {

@@ -27,7 +27,8 @@ module StagedAssetTestSupport
     )
   end
 
-  def build_asset_component(entity_id: 811, origin_x: 10, attributes: {}, definition_entities: [])
+  def build_asset_component(entity_id: 811, origin_x: 10, attributes: {}, definition_entities: [],
+                            details: {})
     definition = SceneQueryTestSupport::FakeComponentDefinition.new(
       name: 'Oak Component Definition',
       entities: definition_entities
@@ -42,7 +43,7 @@ module StagedAssetTestSupport
         persistent_id: entity_id + 7000,
         attributes: { 'su_mcp' => attributes },
         definition: definition
-      }
+      }.merge(details)
     )
   end
 
@@ -62,9 +63,10 @@ module StagedAssetTestSupport
   end
 
   def staged_asset_model(*entities)
+    root_entities = SceneQueryTestSupport::FakeEntitiesCollection.new(entities.flatten)
     SceneQueryTestSupport::FakeModel.new(
       state: {
-        entities: entities.flatten,
+        entities: root_entities,
         active_entities: [],
         selection: [],
         materials: [staged_asset_material],

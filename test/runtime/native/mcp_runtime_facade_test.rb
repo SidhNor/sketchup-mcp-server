@@ -109,6 +109,11 @@ class McpRuntimeFacadeTest < Minitest::Test
       @calls << [:list_staged_assets, params]
       @result
     end
+
+    def instantiate_staged_asset(params)
+      @calls << [:instantiate_staged_asset, params]
+      @result
+    end
   end
 
   class RecordingRuntimeCommandFactory
@@ -332,6 +337,28 @@ class McpRuntimeFacadeTest < Minitest::Test
       [[:list_staged_assets, { 'filters' => { 'category' => 'tree' } }]],
       staged_commands.calls
     )
+    assert_equal(expected, result)
+  end
+
+  def test_instantiate_staged_asset_dispatches_through_the_shared_runtime_command_factory
+    expected = {
+      success: true,
+      outcome: 'instantiated',
+      instance: { sourceElementId: 'placed-asset-001' }
+    }
+    staged_commands = RecordingStagedAssetCommands.new(result: expected)
+    factory = RecordingRuntimeCommandFactory.new(targets: [staged_commands])
+    facade = SU_MCP::McpRuntimeFacade.new(runtime_command_factory: factory)
+    payload = {
+      'targetReference' => { 'sourceElementId' => 'asset-tree-oak-001' },
+      'placement' => { 'position' => [1.0, 2.0, 0.0] },
+      'metadata' => { 'sourceElementId' => 'placed-asset-001' }
+    }
+
+    result = facade.instantiate_staged_asset(payload)
+
+    assert_equal(1, factory.calls)
+    assert_equal([[:instantiate_staged_asset, payload]], staged_commands.calls)
     assert_equal(expected, result)
   end
 

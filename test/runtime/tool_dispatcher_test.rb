@@ -131,6 +131,18 @@ class ToolDispatcherTest < Minitest::Test
       }
     end
 
+    def instantiate_staged_asset(args)
+      @calls << [:instantiate_staged_asset, args]
+      {
+        success: true,
+        outcome: 'instantiated',
+        instance: { sourceElementId: args.dig('metadata', 'sourceElementId') },
+        sourceAsset: { sourceElementId: args.dig('targetReference', 'sourceElementId') },
+        lineage: { sourceAssetElementId: args.dig('targetReference', 'sourceElementId') },
+        placement: { position: args.dig('placement', 'position'), scale: 1.0 }
+      }
+    end
+
     # rubocop:disable Naming/AccessorMethodName
     def set_entity_metadata(args)
       @calls << [:set_entity_metadata, args]
@@ -158,7 +170,7 @@ class ToolDispatcherTest < Minitest::Test
             :sample_surface_z,
             :create_group, :reparent_entities, :create_site_element, :create_terrain_surface,
             :edit_terrain_surface,
-            :curate_staged_asset, :list_staged_assets,
+            :curate_staged_asset, :list_staged_assets, :instantiate_staged_asset,
             :set_entity_metadata, :apply_material
   end
 
@@ -384,6 +396,29 @@ class ToolDispatcherTest < Minitest::Test
       result
     )
     assert_equal([[:list_staged_assets, payload]], @target.calls.last(1))
+  end
+
+  def test_dispatches_instantiate_staged_asset_to_the_staged_asset_command
+    payload = {
+      'targetReference' => { 'sourceElementId' => 'asset-tree-oak-001' },
+      'placement' => { 'position' => [1.0, 2.0, 0.0] },
+      'metadata' => { 'sourceElementId' => 'placed-asset-001' }
+    }
+
+    result = @dispatcher.call('instantiate_staged_asset', payload)
+
+    assert_equal(
+      {
+        success: true,
+        outcome: 'instantiated',
+        instance: { sourceElementId: 'placed-asset-001' },
+        sourceAsset: { sourceElementId: 'asset-tree-oak-001' },
+        lineage: { sourceAssetElementId: 'asset-tree-oak-001' },
+        placement: { position: [1.0, 2.0, 0.0], scale: 1.0 }
+      },
+      result
+    )
+    assert_equal([[:instantiate_staged_asset, payload]], @target.calls.last(1))
   end
 
   def test_dispatches_measure_scene_to_the_measurement_command
