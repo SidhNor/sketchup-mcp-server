@@ -50,7 +50,8 @@ module SU_MCP
       DEFAULT_CDT_BACKEND = Object.new.freeze
       DEFAULT_CDT_ENABLED = false
 
-      attr_reader :last_cdt_patch_timing, :last_cdt_failure_reason
+      attr_reader :last_cdt_patch_timing, :last_cdt_failure_reason,
+                  :last_adaptive_patch_timing
 
       def initialize(
         length_converter: Semantic::LengthConverter.new,
@@ -72,6 +73,7 @@ module SU_MCP
 
       def generate(owner:, state:, terrain_state_summary:, output_plan: nil, feature_context: nil)
         @last_cdt_failure_reason = nil
+        @last_adaptive_patch_timing = nil
         return no_data_refusal if adaptive_state?(state) && state.elevations.any?(&:nil?)
 
         # Create/adopt generation emits the complete derived grid; edit regeneration may be partial.
@@ -135,6 +137,7 @@ module SU_MCP
 
       def regenerate(owner:, state:, terrain_state_summary:, output_plan: nil, feature_context: nil)
         @last_cdt_failure_reason = nil
+        @last_adaptive_patch_timing = nil
         unsupported = unsupported_child_types(owner.entities)
         return unsupported_children_refusal(unsupported) unless unsupported.empty?
         return no_data_refusal if adaptive_state?(state) && state.elevations.any?(&:nil?)
@@ -291,7 +294,9 @@ module SU_MCP
       end
 
       def adaptive_state?(state)
-        state.respond_to?(:tiles) && state.respond_to?(:tile_size)
+        state.respond_to?(:tiles) &&
+          state.respond_to?(:tile_size) &&
+          state.respond_to?(:payload_kind)
       end
 
       def regenerate_cdt(owner:, state:, terrain_state_summary:, plan:, feature_context:)
@@ -799,28 +804,43 @@ module SU_MCP
       end
 
       def generate_adaptive_patches(owner:, state:, output_plan:)
-        output_plan = full_adaptive_rebuild_plan(state, output_plan)
-        erase_entities(owner.entities, derived_output_entities(owner.entities))
-        mesh = owner.entities.add_group
-        mark_adaptive_patch_mesh(
-          mesh,
-          batch_id: adaptive_replacement_batch_id(output_plan),
-          output_plan: output_plan,
-          face_count: 0
-        )
-        emit_adaptive_patch_batch(
-          owner: owner,
-          mesh: mesh,
-          state: state,
-          output_plan: output_plan,
-          patches: output_plan.adaptive_patch_policy.patch_domains(state.dimensions)
-        )
-        mark_adaptive_patch_mesh(
-          mesh,
-          batch_id: adaptive_replacement_batch_id(output_plan),
-          output_plan: output_plan,
-          face_count: entity_faces(mesh.entities).length
-        )
+        timing = PatchLifecycle::PatchTiming.new
+        output_plan = timing.measure(:adaptivePlanning) do
+          full_adaptive_rebuild_plan(state, output_plan)
+        end
+        patches = timing.measure(:dirtyWindowMapping) do
+          output_plan.adaptive_patch_policy.patch_domains(state.dimensions)
+        end
+        planned = timing.measure(:adaptivePlanning) do
+          planned_adaptive_patch_batch(
+            state: state,
+            output_plan: output_plan,
+            patches: patches
+          )
+        end
+        timing.measure(:mutation) do
+          erase_entities(owner.entities, derived_output_entities(owner.entities))
+          mesh = owner.entities.add_group
+          mark_adaptive_patch_mesh(
+            mesh,
+            batch_id: adaptive_replacement_batch_id(output_plan),
+            output_plan: output_plan,
+            face_count: 0
+          )
+          emit_planned_adaptive_patch_faces(mesh.entities, planned.fetch(:faces))
+          write_adaptive_patch_registry(
+            owner: owner,
+            output_plan: output_plan,
+            patches: planned.fetch(:patches)
+          )
+          mark_adaptive_patch_mesh(
+            mesh,
+            batch_id: adaptive_replacement_batch_id(output_plan),
+            output_plan: output_plan,
+            face_count: entity_faces(mesh.entities).length
+          )
+        end
+        @last_adaptive_patch_timing = timing.to_h
         generated_result(output_plan)
       end
 
@@ -833,7 +853,7 @@ module SU_MCP
           policy: output_plan.adaptive_patch_policy,
           dimensions: state.dimensions
         )
-        resolution = timing.measure(:dirty_window_mapping) do
+        resolution = timing.measure(:dirtyWindowMapping) do
           resolver.resolve(cell_window: output_plan.cell_window)
         end
         mesh = adaptive_patch_mesh(owner.entities)
@@ -844,7 +864,7 @@ module SU_MCP
         unsupported = unsupported_child_types(mesh.entities)
         return unsupported_children_refusal(unsupported) unless unsupported.empty?
 
-        ownership = timing.measure(:ownership_lookup) do
+        ownership = timing.measure(:ownershipLookup) do
           owned_adaptive_patch_faces(
             owner: owner,
             entities: mesh.entities,
@@ -857,11 +877,13 @@ module SU_MCP
           ownership.fetch(:outcome) == :fallback
 
         patches = resolution.fetch(:replacementPatches)
-        planned = planned_adaptive_patch_batch(
-          state: state,
-          output_plan: output_plan,
-          patches: patches
-        )
+        planned = timing.measure(:adaptivePlanning) do
+          planned_adaptive_patch_batch(
+            state: state,
+            output_plan: output_plan,
+            patches: patches
+          )
+        end
         timing.measure(:mutation) do
           erase_partial_output(mesh.entities, ownership.fetch(:faces))
           emit_planned_adaptive_patch_faces(mesh.entities, planned.fetch(:faces))
@@ -878,6 +900,7 @@ module SU_MCP
             patches: planned.fetch(:patches)
           )
         end
+        @last_adaptive_patch_timing = timing.to_h
         generated_result(output_plan)
       end
 

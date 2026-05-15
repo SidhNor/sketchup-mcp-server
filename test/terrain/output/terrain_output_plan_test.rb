@@ -6,6 +6,7 @@ require_relative '../../../src/su_mcp/terrain/state/heightmap_state'
 require_relative '../../../src/su_mcp/terrain/regions/sample_window'
 require_relative '../../../src/su_mcp/terrain/output/terrain_output_cell_window'
 require_relative '../../../src/su_mcp/terrain/output/adaptive_patches/adaptive_patch_policy'
+require_relative '../../../src/su_mcp/terrain/output/feature_output_policy_diagnostics'
 require_relative '../../../src/su_mcp/terrain/output/terrain_output_plan'
 
 class TerrainOutputPlanTest < Minitest::Test # rubocop:disable Metrics/ClassLength
@@ -69,6 +70,22 @@ class TerrainOutputPlanTest < Minitest::Test # rubocop:disable Metrics/ClassLeng
     assert_equal(expected_summary('digest-2'), plan.to_summary)
     refute_includes(JSON.generate(plan.to_summary), 'dirtyWindow')
     refute_includes(JSON.generate(plan.to_summary), 'sampleWindow')
+  end
+
+  def test_output_plan_can_carry_feature_policy_diagnostics_without_summary_leak
+    diagnostics = build_feature_output_policy_diagnostics
+
+    plan = SU_MCP::Terrain::TerrainOutputPlan.full_grid(
+      state: state,
+      terrain_state_summary: { digest: 'digest-1' },
+      feature_output_policy_diagnostics: diagnostics
+    )
+
+    assert_same(diagnostics, plan.feature_output_policy_diagnostics)
+    serialized = JSON.generate(plan.to_summary)
+    refute_includes(serialized, 'featureViewDigest')
+    refute_includes(serialized, 'policyFingerprint')
+    refute_includes(serialized, 'selectedFeatureKinds')
   end
 
   def test_dirty_window_plan_rejects_empty_windows_as_internal_invalid_plan
@@ -406,6 +423,20 @@ class TerrainOutputPlanTest < Minitest::Test # rubocop:disable Metrics/ClassLeng
         derivedFromStateDigest: digest
       }
     }
+  end
+
+  def build_feature_output_policy_diagnostics
+    SU_MCP::Terrain::FeatureOutputPolicyDiagnostics.new(
+      selection_window: SU_MCP::Terrain::SampleWindow.new(
+        min_column: 0,
+        min_row: 0,
+        max_column: 1,
+        max_row: 1
+      ),
+      selected_features: [],
+      affected_window: nil,
+      adaptive_patch_policy: nil
+    )
   end
 
   def state

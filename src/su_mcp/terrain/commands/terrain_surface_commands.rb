@@ -18,6 +18,7 @@ require_relative '../features/terrain_feature_intent_emitter'
 require_relative '../features/terrain_feature_planner'
 require_relative '../evidence/terrain_edit_evidence_builder'
 require_relative '../output/cdt/patches/cdt_patch_policy'
+require_relative '../output/feature_output_policy_diagnostics'
 require_relative '../output/patch_lifecycle/patch_grid_policy'
 require_relative '../output/patch_lifecycle/patch_timing'
 require_relative '../output/patch_lifecycle/patch_window_resolver'
@@ -38,6 +39,8 @@ module SU_MCP
       EDIT_OPERATION_NAME = 'Edit Terrain Surface'
       SEMANTIC_TYPE = 'managed_terrain_surface'
       SCHEMA_VERSION = 1
+
+      attr_reader :last_baseline_evidence
 
       def initialize(
         model: Sketchup.active_model,
@@ -86,6 +89,7 @@ module SU_MCP
       end
 
       def create_terrain_surface(params)
+        reset_baseline_evidence!
         validation = validate(params)
         return validation if refused?(validation)
 
@@ -96,6 +100,7 @@ module SU_MCP
       end
 
       def edit_terrain_surface(params)
+        reset_baseline_evidence!
         validation = validate_edit(params)
         return validation if refused?(validation)
 
@@ -184,14 +189,19 @@ module SU_MCP
         saved = save_state_or_refusal(context.fetch(:owner), state)
         return saved if refused?(saved)
 
-        feature_plan = post_save_feature_plan(
-          state,
-          saved,
-          selection_window: changed_region_window(context.fetch(:edit_result).fetch(:diagnostics))
-        )
+        timing = PatchLifecycle::PatchTiming.new
+        feature_plan = measure_baseline_timing(timing, :featureSelectionDiagnostics) do
+          post_save_feature_plan(
+            state,
+            saved,
+            selection_window: changed_region_window(
+              context.fetch(:edit_result).fetch(:diagnostics)
+            )
+          )
+        end
         return feature_plan if refused?(feature_plan)
 
-        output = regenerate_edit_output(context, saved, feature_plan, state)
+        output = regenerate_edit_output(context, saved, feature_plan, state, timing: timing)
         return output_refusal(output) if refused?(output)
 
         edit_success_response(context, saved, output, state)
@@ -218,13 +228,17 @@ module SU_MCP
         )
       end
 
-      def regenerate_edit_output(context, saved, feature_plan, feature_state)
+      def regenerate_edit_output(context, saved, feature_plan, feature_state, timing:)
         output_state = context.fetch(:edit_result).fetch(:state)
         output_state = feature_state if cdt_output_enabled?
-        timing = cdt_output_enabled? ? PatchLifecycle::PatchTiming.new : nil
-        output_plan = measure_cdt_timing(timing, :command_prep) do
+        output_plan = measure_baseline_timing(
+          timing,
+          :commandOutputPlanning,
+          legacy_bucket: cdt_output_enabled? ? :command_prep : nil
+        ) do
           edit_output_plan(context, saved, feature_plan, output_state)
         end
+        record_baseline_evidence(output_plan, state: output_state)
         feature_context = cdt_feature_context(feature_plan, feature_state)
         feature_context = cdt_patch_feature_context(
           state: feature_state,
@@ -233,13 +247,15 @@ module SU_MCP
           feature_context: feature_context,
           timing: timing
         )
-        mesh_generator.regenerate(
+        output = mesh_generator.regenerate(
           owner: context.fetch(:owner),
           state: output_state,
           terrain_state_summary: saved.fetch(:summary),
           output_plan: output_plan,
           feature_context: feature_context
         )
+        record_baseline_timing(timing)
+        output
       end
 
       def cdt_feature_context(feature_plan, feature_state)
@@ -260,7 +276,11 @@ module SU_MCP
         )
         resolution = resolver.resolve(cell_window: output_plan.cell_window)
         feature_context.merge(
-          patchFeaturePlan: measure_cdt_timing(timing, :feature_selection) do
+          patchFeaturePlan: measure_baseline_timing(
+            timing,
+            :featureSelectionDiagnostics,
+            legacy_bucket: :feature_selection
+          ) do
             terrain_feature_planner.prepare_patch_batch(
               state: state,
               terrain_state_summary: saved.fetch(:summary),
@@ -272,10 +292,127 @@ module SU_MCP
         )
       end
 
-      def measure_cdt_timing(timing, bucket, &block)
-        return block.call unless timing
+      def measure_baseline_timing(timing, bucket, legacy_bucket: nil)
+        return yield unless timing
 
-        timing.measure(bucket, &block)
+        started_at = Process.clock_gettime(Process::CLOCK_MONOTONIC)
+        yield
+      ensure
+        if timing && started_at
+          elapsed = Process.clock_gettime(Process::CLOCK_MONOTONIC) - started_at
+          timing.record(bucket, elapsed)
+          timing.record(legacy_bucket, elapsed) if legacy_bucket
+        end
+      end
+
+      def reset_baseline_evidence!
+        @last_baseline_evidence = nil
+      end
+
+      def record_baseline_evidence(output_plan, state:)
+        return reset_baseline_evidence! unless output_plan
+
+        diagnostics = output_plan.feature_output_policy_diagnostics&.to_h
+        @last_baseline_evidence = {
+          featureViewDigest: diagnostics&.fetch(:featureViewDigest, nil),
+          policyFingerprint: diagnostics&.fetch(:policyFingerprint, nil),
+          featureContext: feature_context_baseline_summary(diagnostics),
+          dirtyWindow: sample_window_baseline_summary(output_plan.window),
+          affectedPatchScope: affected_patch_scope_summary(output_plan, state),
+          renderingSummary: output_plan_baseline_summary(output_plan),
+          simplificationTolerance: output_plan.simplification_tolerance,
+          maxSimplificationError: output_plan.max_simplification_error
+        }.compact
+      end
+
+      def record_baseline_timing(timing)
+        return unless @last_baseline_evidence && timing
+
+        merge_generator_timing!(timing)
+        @last_baseline_evidence = @last_baseline_evidence.merge(
+          timingBuckets: generic_baseline_timing_buckets(timing)
+        )
+      end
+
+      def merge_generator_timing!(timing)
+        if mesh_generator.respond_to?(:last_adaptive_patch_timing) &&
+           mesh_generator.last_adaptive_patch_timing
+          timing.merge!(mesh_generator.last_adaptive_patch_timing)
+        elsif mesh_generator.respond_to?(:last_cdt_patch_timing) &&
+              mesh_generator.last_cdt_patch_timing
+          timing.merge!(mesh_generator.last_cdt_patch_timing)
+        end
+      end
+
+      def generic_baseline_timing_buckets(timing)
+        buckets = timing.to_h.fetch(:buckets)
+        {
+          commandOutputPlanning: bucket_seconds(buckets, :commandOutputPlanning, :command_prep),
+          featureSelectionDiagnostics: bucket_seconds(
+            buckets,
+            :featureSelectionDiagnostics,
+            :feature_selection
+          ),
+          dirtyWindowMapping: bucket_seconds(buckets, :dirtyWindowMapping, :dirty_window_mapping),
+          adaptivePlanning: bucket_seconds(buckets, :adaptivePlanning, :adaptive_planning),
+          mutation: bucket_seconds(buckets, :mutation),
+          total: bucket_seconds(buckets, :total)
+        }
+      end
+
+      def bucket_seconds(buckets, *keys)
+        keys.each do |key|
+          return buckets[key] if buckets.key?(key)
+          return buckets[key.to_s] if buckets.key?(key.to_s)
+        end
+        nil
+      end
+
+      def feature_context_baseline_summary(diagnostics)
+        return nil unless diagnostics
+
+        {
+          selectedFeatureCounts: diagnostics.fetch(:selectedFeatureCounts),
+          selectedFeatureKinds: diagnostics.fetch(:selectedFeatureKinds),
+          selectedStrengthCounts: diagnostics.fetch(:selectedStrengthCounts),
+          intersectionSummary: diagnostics.fetch(:intersectionSummary)
+        }
+      end
+
+      def sample_window_baseline_summary(window)
+        return nil unless window
+
+        {
+          min: { column: window.min_column, row: window.min_row },
+          max: { column: window.max_column, row: window.max_row }
+        }
+      end
+
+      def affected_patch_scope_summary(output_plan, state)
+        return nil unless output_plan.adaptive_patch_policy && output_plan.cell_window
+        return nil if output_plan.cell_window.empty?
+
+        resolution = PatchLifecycle::PatchWindowResolver.new(
+          policy: output_plan.adaptive_patch_policy,
+          dimensions: state.dimensions
+        ).resolve(cell_window: output_plan.cell_window)
+        {
+          affectedPatchCount: resolution.fetch(:affectedPatchIds).length,
+          replacementPatchCount: resolution.fetch(:replacementPatchIds).length,
+          affectedPatchIds: resolution.fetch(:affectedPatchIds),
+          replacementPatchIds: resolution.fetch(:replacementPatchIds),
+          conformanceRing: resolution.fetch(:conformanceRing)
+        }
+      end
+
+      def output_plan_baseline_summary(output_plan)
+        {
+          intent: output_plan.intent,
+          executionStrategy: output_plan.execution_strategy,
+          meshType: output_plan.mesh_type,
+          vertexCount: output_plan.vertex_count,
+          faceCount: output_plan.face_count
+        }
       end
 
       def cdt_output_enabled?
@@ -418,11 +555,19 @@ module SU_MCP
       end
 
       def edit_output_plan(context, saved, feature_plan, state)
+        policy = adaptive_patch_policy_for(state)
         if full_grid_feature_reconciliation?(feature_plan)
+          window = SampleWindow.full_grid(state)
           return TerrainOutputPlan.full_grid(
             state: state,
             terrain_state_summary: saved.fetch(:summary),
-            adaptive_patch_policy: adaptive_patch_policy_for(state)
+            adaptive_patch_policy: policy,
+            feature_output_policy_diagnostics: feature_output_policy_diagnostics_for(
+              feature_plan: feature_plan,
+              selection_window: window,
+              affected_window: window,
+              adaptive_patch_policy: policy
+            )
           )
         end
 
@@ -433,7 +578,29 @@ module SU_MCP
           terrain_state_summary: saved.fetch(:summary),
           previous_terrain_state_summary: context.fetch(:loaded).fetch(:summary),
           window: window,
-          adaptive_patch_policy: adaptive_patch_policy_for(state)
+          adaptive_patch_policy: policy,
+          feature_output_policy_diagnostics: feature_output_policy_diagnostics_for(
+            feature_plan: feature_plan,
+            selection_window: window,
+            affected_window: window,
+            adaptive_patch_policy: policy
+          )
+        )
+      end
+
+      def feature_output_policy_diagnostics_for(
+        feature_plan:,
+        selection_window:,
+        affected_window:,
+        adaptive_patch_policy:
+      )
+        context = feature_plan.fetch(:context, {})
+        FeatureOutputPolicyDiagnostics.new(
+          selection_window: context[:selectionWindow] || context['selectionWindow'] ||
+            selection_window,
+          selected_features: context[:selectedFeatures] || context['selectedFeatures'] || [],
+          affected_window: affected_window,
+          adaptive_patch_policy: adaptive_patch_policy
         )
       end
 
@@ -630,32 +797,51 @@ module SU_MCP
         saved = save_state_or_refusal(owner, state)
         return [saved, nil] if refused?(saved)
 
-        feature_context = nil
-        if state.respond_to?(:feature_intent) && cdt_output_enabled?
-          feature_plan = post_save_feature_plan(state, saved, selection_window: nil)
+        timing = PatchLifecycle::PatchTiming.new
+        feature_plan = nil
+        if state.respond_to?(:feature_intent)
+          feature_plan = measure_baseline_timing(timing, :featureSelectionDiagnostics) do
+            post_save_feature_plan(state, saved, selection_window: nil)
+          end
           return [feature_plan, nil] if refused?(feature_plan)
+        end
 
+        feature_context = nil
+        if feature_plan && cdt_output_enabled?
           feature_context = cdt_feature_context(feature_plan, state)
         end
+
+        output_plan = measure_baseline_timing(timing, :commandOutputPlanning) do
+          full_output_plan_for(state, saved, feature_plan)
+        end
+        record_baseline_evidence(output_plan, state: state)
 
         output = mesh_generator.generate(
           owner: owner,
           state: state,
           terrain_state_summary: saved.fetch(:summary),
-          output_plan: full_output_plan_for(state, saved),
+          output_plan: output_plan,
           feature_context: feature_context
         )
+        record_baseline_timing(timing)
         [saved, output]
       end
 
-      def full_output_plan_for(state, saved)
+      def full_output_plan_for(state, saved, feature_plan = nil)
         policy = adaptive_patch_policy_for(state)
         return nil unless policy
 
+        window = SampleWindow.full_grid(state)
         TerrainOutputPlan.full_grid(
           state: state,
           terrain_state_summary: saved.fetch(:summary),
-          adaptive_patch_policy: policy
+          adaptive_patch_policy: policy,
+          feature_output_policy_diagnostics: feature_plan && feature_output_policy_diagnostics_for(
+            feature_plan: feature_plan,
+            selection_window: window,
+            affected_window: window,
+            adaptive_patch_policy: policy
+          )
         )
       end
 
@@ -707,7 +893,7 @@ module SU_MCP
           internal_length(origin.fetch('y')),
           internal_length(origin.fetch('z'))
         )
-        Geom::Transformation.translation(point) || Struct.new(:origin).new(point)
+        Geom::Transformation.translation(point) || Geom::Transformation.new(point)
       end
 
       def internal_length(value)

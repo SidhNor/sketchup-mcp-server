@@ -10,9 +10,9 @@ module SU_MCP
       SUPPORTED_DEFINITION_KINDS = %w[heightmap_grid].freeze
 
       TARGET_ADOPTION_SAMPLES = 4096
-      MAX_TERRAIN_SAMPLES = 10_000
-      MAX_TERRAIN_COLUMNS = 128
-      MAX_TERRAIN_ROWS = 128
+      MAX_TERRAIN_SAMPLES = 65_536
+      MAX_TERRAIN_COLUMNS = 256
+      MAX_TERRAIN_ROWS = 256
       MIN_TERRAIN_COLUMNS = 2
       MIN_TERRAIN_ROWS = 2
       LIFECYCLE_TARGET_FIELD = 'lifecycle.target'
@@ -118,7 +118,7 @@ module SU_MCP
 
         refusal(
           code: 'unsupported_definition_for_adoption',
-          message: 'Definition is not supported for terrain adoption in MTA-03.',
+          message: 'Definition is not supported for terrain adoption.',
           details: { field: 'definition', lifecycleMode: lifecycle_mode }
         )
       end
@@ -128,7 +128,7 @@ module SU_MCP
 
         refusal(
           code: 'unsupported_placement_for_adoption',
-          message: 'Placement is not supported for terrain adoption in MTA-03.',
+          message: 'Placement is not supported for terrain adoption.',
           details: { field: 'placement', lifecycleMode: lifecycle_mode }
         )
       end
@@ -241,7 +241,7 @@ module SU_MCP
 
         refusal(
           code: 'grid_sample_cap_exceeded',
-          message: 'Terrain grid dimensions exceed the MTA-03 sample caps.',
+          message: 'Terrain grid dimensions exceed the supported sample caps.',
           details: grid_cap_details(columns, rows)
         )
       end

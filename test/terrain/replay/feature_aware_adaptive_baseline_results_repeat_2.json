@@ -1,0 +1,690 @@
+{
+  "schemaVersion": 1,
+  "corpusId": "feature-aware-adaptive-baseline-results",
+  "baselineCorpusId": "feature-aware-adaptive-baseline",
+  "capturedAt": "2026-05-16T00:27:22+03:00",
+  "captureKind": "live_sketchup_timing",
+  "fixture": {
+    "path": "C:/Users/Gleb/AppData/Roaming/SketchUp/SketchUp 2026/SketchUp/Plugins/su_mcp/test/terrain/replay/feature_aware_adaptive_baseline.json",
+    "sha256": "e65fdf3d8339d01b85068763c78ffe6645ef34c2343dbb170d4bc02ec3046a6d"
+  },
+  "environment": {
+    "sketchUpVersion": "26.1.189",
+    "sketchUpPlatform": "platform_win",
+    "extensionVersion": "1.8.0",
+    "runtime": "su_ruby_live_sketchup"
+  },
+  "limits": {
+    "maxSamples": 65536,
+    "maxColumns": 256,
+    "maxRows": 256
+  },
+  "terrainSpecs": [
+    {
+      "sourceElementId": "feature-aware-baseline-terrain",
+      "dimensions": {
+        "columns": 49,
+        "rows": 49
+      },
+      "samples": 2401,
+      "regularGridFaces": 4608
+    },
+    {
+      "sourceElementId": "feature-aware-baseline-terrain-large-timing",
+      "dimensions": {
+        "columns": 224,
+        "rows": 224
+      },
+      "samples": 50176,
+      "regularGridFaces": 99458
+    },
+    {
+      "sourceElementId": "feature-aware-baseline-terrain-wide-timing",
+      "dimensions": {
+        "columns": 192,
+        "rows": 192
+      },
+      "samples": 36864,
+      "regularGridFaces": 72962
+    }
+  ],
+  "rows": [
+    {
+      "rowId": "create-baseline",
+      "sourceElementId": "feature-aware-baseline-terrain",
+      "commandKind": "create",
+      "featureContextClass": "none",
+      "seconds": 0.07344420001027174,
+      "timingBuckets": {
+        "commandOutputPlanning": 0.023441299999831244,
+        "featureSelectionDiagnostics": 0.002062999992631376,
+        "dirtyWindowMapping": 2.889998722821474e-05,
+        "adaptivePlanning": 0.004570400022203103,
+        "mutation": 0.03600909997476265,
+        "total": 0.07344420001027174
+      },
+      "outcome": "created",
+      "meshType": "adaptive_tin",
+      "faceCount": 1173,
+      "vertexCount": 626,
+      "simplificationTolerance": 0.01,
+      "maxSimplificationError": 0.00990000000000002,
+      "dirtyWindow": {
+        "minColumn": 0,
+        "minRow": 0,
+        "maxColumn": 48,
+        "maxRow": 48,
+        "columns": 49,
+        "rows": 49
+      },
+      "patchScope": {
+        "affectedPatchCount": 9,
+        "replacementPatchCount": 9,
+        "conformanceRing": 1
+      }
+    },
+    {
+      "rowId": "target-local-center",
+      "sourceElementId": "feature-aware-baseline-terrain",
+      "commandKind": "edit",
+      "featureContextClass": "target_region",
+      "seconds": 0.14865210000425577,
+      "timingBuckets": {
+        "commandOutputPlanning": 0.024281399993924424,
+        "featureSelectionDiagnostics": 0.00047279999125748873,
+        "dirtyWindowMapping": 6.240000948309898e-05,
+        "adaptivePlanning": 0.004695700015872717,
+        "mutation": 0.07151499998872168,
+        "total": 0.14865210000425577
+      },
+      "outcome": "edited",
+      "meshType": "adaptive_tin",
+      "faceCount": 1289,
+      "vertexCount": 684,
+      "simplificationTolerance": 0.01,
+      "maxSimplificationError": 0.00990000000000002,
+      "dirtyWindow": {
+        "minColumn": 20,
+        "minRow": 20,
+        "maxColumn": 28,
+        "maxRow": 28,
+        "columns": 9,
+        "rows": 9
+      },
+      "patchScope": {
+        "affectedPatchCount": 1,
+        "replacementPatchCount": 9,
+        "conformanceRing": 1
+      }
+    },
+    {
+      "rowId": "target-adjacent-east",
+      "sourceElementId": "feature-aware-baseline-terrain",
+      "commandKind": "edit",
+      "featureContextClass": "adjacent_target_region",
+      "seconds": 0.17979349999222904,
+      "timingBuckets": {
+        "commandOutputPlanning": 0.025129199988441542,
+        "featureSelectionDiagnostics": 0.0004988999862689525,
+        "dirtyWindowMapping": 6.200000643730164e-05,
+        "adaptivePlanning": 0.005781500018201768,
+        "mutation": 0.08002970000961795,
+        "total": 0.17979349999222904
+      },
+      "outcome": "edited",
+      "meshType": "adaptive_tin",
+      "faceCount": 1395,
+      "vertexCount": 737,
+      "simplificationTolerance": 0.01,
+      "maxSimplificationError": 0.00990000000000002,
+      "dirtyWindow": {
+        "minColumn": 20,
+        "minRow": 20,
+        "maxColumn": 36,
+        "maxRow": 28,
+        "columns": 17,
+        "rows": 9
+      },
+      "patchScope": {
+        "affectedPatchCount": 2,
+        "replacementPatchCount": 9,
+        "conformanceRing": 1
+      }
+    },
+    {
+      "rowId": "target-repeat-center",
+      "sourceElementId": "feature-aware-baseline-terrain",
+      "commandKind": "edit",
+      "featureContextClass": "repeat_target_region",
+      "seconds": 0.17471359999035485,
+      "timingBuckets": {
+        "commandOutputPlanning": 0.027702199993655086,
+        "featureSelectionDiagnostics": 0.0007800000021234155,
+        "dirtyWindowMapping": 0.0003433000238146633,
+        "adaptivePlanning": 0.005548099987208843,
+        "mutation": 0.08019060001242906,
+        "total": 0.17471359999035485
+      },
+      "outcome": "edited",
+      "meshType": "adaptive_tin",
+      "faceCount": 1395,
+      "vertexCount": 737,
+      "simplificationTolerance": 0.01,
+      "maxSimplificationError": 0.00990000000000002,
+      "dirtyWindow": {
+        "minColumn": 20,
+        "minRow": 20,
+        "maxColumn": 36,
+        "maxRow": 28,
+        "columns": 17,
+        "rows": 9
+      },
+      "patchScope": {
+        "affectedPatchCount": 2,
+        "replacementPatchCount": 9,
+        "conformanceRing": 1
+      }
+    },
+    {
+      "rowId": "corridor-diagonal-intersect",
+      "sourceElementId": "feature-aware-baseline-terrain",
+      "commandKind": "edit",
+      "featureContextClass": "intersecting_linear_corridor",
+      "seconds": 0.21773219999158755,
+      "timingBuckets": {
+        "commandOutputPlanning": 0.03522999997949228,
+        "featureSelectionDiagnostics": 0.0008679000020492822,
+        "dirtyWindowMapping": 0.00011739999172277749,
+        "adaptivePlanning": 0.007208600000012666,
+        "mutation": 0.09563469997374341,
+        "total": 0.21773219999158755
+      },
+      "outcome": "edited",
+      "meshType": "adaptive_tin",
+      "faceCount": 1773,
+      "vertexCount": 926,
+      "simplificationTolerance": 0.01,
+      "maxSimplificationError": 0.00990000000000002,
+      "dirtyWindow": {
+        "minColumn": 14,
+        "minRow": 14,
+        "maxColumn": 36,
+        "maxRow": 36,
+        "columns": 23,
+        "rows": 23
+      },
+      "patchScope": {
+        "affectedPatchCount": 9,
+        "replacementPatchCount": 9,
+        "conformanceRing": 1
+      }
+    },
+    {
+      "rowId": "planar-pad-intersect",
+      "sourceElementId": "feature-aware-baseline-terrain",
+      "commandKind": "edit",
+      "featureContextClass": "intersecting_planar_region",
+      "seconds": 0.2305900999926962,
+      "timingBuckets": {
+        "commandOutputPlanning": 0.031024399999296293,
+        "featureSelectionDiagnostics": 0.0011322000063955784,
+        "dirtyWindowMapping": 0.0001773000112734735,
+        "adaptivePlanning": 0.006814599997596815,
+        "mutation": 0.10267079999903217,
+        "total": 0.2305900999926962
+      },
+      "outcome": "edited",
+      "meshType": "adaptive_tin",
+      "faceCount": 1675,
+      "vertexCount": 877,
+      "simplificationTolerance": 0.01,
+      "maxSimplificationError": 0.00990000000000002,
+      "dirtyWindow": {
+        "minColumn": 14,
+        "minRow": 14,
+        "maxColumn": 36,
+        "maxRow": 36,
+        "columns": 23,
+        "rows": 23
+      },
+      "patchScope": {
+        "affectedPatchCount": 9,
+        "replacementPatchCount": 9,
+        "conformanceRing": 1
+      }
+    },
+    {
+      "rowId": "survey-control-intersect",
+      "sourceElementId": "feature-aware-baseline-terrain",
+      "commandKind": "edit",
+      "featureContextClass": "intersecting_survey_control",
+      "seconds": 0.252156600006856,
+      "timingBuckets": {
+        "commandOutputPlanning": 0.030701299983775243,
+        "featureSelectionDiagnostics": 0.001262800011318177,
+        "dirtyWindowMapping": 0.00011920000542886555,
+        "adaptivePlanning": 0.0069494000053964555,
+        "mutation": 0.09434509999118745,
+        "total": 0.252156600006856
+      },
+      "outcome": "edited",
+      "meshType": "adaptive_tin",
+      "faceCount": 1701,
+      "vertexCount": 890,
+      "simplificationTolerance": 0.01,
+      "maxSimplificationError": 0.00990000000000002,
+      "dirtyWindow": {
+        "minColumn": 14,
+        "minRow": 14,
+        "maxColumn": 36,
+        "maxRow": 36,
+        "columns": 23,
+        "rows": 23
+      },
+      "patchScope": {
+        "affectedPatchCount": 9,
+        "replacementPatchCount": 9,
+        "conformanceRing": 1
+      }
+    },
+    {
+      "rowId": "fairing-envelope-intersect",
+      "sourceElementId": "feature-aware-baseline-terrain",
+      "commandKind": "edit",
+      "featureContextClass": "intersecting_fairing_region",
+      "seconds": 0.24421669999719597,
+      "timingBuckets": {
+        "commandOutputPlanning": 0.03559129999484867,
+        "featureSelectionDiagnostics": 0.001938400004291907,
+        "dirtyWindowMapping": 0.0001821999903768301,
+        "adaptivePlanning": 0.006787399994209409,
+        "mutation": 0.10204399999929592,
+        "total": 0.24421669999719597
+      },
+      "outcome": "edited",
+      "meshType": "adaptive_tin",
+      "faceCount": 1781,
+      "vertexCount": 930,
+      "simplificationTolerance": 0.01,
+      "maxSimplificationError": 0.00990000000000002,
+      "dirtyWindow": {
+        "minColumn": 14,
+        "minRow": 14,
+        "maxColumn": 36,
+        "maxRow": 36,
+        "columns": 23,
+        "rows": 23
+      },
+      "patchScope": {
+        "affectedPatchCount": 9,
+        "replacementPatchCount": 9,
+        "conformanceRing": 1
+      }
+    },
+    {
+      "rowId": "feature-aware-baseline-terrain-large-timing-create",
+      "sourceElementId": "feature-aware-baseline-terrain-large-timing",
+      "commandKind": "create",
+      "featureContextClass": "timing_terrain_create",
+      "seconds": 9.556301700009499,
+      "timingBuckets": {
+        "commandOutputPlanning": 5.135580400004983,
+        "featureSelectionDiagnostics": 0.0421589000034146,
+        "dirtyWindowMapping": 0.0005035999929532409,
+        "adaptivePlanning": 1.4893379999848548,
+        "mutation": 2.665977999975439,
+        "total": 9.556301700009499
+      },
+      "outcome": "created",
+      "meshType": "adaptive_tin",
+      "faceCount": 76200,
+      "vertexCount": 38419,
+      "simplificationTolerance": 0.01,
+      "maxSimplificationError": 0.009999999999999995,
+      "dirtyWindow": {
+        "minColumn": 0,
+        "minRow": 0,
+        "maxColumn": 223,
+        "maxRow": 223,
+        "columns": 224,
+        "rows": 224
+      },
+      "patchScope": {
+        "affectedPatchCount": 196,
+        "replacementPatchCount": 196,
+        "conformanceRing": 1
+      }
+    },
+    {
+      "rowId": "large-varied-local-target-timing",
+      "sourceElementId": "feature-aware-baseline-terrain-large-timing",
+      "commandKind": "edit",
+      "featureContextClass": "large_varied_local_target",
+      "seconds": 3.057277999992948,
+      "timingBuckets": {
+        "commandOutputPlanning": 0.7086397999955807,
+        "featureSelectionDiagnostics": 0.000308299990138039,
+        "dirtyWindowMapping": 0.00022429999080486596,
+        "adaptivePlanning": 0.07591850002063438,
+        "mutation": 1.052236699993955,
+        "total": 3.057277999992948
+      },
+      "outcome": "edited",
+      "meshType": "adaptive_tin",
+      "faceCount": 18878,
+      "vertexCount": 9597,
+      "simplificationTolerance": 0.01,
+      "maxSimplificationError": 0.009999999999999995,
+      "dirtyWindow": {
+        "minColumn": 45,
+        "minRow": 45,
+        "maxColumn": 69,
+        "maxRow": 69,
+        "columns": 25,
+        "rows": 25
+      },
+      "patchScope": {
+        "affectedPatchCount": 9,
+        "replacementPatchCount": 25,
+        "conformanceRing": 1
+      }
+    },
+    {
+      "rowId": "large-varied-corridor-diagonal-timing",
+      "sourceElementId": "feature-aware-baseline-terrain-large-timing",
+      "commandKind": "edit",
+      "featureContextClass": "large_varied_linear_corridor",
+      "seconds": 13.65597359999083,
+      "timingBuckets": {
+        "commandOutputPlanning": 4.656645299983211,
+        "featureSelectionDiagnostics": 0.0005759999912697822,
+        "dirtyWindowMapping": 0.002738099981797859,
+        "adaptivePlanning": 1.28738299998804,
+        "mutation": 4.488808900001459,
+        "total": 13.65597359999083
+      },
+      "outcome": "edited",
+      "meshType": "adaptive_tin",
+      "faceCount": 72240,
+      "vertexCount": 36439,
+      "simplificationTolerance": 0.01,
+      "maxSimplificationError": 0.009999999999999995,
+      "dirtyWindow": {
+        "minColumn": 13,
+        "minRow": 17,
+        "maxColumn": 188,
+        "maxRow": 177,
+        "columns": 176,
+        "rows": 161
+      },
+      "patchScope": {
+        "affectedPatchCount": 132,
+        "replacementPatchCount": 169,
+        "conformanceRing": 1
+      }
+    },
+    {
+      "rowId": "large-varied-planar-pad-timing",
+      "sourceElementId": "feature-aware-baseline-terrain-large-timing",
+      "commandKind": "edit",
+      "featureContextClass": "large_varied_planar_pad",
+      "seconds": 13.510084599984111,
+      "timingBuckets": {
+        "commandOutputPlanning": 4.356738300004508,
+        "featureSelectionDiagnostics": 0.0009540999890305102,
+        "dirtyWindowMapping": 0.0029624000017065555,
+        "adaptivePlanning": 1.8614454000198748,
+        "mutation": 4.1075643000076525,
+        "total": 13.510084599984111
+      },
+      "outcome": "edited",
+      "meshType": "adaptive_tin",
+      "faceCount": 67562,
+      "vertexCount": 34100,
+      "simplificationTolerance": 0.01,
+      "maxSimplificationError": 0.009999999999999995,
+      "dirtyWindow": {
+        "minColumn": 13,
+        "minRow": 17,
+        "maxColumn": 188,
+        "maxRow": 177,
+        "columns": 176,
+        "rows": 161
+      },
+      "patchScope": {
+        "affectedPatchCount": 132,
+        "replacementPatchCount": 169,
+        "conformanceRing": 1
+      }
+    },
+    {
+      "rowId": "large-varied-survey-control-timing",
+      "sourceElementId": "feature-aware-baseline-terrain-large-timing",
+      "commandKind": "edit",
+      "featureContextClass": "large_varied_survey_control",
+      "seconds": 13.024692000006326,
+      "timingBuckets": {
+        "commandOutputPlanning": 4.065064099995652,
+        "featureSelectionDiagnostics": 0.0009597000025678426,
+        "dirtyWindowMapping": 0.04969859999255277,
+        "adaptivePlanning": 1.2004386000044178,
+        "mutation": 4.149448699987261,
+        "total": 13.024692000006326
+      },
+      "outcome": "edited",
+      "meshType": "adaptive_tin",
+      "faceCount": 67622,
+      "vertexCount": 34130,
+      "simplificationTolerance": 0.01,
+      "maxSimplificationError": 0.009999999999999995,
+      "dirtyWindow": {
+        "minColumn": 13,
+        "minRow": 17,
+        "maxColumn": 188,
+        "maxRow": 177,
+        "columns": 176,
+        "rows": 161
+      },
+      "patchScope": {
+        "affectedPatchCount": 132,
+        "replacementPatchCount": 169,
+        "conformanceRing": 1
+      }
+    },
+    {
+      "rowId": "large-varied-fairing-envelope-timing",
+      "sourceElementId": "feature-aware-baseline-terrain-large-timing",
+      "commandKind": "edit",
+      "featureContextClass": "large_varied_fairing_region",
+      "seconds": 12.89781490000314,
+      "timingBuckets": {
+        "commandOutputPlanning": 3.041678400011733,
+        "featureSelectionDiagnostics": 0.001250200002687052,
+        "dirtyWindowMapping": 0.0034018000005744398,
+        "adaptivePlanning": 1.068892400013283,
+        "mutation": 4.060493800003314,
+        "total": 12.89781490000314
+      },
+      "outcome": "edited",
+      "meshType": "adaptive_tin",
+      "faceCount": 53648,
+      "vertexCount": 27143,
+      "simplificationTolerance": 0.01,
+      "maxSimplificationError": 0.009999999999999898,
+      "dirtyWindow": {
+        "minColumn": 13,
+        "minRow": 14,
+        "maxColumn": 209,
+        "maxRow": 209,
+        "columns": 197,
+        "rows": 196
+      },
+      "patchScope": {
+        "affectedPatchCount": 196,
+        "replacementPatchCount": 196,
+        "conformanceRing": 1
+      }
+    },
+    {
+      "rowId": "feature-aware-baseline-terrain-wide-timing-create",
+      "sourceElementId": "feature-aware-baseline-terrain-wide-timing",
+      "commandKind": "create",
+      "featureContextClass": "timing_terrain_create",
+      "seconds": 3.3702754999976605,
+      "timingBuckets": {
+        "commandOutputPlanning": 1.6129786999954376,
+        "featureSelectionDiagnostics": 0.030543000000761822,
+        "dirtyWindowMapping": 0.0004000999906565994,
+        "adaptivePlanning": 0.49596530001144856,
+        "mutation": 1.098947099992074,
+        "total": 3.3702754999976605
+      },
+      "outcome": "created",
+      "meshType": "adaptive_tin",
+      "faceCount": 31734,
+      "vertexCount": 16065,
+      "simplificationTolerance": 0.01,
+      "maxSimplificationError": 0.009999999999999981,
+      "dirtyWindow": {
+        "minColumn": 0,
+        "minRow": 0,
+        "maxColumn": 191,
+        "maxRow": 191,
+        "columns": 192,
+        "rows": 192
+      },
+      "patchScope": {
+        "affectedPatchCount": 144,
+        "replacementPatchCount": 144,
+        "conformanceRing": 1
+      }
+    },
+    {
+      "rowId": "wide-varied-local-target-timing",
+      "sourceElementId": "feature-aware-baseline-terrain-wide-timing",
+      "commandKind": "edit",
+      "featureContextClass": "wide_varied_local_target",
+      "seconds": 1.4328320999920834,
+      "timingBuckets": {
+        "commandOutputPlanning": 0.2413558000116609,
+        "featureSelectionDiagnostics": 0.0003124999930150807,
+        "dirtyWindowMapping": 0.00012839998817071319,
+        "adaptivePlanning": 0.026192600023932755,
+        "mutation": 0.4668023000122048,
+        "total": 1.4328320999920834
+      },
+      "outcome": "edited",
+      "meshType": "adaptive_tin",
+      "faceCount": 8437,
+      "vertexCount": 4321,
+      "simplificationTolerance": 0.01,
+      "maxSimplificationError": 0.009975000000000012,
+      "dirtyWindow": {
+        "minColumn": 39,
+        "minRow": 39,
+        "maxColumn": 61,
+        "maxRow": 61,
+        "columns": 23,
+        "rows": 23
+      },
+      "patchScope": {
+        "affectedPatchCount": 4,
+        "replacementPatchCount": 16,
+        "conformanceRing": 1
+      }
+    },
+    {
+      "rowId": "wide-varied-half-corridor-timing",
+      "sourceElementId": "feature-aware-baseline-terrain-wide-timing",
+      "commandKind": "edit",
+      "featureContextClass": "wide_varied_half_terrain_corridor",
+      "seconds": 5.831568599998718,
+      "timingBuckets": {
+        "commandOutputPlanning": 1.5990419999870937,
+        "featureSelectionDiagnostics": 0.0005444000125862658,
+        "dirtyWindowMapping": 0.0017610999930184335,
+        "adaptivePlanning": 0.46993429999565706,
+        "mutation": 2.1081728999852203,
+        "total": 5.831568599998718
+      },
+      "outcome": "edited",
+      "meshType": "adaptive_tin",
+      "faceCount": 31914,
+      "vertexCount": 16155,
+      "simplificationTolerance": 0.01,
+      "maxSimplificationError": 0.009999999999999981,
+      "dirtyWindow": {
+        "minColumn": 9,
+        "minRow": 16,
+        "maxColumn": 174,
+        "maxRow": 159,
+        "columns": 166,
+        "rows": 144
+      },
+      "patchScope": {
+        "affectedPatchCount": 110,
+        "replacementPatchCount": 132,
+        "conformanceRing": 1
+      }
+    },
+    {
+      "rowId": "wide-varied-fairing-large-timing",
+      "sourceElementId": "feature-aware-baseline-terrain-wide-timing",
+      "commandKind": "edit",
+      "featureContextClass": "wide_varied_fairing_large_region",
+      "seconds": 7.355904800002463,
+      "timingBuckets": {
+        "commandOutputPlanning": 1.1407725999888498,
+        "featureSelectionDiagnostics": 0.0007146999996621162,
+        "dirtyWindowMapping": 0.002341799990972504,
+        "adaptivePlanning": 0.4137163999839686,
+        "mutation": 1.9350254999881145,
+        "total": 7.355904800002463
+      },
+      "outcome": "edited",
+      "meshType": "adaptive_tin",
+      "faceCount": 24326,
+      "vertexCount": 12361,
+      "simplificationTolerance": 0.01,
+      "maxSimplificationError": 0.009998197959533606,
+      "dirtyWindow": {
+        "minColumn": 3,
+        "minRow": 2,
+        "maxColumn": 188,
+        "maxRow": 188,
+        "columns": 186,
+        "rows": 187
+      },
+      "patchScope": {
+        "affectedPatchCount": 144,
+        "replacementPatchCount": 144,
+        "conformanceRing": 1
+      }
+    }
+  ],
+  "liveGeometryAfterRun": {
+    "feature-aware-baseline-terrain": {
+      "found": true,
+      "entityId": 47465609,
+      "faces": 1781,
+      "edges": 2710
+    },
+    "feature-aware-baseline-terrain-large-timing": {
+      "found": true,
+      "entityId": 47613060,
+      "faces": 53648,
+      "edges": 80790
+    },
+    "feature-aware-baseline-terrain-wide-timing": {
+      "found": true,
+      "entityId": 51429740,
+      "faces": 24326,
+      "edges": 36686
+    }
+  },
+  "notes": [
+    "Captured with real hosted command geometry through TerrainSurfaceCommands.",
+    "Timing rows are opt-in; this result records the requested capture pass.",
+    "Entity ids are scene-instance evidence, not stable replay inputs."
+  ]
+}

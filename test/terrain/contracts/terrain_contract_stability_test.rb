@@ -377,6 +377,30 @@ class TerrainContractStabilityTest < Minitest::Test
     ].each { |term| refute_includes(JSON.generate(result), term) }
   end
 
+  def test_public_response_hides_feature_output_policy_diagnostics
+    result = edit_evidence_result(
+      diagnostics: edit_diagnostics.merge(
+        featureOutputPolicyDiagnostics: {
+          schemaVersion: 1,
+          featureViewDigest: 'feature-view-digest',
+          policyFingerprint: 'policy-fingerprint',
+          selectedFeatureKinds: { target_region: 1 },
+          selectedStrengthCounts: { soft: 1 },
+          intersectionSummary: { hasIntersectingFeatureContext: true },
+          localTolerancePolicy: { mode: 'default_fixed' },
+          diagnosticOnly: true
+        }
+      )
+    )
+    serialized = JSON.generate(result)
+
+    refute_internal_output_vocabulary(result)
+    %w[
+      featureOutputPolicyDiagnostics featureViewDigest policyFingerprint selectedFeatureKinds
+      selectedStrengthCounts intersectionSummary localTolerancePolicy diagnosticOnly
+    ].each { |term| refute_includes(serialized, term) }
+  end
+
   private
 
   def full_public_edit_response_for_internal_cdt_result(status:, fallback_reason:)
@@ -595,6 +619,8 @@ class TerrainContractStabilityTest < Minitest::Test
       selectedPatchIds replacementPatchIds registryStatus fallbackCategory timingBuckets
       dirtyWindowMapping adaptivePlanning conformance registryLookup ownershipLookup
       registryWrites outputPolicyFingerprint adaptivePatchFaceIndex adaptivePatchId
+      featureOutputPolicyDiagnostics featureViewDigest policyFingerprint selectedFeatureKinds
+      selectedStrengthCounts intersectionSummary localTolerancePolicy diagnosticOnly
     ].each { |term| refute_includes(serialized, term) }
     refute_includes(serialized_output, 'regeneration')
   end

@@ -1210,7 +1210,7 @@
             },
             "samplingSummary": {
               "sampleCount": 9472,
-              "maxSamples": 10000,
+              "maxSamples": 65536,
               "dimensions": { "columns": 74, "rows": 128 }
             }
           }

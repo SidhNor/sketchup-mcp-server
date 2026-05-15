@@ -5,6 +5,7 @@ require_relative '../../support/semantic_test_support'
 require_relative '../../../src/su_mcp/terrain/state/tiled_heightmap_state'
 require_relative '../../../src/su_mcp/terrain/state/heightmap_state'
 require_relative '../../../src/su_mcp/terrain/features/terrain_feature_geometry'
+require_relative '../../../src/su_mcp/terrain/output/feature_output_policy_diagnostics'
 require_relative '../../../src/su_mcp/terrain/output/terrain_mesh_generator'
 require_relative '../../../src/su_mcp/terrain/output/adaptive_patches/adaptive_patch_policy'
 require_relative '../../../src/su_mcp/terrain/output/cdt/patches/' \
@@ -152,6 +153,32 @@ class TerrainMeshGeneratorTest < Minitest::Test # rubocop:disable Metrics/ClassL
         .to_summary,
       result.fetch(:summary)
     )
+  end
+
+  def test_feature_policy_diagnostics_do_not_change_generation_for_replay_rows
+    canonical_replay_non_interference_rows.each do |row|
+      state = row.fetch(:state)
+      policy = SU_MCP::Terrain::AdaptivePatches::AdaptivePatchPolicy.new(patch_cell_size: 16)
+      detached_plan = adaptive_dirty_plan(
+        state,
+        "detached-#{row.fetch(:row_id)}",
+        policy,
+        row.fetch(:window)
+      )
+      attached_plan = adaptive_dirty_plan(
+        state,
+        "attached-#{row.fetch(:row_id)}",
+        policy,
+        row.fetch(:window),
+        feature_output_policy_diagnostics: build_feature_output_policy_diagnostics(row)
+      )
+
+      detached = generate_with_plan(state, detached_plan)
+      attached = generate_with_plan(state, attached_plan)
+
+      assert_equal(detached.fetch(:summary), attached.fetch(:summary))
+      assert_equal(detached.fetch(:faces), attached.fetch(:faces))
+    end
   end
 
   def test_generate_uses_supplied_dirty_window_plan_summary_while_emitting_full_grid_mesh
@@ -2369,13 +2396,103 @@ class TerrainMeshGeneratorTest < Minitest::Test # rubocop:disable Metrics/ClassL
     )
   end
 
-  def adaptive_dirty_plan(state, digest, policy, window)
-    SU_MCP::Terrain::TerrainOutputPlan.dirty_window(
+  def adaptive_dirty_plan(state, digest, policy, window, feature_output_policy_diagnostics: nil)
+    options = {
       state: state,
       terrain_state_summary: { digest: digest, revision: state.revision },
       window: window,
       adaptive_patch_policy: policy
+    }
+    if feature_output_policy_diagnostics
+      options[:feature_output_policy_diagnostics] = feature_output_policy_diagnostics
+    end
+    SU_MCP::Terrain::TerrainOutputPlan.dirty_window(**options)
+  end
+
+  def canonical_replay_non_interference_rows
+    state = build_v2_state(
+      columns: 49,
+      rows: 49,
+      elevations: Array.new(49 * 49) do |index|
+        column = index % 49
+        row = index / 49
+        (Math.sin(column / 5.0) * 0.08) + (Math.cos(row / 6.0) * 0.05)
+      end
     )
+    [
+      {
+        row_id: 'target-local-center',
+        state: state,
+        window: SU_MCP::Terrain::SampleWindow.new(
+          min_column: 20,
+          min_row: 20,
+          max_column: 28,
+          max_row: 28
+        )
+      },
+      {
+        row_id: 'corridor-diagonal-intersect',
+        state: state,
+        window: SU_MCP::Terrain::SampleWindow.new(
+          min_column: 16,
+          min_row: 16,
+          max_column: 34,
+          max_row: 34
+        )
+      }
+    ]
+  end
+
+  def build_feature_output_policy_diagnostics(row)
+    window = row.fetch(:window)
+    SU_MCP::Terrain::FeatureOutputPolicyDiagnostics.new(
+      selection_window: window,
+      selected_features: [
+        replay_feature('feature-target', 'target_region', 'soft', window),
+        replay_feature('feature-corridor', 'linear_corridor', 'firm', window)
+      ],
+      affected_window: {
+        'min' => { 'column' => window.min_column, 'row' => window.min_row },
+        'max' => { 'column' => window.max_column, 'row' => window.max_row }
+      },
+      adaptive_patch_policy: SU_MCP::Terrain::AdaptivePatches::AdaptivePatchPolicy.new(
+        patch_cell_size: 16
+      )
+    )
+  end
+
+  def replay_feature(id, kind, strength, window)
+    {
+      'id' => id,
+      'kind' => kind,
+      'strengthClass' => strength,
+      'affectedWindow' => {
+        'min' => { 'column' => window.min_column, 'row' => window.min_row },
+        'max' => { 'column' => window.max_column, 'row' => window.max_row }
+      }
+    }
+  end
+
+  def generate_with_plan(state, plan)
+    model = build_semantic_model
+    owner = model.active_entities.add_group
+    result = identity_generator.generate(
+      owner: owner,
+      state: state,
+      terrain_state_summary: {
+        digest: plan.state_digest,
+        revision: state.revision
+      },
+      output_plan: plan
+    )
+    {
+      summary: result.fetch(:summary).merge(
+        derivedMesh: result.fetch(:summary).fetch(:derivedMesh).reject do |key, _value|
+          key == :derivedFromStateDigest
+        end
+      ),
+      faces: owner.entities.faces.map(&:points).sort
+    }
   end
 
   def cdt_patch_state(revision:)

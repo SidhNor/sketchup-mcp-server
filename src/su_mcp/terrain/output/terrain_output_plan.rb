@@ -17,15 +17,21 @@ module SU_MCP
                   :vertex_count, :face_count, :state_digest, :previous_state_digest,
                   :previous_state_revision, :state_revision, :adaptive_cells,
                   :simplification_tolerance, :max_simplification_error, :adaptive_patch_plan,
-                  :adaptive_patch_policy
+                  :adaptive_patch_policy, :feature_output_policy_diagnostics
 
-      def self.full_grid(state:, terrain_state_summary:, adaptive_patch_policy: nil)
+      def self.full_grid(
+        state:,
+        terrain_state_summary:,
+        adaptive_patch_policy: nil,
+        feature_output_policy_diagnostics: nil
+      )
         build(
           intent: :full_grid,
           window: SampleWindow.full_grid(state),
           state: state,
           terrain_state_summary: terrain_state_summary,
-          adaptive_patch_policy: adaptive_patch_policy
+          adaptive_patch_policy: adaptive_patch_policy,
+          feature_output_policy_diagnostics: feature_output_policy_diagnostics
         )
       end
 
@@ -34,7 +40,8 @@ module SU_MCP
         terrain_state_summary:,
         window:,
         previous_terrain_state_summary: nil,
-        adaptive_patch_policy: nil
+        adaptive_patch_policy: nil,
+        feature_output_policy_diagnostics: nil
       )
         raise ArgumentError, 'dirty window must not be empty' if window.empty?
 
@@ -44,7 +51,8 @@ module SU_MCP
           state: state,
           terrain_state_summary: terrain_state_summary,
           previous_terrain_state_summary: previous_terrain_state_summary,
-          adaptive_patch_policy: adaptive_patch_policy
+          adaptive_patch_policy: adaptive_patch_policy,
+          feature_output_policy_diagnostics: feature_output_policy_diagnostics
         )
       end
 
@@ -54,7 +62,8 @@ module SU_MCP
         state:,
         terrain_state_summary:,
         previous_terrain_state_summary: nil,
-        adaptive_patch_policy: nil
+        adaptive_patch_policy: nil,
+        feature_output_policy_diagnostics: nil
       )
         if adaptive_state?(state)
           return build_adaptive(
@@ -63,7 +72,8 @@ module SU_MCP
             state,
             terrain_state_summary,
             previous_terrain_state_summary,
-            adaptive_patch_policy
+            adaptive_patch_policy,
+            feature_output_policy_diagnostics: feature_output_policy_diagnostics
           )
         end
 
@@ -80,12 +90,15 @@ module SU_MCP
             rows,
             terrain_state_summary,
             previous_terrain_state_summary
-          )
+          ),
+          feature_output_policy_diagnostics: feature_output_policy_diagnostics
         )
       end
 
       def self.adaptive_state?(state)
-        state.respond_to?(:tiles) && state.respond_to?(:tile_size)
+        state.respond_to?(:tiles) &&
+          state.respond_to?(:tile_size) &&
+          state.respond_to?(:payload_kind)
       end
 
       def self.build_adaptive(
@@ -94,7 +107,8 @@ module SU_MCP
         state,
         terrain_state_summary,
         previous_state_summary,
-        adaptive_patch_policy
+        adaptive_patch_policy,
+        feature_output_policy_diagnostics: nil
       )
         cell_window = TerrainOutputCellWindow.from_sample_window(
           window: window,
@@ -117,7 +131,8 @@ module SU_MCP
           summary: summary,
           adaptive_cells: cells,
           adaptive_patch_policy: adaptive_patch_policy,
-          adaptive_patch_plan: adaptive_patch_plan_for(state, adaptive_patch_policy)
+          adaptive_patch_plan: adaptive_patch_plan_for(state, adaptive_patch_policy),
+          feature_output_policy_diagnostics: feature_output_policy_diagnostics
         )
       end
 
@@ -349,7 +364,8 @@ module SU_MCP
         summary:,
         adaptive_cells: [],
         adaptive_patch_policy: nil,
-        adaptive_patch_plan: nil
+        adaptive_patch_plan: nil,
+        feature_output_policy_diagnostics: nil
       )
         @intent = intent
         @window = window
@@ -369,6 +385,7 @@ module SU_MCP
         @seam_check = summary[:seam_check]
         @adaptive_patch_policy = adaptive_patch_policy
         @adaptive_patch_plan = adaptive_patch_plan
+        @feature_output_policy_diagnostics = feature_output_policy_diagnostics
       end
 
       def to_summary

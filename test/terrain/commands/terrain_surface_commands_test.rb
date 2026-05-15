@@ -645,6 +645,32 @@ class TerrainSurfaceCommandsTest < Minitest::Test # rubocop:disable Metrics/Clas
     )
   end
 
+  def test_feature_policy_diagnostics_reaches_non_cdt_adaptive_output_plan
+    model = build_semantic_model
+    managed_terrain_owner(model)
+    mesh_generator = RecordingRegeneratingMeshGenerator.new
+    commands = build_edit_commands(
+      model: model,
+      repository: EditRepository.new(tiled_state_20x20),
+      mesh_generator: mesh_generator,
+      grade_editor: SU_MCP::Terrain::BoundedGradeEdit.new,
+      terrain_feature_intent_emitter: RecordingFeatureIntentEmitter.new,
+      terrain_feature_planner: ReplayLikeFeatureWindowPlanner.new
+    )
+
+    result = commands.edit_terrain_surface(edit_request)
+
+    assert_equal('edited', result.fetch(:outcome))
+    plan = mesh_generator.last_regenerate_args.fetch(:output_plan)
+    diagnostics = plan.feature_output_policy_diagnostics
+    refute_nil(diagnostics)
+    payload = diagnostics.to_h
+    assert_replay_like_feature_policy_payload(payload)
+    assert_nil(mesh_generator.last_regenerate_args.fetch(:feature_context))
+    assert_baseline_evidence_matches_feature_policy(commands.last_baseline_evidence, payload)
+    refute_feature_leak(result)
+  end
+
   def test_cdt_state_coherence_uses_saved_feature_state_for_output_generation
     model = build_semantic_model
     managed_terrain_owner(model)
@@ -884,6 +910,29 @@ class TerrainSurfaceCommandsTest < Minitest::Test # rubocop:disable Metrics/Clas
     ].each do |term|
       refute_includes(serialized, term)
     end
+  end
+
+  def assert_baseline_evidence_matches_feature_policy(baseline_evidence, payload)
+    assert_equal(payload.fetch(:featureViewDigest), baseline_evidence.fetch(:featureViewDigest))
+    assert_equal(payload.fetch(:policyFingerprint), baseline_evidence.fetch(:policyFingerprint))
+    assert_equal(
+      { target_region: 1, linear_corridor: 1 },
+      baseline_evidence.dig(:featureContext, :selectedFeatureKinds)
+    )
+    assert_operator(
+      baseline_evidence.dig(:affectedPatchScope, :affectedPatchCount),
+      :>=,
+      1
+    )
+  end
+
+  def assert_replay_like_feature_policy_payload(payload)
+    assert_match(/\A[a-f0-9]{64}\z/, payload.fetch(:featureViewDigest))
+    assert_equal(
+      { target_region: 1, linear_corridor: 1 },
+      payload.fetch(:selectedFeatureKinds)
+    )
+    assert_equal(true, payload.dig(:intersectionSummary, :hasIntersectingFeatureContext))
   end
 
   def assert_dirty_window_plan(plan)
@@ -1664,6 +1713,46 @@ class TerrainSurfaceCommandsTest < Minitest::Test # rubocop:disable Metrics/Clas
           ]
         },
         outputWindowReconciliation: { mode: 'feature_window' }
+      }
+    end
+  end
+
+  class ReplayLikeFeatureWindowPlanner < FeatureWindowPlanner
+    def prepare(state:, terrain_state_summary:, include_feature_geometry: false,
+                selection_window: nil)
+      prepared = super
+      _state = state
+      _terrain_state_summary = terrain_state_summary
+      _include_feature_geometry = include_feature_geometry
+      context = prepared.fetch(:context)
+      context[:selectedFeatures] = [
+        feature('feature-target', 'target_region', 'soft', bounds(0, 0, 2, 2)),
+        feature('feature-corridor', 'linear_corridor', 'firm', bounds(1, 1, 3, 3))
+      ]
+      context[:selectionWindow] = selection_window
+      prepared
+    end
+
+    private
+
+    def feature(id, kind, strength, bounds)
+      {
+        'id' => id,
+        'kind' => kind,
+        'strengthClass' => strength,
+        'affectedWindow' => {
+          'min' => { 'column' => bounds.fetch(:min_column), 'row' => bounds.fetch(:min_row) },
+          'max' => { 'column' => bounds.fetch(:max_column), 'row' => bounds.fetch(:max_row) }
+        }
+      }
+    end
+
+    def bounds(min_column, min_row, max_column, max_row)
+      {
+        min_column: min_column,
+        min_row: min_row,
+        max_column: max_column,
+        max_row: max_row
       }
     end
   end

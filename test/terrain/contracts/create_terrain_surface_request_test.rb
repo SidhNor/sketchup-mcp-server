@@ -90,11 +90,12 @@ class CreateTerrainSurfaceRequestTest < Minitest::Test
                    'definition.grid.dimensions.columns')
 
     result = validate_request(
-      create_request_with_grid('dimensions' => { 'columns' => 129, 'rows' => 2 })
+      create_request_with_grid('dimensions' => { 'columns' => 257, 'rows' => 2 })
     )
 
     assert_refusal(result, 'grid_sample_cap_exceeded', 'definition.grid.dimensions')
-    assert_equal(128, result.dig(:refusal, :details, :maxColumns))
+    assert_equal(256, result.dig(:refusal, :details, :maxColumns))
+    assert_equal(65_536, result.dig(:refusal, :details, :maxSamples))
   end
 
   def test_accepts_public_row_major_grid_elevations

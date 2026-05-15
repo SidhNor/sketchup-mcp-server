@@ -11,9 +11,16 @@ class TerrainSurfaceAdoptionSamplerTest < Minitest::Test
       depth: 70.0
     )
 
-    assert_equal(74, dimensions.fetch(:columns))
-    assert_equal(128, dimensions.fetch(:rows))
-    assert_operator(dimensions.fetch(:columns) * dimensions.fetch(:rows), :<=, 10_000)
+    assert_equal(147, dimensions.fetch(:columns))
+    assert_equal(
+      SU_MCP::Terrain::CreateTerrainSurfaceRequest::MAX_TERRAIN_ROWS,
+      dimensions.fetch(:rows)
+    )
+    assert_operator(
+      dimensions.fetch(:columns) * dimensions.fetch(:rows),
+      :<=,
+      SU_MCP::Terrain::CreateTerrainSurfaceRequest::MAX_TERRAIN_SAMPLES
+    )
   end
 
   def test_refuses_zero_extent_sources

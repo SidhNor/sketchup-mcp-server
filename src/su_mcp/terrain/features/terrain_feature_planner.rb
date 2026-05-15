@@ -52,7 +52,8 @@ module SU_MCP
         end
         inferred_constraints = explicit_constraints.empty? ? inferred_constraints_for(state) : []
         constraints = explicit_constraints + inferred_constraints
-        context = prepare_context(terrain_state_summary, constraints, feature_plan)
+        context = prepare_context(terrain_state_summary, constraints, feature_plan,
+                                  selected_features)
         if include_feature_geometry
           append_selected_feature_geometry!(context, state, selected_features, feature_plan)
         end
@@ -351,11 +352,12 @@ module SU_MCP
         )
       end
 
-      def prepare_context(terrain_state_summary, constraints, feature_plan)
+      def prepare_context(terrain_state_summary, constraints, feature_plan, selected_features = [])
         {
           terrainStateDigest: terrain_state_summary.fetch(:digest),
           constraintCount: constraints.length,
           constraints: constraints,
+          selectedFeatures: selected_features,
           featureSelectionDiagnostics: feature_plan.fetch(:diagnostics),
           cdtParticipation: feature_plan.fetch(:cdt_participation)
         }
