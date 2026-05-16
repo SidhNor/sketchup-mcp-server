@@ -2,6 +2,25 @@
 
 <!-- version list -->
 
+## v1.10.0 (2026-05-16)
+
+### Documentation
+
+- **assets**: Staged asset planning
+  ([`e098bb8`](https://github.com/SidhNor/sketchup-mcp-server/commit/e098bb8c93cb0c0b3b9aa9455fa8e22426f9d85c))
+
+- **calibration**: Skill and size recalibration fixes
+  ([`8564e26`](https://github.com/SidhNor/sketchup-mcp-server/commit/8564e265e3dc4b1e3a51cbafdce02b5471153e7a))
+
+### Features
+
+- **MTA-39**: Adaptive feature edits
+  ([`38afc2c`](https://github.com/SidhNor/sketchup-mcp-server/commit/38afc2cc283764a6eebd8ce51c5aba38a353871a))
+
+- **SAR-05**: Terrain normal asset instance placement
+  ([`dbd09c2`](https://github.com/SidhNor/sketchup-mcp-server/commit/dbd09c2e254e8bf1263b57e4cf1eb7731a05dc90))
+
+
 ## v1.9.0 (2026-05-15)
 
 ### Bug Fixes
