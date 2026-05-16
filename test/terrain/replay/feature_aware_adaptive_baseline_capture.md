@@ -31,3 +31,21 @@ simplification error, and timing buckets:
 
 `commandOutputPlanning`, `featureSelectionDiagnostics`, `dirtyWindowMapping`,
 `adaptivePlanning`, `mutation`, `total`.
+
+## Result Pack Comparison
+
+Follow-on tasks can annotate a captured result pack with row verdicts by comparing it
+to a previous hosted result pack:
+
+```ruby
+require 'json'
+require_relative '../../src/su_mcp/terrain/probes/feature_aware_adaptive_baseline_result_classifier'
+
+baseline = JSON.parse(File.read('test/terrain/replay/feature_aware_adaptive_baseline_results.json'))
+current = JSON.parse(File.read('test/terrain/replay/feature_aware_adaptive_baseline_results_mta39.json'))
+annotated = SU_MCP::Terrain::FeatureAwareAdaptiveBaselineResultClassifier.annotate(
+  baseline_document: baseline,
+  current_document: current
+)
+File.write('test/terrain/replay/feature_aware_adaptive_baseline_results_mta39.json', "#{JSON.pretty_generate(annotated)}\n")
+```

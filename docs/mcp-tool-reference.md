@@ -271,6 +271,7 @@ Required fields:
 Optional fields:
 
 - `placement.scale`
+- `placement.orientation`
 - `outputOptions.includeBounds`
 
 `targetReference` identifies the approved source Asset Exemplar. `metadata.sourceElementId`
@@ -278,6 +279,14 @@ is the identity for the created Asset Instance, not the source asset identity.
 `placement.position` is a model-root insertion position in public meters. `placement.scale`
 is an optional positive scalar for direct uniform variation only; it is not target-height
 fitting and does not consume category-specific height metadata.
+
+`placement.orientation` is optional. Omit it to preserve the source asset heading. Supported
+orientation modes are `upright` and `surface_aligned`; `yawDegrees` is an optional finite yaw
+override. `upright` applies yaw around model vertical. `surface_aligned` requires
+`placement.orientation.surfaceReference`, derives the hit Z and local up from that explicit
+surface at `placement.position` XY, and refuses missing, unresolved, unsupported, missed, or
+ambiguous frames before mutation. Surface-aligned success evidence includes compact
+`sourceHeadingPreserved`, `surface.hitPoint`, and `surface.slopeDegrees`. Staged asset metadata cannot veto explicit caller orientation intent.
 
 The created instance is marked as an editable Managed Scene Object with source lineage under
 `sourceAssetElementId`. Source asset-set and category-specific attributes remain JSON-safe
@@ -376,7 +385,11 @@ between controls, not as a terrain validation verdict or pass/fail policy.
   "targetReference": { "sourceElementId": "asset-tree-oak-001" },
   "placement": {
     "position": [1.0, 2.0, 0.0],
-    "scale": 1.1
+    "scale": 1.1,
+    "orientation": {
+      "mode": "upright",
+      "yawDegrees": 45
+    }
   },
   "metadata": {
     "sourceElementId": "placed-asset-001"

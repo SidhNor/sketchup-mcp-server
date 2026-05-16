@@ -49,10 +49,30 @@ module SU_MCP
       end
 
       def placement_summary(placement)
-        {
+        summary = {
           position: placement.fetch(:position),
           scale: placement.fetch(:scale)
         }
+        if placement[:orientation]
+          summary[:orientation] = orientation_summary(placement.fetch(:orientation))
+        end
+        summary
+      end
+
+      def orientation_summary(orientation)
+        summary = {
+          mode: orientation.fetch(:mode),
+          yawDegrees: orientation[:yawDegrees],
+          sourceHeadingPreserved: orientation.fetch(:sourceHeadingPreserved)
+        }
+        if orientation[:mode] == 'surface_aligned'
+          surface = orientation.fetch(:surface)
+          summary[:surface] = {
+            hitPoint: surface.fetch(:hitPoint),
+            slopeDegrees: surface.fetch(:slopeDegrees)
+          }
+        end
+        summary
       end
 
       def attribute_value(entity, key)

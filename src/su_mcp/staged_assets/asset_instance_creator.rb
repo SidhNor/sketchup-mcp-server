@@ -1,18 +1,22 @@
 # frozen_string_literal: true
 
 require_relative '../semantic/length_converter'
+require_relative 'asset_orientation_transform_builder'
 
 module SU_MCP
   module StagedAssets
     # Creates model-root editable Asset Instances from approved exemplars.
+    # rubocop:disable Metrics/ClassLength
     class AssetInstanceCreator
-      PlacementTransform = Struct.new(:origin, :scale, keyword_init: true)
+      PlacementTransform = Struct.new(:origin, :scale, :orientation, keyword_init: true)
       Point = Struct.new(:x, :y, :z)
 
       def initialize(model: nil,
-                     length_converter: Semantic::LengthConverter.new)
+                     length_converter: Semantic::LengthConverter.new,
+                     transform_builder: AssetOrientationTransformBuilder.new)
         @model = model
         @length_converter = length_converter
+        @transform_builder = transform_builder
       end
 
       def create(source, placement:)
@@ -28,7 +32,7 @@ module SU_MCP
 
       private
 
-      attr_reader :model, :length_converter
+      attr_reader :model, :length_converter, :transform_builder
 
       def active_model
         model || Sketchup.active_model
@@ -176,9 +180,18 @@ module SU_MCP
 
       def insertion_transform(placement, target_collection:)
         origin = point_for(placement_value(placement, 'position'))
+        orientation = placement_value(placement, 'orientation')
         if target_collection.respond_to?(:added_instances)
           scale = placement_value(placement, 'scale', 1.0)
-          return PlacementTransform.new(origin: origin, scale: scale)
+          return PlacementTransform.new(origin: origin, scale: scale, orientation: orientation)
+        end
+
+        if orientation
+          return PlacementTransform.new(
+            origin: origin,
+            scale: placement_value(placement, 'scale', 1.0),
+            orientation: orientation
+          )
         end
 
         transform = Geom::Transformation.translation(origin)
@@ -196,6 +209,12 @@ module SU_MCP
         origin = transform_origin(placement_transform)
         return placement_transform unless source_transform && origin
 
+        orientation = nil
+        if placement_transform.respond_to?(:orientation)
+          orientation = placement_transform.orientation
+        end
+        return orientation_transform(source_transform, origin, orientation) if orientation
+
         from_matrix = source_transform_with_replaced_origin(source_transform, origin)
         return from_matrix if from_matrix
 
@@ -203,6 +222,21 @@ module SU_MCP
         return placement_transform unless source_transform.respond_to?(:scale)
 
         PlacementTransform.new(origin: origin, scale: source_transform.scale)
+      end
+
+      def orientation_transform(source_transform, origin, orientation)
+        transform = transform_builder.build_sketchup_transform(
+          source_transform: source_transform,
+          origin: origin,
+          orientation: orientation
+        )
+        return transform if transform
+
+        PlacementTransform.new(
+          origin: origin,
+          scale: source_transform.respond_to?(:scale) ? source_transform.scale : 1.0,
+          orientation: orientation
+        )
       end
 
       def source_transform_with_replaced_origin(source_transform, origin)
@@ -275,5 +309,6 @@ module SU_MCP
         point.respond_to?(:x) && !point.x.nil?
       end
     end
+    # rubocop:enable Metrics/ClassLength
   end
 end

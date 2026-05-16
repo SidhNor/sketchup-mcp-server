@@ -196,7 +196,8 @@ module SU_MCP
           description: 'Create an editable model-root Asset Instance from an approved ' \
                        'metadata-backed Asset Exemplar. Requires caller-supplied ' \
                        'metadata.sourceElementId for the new instance, preserves lean ' \
-                       'source lineage, and supports position plus optional scalar scale.',
+                       'source lineage, and supports placement position, scalar scale, ' \
+                       'and orientation intent.',
           handler_key: :instantiate_staged_asset,
           annotations: { read_only_hint: false, destructive_hint: false },
           classification: 'first_class',
@@ -626,6 +627,31 @@ module SU_MCP
       }
     end
 
+    def asset_instance_orientation_schema
+      {
+        type: 'object',
+        required: ['mode'],
+        properties: {
+          mode: described_schema(
+            enum_schema('upright', 'surface_aligned'),
+            'Optional orientation mode. Use upright to keep model-vertical up; use ' \
+            'surface_aligned to derive local up from placement.orientation.surfaceReference.'
+          ),
+          yawDegrees: described_schema(
+            number_schema,
+            'Optional finite yaw override in degrees. It is applied around model up for ' \
+            'upright mode and around local surface up for surface_aligned mode.'
+          ),
+          surfaceReference: described_schema(
+            target_reference_schema,
+            'Required only when mode is surface_aligned. The runtime samples this explicit ' \
+            'surface at placement.position XY and refuses unresolved or ambiguous frames.'
+          )
+        },
+        additionalProperties: false
+      }
+    end
+
     def asset_instance_placement_schema
       {
         type: 'object',
@@ -640,6 +666,11 @@ module SU_MCP
             number_schema,
             'Optional positive scalar for direct uniform scale variation. It is not ' \
             'target-height fitting and does not use category height metadata.'
+          ),
+          orientation: described_schema(
+            asset_instance_orientation_schema,
+            'Optional single-instance orientation intent. Omit it to preserve source ' \
+            'heading; provide upright yaw or explicit surface_aligned placement.'
           )
         },
         additionalProperties: false
@@ -659,7 +690,7 @@ module SU_MCP
           placement: described_schema(
             asset_instance_placement_schema,
             'Required model-root placement intent for the created Asset Instance. ' \
-            'Only position and optional scalar scale are supported in this slice.'
+            'Supports position, optional scalar scale, and optional orientation intent.'
           ),
           metadata: described_schema(
             asset_instance_metadata_schema,

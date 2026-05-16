@@ -92,8 +92,14 @@ class McpRuntimeLoaderTest < Minitest::Test
     assert_schema_description(instantiate_tool, :outputOptions)
     assert_schema_description(instantiate_tool, :placement, :position)
     assert_schema_description(instantiate_tool, :placement, :scale)
+    assert_schema_description(instantiate_tool, :placement, :orientation)
+    assert_schema_description(instantiate_tool, :placement, :orientation, :mode)
+    assert_schema_description(instantiate_tool, :placement, :orientation, :yawDegrees)
+    assert_schema_description(instantiate_tool, :placement, :orientation, :surfaceReference)
     assert_schema_description(instantiate_tool, :metadata, :sourceElementId)
     assert_schema_description(instantiate_tool, :outputOptions, :includeBounds)
+    assert_equal(%w[upright surface_aligned],
+                 nested_enum(instantiate_tool, :placement, :orientation, :mode))
   end
 
   def assert_staged_asset_listing_contract(list_tool)

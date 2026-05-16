@@ -31,6 +31,10 @@ class PublicMcpContractPostureTest < Minitest::Test
     assert_includes(docs, 'metadata.sourceElementId')
     assert_includes(docs, 'placement.position')
     assert_includes(docs, 'placement.scale')
+    assert_includes(docs, 'placement.orientation')
+    assert_includes(docs, 'surface_aligned')
+    assert_includes(docs, 'sourceHeadingPreserved')
+    assert_includes(docs, 'metadata cannot veto')
     assert_includes(docs, 'model-root')
     assert_includes(docs, 'sourceAssetElementId')
   end

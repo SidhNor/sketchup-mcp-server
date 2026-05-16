@@ -3216,12 +3216,218 @@
             }
           },
           "lineage": { "sourceAssetElementId": "asset-tree-oak-001" },
-          "placement": { "position": [1.0, 2.0, 0.0], "scale": 1.1 },
+          "placement": {
+            "position": [1.0, 2.0, 0.0],
+            "scale": 1.1,
+            "orientation": {
+              "mode": "upright",
+              "yawDegrees": null,
+              "sourceHeadingPreserved": true
+            }
+          },
           "bounds": {
             "min": [1.0, 2.0, 0.0],
             "max": [2.0, 4.0, 3.0],
             "center": [1.5, 3.0, 1.5],
             "size": [1.0, 2.0, 3.0]
+          }
+        }
+      }
+    },
+    {
+      "case_id": "instantiate_staged_asset_upright_yaw_instantiated",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "params": {
+          "name": "instantiate_staged_asset",
+          "arguments": {
+            "targetReference": { "sourceElementId": "asset-tree-oak-001" },
+            "placement": {
+              "position": [1.0, 2.0, 0.0],
+              "orientation": { "mode": "upright", "yawDegrees": 45 }
+            },
+            "metadata": { "sourceElementId": "placed-asset-001" }
+          }
+        },
+        "id": "instantiate-staged-asset-upright-yaw-instantiated"
+      },
+      "response": {
+        "jsonrpc": "2.0",
+        "id": "instantiate-staged-asset-upright-yaw-instantiated",
+        "result": {
+          "success": true,
+          "outcome": "instantiated",
+          "instance": {
+            "sourceElementId": "placed-asset-001",
+            "persistentId": "9901",
+            "entityId": "901",
+            "type": "componentinstance",
+            "semanticType": "asset_instance",
+            "assetRole": "instance"
+          },
+          "sourceAsset": {
+            "sourceElementId": "asset-tree-oak-001",
+            "persistentId": "8801",
+            "entityId": "801",
+            "type": "componentinstance",
+            "displayName": "Oak Tree Exemplar",
+            "category": "tree",
+            "approvalState": "approved",
+            "tags": ["tree", "deciduous"],
+            "metadata": {
+              "assetRole": "exemplar",
+              "stagingMode": "metadata_only",
+              "schemaVersion": 1,
+              "attributes": {}
+            }
+          },
+          "lineage": { "sourceAssetElementId": "asset-tree-oak-001" },
+          "placement": {
+            "position": [1.0, 2.0, 0.0],
+            "scale": 1.0,
+            "orientation": {
+              "mode": "upright",
+              "yawDegrees": 45.0,
+              "sourceHeadingPreserved": false
+            }
+          }
+        }
+      }
+    },
+    {
+      "case_id": "instantiate_staged_asset_surface_aligned_instantiated",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "params": {
+          "name": "instantiate_staged_asset",
+          "arguments": {
+            "targetReference": { "sourceElementId": "asset-stone-001" },
+            "placement": {
+              "position": [1.0, 2.0, 0.0],
+              "orientation": {
+                "mode": "surface_aligned",
+                "yawDegrees": 30,
+                "surfaceReference": { "sourceElementId": "terrain-main" }
+              }
+            },
+            "metadata": { "sourceElementId": "placed-stone-001" }
+          }
+        },
+        "id": "instantiate-staged-asset-surface-aligned-instantiated"
+      },
+      "response": {
+        "jsonrpc": "2.0",
+        "id": "instantiate-staged-asset-surface-aligned-instantiated",
+        "result": {
+          "success": true,
+          "outcome": "instantiated",
+          "instance": {
+            "sourceElementId": "placed-stone-001",
+            "persistentId": "9902",
+            "entityId": "902",
+            "type": "componentinstance",
+            "semanticType": "asset_instance",
+            "assetRole": "instance"
+          },
+          "sourceAsset": {
+            "sourceElementId": "asset-stone-001",
+            "persistentId": "8802",
+            "entityId": "802",
+            "type": "componentinstance",
+            "displayName": "Stepping Stone Exemplar",
+            "category": "hardscape",
+            "approvalState": "approved",
+            "tags": ["stone"],
+            "metadata": {
+              "assetRole": "exemplar",
+              "stagingMode": "metadata_only",
+              "schemaVersion": 1,
+              "attributes": { "orientationHint": "surface_hugging" }
+            }
+          },
+          "lineage": { "sourceAssetElementId": "asset-stone-001" },
+          "placement": {
+            "position": [1.0, 2.0, 0.42],
+            "scale": 1.0,
+            "orientation": {
+              "mode": "surface_aligned",
+              "yawDegrees": 30.0,
+              "sourceHeadingPreserved": false,
+              "surface": {
+                "hitPoint": [1.0, 2.0, 0.42],
+                "slopeDegrees": 11.5
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "case_id": "instantiate_staged_asset_unknown_orientation_mode_refused",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "params": {
+          "name": "instantiate_staged_asset",
+          "arguments": {
+            "targetReference": { "sourceElementId": "asset-tree-oak-001" },
+            "placement": {
+              "position": [1.0, 2.0, 0.0],
+              "orientation": { "mode": "tilted" }
+            },
+            "metadata": { "sourceElementId": "placed-asset-001" }
+          }
+        },
+        "id": "instantiate-staged-asset-unknown-orientation-mode-refused"
+      },
+      "response": {
+        "jsonrpc": "2.0",
+        "id": "instantiate-staged-asset-unknown-orientation-mode-refused",
+        "result": {
+          "success": true,
+          "outcome": "refused",
+          "refusal": {
+            "code": "unsupported_orientation_mode",
+            "message": "placement.orientation.mode must be upright or surface_aligned.",
+            "details": {
+              "field": "placement.orientation.mode",
+              "value": "tilted",
+              "allowedValues": ["upright", "surface_aligned"]
+            }
+          }
+        }
+      }
+    },
+    {
+      "case_id": "instantiate_staged_asset_missing_surface_reference_refused",
+      "request": {
+        "jsonrpc": "2.0",
+        "method": "tools/call",
+        "params": {
+          "name": "instantiate_staged_asset",
+          "arguments": {
+            "targetReference": { "sourceElementId": "asset-stone-001" },
+            "placement": {
+              "position": [1.0, 2.0, 0.0],
+              "orientation": { "mode": "surface_aligned" }
+            },
+            "metadata": { "sourceElementId": "placed-stone-001" }
+          }
+        },
+        "id": "instantiate-staged-asset-missing-surface-reference-refused"
+      },
+      "response": {
+        "jsonrpc": "2.0",
+        "id": "instantiate-staged-asset-missing-surface-reference-refused",
+        "result": {
+          "success": true,
+          "outcome": "refused",
+          "refusal": {
+            "code": "missing_surface_reference",
+            "message": "surface_aligned orientation requires placement.orientation.surfaceReference.",
+            "details": { "field": "placement.orientation.surfaceReference" }
           }
         }
       }

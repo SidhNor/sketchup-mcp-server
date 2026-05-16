@@ -86,7 +86,8 @@ class FeatureAwareAdaptiveBaselineReplayTest < Minitest::Test
     %i[
       rowId sequenceId replaySpec commandKind sourceElementId featureContextClass accepted
       verdict outcome stateRevision featureViewDigest policyFingerprint featureContext dirtyWindow
-      affectedPatchScope faceCount vertexCount meshType simplificationTolerance
+      adaptivePolicySummary affectedPatchScope faceCount vertexCount meshType
+      simplificationTolerance
       maxSimplificationError renderingSummary timingBuckets
     ].each { |field| assert_includes(row.keys, field) }
     assert_replay_evidence_values(row)
@@ -99,6 +100,14 @@ class FeatureAwareAdaptiveBaselineReplayTest < Minitest::Test
     assert_equal('policy-fingerprint-a', row.fetch(:policyFingerprint))
     assert_equal(2, row.fetch(:stateRevision))
     assert_equal({ selected: 2 }, row.fetch(:featureContext))
+    assert_equal(
+      {
+        toleranceRange: { min: 0.0025, max: 0.01 },
+        densityHitCount: 3,
+        fallbackCounts: { absentFeatureGeometry: 0, partialFeatureGeometry: 0 }
+      },
+      row.fetch(:adaptivePolicySummary)
+    )
     assert_equal({ patches: %w[adaptive-patch-v1-c1-r1] }, row.fetch(:affectedPatchScope))
     assert_equal({ status: 'captured', topology: 'single_mesh' }, row.fetch(:renderingSummary))
     assert_equal(0.01, row.fetch(:simplificationTolerance))
@@ -441,6 +450,11 @@ class FeatureAwareAdaptiveBaselineReplayTest < Minitest::Test
         featureViewDigest: 'feature-digest-a',
         policyFingerprint: 'policy-fingerprint-a',
         featureContext: { selected: 2 },
+        adaptivePolicySummary: {
+          toleranceRange: { min: 0.0025, max: 0.01 },
+          densityHitCount: 3,
+          fallbackCounts: { absentFeatureGeometry: 0, partialFeatureGeometry: 0 }
+        },
         affectedPatchScope: { patches: %w[adaptive-patch-v1-c1-r1] },
         renderingSummary: { status: 'captured', topology: 'single_mesh' },
         timingBuckets: {

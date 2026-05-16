@@ -6,9 +6,11 @@ require_relative '../scene_query/target_reference_resolver'
 require_relative 'asset_instance_creator'
 require_relative 'asset_instance_metadata'
 require_relative 'asset_instance_serializer'
+require_relative 'orientation_request'
 require_relative 'asset_exemplar_metadata'
 require_relative 'asset_exemplar_query'
 require_relative 'asset_exemplar_serializer'
+require_relative 'surface_frame_resolver'
 
 module SU_MCP
   module StagedAssets
@@ -25,7 +27,9 @@ module SU_MCP
         instance_serializer: AssetInstanceSerializer.new,
         creator: nil,
         query: nil,
-        target_resolver: nil
+        target_resolver: nil,
+        orientation_request: OrientationRequest.new,
+        surface_frame_resolver: nil
       )
         @model_adapter = model_adapter
         @metadata = metadata
@@ -39,6 +43,10 @@ module SU_MCP
         @instance_metadata = instance_metadata
         @instance_serializer = instance_serializer
         @creator = creator || AssetInstanceCreator.new
+        @orientation_request = orientation_request
+        @surface_frame_resolver = surface_frame_resolver || SurfaceFrameResolver.new(
+          model_adapter: model_adapter
+        )
       end
 
       def curate_staged_asset(params)
@@ -62,34 +70,21 @@ module SU_MCP
       end
 
       def instantiate_staged_asset(params)
-        target = resolve_target(params['targetReference'])
-        return target if refusal_response?(target)
+        return unsupported_top_level_orientation_refusal if params.key?('orientation')
 
-        source = approved_instantiation_source(target)
-        return source if refusal_response?(source)
-
-        placement = prepared_placement(params['placement'])
-        return ToolResponse.refusal_result(placement.fetch(:refusal)) if refused?(placement)
-
-        source_attributes = metadata.attributes_for(source)
-        prepared = instance_metadata.prepare_instance(
-          metadata: params['metadata'],
-          source_attributes: source_attributes
-        )
-        return ToolResponse.refusal_result(prepared.fetch(:refusal)) if refused?(prepared)
+        instantiation = prepared_instantiation(params)
+        return instantiation if refusal_response?(instantiation)
 
         run_operation(INSTANTIATE_OPERATION_NAME) do
-          instance = creator.create(source, placement: placement.fetch(:placement))
-          instance_metadata.apply_prepared_instance(instance, prepared)
-          ensure_instance_identity!(instance, prepared)
-          instantiated_response(source, instance, placement.fetch(:placement), params)
+          create_prepared_instance(instantiation, params)
         end
       end
 
       private
 
       attr_reader :model_adapter, :metadata, :serializer, :query, :target_resolver,
-                  :instance_metadata, :instance_serializer, :creator
+                  :instance_metadata, :instance_serializer, :creator, :orientation_request,
+                  :surface_frame_resolver
 
       def resolve_target(target_reference)
         return missing_target_refusal unless target_reference.is_a?(Hash)
@@ -124,6 +119,44 @@ module SU_MCP
             include_bounds: include_bounds?(params['outputOptions'])
           )
         )
+      end
+
+      def prepared_instantiation(params)
+        target = resolve_target(params['targetReference'])
+        return target if refusal_response?(target)
+
+        source = approved_instantiation_source(target)
+        return source if refusal_response?(source)
+
+        placement = prepared_placement(params['placement'])
+        return ToolResponse.refusal_result(placement.fetch(:refusal)) if refused?(placement)
+
+        prepared = prepared_instance_metadata(params, source)
+        return ToolResponse.refusal_result(prepared.fetch(:refusal)) if refused?(prepared)
+
+        {
+          outcome: 'ready',
+          source: source,
+          placement: placement.fetch(:placement),
+          prepared: prepared
+        }
+      end
+
+      def prepared_instance_metadata(params, source)
+        instance_metadata.prepare_instance(
+          metadata: params['metadata'],
+          source_attributes: metadata.attributes_for(source)
+        )
+      end
+
+      def create_prepared_instance(instantiation, params)
+        source = instantiation.fetch(:source)
+        placement = instantiation.fetch(:placement)
+        prepared = instantiation.fetch(:prepared)
+        instance = creator.create(source, placement: placement)
+        instance_metadata.apply_prepared_instance(instance, prepared)
+        ensure_instance_identity!(instance, prepared)
+        instantiated_response(source, instance, placement, params)
       end
 
       def instantiated_response(source, instance, placement, params)
@@ -182,21 +215,72 @@ module SU_MCP
           return invalid_placement_refusal(raw_placement, 'placement')
         end
 
-        position = raw_placement['position'] || raw_placement[:position]
+        position = placement_position(raw_placement)
         unless valid_position?(position)
           return invalid_placement_refusal(position, 'placement.position')
         end
 
-        scale = raw_placement.key?('scale') ? raw_placement['scale'] : raw_placement[:scale]
+        scale = placement_scale(raw_placement)
         return invalid_scale_refusal(scale) unless scale.nil? || valid_scale?(scale)
+
+        orientation = prepared_orientation(raw_placement)
+        return orientation if refused?(orientation)
+
+        placement = {
+          position: position.map(&:to_f),
+          scale: scale.nil? ? 1.0 : scale.to_f,
+          orientation: orientation.fetch(:orientation)
+        }
+        resolved_surface = resolve_surface_frame(placement)
+        return resolved_surface if refused?(resolved_surface)
 
         {
           outcome: 'ready',
-          placement: {
-            position: position.map(&:to_f),
-            scale: scale.nil? ? 1.0 : scale.to_f
-          }
+          placement: resolved_surface.fetch(:placement)
         }
+      end
+
+      def placement_position(raw_placement)
+        raw_placement['position'] || raw_placement[:position]
+      end
+
+      def placement_scale(raw_placement)
+        return raw_placement['scale'] if raw_placement.key?('scale')
+
+        raw_placement[:scale]
+      end
+
+      def prepared_orientation(raw_placement)
+        orientation_request.normalize(placement_orientation(raw_placement))
+      end
+
+      def resolve_surface_frame(placement)
+        orientation = placement.fetch(:orientation)
+        unless orientation[:mode] == 'surface_aligned'
+          return { outcome: 'ready', placement: placement }
+        end
+
+        surface_frame = surface_frame_resolver.resolve(
+          surface_reference: orientation.fetch(:surfaceReference),
+          sample_position: placement.fetch(:position)
+        )
+        return surface_frame if refused?(surface_frame)
+
+        frame = surface_frame.fetch(:frame)
+        surface_evidence = frame.fetch(:evidence)
+        compact_surface = {
+          hitPoint: surface_evidence.fetch(:hitPoint),
+          slopeDegrees: surface_evidence.fetch(:slopeDegrees)
+        }
+        placement[:position] = surface_evidence.fetch(:hitPoint)
+        placement[:orientation] = orientation.merge(surfaceFrame: frame, surface: compact_surface)
+        { outcome: 'ready', placement: placement }
+      end
+
+      def placement_orientation(raw_placement)
+        return raw_placement['orientation'] if raw_placement.key?('orientation')
+
+        raw_placement[:orientation]
       end
 
       def valid_position?(position)
@@ -224,7 +308,7 @@ module SU_MCP
       def missing_target_refusal
         ToolResponse.refusal(
           code: 'missing_target',
-          message: 'Curation requires a targetReference with at least one identifier.'
+          message: 'Request requires a targetReference with at least one identifier.'
         )
       end
 
@@ -270,6 +354,17 @@ module SU_MCP
           code: 'invalid_scale',
           message: 'placement.scale must be a positive scalar number when provided.',
           details: { field: 'placement.scale', value: value }
+        )
+      end
+
+      def unsupported_top_level_orientation_refusal
+        ToolResponse.refusal(
+          code: 'unsupported_request_field',
+          message: 'Orientation belongs under placement.orientation.',
+          details: {
+            field: 'orientation',
+            allowedFields: %w[targetReference placement metadata outputOptions]
+          }
         )
       end
     end

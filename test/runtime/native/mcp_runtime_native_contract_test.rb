@@ -316,6 +316,33 @@ class McpRuntimeNativeContractTest < Minitest::Test
     )
   end
 
+  def test_native_transport_preserves_instantiate_staged_asset_orientation_contract_shapes
+    skip_unless_staged_vendor_runtime!
+
+    %w[
+      instantiate_staged_asset_upright_yaw_instantiated
+      instantiate_staged_asset_surface_aligned_instantiated
+      instantiate_staged_asset_unknown_orientation_mode_refused
+      instantiate_staged_asset_missing_surface_reference_refused
+    ].each do |case_id|
+      contract_case = contract_case(case_id)
+      result = contract_case.fetch('response').fetch('result')
+      transport = @loader.build_transport(
+        handlers: {
+          instantiate_staged_asset: ->(_arguments) { result }
+        }
+      )
+
+      response = perform_raw_json_request(transport, contract_case.fetch('request'))
+
+      assert_equal(200, response[:status])
+      assert_equal(
+        contract_case.dig('response', 'result'),
+        response[:body].dig('result', 'structuredContent')
+      )
+    end
+  end
+
   def test_native_transport_preserves_list_staged_assets_success_shape_from_shared_contract
     skip_unless_staged_vendor_runtime!
 
