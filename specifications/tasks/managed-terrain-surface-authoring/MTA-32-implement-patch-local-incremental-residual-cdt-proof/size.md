@@ -163,11 +163,11 @@
 | Functional Scope | 3 | Delivered a substantial internal proof capability with quality, topology, fallback, timing, and debug evidence while preserving public behavior. |
 | Technical Change Surface | 4 | Added multiple CDT patch collaborators, dirty-window preservation, proof result evidence, topology diagnostics, debug rendering, cleanup markers, structure tests, unit tests, and live validation artifacts. |
 | Actual Implementation Friction | 4 | Affected-region insertion, bounded recomputation, topology acceptance, and live SketchUp proof rendering all required implementation/revalidation loops. |
-| Actual Validation Burden | 4 | Required focused patch suites, full Ruby validation, RuboCop, package verification, grok-4.3 review, deployed SketchUp verification, and a clean five-fixture live rerun. |
+| Actual Validation Burden | 3 | Validation exceeded baseline through topology-gated hosted proof, one meaningful fix loop after visual inspection, and a clean five-fixture live rerun. It did not dominate closeout through repeated blockers or redesign. |
 | Actual Dependency Drag | 2 | Relied on existing MTA-31 seams, terrain storage/output-plan behavior, and SketchUp deployment, but did not require native binaries, public contracts, MTA-33, or MTA-34. |
 | Actual Discovery Encountered | 4 | Live proof exposed that height residual alone was insufficient because visually poor topology could still pass sample metrics. |
-| Actual Scope Volatility | 3 | Scope stayed inside MTA-32, but validation added topology gating, debug proof rendering discipline, and explicit cleanup markers to avoid drifting into production replacement. |
-| Actual Rework | 4 | Review/live feedback drove concrete rework: dirty-window preservation, multi-insertion loop, debug renderer identity, and topology quality gating. |
+| Actual Scope Volatility | 1 | Scope stayed inside MTA-32. Topology gating, debug proof rendering discipline, and cleanup markers hardened the planned proof boundary rather than changing task scope. |
+| Actual Rework | 3 | Review/live feedback drove meaningful but contained rework: dirty-window preservation, multi-insertion loop, debug renderer identity, and topology quality gating. No major rewrite, removal, or replacement direction occurred. |
 | Final Confidence in Completeness | 4 | High confidence for MTA-32 proof goals after automated validation, external review, and topology-gated live side-terrain matrix; production replacement remains explicitly out of scope. |
 
 ### Actual Signals
@@ -232,8 +232,8 @@
 
 > Filled during final calibration. Compare prediction to actual behavior.
 
-- **Most Underestimated Dimension**: Actual Rework. The estimate expected CDT rework, but live visual proof added a topology-quality gate after residual metrics appeared green.
-- **Most Overestimated Dimension**: Dependency drag. MTA-33/MTA-34 boundaries held, and no native adapter or public contract coordination was needed.
+- **Most Underestimated Dimension**: None material after recalibration. The topology-quality signal was underweighted within validation planning, but the main high-risk CDT profile was already predicted.
+- **Most Overestimated Dimension**: Scope Volatility. Topology gates and cleanup markers hardened the proof boundary; they did not change the accepted task scope.
 - **Signal Present Early But Underweighted**: Prior CDT evidence already showed that residual numbers can hide visual/topological issues; MTA-32 needed topology gates earlier in the proof acceptance criteria.
 - **Genuinely Unknowable Factor**: Whether affected-region Ruby cavity updates would produce visually credible local topology before a live scene proof.
 - **Future Similar Tasks Should Assume**: Terrain output proof tasks need live visual topology checks, explicit topology metrics, and cleanup markers for validation-only scaffolding in the first proof loop.
@@ -264,7 +264,7 @@ Use canonical values from the repo task-estimation taxonomy when present. Keep t
 - `host:performance`
 - `risk:performance-scaling`
 - `risk:topology-quality`
-- `volatility:high`
+- `volatility:low`
 - `friction:high`
 - `confidence:high`
 <!-- SIZE:TAGS:END -->

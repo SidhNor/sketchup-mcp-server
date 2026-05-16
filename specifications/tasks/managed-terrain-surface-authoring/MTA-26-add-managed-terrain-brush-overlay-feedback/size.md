@@ -186,11 +186,11 @@
 | Functional Scope | 2 | Shipped the planned overlay refinement for one existing Target Height Brush workflow: support radius, falloff cue, validity/status handling, transient cleanup, and preserved click apply. No new edit modes or public contracts were added. |
 | Technical Change Surface | 3 | Touched SketchUp tool callbacks, dialog/installer lifecycle, session preview context, coordinate conversion, terrain-state sampling, repository cache behavior, tests, package staging, and task artifacts. |
 | Actual Implementation Friction | 3 | Core design followed the plan, but TDD/review exposed important details around granular skeletons, reverse coordinate conversion, explicit bounds checks, loaded-only cache semantics, no-view cleanup invalidation, and hosted color visibility. |
-| Actual Validation Burden | 3 | Required focused TDD coverage, full Ruby regression, lint, package verification, external review, live SketchUp smoke, and one small live visual tuning loop for support-ring color. |
+| Actual Validation Burden | 2 | Validation followed normal repo closeout: focused coverage, full Ruby regression, lint, package verification, external review, and live SketchUp smoke. The support-ring color tweak was a quick contained `eval_ruby` confirmation loop. |
 | Actual Dependency Drag | 2 | Relied on MTA-18 UI/session seams, existing managed terrain state/repository behavior, SketchUp live validation access, and user live smoke. No external service, new solver, or public contract dependency appeared. |
 | Actual Discovery Encountered | 2 | Main discoveries were local and bounded: existing bilinear stencil clamps out-of-bounds, reverse draw conversion was missing, invalid/refused loads should not be cached, no-view close cleanup needed last-view invalidation, and green was weak over terrain. |
-| Actual Scope Volatility | 2 | Scope stayed target-height-only. The only visible scope adjustment was support-ring color from green to cyan; no shared panel, new edit mode, or broader targeting model was pulled in. |
-| Actual Rework | 3 | Rework matched prediction: planning queue was sharpened after review, cache/cleanup fixes followed self-review, contract guard artifacts were strengthened, and live smoke caused one tactical color patch. |
+| Actual Scope Volatility | 1 | Scope stayed target-height-only. The support-ring color changed from green to cyan for visibility, but no shared panel, new edit mode, or broader targeting model was pulled in. |
+| Actual Rework | 1 | Follow-up was quick and contained: review/self-review tightened cache, cleanup, and contract guard details, and live smoke caused one tactical color patch. No completed slice needed meaningful rework. |
 | Final Confidence in Completeness | 4 | Automated validation, package verification, review closure, live SketchUp confirmation, transformed-owner hosted smoke, and live invalid-settings verification support completion. |
 <!-- SIZE:ACTUAL:END -->
 
@@ -220,17 +220,17 @@
 | Functional Scope | 2 | 2 | Accurate. The task stayed scoped to one existing SketchUp brush tool and did not add edit modes or public contracts. |
 | Technical Change Surface | 3 | 3 | Accurate. The implementation touched the planned tool/dialog/session/terrain-state/test surfaces. |
 | Implementation Friction | 3 | 3 | Accurate. The hard parts were the predicted host-sensitive and cache/coordinate seams, plus a few concrete implementation details found by TDD/review. |
-| Validation Burden | 3 | 3 | Accurate. Local tests were strong, but proof still required review, package verification, and live SketchUp smoke with one visual tuning loop. |
+| Validation Burden | 3 | 2 | Overestimated. Review, package verification, live smoke, and the quick visual tuning loop are normal closeout under the current repo baseline. |
 | Dependency / Coordination | 2 | 2 | Accurate. Existing seams and live SketchUp access were enough; no new external dependency appeared. |
 | Discovery / Ambiguity | 2 | 2 | Accurate. Most uncertainty was resolved by planned TDD and hosted smoke rather than forcing major design change. |
-| Scope Volatility | 2 | 2 | Accurate. Cyan support-ring tuning changed presentation, not task scope. |
-| Rework | 3 | 3 | Accurate. Review and live smoke caused bounded follow-up, matching the predicted MTA-18-style tuning risk. |
+| Scope Volatility | 2 | 1 | Overestimated. Cyan support-ring tuning changed presentation, not task scope. |
+| Rework | 3 | 1 | Overestimated. Review and live smoke caused bounded follow-up, not meaningful revisiting of completed slices. |
 | Confidence | 2 | 4 | Final confidence improved after regression, lint, package, review, live SketchUp confirmation, transformed-owner hosted smoke, and live invalid-settings verification. |
 
 ### Calibration Notes
 
 - The prediction correctly weighted SketchUp viewport visibility and lifecycle
-  cleanup as dominant risk drivers.
+  cleanup as risk drivers, but over-scored normal closeout follow-up as rework/validation burden.
 - The largest under-specified planning detail was not task size, but TDD queue
   granularity: sampler bounds, reverse draw conversion, repository absent/refused
   states, and no-view cleanup needed explicit skeletons.
@@ -263,6 +263,6 @@
 - `risk:performance-scaling`
 - `risk:cache-invalidation`
 - `friction:medium`
-- `rework:medium`
-- `confidence:medium`
+- `rework:low`
+- `confidence:high`
 <!-- SIZE:TAGS:END -->

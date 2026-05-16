@@ -171,11 +171,11 @@ No material drift recorded yet.
 | Functional Scope | 3 | Shipped a new mutating public MCP workflow for editable Asset Instance creation from approved exemplars, including identity, lineage, placement, scale, and source evidence. |
 | Technical Change Surface | 3 | Touched staged asset command orchestration, new creator/metadata/serializer collaborators, native catalog schema, dispatcher/facade/factory wiring, fixtures, docs, and test support. |
 | Actual Implementation Friction | 3 | Component instantiation initially lost curated instance transforms, group copying exposed host-sensitive behavior, and review found transient-copy cleanup needed stronger exception safety. |
-| Actual Validation Burden | 4 | Required full CI, public contract checks, external code review, live curation of 24 assets, live component instantiation, transform matrix inspection, deploy/reload loops, a crashing unsafe group path, and a follow-up safe group smoke. |
+| Actual Validation Burden | 3 | Validation exceeded baseline through live catalogue curation, component transform inspection, one unsafe group-copy host issue, and a follow-up safe group smoke. It was material, but not a validation-dominated closeout. |
 | Actual Dependency Drag | 2 | Depended on SAR-01 metadata semantics, live SketchUp deployment, connector tool availability, and user-provided staged asset scene state. |
 | Actual Discovery Encountered | 3 | Live validation revealed definition-versus-instance transform semantics, unsafe group exact-copy behavior, and corrected catalogue metadata expectations for represented species and usage hints. |
-| Actual Scope Volatility | 2 | Public contract stayed stable, but live asset metadata had to be recreated and group-host verification became a follow-up validation gap. |
-| Actual Rework | 3 | Reworked group copy mechanics after review and live host behavior, fixed component transform preservation, added exception-safe transient cleanup, and reran validation after each material fix. |
+| Actual Scope Volatility | 1 | Public contract and accepted workflow stayed stable. The exact-copy group path was replaced by the planned safe creation posture, and complex group fidelity remained a follow-up validation gap rather than a task-boundary change. |
+| Actual Rework | 1 | Follow-up was quick and contained: component transform preservation, safe group-copy mechanics, and transient cleanup were corrected during normal review/live-check closeout without broad slice revisiting. |
 | Final Confidence in Completeness | 3 | Component path, public contract, metadata, docs, and simple group smoke are strong; confidence is capped by unexpanded complex group fidelity coverage. |
 
 ### Actual Notes
@@ -220,13 +220,13 @@ No material drift recorded yet.
 ### What Was Underestimated
 
 - Implementation friction was underestimated: component instantiation had to preserve curated instance transforms rather than only add the source definition at a new transform.
-- Validation burden was underestimated at the top end: live host checks required deploy/reload loops, transform matrix inspection, curation metadata correction, a group-copy crash investigation, and a safe group rerun.
-- Rework was underestimated: code review and live smoke produced multiple material fixes after the initial green automated suite.
+- Validation burden was accurately material but over-scored at the top end in the original calibration: live host checks required transform inspection, curation metadata correction, a group-copy crash investigation, and a safe group rerun, but did not dominate delivery.
 
 ### What Was Overestimated
 
 - Public contract ambiguity stayed lower than feared. The final API shape held: model-root placement, scalar scale, caller-supplied instance identity, and lean lineage.
 - Runtime wiring remained straightforward once the command behavior stabilized.
+- Rework was over-scored in the original calibration: review and live smoke produced real but quick contained fixes, not meaningful revisiting of completed slices.
 
 ### Future Estimation Lessons
 
@@ -237,7 +237,7 @@ No material drift recorded yet.
 
 ### Final Calibration
 
-- Actual task shape was larger than predicted on validation and rework, mainly because live host behavior exposed transform preservation and group-copy failure modes.
+- Actual task shape stayed inside the planned public workflow. The main lesson is to treat quick host-check corrections as contained follow-up unless they force meaningful slice rework.
 - Final confidence is medium-high for SAR-02 component-instance workflows, simple group workflows, and public contract alignment, but lower for complex group exemplar fidelity until richer hosted smoke coverage is added.
 <!-- SIZE:DELTA:END -->
 

@@ -206,10 +206,10 @@
 | Functional Scope | 2 | Existing create/adopt/edit derived-output quality changed without adding a public workflow. |
 | Technical Change Surface | 2 | Implementation stayed in output planning, mesh generation, fake host support, and focused contract tests. |
 | Actual Implementation Friction | 3 | Initial full source-grid densification hit the predicted compactness breaker and forced strategy reassessment. |
-| Actual Validation Burden | 4 | Required topology predicates, count checks, no-leak checks, hidden-edge checks, full-suite validation, PAL review, and still has a live-host gap. |
+| Actual Validation Burden | 3 | Validation exceeded baseline through topology/count predicates, no-leak and hidden-edge checks, repeated hosted deploy/fix loops, and performance interpretation. The remaining live-host gap is reflected in confidence rather than burden. |
 | Actual Dependency Drag | 2 | Hosted validation access became available, but representative validation is blocked by feature-planner caps and adopted compactness behavior. |
 | Actual Discovery Encountered | 3 | Representative fixture probing showed the planned densification closure could become full-grid, changing the repair strategy. |
-| Actual Scope Volatility | 3 | The task stayed inside the adaptive-cell path, but the technical plan materially shifted to global boundary-line splitting. |
+| Actual Scope Volatility | 2 | The task stayed inside the adaptive-cell path and public outcome; the repair strategy materially shifted from densification closure to boundary-line splitting, but the accepted task boundary did not change. |
 | Actual Rework | 3 | First-slice strategy work was redirected, the plan was rewritten, and final review required two hardening edits. |
 | Final Confidence in Completeness | 2 | Local tests, lint, package verification, and Grok review are green; hosted representative validation is blocked. |
 
@@ -307,9 +307,10 @@
 - Final `bundle exec rake package:verify` produced `dist/su_mcp-1.1.2.rbz`.
 
 ### Validation Notes
-- Validation burden remains scored high because hosted validation required multiple fix/deploy
-  loops. The final seam behavior is acceptable, but face counts remain materially higher than the
-  pre-conformance simplifier in representative cases.
+- Validation burden remains material because hosted validation required multiple fix/deploy loops.
+  The final seam behavior is acceptable, but face counts remain materially higher than the
+  pre-conformance simplifier in representative cases. Remaining hosted gaps reduce confidence
+  rather than increasing completed validation burden.
 <!-- SIZE:VALIDATION-EVIDENCE:END -->
 
 ---
@@ -319,9 +320,9 @@
 
 > Filled during final calibration. Compare prediction to actual behavior.
 
-- **Most Underestimated Dimension**: Scope Volatility. The predicted compactness breaker became
-  concrete during the first TDD slice and required replacing the densification-closure plan with
-  boundary-line splitting.
+- **Most Underestimated Dimension**: Implementation Friction / Discovery. The predicted compactness
+  breaker became concrete during the first TDD slice and required replacing the densification-closure
+  plan with boundary-line splitting.
 - **Most Overestimated Dimension**: Dependency / Coordination. Hosted access became available, and
   no upstream task sequencing or public-client coordination was needed for the local implementation.
 - **Signal Present Early But Underweighted**: The representative-face-count risk was known, but the

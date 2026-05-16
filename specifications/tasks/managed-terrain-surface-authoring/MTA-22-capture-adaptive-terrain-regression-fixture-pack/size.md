@@ -187,7 +187,7 @@
 | Functional Scope | 1 | Production-neutral fixture/result infrastructure; no user workflow or MCP runtime behavior changed. |
 | Technical Change Surface | 2 | Touched canonical fixture JSON, test-support loader, fixture tests, fixture README, and task metadata. |
 | Actual Implementation Friction | 2 | Schema reshaping and review-driven cleanup were contained, but required careful separation of recipe cases from result rows. |
-| Actual Validation Burden | 3 | Required focused tests, contract stability, full terrain slice, RuboCop, Grok review, and live SketchUp hosted smoke. |
+| Actual Validation Burden | 2 | Validation followed normal repo closeout: focused fixture/contract tests, terrain slice, RuboCop, Grok review, and routine live SketchUp hosted smoke without repeated fix loops. |
 | Actual Dependency Drag | 1 | Depended on accepted MTA-21 evidence and an existing SketchUp connection, but no upstream ownership or deployment blocked completion. |
 | Actual Discovery Encountered | 2 | Implementation exposed stale case-level result paths and hosted path isolation, both handled without scope expansion. |
 | Actual Scope Volatility | 1 | The finalized plan held; coverage gaps stayed as explicit limitations rather than new hosted capture scope. |
@@ -205,9 +205,9 @@
 - No production runtime, public MCP contract, dispatcher, schema catalog, or package behavior changed.
 
 ### Actual Notes
-- The implementation matched the main predicted shape: validation, not coding, was the dominant
-  cost driver. The largest real surprise was not product behavior; it was cleanup needed to keep
-  the test loader from tolerating legacy case-level result evidence.
+- The implementation matched the main predicted shape, but validation was baseline closeout rather
+  than high burden. The largest real surprise was cleanup needed to keep the test loader from
+  tolerating legacy case-level result evidence.
 <!-- SIZE:ACTUAL:END -->
 
 ---
