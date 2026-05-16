@@ -88,7 +88,8 @@ class FeatureAwareAdaptiveBaselineReplayTest < Minitest::Test
       verdict outcome stateRevision featureViewDigest policyFingerprint featureContext dirtyWindow
       adaptivePolicySummary affectedPatchScope faceCount vertexCount meshType
       simplificationTolerance
-      maxSimplificationError renderingSummary timingBuckets
+      maxSimplificationError renderingSummary featureQualitySummary harnessQualitySeconds
+      timingBuckets
     ].each { |field| assert_includes(row.keys, field) }
     assert_replay_evidence_values(row)
     refute_includes(JSON.generate(row), 'rawTriangles')
@@ -114,6 +115,23 @@ class FeatureAwareAdaptiveBaselineReplayTest < Minitest::Test
     assert_equal(0.009, row.fetch(:maxSimplificationError))
     assert_equal(0.02, row.fetch(:timingBuckets).fetch(:commandOutputPlanning))
     assert(row.fetch(:timingBuckets).fetch(:total).positive?)
+  end
+
+  def test_replay_runner_records_quality_evidence_outside_command_timing
+    replay = SU_MCP::Terrain::FeatureAwareAdaptiveBaselineReplay.validate_document(
+      valid_minimal_document
+    )
+    command_surface = RecordingTerrainCommandSurface.new
+    quality_sampler = RecordingQualitySampler.new
+
+    evidence = replay.execute(command_surface: command_surface, quality_sampler: quality_sampler)
+
+    row = evidence.fetch(:rows).last
+    assert_equal(%w[create-baseline target-local-center], quality_sampler.row_ids)
+    assert_equal({ status: 'captured', sampleCount: 8 }, row.fetch(:featureQualitySummary))
+    assert_equal(0.004, row.fetch(:harnessQualitySeconds))
+    assert(row.fetch(:timingBuckets).fetch(:total).positive?)
+    refute_equal(row.fetch(:harnessQualitySeconds), row.fetch(:timingBuckets).fetch(:total))
   end
 
   def test_replay_runner_reads_internal_baseline_evidence_from_command_surface
@@ -467,6 +485,25 @@ class FeatureAwareAdaptiveBaselineReplayTest < Minitest::Test
         },
         simplificationTolerance: 0.01,
         maxSimplificationError: 0.009
+      }
+    end
+  end
+
+  class RecordingQualitySampler
+    attr_reader :row_ids
+
+    def initialize
+      @row_ids = []
+    end
+
+    def capture(row:, result:, baseline_evidence:)
+      @row_ids << row.fetch('rowId')
+      {
+        summary: {
+          status: result.fetch(:outcome) == 'refused' ? 'not_captured' : 'captured',
+          sampleCount: baseline_evidence ? 8 : 0
+        },
+        seconds: 0.004
       }
     end
   end

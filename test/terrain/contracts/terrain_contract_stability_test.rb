@@ -621,6 +621,8 @@ class TerrainContractStabilityTest < Minitest::Test
       registryWrites outputPolicyFingerprint adaptivePatchFaceIndex adaptivePatchId
       featureOutputPolicyDiagnostics featureViewDigest policyFingerprint selectedFeatureKinds
       selectedStrengthCounts intersectionSummary localTolerancePolicy diagnosticOnly
+      featureAwareAdaptivePolicy adaptivePolicySummary toleranceRange densityHitCount
+      hardProtectedToleranceHitCount fallbackCounts targetCellSize targetDensity
     ].each { |term| refute_includes(serialized, term) }
     refute_includes(serialized_output, 'regeneration')
   end

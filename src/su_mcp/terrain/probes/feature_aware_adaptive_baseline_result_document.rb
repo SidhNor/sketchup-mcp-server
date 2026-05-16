@@ -115,6 +115,9 @@ module SU_MCP
             meshType: row[:meshType] || row.dig(:renderingSummary, :meshType),
             faceCount: row[:faceCount],
             vertexCount: row[:vertexCount],
+            adaptivePolicySummary: row[:adaptivePolicySummary],
+            featureQualitySummary: row[:featureQualitySummary],
+            harnessQualitySeconds: row[:harnessQualitySeconds],
             simplificationTolerance: row[:simplificationTolerance],
             maxSimplificationError: row[:maxSimplificationError],
             dirtyWindow: dirty_window_result(row[:dirtyWindow]),
@@ -202,6 +205,7 @@ module SU_MCP
         [
           'Captured with real hosted command geometry through TerrainSurfaceCommands.',
           'Timing rows are opt-in; this result records the requested capture pass.',
+          'Feature quality sampling is harness-only and timed outside command seconds.',
           'Entity ids are scene-instance evidence, not stable replay inputs.'
         ]
       end

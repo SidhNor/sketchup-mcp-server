@@ -9,11 +9,14 @@ class FeatureAwareAdaptiveBaselineCaptureTest < Minitest::Test
   def test_capture_writes_repeatable_durable_results_with_phase_timing_and_error_bounds
     Dir.mktmpdir do |dir|
       paths = write_replay_fixture(dir)
+      quality_sampler = RecordingQualitySampler.new
 
       document = SU_MCP::Terrain::FeatureAwareAdaptiveBaselineCapture.capture_live!(
         replay_path: paths.fetch(:replay_path),
         results_path: paths.fetch(:results_path),
         command_surface: RecordingCommandSurface.new,
+        quality_sampler: quality_sampler,
+        include_quality: true,
         model: nil,
         clock: FixedClock,
         include_timing: false,
@@ -25,6 +28,7 @@ class FeatureAwareAdaptiveBaselineCaptureTest < Minitest::Test
       assert_equal('feature-aware-adaptive-baseline-results', written.fetch('corpusId'))
       assert_equal(document.fetch(:fixture).fetch(:sha256), written.dig('fixture', 'sha256'))
       assert_capture_row(document.fetch(:rows).first)
+      assert_equal(['capture-terrain-create'], quality_sampler.row_ids)
     end
   end
 
@@ -44,6 +48,16 @@ class FeatureAwareAdaptiveBaselineCaptureTest < Minitest::Test
     assert_equal(0.02, row.fetch(:timingBuckets).fetch(:commandOutputPlanning))
     assert_equal(0.01, row.fetch(:simplificationTolerance))
     assert_equal(0.008, row.fetch(:maxSimplificationError))
+    assert_equal(
+      {
+        toleranceRange: { min: 0.0025, max: 0.01 },
+        densityHitCount: 2,
+        fallbackCounts: { absentFeatureGeometry: 0 }
+      },
+      row.fetch(:adaptivePolicySummary)
+    )
+    assert_equal({ status: 'captured', sampleCount: 4 }, row.fetch(:featureQualitySummary))
+    assert_equal(0.003, row.fetch(:harnessQualitySeconds))
   end
 
   def minimal_replay_document
@@ -117,6 +131,11 @@ class FeatureAwareAdaptiveBaselineCaptureTest < Minitest::Test
           conformanceRing: 1
         },
         renderingSummary: { status: 'captured', meshType: 'adaptive_tin' },
+        adaptivePolicySummary: {
+          toleranceRange: { min: 0.0025, max: 0.01 },
+          densityHitCount: 2,
+          fallbackCounts: { absentFeatureGeometry: 0 }
+        },
         simplificationTolerance: 0.01,
         maxSimplificationError: 0.008
       }
@@ -132,6 +151,25 @@ class FeatureAwareAdaptiveBaselineCaptureTest < Minitest::Test
             maxSimplificationError: 0.008
           }
         }
+      }
+    end
+  end
+
+  class RecordingQualitySampler
+    attr_reader :row_ids
+
+    def initialize
+      @row_ids = []
+    end
+
+    def capture(row:, result:, baseline_evidence:)
+      @row_ids << row.fetch('rowId')
+      {
+        summary: {
+          status: result.fetch(:outcome) == 'created' ? 'captured' : 'not_captured',
+          sampleCount: baseline_evidence ? 4 : 0
+        },
+        seconds: 0.003
       }
     end
   end

@@ -18,6 +18,7 @@ require_relative '../features/terrain_feature_intent_emitter'
 require_relative '../features/terrain_feature_planner'
 require_relative '../evidence/terrain_edit_evidence_builder'
 require_relative '../output/cdt/patches/cdt_patch_policy'
+require_relative '../output/feature_aware_adaptive_policy'
 require_relative '../output/feature_output_policy_diagnostics'
 require_relative '../output/patch_lifecycle/patch_grid_policy'
 require_relative '../output/patch_lifecycle/patch_timing'
@@ -223,7 +224,7 @@ module SU_MCP
         terrain_feature_planner.prepare(
           state: state,
           terrain_state_summary: saved.fetch(:summary),
-          include_feature_geometry: cdt_output_enabled?,
+          include_feature_geometry: feature_geometry_required_for_output?(state),
           selection_window: selection_window
         )
       end
@@ -317,6 +318,7 @@ module SU_MCP
           featureViewDigest: diagnostics&.fetch(:featureViewDigest, nil),
           policyFingerprint: diagnostics&.fetch(:policyFingerprint, nil),
           featureContext: feature_context_baseline_summary(diagnostics),
+          adaptivePolicySummary: output_plan.feature_aware_adaptive_policy&.summary,
           dirtyWindow: sample_window_baseline_summary(output_plan.window),
           affectedPatchScope: affected_patch_scope_summary(output_plan, state),
           renderingSummary: output_plan_baseline_summary(output_plan),
@@ -556,12 +558,14 @@ module SU_MCP
 
       def edit_output_plan(context, saved, feature_plan, state)
         policy = adaptive_patch_policy_for(state)
+        feature_policy = feature_aware_adaptive_policy_for(state, feature_plan)
         if full_grid_feature_reconciliation?(feature_plan)
           window = SampleWindow.full_grid(state)
           return TerrainOutputPlan.full_grid(
             state: state,
             terrain_state_summary: saved.fetch(:summary),
             adaptive_patch_policy: policy,
+            feature_aware_adaptive_policy: feature_policy,
             feature_output_policy_diagnostics: feature_output_policy_diagnostics_for(
               feature_plan: feature_plan,
               selection_window: window,
@@ -579,12 +583,29 @@ module SU_MCP
           previous_terrain_state_summary: context.fetch(:loaded).fetch(:summary),
           window: window,
           adaptive_patch_policy: policy,
+          feature_aware_adaptive_policy: feature_policy,
           feature_output_policy_diagnostics: feature_output_policy_diagnostics_for(
             feature_plan: feature_plan,
             selection_window: window,
             affected_window: window,
             adaptive_patch_policy: policy
           )
+        )
+      end
+
+      def feature_geometry_required_for_output?(state)
+        cdt_output_enabled? || TerrainOutputPlan.adaptive_state?(state)
+      end
+
+      def feature_aware_adaptive_policy_for(state, feature_plan)
+        return nil unless TerrainOutputPlan.adaptive_state?(state)
+        return nil unless feature_plan
+
+        context = feature_plan.fetch(:context, {})
+        FeatureAwareAdaptivePolicy.new(
+          feature_geometry: context[:featureGeometry] || context['featureGeometry'],
+          state: state,
+          base_tolerance: TerrainOutputPlan::ADAPTIVE_SIMPLIFICATION_TOLERANCE
         )
       end
 
@@ -836,6 +857,7 @@ module SU_MCP
           state: state,
           terrain_state_summary: saved.fetch(:summary),
           adaptive_patch_policy: policy,
+          feature_aware_adaptive_policy: feature_aware_adaptive_policy_for(state, feature_plan),
           feature_output_policy_diagnostics: feature_plan && feature_output_policy_diagnostics_for(
             feature_plan: feature_plan,
             selection_window: window,

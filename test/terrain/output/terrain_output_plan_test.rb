@@ -3,9 +3,11 @@
 require_relative '../../test_helper'
 require_relative '../../../src/su_mcp/terrain/state/tiled_heightmap_state'
 require_relative '../../../src/su_mcp/terrain/state/heightmap_state'
+require_relative '../../../src/su_mcp/terrain/features/terrain_feature_geometry'
 require_relative '../../../src/su_mcp/terrain/regions/sample_window'
 require_relative '../../../src/su_mcp/terrain/output/terrain_output_cell_window'
 require_relative '../../../src/su_mcp/terrain/output/adaptive_patches/adaptive_patch_policy'
+require_relative '../../../src/su_mcp/terrain/output/feature_aware_adaptive_policy'
 require_relative '../../../src/su_mcp/terrain/output/feature_output_policy_diagnostics'
 require_relative '../../../src/su_mcp/terrain/output/terrain_output_plan'
 
@@ -349,6 +351,82 @@ class TerrainOutputPlanTest < Minitest::Test # rubocop:disable Metrics/ClassLeng
     assert_match(/invalid adaptive patch id/, error.message)
   end
 
+  def test_v2_feature_aware_tolerance_can_split_feature_windows_more_strictly_than_baseline
+    state = low_residual_state
+    feature_policy = SU_MCP::Terrain::FeatureAwareAdaptivePolicy.new(
+      feature_geometry: hard_anchor_geometry,
+      state: state,
+      base_tolerance: 0.01
+    )
+    baseline = SU_MCP::Terrain::TerrainOutputPlan.full_grid(
+      state: state,
+      terrain_state_summary: { digest: 'baseline', revision: 1 }
+    )
+
+    plan = SU_MCP::Terrain::TerrainOutputPlan.full_grid(
+      state: state,
+      terrain_state_summary: { digest: 'feature-aware', revision: 1 },
+      feature_aware_adaptive_policy: feature_policy
+    )
+
+    assert_operator(plan.face_count, :>, baseline.face_count)
+    assert(
+      plan.adaptive_cells.any? { |cell| cell_width(cell) <= 4 && cell_bounds(cell).include?(4) },
+      'feature-aware local tolerance should refine cells near the hard anchor'
+    )
+  end
+
+  def test_v2_feature_density_pressure_subdivides_flat_feature_windows_without_global_growth
+    state = build_v2_state(columns: 17, rows: 17, elevations: Array.new(17 * 17, 0.0))
+    feature_policy = SU_MCP::Terrain::FeatureAwareAdaptivePolicy.new(
+      feature_geometry: density_geometry,
+      state: state,
+      base_tolerance: 0.01
+    )
+
+    plan = SU_MCP::Terrain::TerrainOutputPlan.full_grid(
+      state: state,
+      terrain_state_summary: { digest: 'density-aware', revision: 1 },
+      feature_aware_adaptive_policy: feature_policy
+    )
+
+    local_cells = plan.adaptive_cells.select { |cell| cell_center_within?(cell, 4, 4, 8, 8) }
+    distant_cells = plan.adaptive_cells.select { |cell| cell_center_within?(cell, 12, 12, 16, 16) }
+
+    assert(local_cells.all? { |cell| cell_width(cell) <= 2 && cell_height(cell) <= 2 })
+    assert(distant_cells.all? { |cell| cell_width(cell) > 2 || cell_height(cell) > 2 })
+  end
+
+  def test_v2_dirty_feature_density_pressure_does_not_expand_replacement_to_far_patches
+    state = build_v2_state(columns: 97, rows: 97, elevations: Array.new(97 * 97, 0.0))
+    patch_policy = SU_MCP::Terrain::AdaptivePatches::AdaptivePatchPolicy.new(patch_cell_size: 16)
+    feature_policy = SU_MCP::Terrain::FeatureAwareAdaptivePolicy.new(
+      feature_geometry: far_density_geometry,
+      state: state,
+      base_tolerance: 0.01
+    )
+    window = SU_MCP::Terrain::SampleWindow.new(
+      min_column: 40,
+      min_row: 40,
+      max_column: 42,
+      max_row: 42
+    )
+
+    plan = SU_MCP::Terrain::TerrainOutputPlan.dirty_window(
+      state: state,
+      terrain_state_summary: { digest: 'dirty-density-aware', revision: 2 },
+      previous_terrain_state_summary: { digest: 'baseline', revision: 1 },
+      window: window,
+      adaptive_patch_policy: patch_policy,
+      feature_aware_adaptive_policy: feature_policy
+    )
+
+    refute(
+      plan.adaptive_cells.any? { |cell| cell_intersects_bounds?(cell, 82, 82, 88, 88) },
+      'far feature density must not expand dirty replacement planning to distant patches'
+    )
+  end
+
   def test_v2_adaptive_max_cell_error_reports_exact_error
     state = error_probe_state(
       columns: 3,
@@ -523,6 +601,54 @@ class TerrainOutputPlanTest < Minitest::Test # rubocop:disable Metrics/ClassLeng
     build_v2_state(columns: 17, rows: 17, elevations: elevations)
   end
 
+  def low_residual_state
+    elevations = Array.new(9 * 9, 0.0)
+    elevations[(4 * 9) + 4] = 0.006
+    build_v2_state(columns: 9, rows: 9, elevations: elevations)
+  end
+
+  def hard_anchor_geometry
+    SU_MCP::Terrain::TerrainFeatureGeometry.new(
+      outputAnchorCandidates: [
+        {
+          'id' => 'hard-control',
+          'featureId' => 'feature-hard',
+          'role' => 'control',
+          'strength' => 'hard',
+          'ownerLocalPoint' => [4.0, 4.0]
+        }
+      ]
+    )
+  end
+
+  def density_geometry
+    SU_MCP::Terrain::TerrainFeatureGeometry.new(
+      pressureRegions: [
+        rectangle_pressure('firm-corridor', 'firm', [[4.0, 4.0], [8.0, 8.0]], 2)
+      ]
+    )
+  end
+
+  def far_density_geometry
+    SU_MCP::Terrain::TerrainFeatureGeometry.new(
+      pressureRegions: [
+        rectangle_pressure('far-firm-corridor', 'firm', [[80.0, 80.0], [88.0, 88.0]], 1)
+      ]
+    )
+  end
+
+  def rectangle_pressure(id, strength, owner_local_bounds, target_cell_size)
+    {
+      'id' => id,
+      'featureId' => id,
+      'role' => 'centerline',
+      'strength' => strength,
+      'primitive' => 'rectangle',
+      'ownerLocalShape' => owner_local_bounds,
+      'targetCellSize' => target_cell_size
+    }
+  end
+
   def gaussian_elevations(size, amplitude:)
     center = size / 2
     Array.new(size * size) do |index|
@@ -595,6 +721,28 @@ class TerrainOutputPlanTest < Minitest::Test # rubocop:disable Metrics/ClassLeng
       cell.fetch(:max_column),
       cell.fetch(:max_row)
     ]
+  end
+
+  def cell_width(cell)
+    cell.fetch(:max_column) - cell.fetch(:min_column)
+  end
+
+  def cell_height(cell)
+    cell.fetch(:max_row) - cell.fetch(:min_row)
+  end
+
+  def cell_intersects_bounds?(cell, min_column, min_row, max_column, max_row)
+    cell.fetch(:min_column) <= max_column &&
+      cell.fetch(:max_column) >= min_column &&
+      cell.fetch(:min_row) <= max_row &&
+      cell.fetch(:max_row) >= min_row
+  end
+
+  def cell_center_within?(cell, min_column, min_row, max_column, max_row)
+    center_column = (cell.fetch(:min_column) + cell.fetch(:max_column)) / 2.0
+    center_row = (cell.fetch(:min_row) + cell.fetch(:max_row)) / 2.0
+    center_column.between?(min_column, max_column) &&
+      center_row.between?(min_row, max_row)
   end
 
   def planned_vertex_count(cells)

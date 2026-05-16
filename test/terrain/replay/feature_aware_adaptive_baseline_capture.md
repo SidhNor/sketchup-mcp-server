@@ -17,6 +17,7 @@ SU_MCP::Terrain::FeatureAwareAdaptiveBaselineCapture.capture_live!(
   replay_path: File.join(plugin_root, 'test/terrain/replay/feature_aware_adaptive_baseline.json'),
   results_path: File.join(plugin_root, 'test/terrain/replay/feature_aware_adaptive_baseline_results.json'),
   include_timing: true,
+  include_quality: true,
   clear_existing: true
 )
 ```
@@ -27,10 +28,15 @@ in the same SketchUp scene.
 
 The result JSON records the fixture SHA, environment, terrain specs, face/vertex
 counts, dirty-window and patch-scope evidence, simplification tolerance, max
-simplification error, and timing buckets:
+simplification error, optional feature-local quality summary, and timing buckets:
 
 `commandOutputPlanning`, `featureSelectionDiagnostics`, `dirtyWindowMapping`,
 `adaptivePlanning`, `mutation`, `total`.
+
+`include_quality: true` enables a harness-only fixed-budget live mesh sampler after
+each command row. It records aggregate `featureQualitySummary` and
+`harnessQualitySeconds`; command row `seconds` and `timingBuckets.total` remain
+command-only wall time.
 
 ## Result Pack Comparison
 

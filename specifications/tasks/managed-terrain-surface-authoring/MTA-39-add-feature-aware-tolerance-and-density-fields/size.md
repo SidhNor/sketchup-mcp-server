@@ -2,13 +2,13 @@
 
 **Task ID**: MTA-39  
 **Title**: Add Feature-Aware Tolerance And Density Fields  
-**Status**: challenged  
+**Status**: calibrated
 **Created**: 2026-05-15  
 **Last Updated**: 2026-05-16  
 
 **Related Task**: [task.md](./task.md)  
 **Related Plan**: [plan.md](./plan.md)  
-**Related Summary**: none yet  
+**Related Summary**: [summary.md](./summary.md)
 
 ---
 
@@ -181,7 +181,32 @@ No material drift recorded yet.
 <!-- SIZE:ACTUAL:START -->
 ## Actual Profile
 
-Not filled yet.
+| Dimension | Actual (0-4) | Rationale |
+|---|---:|---|
+| Functional Scope | 3 | Delivered first production feature-aware adaptive tolerance and density behavior while preserving public command contracts. |
+| Technical Change Surface | 3 | Touched command feature-geometry wiring, adaptive output planning, a new pure policy object, replay evidence, contract guards, harness-only quality sampling, and hosted result artifacts. |
+| Actual Implementation Friction | 2 | Core production plan held. Friction came from containing `TerrainOutputPlan` complexity, keeping evidence internal, and tightening classifier semantics after review. |
+| Actual Validation Burden | 3 | Baseline tests/lint/package/review/hosted replay were routine, but closeout added repeat timing captures, harness-only feature quality sampling, an invalid quality-capture fix loop, and tuning experiment interpretation. |
+| Actual Dependency Drag | 2 | Depended on MTA-38 harness, MTA-20 feature geometry, and MTA-36 PatchLifecycle, but these were available and stable. |
+| Actual Discovery Encountered | 3 | Most production architecture was known, but quality proof exposed the owner-local/world sampler frame bug and clarified that generic corridor sampling is not a sufficient corridor-quality proof. |
+| Actual Scope Volatility | 2 | Production scope stayed inside tolerance/density fields. Closeout evidence expanded with harness-only quality sampling and classifier tightening, but the accepted shipped behavior did not change. |
+| Actual Rework | 3 | Review refactor, classifier semantics, sampler frame fix, and reverted fairing/corridor experiments required meaningful revisit of closeout and evidence artifacts after the production slice appeared done. |
+| Final Confidence in Completeness | 3 | Full automated validation, package verification, PAL review, hosted replay, and quality capture are strong. Confidence is reduced by the known corridor-specific quality gap, not by missing required validation. |
+
+### Actual Notes
+
+- The implementation followed the planned dependency order: policy object, output-plan integration,
+  command wiring, contract/no-leak coverage, replay evidence, hosted verification.
+- Inflation check: validation exceeded baseline because of added quality capture, one sampler
+  coordinate fix/rerun, repeat timing interpretation, and experiment reversal; no `4` is justified
+  because the final production design did not require redesign and validation completed cleanly.
+- Hosted repeat captures closed with `18/18` accepted rows, `0` refusals, and no dirty-window or
+  patch-scope changes versus MTA-38. After classifier tightening, no-quality repeat captures are
+  neutral timing/scope evidence rather than quality-improvement verdicts.
+- The valid quality capture produced `15 policy_applied` rows and `3 neutral` rows, with command
+  time and harness sampling time recorded separately.
+- Fairing and corridor density experiments were reverted. The reusable lesson is that feature
+  quality proof must separate allocation evidence from actual geometry-quality claims.
 <!-- SIZE:ACTUAL:END -->
 
 ---
@@ -189,7 +214,22 @@ Not filled yet.
 <!-- SIZE:VALIDATION-EVIDENCE:START -->
 ## Validation Evidence Summary
 
-Not filled yet.
+- Classification: expanded hosted/runtime closeout with one material quality-capture fix loop and
+  experiment reversal; final validation is green.
+- Full Ruby tests after review fixes: `bundle exec rake ruby:test` -> `1446 runs`,
+  `17390 assertions`, `0 failures`, `41 skips`.
+- Full Ruby lint after review fixes: `bundle exec rake ruby:lint` -> `360 files inspected`,
+  `no offenses detected`.
+- Package verification: `bundle exec rake package:verify` -> `dist/su_mcp-1.8.0.rbz`.
+- Focused post-review terrain/probe slice: `45 runs`, `1046 assertions`, `0 failures`.
+- Hosted repeat captures: three MTA-39 runs, each `18/18` accepted with `0` refusals and `0`
+  dirty-window or patch-scope changes; MTA-39 repeat mean `82.6330s` versus MTA-38 repeat mean
+  `85.8953s`.
+- Hosted quality capture: `18/18` accepted, `15` captured quality rows, `3` not applicable rows,
+  command row time `88.354s`, harness-only quality time `16.888s`, annotated as
+  `15 policy_applied` and `3 neutral`.
+- Review: final PAL codereview with `gpt-5.4` found two medium and one low issue; all were fixed
+  and followed by focused retest plus full test/lint gates.
 <!-- SIZE:VALIDATION-EVIDENCE:END -->
 
 ---
@@ -197,7 +237,47 @@ Not filled yet.
 <!-- SIZE:DELTA:START -->
 ## Estimation Delta Review
 
-Not filled yet.
+### What The Estimate Got Right
+
+- Functional scope, technical surface, validation burden, and rework risk were correctly predicted
+  as high enough to require policy, command, output-plan, contract, replay, and hosted validation
+  coverage.
+- The MTA-38 harness was reusable and avoided new hosted infrastructure, matching the plan.
+- Public contract stability held; no docs/schema update was needed beyond reusable capture evidence
+  notes.
+
+### Underestimated
+
+- Hosted evidence interpretation needed more work than a single result pack because timing claims
+  required repeat bands, result-pack reannotation, and explicit separation of timing stability from
+  quality proof.
+- Feature-quality proof needed a small reusable sampler plus an owner-local/world-frame fix. That
+  was harness-only, but it increased validation and rework beyond the original plan.
+- Corridor evidence was more domain-specific than expected: broad corridor density pressure was the
+  wrong improvement lever and had to be reverted.
+
+### Overestimated
+
+- Core policy implementation did not require a larger adaptive planner extraction or runtime gate.
+- Dependency drag stayed moderate; upstream feature geometry and PatchLifecycle seams were stable.
+
+### Unknowable Until Validation
+
+- Fairing density tuning was not materially improved by loosening target cell size. The hosted
+  experiment showed only trivial face reductions and worse/noisy timing, so the change was reverted.
+- Corridor-specific quality could not be judged well by generic density pressure. A pure corridor
+  needs low-face flat-interior proof plus falloff/cap/overlap-specific detail checks.
+
+### Future Estimation Lessons
+
+- For hosted terrain performance tasks, require repeat-run bands before describing timing
+  improvement.
+- Treat feature-local quality proof as a reusable harness layer, but keep fixed-budget sampling out
+  of production command timing.
+- Separate allocation evidence, quality evidence, and face-count reduction; fewer faces is not
+  automatically better, and `policy_applied` is not the same as visual/geometry improvement.
+- Corridor tasks should estimate for domain-specific metrics: flat interior compactness, falloff
+  fidelity, cap behavior, and overlap interactions.
 <!-- SIZE:DELTA:END -->
 
 ---
@@ -209,14 +289,16 @@ Not filled yet.
 - `scope:managed-terrain`
 - `systems:terrain-state`
 - `systems:terrain-output`
-- `systems:terrain-mesh-generator`
-- `systems:validation-service`
+- `systems:terrain-probes`
+- `systems:validation-harness`
 - `validation:hosted-matrix`
 - `validation:performance`
-- `validation:regression`
-- `host:routine-matrix`
+- `validation:feature-quality-sampling`
+- `host:repeat-capture`
 - `contract:no-public-shape-change`
 - `risk:performance-scaling`
+- `risk:face-count-locality`
+- `risk:corridor-quality-proof`
 - `volatility:medium`
 - `confidence:medium`
 <!-- SIZE:TAGS:END -->

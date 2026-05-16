@@ -5,6 +5,7 @@ require 'json'
 require 'time'
 
 require_relative 'feature_aware_adaptive_baseline_replay'
+require_relative 'feature_aware_adaptive_baseline_quality_sampler'
 require_relative 'feature_aware_adaptive_baseline_result_document'
 
 module SU_MCP
@@ -31,6 +32,8 @@ module SU_MCP
           include_timing: options.fetch(:include_timing, true),
           timing_source_ids: options.fetch(:timing_source_ids, nil),
           timing_row_ids: options.fetch(:timing_row_ids, nil),
+          include_quality: options.fetch(:include_quality, false),
+          quality_sampler: options.fetch(:quality_sampler, nil),
           clear_existing: options.fetch(:clear_existing, true)
         )
       end
@@ -75,16 +78,20 @@ module SU_MCP
         include_timing: true,
         timing_source_ids: nil,
         timing_row_ids: nil,
+        include_quality: false,
+        quality_sampler: nil,
         clear_existing: true
       )
         replay = FeatureAwareAdaptiveBaselineReplay.load(path: replay_path)
         source_ids = source_ids_for(replay, include_timing)
         clear_existing_geometry!(source_ids) if clear_existing
+        quality = quality_sampler || default_quality_sampler(include_quality)
         evidence = replay.execute(
           command_surface: command_surface,
           include_timing: include_timing,
           timing_source_ids: timing_source_ids,
-          timing_row_ids: timing_row_ids
+          timing_row_ids: timing_row_ids,
+          quality_sampler: quality
         )
         document = result_document(replay, evidence, include_timing: include_timing)
         write_results!(document)
@@ -112,6 +119,12 @@ module SU_MCP
         terrains = [replay.terrain]
         terrains += timing_terrains(replay.document) if include_timing
         terrains.map { |terrain| terrain.fetch('sourceElementId') }
+      end
+
+      def default_quality_sampler(include_quality)
+        return nil unless include_quality
+
+        FeatureAwareAdaptiveBaselineQualitySampler.new(model: model)
       end
 
       def clear_existing_geometry!(source_ids)

@@ -14,8 +14,10 @@ module SU_MCP
       EVIDENCE_ROW_KEYS = %i[
         rowId sequenceId replaySpec commandKind sourceElementId featureContextClass accepted
         verdict outcome stateRevision featureViewDigest policyFingerprint featureContext dirtyWindow
-        affectedPatchScope faceCount vertexCount meshType simplificationTolerance
-        maxSimplificationError renderingSummary timingBuckets
+        adaptivePolicySummary affectedPatchScope faceCount vertexCount meshType
+        simplificationTolerance
+        maxSimplificationError renderingSummary featureQualitySummary harnessQualitySeconds
+        timingBuckets
       ].freeze
 
       attr_reader :document
@@ -77,11 +79,12 @@ module SU_MCP
         command_surface:,
         include_timing: false,
         timing_source_ids: nil,
-        timing_row_ids: nil
+        timing_row_ids: nil,
+        quality_sampler: nil
       )
         rows = sequences.flat_map do |sequence|
           sequence.fetch('rows').map do |row|
-            execute_row(command_surface, sequence.fetch('sequenceId'), row)
+            execute_row(command_surface, sequence.fetch('sequenceId'), row, quality_sampler)
           end
         end
         if include_timing
@@ -89,7 +92,8 @@ module SU_MCP
             execute_timing_terrain_rows(
               command_surface,
               terrain_document,
-              row_ids: timing_row_ids
+              row_ids: timing_row_ids,
+              quality_sampler: quality_sampler
             )
           end
         end
@@ -180,10 +184,21 @@ module SU_MCP
         raise ArgumentError, "duplicate replay row id: #{duplicate}" if duplicate
       end
 
-      def execute_row(command_surface, sequence_id, row)
+      def execute_row(command_surface, sequence_id, row, quality_sampler = nil)
         result, timing = timed_dispatch_row(command_surface, row)
         baseline_evidence = baseline_evidence_for(command_surface, result)
+        quality = quality_evidence_for(quality_sampler, row, result, baseline_evidence)
         evidence_row_template.merge(
+          row_evidence_fields(sequence_id, row, result),
+          baseline_evidence_fields(row, result, baseline_evidence),
+          mesh_evidence_fields(result, baseline_evidence),
+          quality_evidence_fields(quality),
+          timingBuckets: replay_timing_buckets(baseline_evidence, total: timing)
+        )
+      end
+
+      def row_evidence_fields(sequence_id, row, result)
+        {
           rowId: row.fetch('rowId'),
           sequenceId: sequence_id,
           replaySpec: replay_spec_reference,
@@ -193,22 +208,45 @@ module SU_MCP
           accepted: accepted_result?(result),
           verdict: accepted_result?(result) ? 'accepted' : 'refused',
           outcome: result[:outcome] || result['outcome'],
-          stateRevision: state_revision_for(result),
+          stateRevision: state_revision_for(result)
+        }
+      end
+
+      def baseline_evidence_fields(row, result, baseline_evidence)
+        {
           featureViewDigest: evidence_value(baseline_evidence, :featureViewDigest),
           policyFingerprint: evidence_value(baseline_evidence, :policyFingerprint),
           featureContext: evidence_value(baseline_evidence, :featureContext),
+          adaptivePolicySummary: evidence_value(baseline_evidence, :adaptivePolicySummary),
           dirtyWindow: evidence_value(baseline_evidence, :dirtyWindow) ||
             row['dirtyWindowExpectation'],
           affectedPatchScope: evidence_value(baseline_evidence, :affectedPatchScope),
+          renderingSummary: evidence_value(baseline_evidence, :renderingSummary) ||
+            { status: accepted_result?(result) ? 'captured' : 'not_captured' }
+        }
+      end
+
+      def mesh_evidence_fields(result, baseline_evidence)
+        {
           faceCount: result.dig(:output, :derivedMesh, :faceCount),
           vertexCount: result.dig(:output, :derivedMesh, :vertexCount),
           meshType: result.dig(:output, :derivedMesh, :meshType),
           simplificationTolerance: simplification_tolerance_for(result, baseline_evidence),
-          maxSimplificationError: max_simplification_error_for(result, baseline_evidence),
-          renderingSummary: evidence_value(baseline_evidence, :renderingSummary) ||
-            { status: accepted_result?(result) ? 'captured' : 'not_captured' },
-          timingBuckets: replay_timing_buckets(baseline_evidence, total: timing)
-        )
+          maxSimplificationError: max_simplification_error_for(result, baseline_evidence)
+        }
+      end
+
+      def quality_evidence_fields(quality)
+        {
+          featureQualitySummary: quality[:summary],
+          harnessQualitySeconds: quality[:seconds]
+        }
+      end
+
+      def quality_evidence_for(quality_sampler, row, result, baseline_evidence)
+        return { summary: nil, seconds: nil } unless quality_sampler
+
+        quality_sampler.capture(row: row, result: result, baseline_evidence: baseline_evidence)
       end
 
       def replay_timing_buckets(baseline_evidence, total:)
@@ -328,7 +366,12 @@ module SU_MCP
         raise ArgumentError, "#{context} elevations must match terrain dimensions"
       end
 
-      def execute_timing_terrain_rows(command_surface, terrain_document, row_ids: nil)
+      def execute_timing_terrain_rows(
+        command_surface,
+        terrain_document,
+        row_ids: nil,
+        quality_sampler: nil
+      )
         create_row = {
           'rowId' => "#{terrain_document.fetch('sourceElementId')}-create",
           'commandKind' => 'create',
@@ -338,9 +381,9 @@ module SU_MCP
           'publicCommandPayload' => terrain_document.fetch('createTerrainSurface')
         }
         sequence_id = "#{terrain_document.fetch('sourceElementId')}-timing"
-        rows = [execute_row(command_surface, sequence_id, create_row)]
+        rows = [execute_row(command_surface, sequence_id, create_row, quality_sampler)]
         rows + filtered_timing_rows(terrain_document, row_ids).map do |row|
-          execute_row(command_surface, sequence_id, row)
+          execute_row(command_surface, sequence_id, row, quality_sampler)
         end
       end
 

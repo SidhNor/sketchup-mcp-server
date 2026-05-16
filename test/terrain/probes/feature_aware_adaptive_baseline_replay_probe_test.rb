@@ -14,8 +14,10 @@ class FeatureAwareAdaptiveBaselineReplayProbeTest < Minitest::Test
     %i[
       rowId sequenceId replaySpec commandKind sourceElementId featureContextClass accepted
       verdict outcome stateRevision featureViewDigest policyFingerprint featureContext dirtyWindow
-      affectedPatchScope faceCount vertexCount meshType simplificationTolerance
-      maxSimplificationError renderingSummary timingBuckets
+      adaptivePolicySummary affectedPatchScope faceCount vertexCount meshType
+      simplificationTolerance
+      maxSimplificationError renderingSummary featureQualitySummary harnessQualitySeconds
+      timingBuckets
     ].each { |field| assert_includes(template.keys, field) }
     %i[
       commandOutputPlanning featureSelectionDiagnostics dirtyWindowMapping adaptivePlanning

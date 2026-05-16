@@ -6,6 +6,7 @@ require_relative '../../../src/su_mcp/terrain/state/heightmap_state'
 require_relative '../../../src/su_mcp/terrain/state/tiled_heightmap_state'
 require_relative '../../../src/su_mcp/terrain/commands/terrain_surface_commands'
 require_relative '../../../src/su_mcp/terrain/output/cdt/patches/cdt_patch_policy'
+require_relative '../../../src/su_mcp/terrain/output/feature_aware_adaptive_policy'
 require_relative '../../../src/su_mcp/terrain/output/cdt/patches/' \
                  'stable_domain_cdt_replacement_provider'
 
@@ -668,6 +669,33 @@ class TerrainSurfaceCommandsTest < Minitest::Test # rubocop:disable Metrics/Clas
     assert_replay_like_feature_policy_payload(payload)
     assert_nil(mesh_generator.last_regenerate_args.fetch(:feature_context))
     assert_baseline_evidence_matches_feature_policy(commands.last_baseline_evidence, payload)
+    refute_feature_leak(result)
+  end
+
+  def test_non_cdt_adaptive_output_requests_selected_feature_geometry_for_policy
+    model = build_semantic_model
+    managed_terrain_owner(model)
+    mesh_generator = RecordingRegeneratingMeshGenerator.new
+    planner = RecordingAdaptiveFeatureGeometryPlanner.new
+    commands = build_edit_commands(
+      model: model,
+      repository: EditRepository.new(tiled_state_20x20),
+      mesh_generator: mesh_generator,
+      grade_editor: SU_MCP::Terrain::BoundedGradeEdit.new,
+      terrain_feature_intent_emitter: RecordingFeatureIntentEmitter.new,
+      terrain_feature_planner: planner
+    )
+
+    result = commands.edit_terrain_surface(edit_request)
+
+    assert_equal('edited', result.fetch(:outcome))
+    assert_equal([true], planner.include_feature_geometry_values)
+    plan = mesh_generator.last_regenerate_args.fetch(:output_plan)
+    assert_instance_of(
+      SU_MCP::Terrain::FeatureAwareAdaptivePolicy,
+      plan.feature_aware_adaptive_policy
+    )
+    assert_nil(mesh_generator.last_regenerate_args.fetch(:feature_context))
     refute_feature_leak(result)
   end
 
@@ -1778,6 +1806,35 @@ class TerrainSurfaceCommandsTest < Minitest::Test # rubocop:disable Metrics/Clas
         },
         outputWindowReconciliation: { mode: 'feature_window' }
       }
+    end
+  end
+
+  class RecordingAdaptiveFeatureGeometryPlanner < ReplayLikeFeatureWindowPlanner
+    attr_reader :include_feature_geometry_values
+
+    def initialize
+      super
+      @include_feature_geometry_values = []
+    end
+
+    def prepare(state:, terrain_state_summary:, include_feature_geometry: false,
+                selection_window: nil)
+      include_feature_geometry_values << include_feature_geometry
+      prepared = super
+      prepared.fetch(:context)[:featureGeometry] = SU_MCP::Terrain::TerrainFeatureGeometry.new(
+        pressureRegions: [
+          {
+            'id' => 'feature-target:density',
+            'featureId' => 'feature-target',
+            'role' => 'target_support',
+            'strength' => 'soft',
+            'primitive' => 'rectangle',
+            'ownerLocalShape' => [[0.0, 0.0], [2.0, 2.0]],
+            'targetCellSize' => 4
+          }
+        ]
+      )
+      prepared
     end
   end
 

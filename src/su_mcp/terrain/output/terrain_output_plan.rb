@@ -8,7 +8,9 @@ require_relative 'patch_lifecycle/patch_window_resolver'
 
 module SU_MCP
   module Terrain
-    # Internal terrain output descriptor used by mesh generation seams.
+    # Internal terrain output descriptor used by mesh generation seams. MTA-39 keeps the
+    # feature-aware hook here to avoid a broader adaptive planner extraction in this slice.
+    # rubocop:disable Metrics/ClassLength
     class TerrainOutputPlan
       ADAPTIVE_SIMPLIFICATION_TOLERANCE = 0.01
       ADAPTIVE_MIN_CELL_SIZE = 1
@@ -17,12 +19,14 @@ module SU_MCP
                   :vertex_count, :face_count, :state_digest, :previous_state_digest,
                   :previous_state_revision, :state_revision, :adaptive_cells,
                   :simplification_tolerance, :max_simplification_error, :adaptive_patch_plan,
-                  :adaptive_patch_policy, :feature_output_policy_diagnostics
+                  :adaptive_patch_policy, :feature_aware_adaptive_policy,
+                  :feature_output_policy_diagnostics
 
       def self.full_grid(
         state:,
         terrain_state_summary:,
         adaptive_patch_policy: nil,
+        feature_aware_adaptive_policy: nil,
         feature_output_policy_diagnostics: nil
       )
         build(
@@ -31,6 +35,7 @@ module SU_MCP
           state: state,
           terrain_state_summary: terrain_state_summary,
           adaptive_patch_policy: adaptive_patch_policy,
+          feature_aware_adaptive_policy: feature_aware_adaptive_policy,
           feature_output_policy_diagnostics: feature_output_policy_diagnostics
         )
       end
@@ -41,6 +46,7 @@ module SU_MCP
         window:,
         previous_terrain_state_summary: nil,
         adaptive_patch_policy: nil,
+        feature_aware_adaptive_policy: nil,
         feature_output_policy_diagnostics: nil
       )
         raise ArgumentError, 'dirty window must not be empty' if window.empty?
@@ -52,6 +58,7 @@ module SU_MCP
           terrain_state_summary: terrain_state_summary,
           previous_terrain_state_summary: previous_terrain_state_summary,
           adaptive_patch_policy: adaptive_patch_policy,
+          feature_aware_adaptive_policy: feature_aware_adaptive_policy,
           feature_output_policy_diagnostics: feature_output_policy_diagnostics
         )
       end
@@ -63,6 +70,7 @@ module SU_MCP
         terrain_state_summary:,
         previous_terrain_state_summary: nil,
         adaptive_patch_policy: nil,
+        feature_aware_adaptive_policy: nil,
         feature_output_policy_diagnostics: nil
       )
         if adaptive_state?(state)
@@ -73,7 +81,8 @@ module SU_MCP
             terrain_state_summary,
             previous_terrain_state_summary,
             adaptive_patch_policy,
-            feature_output_policy_diagnostics: feature_output_policy_diagnostics
+            feature_output_policy_diagnostics: feature_output_policy_diagnostics,
+            feature_aware_adaptive_policy: feature_aware_adaptive_policy
           )
         end
 
@@ -108,7 +117,8 @@ module SU_MCP
         terrain_state_summary,
         previous_state_summary,
         adaptive_patch_policy,
-        feature_output_policy_diagnostics: nil
+        feature_output_policy_diagnostics: nil,
+        feature_aware_adaptive_policy: nil
       )
         cell_window = TerrainOutputCellWindow.from_sample_window(
           window: window,
@@ -118,6 +128,7 @@ module SU_MCP
           adaptive_cells_for(
             state,
             adaptive_patch_policy,
+            feature_aware_adaptive_policy,
             intent: intent,
             cell_window: cell_window
           )
@@ -131,6 +142,7 @@ module SU_MCP
           summary: summary,
           adaptive_cells: cells,
           adaptive_patch_policy: adaptive_patch_policy,
+          feature_aware_adaptive_policy: feature_aware_adaptive_policy,
           adaptive_patch_plan: adaptive_patch_plan_for(state, adaptive_patch_policy),
           feature_output_policy_diagnostics: feature_output_policy_diagnostics
         )
@@ -173,6 +185,7 @@ module SU_MCP
       def self.adaptive_cells_for(
         state,
         adaptive_patch_policy = nil,
+        feature_aware_adaptive_policy = nil,
         intent: :full_grid,
         cell_window: nil
       )
@@ -189,14 +202,15 @@ module SU_MCP
               bounds.fetch(:min_column),
               bounds.fetch(:min_row),
               bounds.fetch(:max_column),
-              bounds.fetch(:max_row)
+              bounds.fetch(:max_row),
+              feature_aware_adaptive_policy
             )
           end
         end
 
         max_column = state.dimensions.fetch('columns') - 1
         max_row = state.dimensions.fetch('rows') - 1
-        subdivide_cell(state, 0, 0, max_column, max_row)
+        subdivide_cell(state, 0, 0, max_column, max_row, feature_aware_adaptive_policy)
       end
 
       def self.adaptive_patch_domains_for(state, policy, intent, cell_window)
@@ -252,21 +266,28 @@ module SU_MCP
         }
       end
 
-      def self.subdivide_cell(state, min_column, min_row, max_column, max_row)
+      def self.subdivide_cell(
+        state,
+        min_column,
+        min_row,
+        max_column,
+        max_row,
+        feature_aware_adaptive_policy = nil
+      )
         if min_output_cell?(min_column, min_row, max_column, max_row)
           error = max_cell_error(state, min_column, min_row, max_column, max_row)
           return [adaptive_cell(min_column, min_row, max_column, max_row, error)]
         end
 
-        probe = max_cell_error_probe(
+        probe = adaptive_split_probe(
           state,
           min_column,
           min_row,
           max_column,
           max_row,
-          ADAPTIVE_SIMPLIFICATION_TOLERANCE
+          feature_aware_adaptive_policy
         )
-        unless probe.fetch(:exceeded)
+        unless probe.fetch(:split)
           return [adaptive_cell(min_column, min_row, max_column, max_row, probe.fetch(:max_error))]
         end
 
@@ -280,8 +301,55 @@ module SU_MCP
           mid_column,
           mid_row
         ).flat_map do |bounds|
-          subdivide_cell(state, *bounds)
+          subdivide_cell(state, *bounds, feature_aware_adaptive_policy)
         end
+      end
+
+      def self.adaptive_split_probe(
+        state,
+        min_column,
+        min_row,
+        max_column,
+        max_row,
+        feature_aware_adaptive_policy
+      )
+        split_pressure = feature_split_pressure(
+          feature_aware_adaptive_policy,
+          min_column,
+          min_row,
+          max_column,
+          max_row
+        )
+        probe = max_cell_error_probe(
+          state,
+          min_column,
+          min_row,
+          max_column,
+          max_row,
+          split_pressure.fetch(:tolerance)
+        )
+        {
+          max_error: probe.fetch(:max_error),
+          split: probe.fetch(:exceeded) || split_pressure.fetch(:density_split)
+        }
+      end
+
+      def self.feature_split_pressure(
+        feature_aware_adaptive_policy,
+        min_column,
+        min_row,
+        max_column,
+        max_row
+      )
+        return { tolerance: ADAPTIVE_SIMPLIFICATION_TOLERANCE, density_split: false } unless
+          feature_aware_adaptive_policy
+
+        feature_aware_adaptive_policy.split_pressure_for(
+          { min_column: min_column, min_row: min_row,
+            max_column: max_column, max_row: max_row },
+          column_span: max_column - min_column,
+          row_span: max_row - min_row
+        )
       end
 
       def self.child_bounds(min_column, min_row, max_column, max_row, mid_column, mid_row)
@@ -364,6 +432,7 @@ module SU_MCP
         summary:,
         adaptive_cells: [],
         adaptive_patch_policy: nil,
+        feature_aware_adaptive_policy: nil,
         adaptive_patch_plan: nil,
         feature_output_policy_diagnostics: nil
       )
@@ -384,6 +453,7 @@ module SU_MCP
         @source_spacing = summary[:source_spacing]
         @seam_check = summary[:seam_check]
         @adaptive_patch_policy = adaptive_patch_policy
+        @feature_aware_adaptive_policy = feature_aware_adaptive_policy
         @adaptive_patch_plan = adaptive_patch_plan
         @feature_output_policy_diagnostics = feature_output_policy_diagnostics
       end
@@ -408,5 +478,6 @@ module SU_MCP
         }
       end
     end
+    # rubocop:enable Metrics/ClassLength
   end
 end

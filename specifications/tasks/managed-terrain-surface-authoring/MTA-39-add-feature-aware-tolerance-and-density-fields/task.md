@@ -1,7 +1,7 @@
 # Task: MTA-39 Add Feature-Aware Tolerance And Density Fields
 **Task ID**: `MTA-39`
 **Title**: `Add Feature-Aware Tolerance And Density Fields`
-**Status**: `planned`
+**Status**: `completed`
 **Priority**: `core`
 **Date**: `2026-05-15`
 
