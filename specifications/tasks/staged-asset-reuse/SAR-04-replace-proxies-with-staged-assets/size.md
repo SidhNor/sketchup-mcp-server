@@ -29,7 +29,7 @@
 - **Likely Analog Class**: identity-preserving scene replacement
 
 ### Identity Notes
-- Replacement depends on earlier curation, instantiation, and guardrail behavior and should not be treated as a generic semantic replacement clone.
+- Replacement depends on earlier curation and instantiation behavior and should not be treated as a generic semantic replacement clone.
 <!-- SIZE:IDENTITY:END -->
 
 ---
@@ -44,8 +44,8 @@
 | Functional Scope | 3 | Adds a new proxy-to-asset upgrade workflow with identity preservation and source lineage. |
 | Technical Change Surface | 3 | Likely touches new command registration, target resolution, instantiation reuse, metadata handoff, and mutation operation behavior. |
 | Hidden Complexity Suspicion | 4 | Identity handoff, semantic role preservation, previous representation policy, and no-partial-state behavior are high-risk seams. |
-| Validation Burden Suspicion | 4 | Needs success, refusal, lineage, exemplar immutability, identity preservation, and live or hosted SketchUp checks. |
-| Dependency / Coordination Suspicion | 3 | Depends on `SAR-01`, `SAR-02`, and `SAR-03`; downstream behavior inherits their contracts. |
+| Validation Burden Suspicion | 4 | Needs success, refusal, lineage, source exemplar stability, identity preservation, and live or hosted SketchUp checks. |
+| Dependency / Coordination Suspicion | 2 | Depends on `SAR-01` and `SAR-02`; SAR-03 is cancelled and replacement owns its source-stability checks directly. |
 | Scope Volatility Suspicion | 3 | Pressure may expand into broad replacement policy, archival behavior, or more target families. |
 | Confidence | 2 | Product outcome is clear, but replacement policy and supported target breadth are intentionally unplanned at seed time. |
 
@@ -55,7 +55,7 @@
 - Prior replacement and hosted-behavior analogs suggest validation and no-partial-state checks are likely significant.
 
 ### Early Estimate Notes
-- Seed reflects a high-risk dependent feature slice that should remain after instantiation and guardrails.
+- Seed reflects a high-risk dependent feature slice that should remain after instantiation. Replacement source-stability is part of this task, not a dependency on SAR-03 guardrails.
 <!-- SIZE:INITIAL-SHAPE:END -->
 
 ---
@@ -85,7 +85,7 @@ Not filled yet.
 
 > Append only. Log only material changes that affect estimate shape, risk, confidence, or validation burden.
 
-No material drift recorded yet.
+- 2026-05-16: Removed dependency on cancelled SAR-03. Replacement still must preserve selected source exemplars, but no longer depends on generic mutation refusals.
 <!-- SIZE:DRIFT:END -->
 
 ---

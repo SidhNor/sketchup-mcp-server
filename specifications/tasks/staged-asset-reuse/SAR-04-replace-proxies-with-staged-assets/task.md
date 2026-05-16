@@ -13,7 +13,7 @@
 
 Landscape workflows need to upgrade lower-fidelity objects such as `tree_proxy` entities into higher-fidelity curated assets without losing workflow identity. Today, semantic replacement exists only inside `create_site_element` lifecycle behavior and does not create Asset Instances from approved Asset Exemplars or preserve source asset lineage for proxy-to-asset upgrades.
 
-Replacement also needs to work with project-specific staged libraries, including the low-poly garden vegetation component set. A proxy or planting placeholder should be replaceable with an approved vegetation Asset Exemplar selected by archetype, represented species, planting role, style, and intended height, while preserving the target workflow identity and keeping the source library exemplar protected.
+Replacement also needs to work with project-specific staged libraries, including the low-poly garden vegetation component set. A proxy or planting placeholder should be replaceable with an approved vegetation Asset Exemplar selected by archetype, represented species, planting role, style, and intended height, while preserving the target workflow identity and keeping the source library exemplar unchanged by the replacement flow.
 
 This task delivers `replace_with_staged_asset` as the controlled proxy-to-asset upgrade path.
 
@@ -45,10 +45,10 @@ Scenario: semantic role and workflow identity are preserved
   Then the resulting Asset Instance preserves the workflow identity required by the source target
   And the result is not classified as an Asset Exemplar
 
-Scenario: the source exemplar remains protected during replacement
+Scenario: the source exemplar remains unchanged during replacement
   Given an approved Asset Exemplar is used for replacement
   When replacement succeeds or refuses
-  Then the source exemplar remains approved and protected
+  Then the source exemplar remains approved
   And replacement does not mutate the exemplar as the expected outcome
 
 Scenario: a planting proxy is replaced from a project vegetation asset set
@@ -58,7 +58,7 @@ Scenario: a planting proxy is replaced from a project vegetation asset set
   When `replace_with_staged_asset` replaces the target with that exemplar
   Then the resulting Asset Instance preserves the target workflow identity required by the replacement policy
   And the result records source exemplar lineage and source asset-set metadata
-  And the source library exemplar remains approved, protected, and in its staging context
+  And the source library exemplar remains approved and in its staging context
 
 Scenario: replacement does not depend on exact project library hierarchy
   Given approved Asset Exemplars may be organized in a common group, staging collection, or equivalent metadata-backed library convention
@@ -96,7 +96,7 @@ Scenario: unsupported replacement requests refuse clearly
 
 - `replace_with_staged_asset` must consume the curation/discovery contract from `SAR-01`
 - replacement must reuse or align with the Asset Instance creation semantics from `SAR-02`
-- exemplar guardrails from `SAR-03` must remain effective during replacement
+- replacement must not implicitly mutate the selected source Asset Exemplar
 - replacement must preserve JSON-safe asset-set metadata needed for later validation and review when such metadata exists on the selected exemplar
 - results and refusals must be JSON-safe and avoid raw SketchUp objects
 - mutation must be a coherent SketchUp operation where practical
@@ -106,7 +106,6 @@ Scenario: unsupported replacement requests refuse clearly
 
 - `SAR-01`
 - `SAR-02`
-- `SAR-03`
 - [Asset Exemplar Reuse HLD](specifications/hlds/hld-asset-exemplar-reuse.md)
 - [PRD: Staged Asset Reuse](specifications/prds/prd-staged-asset-reuse.md)
 - [Low-Poly Garden Vegetation Inventory](specifications/research/asset-reuse/low_poly_garden_vegetation_inventory.md)
@@ -115,7 +114,6 @@ Scenario: unsupported replacement requests refuse clearly
 ## Relationships
 
 - depends on `SAR-02`
-- depends on `SAR-03`
 - informs later asset integrity and lineage validation
 
 ## Related Technical Plan

@@ -35,14 +35,14 @@ Without a clear staged-asset reuse slice:
 | Metric | Baseline | Target | Measurement Method | Timeline |
 | --- | --- | --- | --- | --- |
 | High-fidelity placements using Asset Exemplar instancing instead of ad hoc generation | No formal baseline; current workflows do not have a mature Asset Exemplar product flow | >= 90% of target high-fidelity placements | Workflow telemetry and scenario review of placement method by task | Within first asset-reuse release cycle |
-| Accepted workflows that modify approved Asset Exemplars in place | No protection guarantee today | 0 accepted workflows | Library integrity checks and validation failures for exemplar mutations | Immediately on asset-reuse MVP release |
+| Reuse workflows that implicitly modify approved Asset Exemplars in place | No protection guarantee today | 0 accepted reuse workflows | Source-stability checks in instantiation/replacement tests and library integrity review | Immediately on asset-reuse MVP release |
 | Asset Instances retaining source asset lineage metadata | No current lineage standard | >= 95% of Asset Instances | Metadata completeness checks on instantiated assets | Within first asset-reuse release cycle |
 | Median time to upgrade a Tree Proxy or similar low-fidelity object to higher fidelity | Current manual upgrade time to be measured during discovery | >= 50% reduction from measured baseline | Timed scenario benchmarks for proxy-to-asset upgrade workflows | Within two releases after asset-reuse MVP launch |
 | Asset Exemplar discovery flows returning a usable candidate on first query | No current Asset Exemplar discovery metric | >= 80% first-query usefulness rate | Scenario replay and curated user testing on asset lookup tasks | Within two releases after asset-reuse MVP launch |
 
 **Primary KPI**
 
-- Accepted workflows that modify approved Asset Exemplars in place
+- Reuse workflows that implicitly modify approved Asset Exemplars in place
 
 **Secondary KPI**
 
@@ -80,14 +80,15 @@ Without a clear staged-asset reuse slice:
 1. A human imports or organizes reusable assets inside a dedicated staging area.
 2. The system records asset metadata, approval state, asset-set identity, and library status for those Asset Exemplars.
 3. Agents can discover only approved Asset Exemplars for normal reuse flows.
-4. Normal modeling actions do not mutate the library source objects in place.
+4. Reuse workflows do not mutate the library source objects in place as an implicit side effect.
+5. Explicitly targeted editing commands may still be used for deliberate library maintenance.
 
 ### Flow 4: Use a project vegetation asset set
 
 1. A designer creates a project-specific vegetation library in the model, for example a common group containing low-poly component instances for hedge blocks, shrub masses, grasses, perennials, vines, bamboo, and seasonal bulb markers.
 2. The system curates each reusable component instance as an approved Asset Exemplar while preserving its project asset-set metadata.
 3. An agent searches the asset set by category, archetype, represented species, planting role, height class, style, or tags.
-4. The agent places or replaces editable scene objects with selected Asset Instances while the grouped library remains intact and protected.
+4. The agent places or replaces editable scene objects with selected Asset Instances while the grouped library source exemplars remain intact.
 
 ## Functional Requirements
 
@@ -101,7 +102,7 @@ Without a clear staged-asset reuse slice:
 | Support placement and initialization details during instantiation | As an agent, I want asset placement to fit the scene in one structured action | Instantiation supports position-only minimum placement at model root, optional direct scale for variation, and metadata fields, and the resulting Asset Instance reflects them in serialized output and metadata | P1 |
 | Ensure Asset Instances retain lineage, stop being treated as Asset Exemplars, and become Managed Scene Objects | As a workflow orchestrator, I want placed assets to be both traceable and editable | Asset Instances include source asset lineage metadata, are marked as non-library scene objects, and satisfy Managed Scene Object rules after instantiation | P1 |
 | Support replacement of a Tree Proxy or other lower-fidelity object through `replace_with_staged_asset` | As an agent, I want to upgrade fidelity without losing workflow identity | Replacement preserves `sourceElementId`, semantic role, and Managed Scene Object lineage in alignment with domain rules | P1 |
-| Mark approved Asset Exemplars as protected and non-editable in normal workflows | As a library curator, I want source assets to remain pristine for future reuse | Normal modeling workflows cannot edit approved Asset Exemplars in place; attempted edits are blocked or surfaced as product-level violations | P1 |
+| Preserve approved Asset Exemplars during reuse workflows | As a library curator, I want source assets to remain pristine when agents reuse them | Instantiation and replacement workflows do not mutate selected source Asset Exemplars in place; explicit targeted edits remain available for deliberate library maintenance | P1 |
 | Support an approval model for Asset Exemplars before normal reuse | As a curator, I want only vetted assets to be discoverable so that normal workflows stay reliable | Asset Exemplars require documented approval metadata before they are returned as normal discovery results | P1 |
 | Ensure Asset Exemplar discovery responses include enough structured data for selection without raw scene inspection | As an agent, I want to choose assets from returned data instead of falling back to arbitrary inspection | Discovery responses include asset identity, asset category, metadata summary, component or display name, and placement-relevant summary data such as bounds | P1 |
 | Support approved, human-curated in-scene Asset Exemplar libraries as the primary reuse mechanism | As a product owner, I want reliable asset quality and repeatability | Core asset workflows operate from in-scene curated libraries and do not require live public search services for normal use | P1 |

@@ -1,7 +1,7 @@
 # Task: MTA-39 Add Feature-Aware Tolerance And Density Fields
 **Task ID**: `MTA-39`
 **Title**: `Add Feature-Aware Tolerance And Density Fields`
-**Status**: `defined`
+**Status**: `planned`
 **Priority**: `core`
 **Date**: `2026-05-15`
 
@@ -105,7 +105,7 @@ Scenario: Live evidence is recorded for the same baseline corpus
 
 ## Related Technical Plan
 
-- none yet
+- [Technical Plan](./plan.md)
 
 ## Success Metrics
 

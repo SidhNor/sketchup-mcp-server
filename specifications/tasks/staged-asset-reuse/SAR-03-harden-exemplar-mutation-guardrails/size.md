@@ -2,9 +2,9 @@
 
 **Task ID**: `SAR-03`  
 **Title**: `Harden Exemplar Mutation Guardrails`  
-**Status**: `seeded`  
+**Status**: `cancelled`
 **Created**: `2026-04-25`  
-**Last Updated**: `2026-04-25`  
+**Last Updated**: `2026-05-16`
 
 **Related Task**: [task.md](./task.md)  
 **Related Plan**: none yet  
@@ -18,7 +18,7 @@
 - **Task Archetype**: feature
 - **Primary Scope Area**: staged asset reuse protection
 - **Likely Systems Touched**:
-  - exemplar-protection predicate
+  - approved-exemplar predicate
   - delete mutation path
   - transform mutation path
   - material mutation path
@@ -26,10 +26,10 @@
   - refusal response shaping
   - mutation tests and docs
 - **Validation Class**: regression-heavy
-- **Likely Analog Class**: cross-command mutation guardrail
+- **Likely Analog Class**: cancelled cross-command mutation guardrail
 
 ### Identity Notes
-- Guardrails are a protection-hardening slice across existing mutation surfaces, not a new asset creation flow.
+- Cancelled after SAR-02 established source-stability semantics and the product policy kept explicit generic mutation of targeted exemplars allowed.
 <!-- SIZE:IDENTITY:END -->
 
 ---
@@ -41,21 +41,21 @@
 
 | Dimension | Seed (0-4) | Notes |
 |---|---:|---|
-| Functional Scope | 2 | Adds protection behavior across normal mutation tools but no new asset creation capability. |
-| Technical Change Surface | 3 | Crosses several mutation paths and refusal/result conventions. |
-| Hidden Complexity Suspicion | 3 | Must distinguish protected exemplars from editable Asset Instances without disrupting normal managed-object behavior. |
-| Validation Burden Suspicion | 3 | Needs regression checks for protected refusals and non-exemplar mutation paths across multiple tools. |
-| Dependency / Coordination Suspicion | 2 | Depends on `SAR-01` metadata contract and may interact with existing semantic/editing policy boundaries. |
-| Scope Volatility Suspicion | 2 | Main risk is expanding into full integrity validation or unsupported manual UI protection. |
-| Confidence | 2 | Guardrail need is clear, but exact mutation surfaces and centralization strategy are not technically planned yet. |
+| Functional Scope | 0 | Runtime guardrail work is cancelled; source-stability remains in reuse workflows. |
+| Technical Change Surface | 0 | No code or public MCP contract changes are planned for SAR-03. |
+| Hidden Complexity Suspicion | 1 | Remaining complexity is documentation and dependency cleanup. |
+| Validation Burden Suspicion | 1 | Validation belongs to SAR-02 and SAR-04 source-stability checks, not this cancelled task. |
+| Dependency / Coordination Suspicion | 1 | SAR-04 no longer depends on SAR-03. |
+| Scope Volatility Suspicion | 1 | Cancellation avoids expanding into duplicate maintenance surfaces or broad asset locking. |
+| Confidence | 3 | SAR-02 behavior and explicit target-reference mutation semantics make the runtime guardrail unnecessary under the chosen policy. |
 
 ### Early Signals
-- The PRD primary KPI requires zero accepted workflows that modify approved exemplars in place.
-- PAL/Grok review warned that guardrails cannot wait until after replacement.
-- Existing generic mutation tools know managed objects but not Asset Exemplars.
+- SAR-02 creates separate Asset Instances and leaves source exemplars unchanged during instantiation.
+- Generic mutation commands require explicit target references, so editing an exemplar is an intentional targeted operation rather than an implicit reuse side effect.
+- Adding refusals to generic mutation paths would require a duplicate or override-based maintenance surface, which is not desired.
 
 ### Early Estimate Notes
-- Seed reflects moderate functional scope with cross-cutting regression risk across mutation paths.
+- Seed is retired. Source-stability validation should stay attached to the reuse workflows that select exemplars as sources.
 <!-- SIZE:INITIAL-SHAPE:END -->
 
 ---
@@ -85,7 +85,7 @@ Not filled yet.
 
 > Append only. Log only material changes that affect estimate shape, risk, confidence, or validation burden.
 
-No material drift recorded yet.
+- 2026-05-16: Cancelled SAR-03 as a runtime mutation-refusal task. Product policy now allows explicit generic mutation of targeted Asset Exemplars while requiring instantiation and replacement workflows to preserve selected source exemplars.
 <!-- SIZE:DRIFT:END -->
 
 ---
@@ -121,13 +121,13 @@ Not filled yet.
 
 - `archetype:feature`
 - `scope:staged-asset-reuse`
-- `validation:regression`
-- `systems:asset-protection`
-- `systems:scene-mutation`
-- `systems:tool-response`
-- `risk:partial-state`
-- `volatility:medium`
-- `friction:medium`
-- `rework:medium`
-- `confidence:low`
+- `status:cancelled`
+- `validation:source-stability`
+- `systems:asset-reuse-policy`
+- `systems:task-dependency`
+- `risk:duplicate-surface`
+- `volatility:low`
+- `friction:low`
+- `rework:low`
+- `confidence:medium`
 <!-- SIZE:TAGS:END -->

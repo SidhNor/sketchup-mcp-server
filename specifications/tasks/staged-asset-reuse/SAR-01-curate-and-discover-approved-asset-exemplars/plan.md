@@ -19,7 +19,7 @@ The staged-asset reuse capability needs a supported Ruby runtime path for turnin
 - Define and persist the minimum Asset Exemplar metadata contract.
 - Use a metadata-backed library convention for SAR-01 without moving, wrapping, reparenting, tagging, or locking source geometry.
 - Keep Asset Exemplars separate from Managed Scene Objects in runtime classification and serialization.
-- Install a reusable approved-exemplar predicate for later guardrail and instantiation tasks.
+- Install a reusable approved-exemplar predicate for later reuse tasks.
 - Update public tool registration, dispatcher wiring, tests, docs, and contract fixtures together.
 
 ## Non-Goals
@@ -27,7 +27,7 @@ The staged-asset reuse capability needs a supported Ruby runtime path for turnin
 - Do not import, download, search, or rank external assets.
 - Do not instantiate editable Asset Instances.
 - Do not replace tree proxies or other lower-fidelity objects.
-- Do not implement full mutation guardrails for protected exemplars.
+- Do not implement source-stability validation beyond SAR-01 curation and discovery.
 - Do not create a rich curation UI.
 - Do not implement versioning, deprecation, category-library partitioning, or broad asset integrity validation.
 - Do not physically reorganize scene geometry through reparenting, wrapping, moving, tag creation, layer assignment, or SketchUp locking in SAR-01.
@@ -80,7 +80,7 @@ The approved-exemplar predicate must require at least:
 
 Asset Exemplars must not set `managedSceneObject`, `semanticType`, `status`, `state`, or Managed Scene Object lifecycle fields during SAR-01 curation.
 
-For SAR-01, metadata attaches to the curated entity instance only. Definition-level exemplar metadata is deferred because it can unintentionally classify every instance of a shared component definition as a protected exemplar.
+For SAR-01, metadata attaches to the curated entity instance only. Definition-level exemplar metadata is deferred because it can unintentionally classify every instance of a shared component definition as an approved exemplar.
 
 ### API and Interface Design
 
@@ -313,7 +313,7 @@ flowchart TD
 ## Key Relationships
 
 - `StagedAssetCommands` owns use-case orchestration; it does not become a generic scene-query or semantic metadata bucket.
-- `AssetExemplarMetadata` owns the metadata contract and approved-exemplar predicate consumed now by listing and later by SAR-02/SAR-03.
+- `AssetExemplarMetadata` owns the metadata contract and approved-exemplar predicate consumed now by listing and later by reuse workflows.
 - `AssetExemplarQuery` filters by approved-exemplar predicate before applying category, tags, and attributes.
 - `AssetExemplarSerializer` returns selection-friendly JSON-safe summaries and never returns SketchUp objects.
 - `SceneQuerySerializer` remains the shared primitive serializer but must stop equating `sourceElementId` with Managed Scene Object when `assetExemplar: true` is present.
@@ -415,7 +415,7 @@ Implement tests from the lowest-risk internal policy outward:
 - Ship both tools together because discovery needs a supported curation path for the first vertical slice.
 - Keep SAR-01 metadata-only to minimize host geometry risk and allow rollback by clearing attributes.
 - Do not expose unapproved listing modes in SAR-01.
-- Do not change mutation tools in SAR-01; SAR-03 consumes the predicate later.
+- Do not change mutation tools in SAR-01; later reuse workflows consume the predicate for source selection and source-stability checks.
 - Document hosted/manual verification gaps explicitly if SketchUp-hosted validation cannot be completed.
 
 ## Risks and Controls
@@ -428,7 +428,7 @@ Implement tests from the lowest-risk internal policy outward:
 - Component definition ambiguity: attach SAR-01 metadata to the curated instance only and defer definition-level policy; document the decision for SAR-02.
 - Host persistent ID or entity ID differences: use existing target resolver and serialize identifiers as strings for public summaries.
 - Hidden performance cost from broad traversal: apply default/max list limits and keep query filtering simple; add limit behavior tests.
-- Locking side effects: do not set `entity.locked = true` in SAR-01; SAR-03 owns mutation guardrails.
+- Locking side effects: do not set `entity.locked = true` in SAR-01; explicit target-based exemplar maintenance remains allowed.
 
 ## Premortem Gate
 
@@ -456,7 +456,7 @@ Status: PASS
   - Required validation: curation and listing tests must include component instances and document that definition-level policy is out of scope.
 - Risk: Full mutation protection is not enforced in SAR-01.
   - Class: Elephant
-  - Why accepted: SAR-03 explicitly owns guardrail hardening; SAR-01 only installs the reusable predicate and must not overclaim edit blocking.
+  - Why accepted: SAR-01 only installs the reusable predicate and must not overclaim edit blocking.
   - Required validation: implementation must not set `entity.locked = true` or wire mutation refusals beyond predicate availability.
 
 ### Carried Validation Items
@@ -483,7 +483,7 @@ Status: PASS
 - Existing scene-query bounds and identity serialization helpers.
 - Existing `ToolResponse` envelope.
 - PRD/HLD/domain staged-asset definitions.
-- Follow-on SAR-02 for instantiation and SAR-03 for mutation guardrails.
+- Follow-on SAR-02 for instantiation and SAR-04 for replacement source-stability.
 
 ## Quality Checks
 

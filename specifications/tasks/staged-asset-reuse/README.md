@@ -16,15 +16,18 @@ The current task order proves the asset reuse capability through concrete, testa
 
 - curation and discovery of approved Asset Exemplars already present in the model
 - instantiation of separate editable Asset Instances with source lineage and optional project asset-set metadata
-- exemplar-aware mutation guardrails for normal editing paths, including grouped component-instance libraries
 - replacement of lower-fidelity proxies with staged assets while preserving workflow identity and selected source asset-set lineage
+- source-stability validation in reuse flows, while explicit targeted exemplar maintenance remains available through normal mutation tools
 
 ## Current Task Order
 
 1. [SAR-01 Curate And Discover Approved Asset Exemplars](SAR-01-curate-and-discover-approved-asset-exemplars/task.md)
 2. [SAR-02 Instantiate Editable Asset Instances](SAR-02-instantiate-editable-asset-instances/task.md)
-3. [SAR-03 Harden Exemplar Mutation Guardrails](SAR-03-harden-exemplar-mutation-guardrails/task.md)
-4. [SAR-04 Replace Proxies With Staged Assets](SAR-04-replace-proxies-with-staged-assets/task.md)
+3. [SAR-04 Replace Proxies With Staged Assets](SAR-04-replace-proxies-with-staged-assets/task.md)
+
+## Cancelled Tasks
+
+- [SAR-03 Harden Exemplar Mutation Guardrails](SAR-03-harden-exemplar-mutation-guardrails/task.md) is cancelled. SAR-02 provides source-stability for instantiation, SAR-04 owns replacement source-stability, and explicit targeted exemplar maintenance remains allowed through normal mutation tools.
 
 ## Deferred Follow-Ons
 

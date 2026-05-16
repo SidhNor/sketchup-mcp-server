@@ -1,7 +1,7 @@
 # Task: SAR-03 Harden Exemplar Mutation Guardrails
 **Task ID**: `SAR-03`
 **Title**: `Harden Exemplar Mutation Guardrails`
-**Status**: `draft`
+**Status**: `cancelled`
 **Priority**: `P1`
 **Date**: `2026-04-25`
 
@@ -11,101 +11,79 @@
 
 ## Problem Statement
 
-Approved Asset Exemplars must remain protected source objects for reliable reuse. After exemplars can be curated and discovered, normal mutation surfaces such as delete, transform, material updates, and metadata updates could accidentally alter the approved library unless those surfaces recognize exemplar protection rules.
+Approved Asset Exemplars must remain reliable source objects for reuse workflows, but they are still ordinary in-scene SketchUp objects that designers and agents may need to maintain intentionally. The original SAR-03 framing treated approved exemplars as protected from normal mutation tools, which would block deliberate library maintenance through the same explicit target-based edit commands used elsewhere.
 
-The guardrail slice must cover practical project libraries, including a common group containing approved low-poly vegetation component-instance exemplars. Protection should follow exemplar metadata and approval state even when the exemplar is nested in a library group, and it should not accidentally protect editable Asset Instances merely because they were created from one of the same component definitions.
+The shipped SAR-02 implementation already covers the essential reuse invariant: instantiation creates a separate editable Asset Instance, clears exemplar-only fields on the copy, records source lineage, and leaves the source Asset Exemplar unchanged. Generic mutation tools require explicit target references, so the remaining risk is not implicit accidental mutation during reuse, but an intentional command targeting an exemplar directly.
 
-This task hardens exemplar-aware guardrails across normal mutation paths so approved exemplars are not edited in place by supported workflows.
+This task is cancelled as a runtime guardrail slice. The retained policy is that reuse workflows must not mutate source exemplars implicitly; explicit generic mutation of an explicitly targeted exemplar remains allowed.
 
 ## Goals
 
-- apply exemplar-aware protection to supported normal mutation tools
-- return structured refusals when a protected Asset Exemplar is targeted for unsupported mutation
-- preserve the distinction between protected Asset Exemplars and editable Asset Instances
-- protect approved exemplars inside grouped project asset libraries without requiring a fixed group name or SketchUp tag/layer convention
-- avoid definition-level overreach where a protected exemplar component definition causes unrelated editable instances to be refused
-- ensure guardrail behavior is testable through existing mutation paths
-- keep comprehensive integrity validation deferred to the later validation follow-on
+- preserve SAR-02 source-stability semantics as the asset-reuse guardrail
+- allow explicit generic mutation commands to operate on explicitly targeted Asset Exemplars
+- avoid adding a duplicate exemplar-maintenance MCP surface for delete, transform, material, or metadata edits
+- keep Asset Exemplars and Asset Instances distinct through metadata and source lineage
+- keep future replacement flows responsible for not mutating selected source exemplars implicitly
 
 ## Acceptance Criteria
 
 ```gherkin
-Scenario: protected exemplars cannot be deleted through normal mutation tools
-  Given an approved Asset Exemplar exists in the staged asset library
-  When a supported delete command targets the exemplar
-  Then the command returns a structured protected-exemplar refusal
-  And the exemplar remains present and approved
+Scenario: reuse workflows preserve source exemplars
+  Given an approved Asset Exemplar is selected for reuse
+  When an instantiation or replacement workflow uses the exemplar as a source
+  Then the workflow creates or updates an Asset Instance representation
+  And the source exemplar is not mutated as an implicit side effect
 
-Scenario: protected exemplars cannot be transformed through normal mutation tools
+Scenario: explicit mutation of a targeted exemplar remains allowed
   Given an approved Asset Exemplar exists in the staged asset library
-  When a supported transform command targets the exemplar
-  Then the command returns a structured protected-exemplar refusal
-  And the exemplar placement remains unchanged
+  When a supported generic mutation command explicitly targets that exemplar
+  Then the command is evaluated under the normal target-specific mutation rules
+  And no exemplar-specific runtime refusal is required solely because the target is an approved exemplar
 
-Scenario: protected exemplars cannot be changed through supported material or metadata mutation paths
-  Given an approved Asset Exemplar exists in the staged asset library
-  When a supported material or metadata mutation command targets the exemplar
-  Then the command returns a structured protected-exemplar refusal
-  And protected exemplar metadata remains unchanged
-
-Scenario: editable Asset Instances remain mutable where supported
+Scenario: Asset Instances remain distinct from exemplars
   Given an editable Asset Instance was created from an Asset Exemplar
-  When a supported normal mutation command targets the Asset Instance
-  Then the command is evaluated under normal Managed Scene Object mutation rules
-  And the instance is not refused merely because it has source asset lineage
-
-Scenario: nested project vegetation exemplars remain protected
-  Given approved low-poly vegetation Asset Exemplars are component instances inside a common project vegetation library group
-  When a supported delete, transform, material, or metadata mutation command targets one of those exemplar instances
-  Then the command returns a structured protected-exemplar refusal
-  And the targeted exemplar remains present, approved, and in its library context
-
-Scenario: editable instances sharing a component definition are not over-protected
-  Given an approved component-instance Asset Exemplar exists in the project vegetation library
-  And an editable Asset Instance was created from the same component definition
-  When a supported mutation command targets the editable Asset Instance
-  Then protection is evaluated against the target instance metadata
-  And the command is not refused merely because the source exemplar or shared definition is protected
+  When staged-asset discovery or mutation policy evaluates the instance
+  Then the instance is not classified as an Asset Exemplar
+  And the instance remains governed by normal Managed Scene Object rules where applicable
 ```
 
 ## Non-Goals
 
+- adding runtime refusals to generic mutation tools solely because the target is an approved Asset Exemplar
+- creating a separate exemplar-maintenance MCP surface that duplicates existing generic mutation tools
 - creating a full scene-wide asset integrity validator
-- preventing arbitrary manual SketchUp UI edits outside supported MCP workflows
+- preventing arbitrary manual SketchUp UI edits
 - adding live 3D Warehouse or external asset-management behavior
-- changing public tool names unrelated to exemplar guardrails
 - replacing proxies with staged assets
-- definition-level asset-locking policy beyond the explicit exemplar predicate
+- adding definition-level asset-locking policy
 
 ## Business Constraints
 
-- accepted workflows must not modify approved Asset Exemplars in place
-- Asset Instances remain editable design-scene objects even when derived from protected exemplars
-- guardrails must support the primary KPI around zero accepted exemplar mutations
+- reuse workflows must not modify approved Asset Exemplars in place as an implicit side effect
+- explicitly targeted exemplar maintenance remains possible through normal mutation surfaces
+- Asset Instances remain editable design-scene objects even when derived from approved exemplars
 - grouped project asset libraries must remain usable as human staging areas without turning every component definition instance into a protected library object
 
 ## Technical Constraints
 
-- guardrail refusals must be JSON-safe and consistent with existing runtime refusal conventions
-- the protection rule must use the Asset Exemplar metadata contract from `SAR-01`
-- protection must be instance-aware for component-backed exemplars so editable instances are governed by normal Managed Scene Object mutation rules
-- mutation paths must keep tool registration, dispatcher behavior, tests, and docs in sync if public behavior changes
-- unrelated mutation behavior must not be broadened or refactored beyond the exemplar guardrail need
+- no new public MCP tool surface should be introduced only to bypass a generic-mutation refusal
+- source-stability checks belong in reuse workflows such as instantiation and replacement
+- public tool registration and dispatcher behavior should not change for the cancelled SAR-03 guardrail
+- task dependencies must not require SAR-03 before replacement work can proceed
 
 ## Dependencies
 
 - `SAR-01`
+- `SAR-02`
 - [Asset Exemplar Reuse HLD](specifications/hlds/hld-asset-exemplar-reuse.md)
 - [PRD: Staged Asset Reuse](specifications/prds/prd-staged-asset-reuse.md)
 - [Low-Poly Garden Vegetation Inventory](specifications/research/asset-reuse/low_poly_garden_vegetation_inventory.md)
-- existing editing and metadata mutation surfaces
 
 ## Relationships
 
-- depends on `SAR-01`
-- hardens the protection predicate introduced by `SAR-01`
-- informs `SAR-04`
-- reduces risk for later asset integrity validation
+- cancelled after SAR-02 confirmed source-stability and Asset Instance separation semantics
+- superseded by explicit source-stability requirements in SAR-02 and SAR-04
+- removed as a dependency for `SAR-04`
 
 ## Related Technical Plan
 
@@ -113,9 +91,6 @@ Scenario: editable instances sharing a component definition are not over-protect
 
 ## Success Metrics
 
-- protected exemplars refuse supported delete, transform, material, and metadata mutation attempts
-- protected low-poly vegetation exemplars remain guarded when nested inside a grouped project library
-- editable Asset Instances remain governed by normal editable-object rules
-- editable instances sharing source component definitions are not refused solely by definition ancestry
-- guardrail refusals are structured, deterministic, and covered by focused tests
-- no supported mutation path intentionally changes an approved exemplar in place
+- no SAR-03 implementation plan is created for runtime mutation refusals
+- SAR-04 can proceed without a SAR-03 dependency
+- asset-reuse specs distinguish implicit reuse-flow source mutation from explicit targeted exemplar maintenance

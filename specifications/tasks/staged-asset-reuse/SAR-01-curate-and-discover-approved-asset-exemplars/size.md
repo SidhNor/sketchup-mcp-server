@@ -23,7 +23,7 @@
   - target resolution for in-model assets
   - `list_staged_assets` MCP command and runtime registration
   - JSON-safe asset summary serialization
-  - initial exemplar-protection predicate
+  - initial approved-exemplar predicate
   - task-level tests and user-facing docs for the new tool surface
 - **Validation Class**: mixed
 - **Likely Analog Class**: metadata-backed domain discovery vertical slice
@@ -68,13 +68,13 @@
 
 | Dimension | Score (0-4) | Notes |
 |---|---:|---|
-| Functional Scope | 3 | Adds the first staged-asset workflow with curation and approved discovery, but explicitly excludes instantiation, replacement, guardrail hardening, import, ranking, and versioning. |
+| Functional Scope | 3 | Adds the first staged-asset workflow with curation and approved discovery, but explicitly excludes instantiation, replacement, source-stability hardening, import, ranking, and versioning. |
 | Technical Change Surface | 3 | Plan touches a new staged-asset command slice, metadata policy, query/serializer support, target resolution, scene-query classification, runtime loader, dispatcher, factory, contract fixtures, tests, and README. |
 | Implementation Friction Risk | 3 | Main friction is hidden metadata coupling: exemplars need `sourceElementId` without becoming Managed Scene Objects, and curation must validate before writing to avoid partial approved metadata. |
 | Validation Burden Risk | 4 | Two new public tools require metadata, query, serializer, command, dispatcher/factory, loader/schema, contract/docs, limit/filter, no-partial-write, and likely hosted/manual SketchUp smoke coverage. |
-| Dependency / Coordination Risk | 2 | Depends on existing runtime, target resolver, model adapter, serializer, and response envelope seams, plus SAR-02/SAR-03 consumers, but no external system or upstream implementation is blocking. |
+| Dependency / Coordination Risk | 2 | Depends on existing runtime, target resolver, model adapter, serializer, and response envelope seams, plus later reuse consumers, but no external system or upstream implementation is blocking. |
 | Discovery / Ambiguity Risk | 2 | Major choices are now resolved, including metadata-only staging and no locking; remaining uncertainty is around live component-instance behavior, serializer isolation, and exact contract fixture breadth. |
-| Scope Volatility Risk | 2 | Metadata-only staging and SAR-03 deferral contain the slice, but pressure could still appear to add tags/layers, definition-level policy, locking, unapproved discovery, or richer curation validation. |
+| Scope Volatility Risk | 2 | Metadata-only staging and deferral of reuse-flow source-stability checks contain the slice, but pressure could still appear to add tags/layers, definition-level policy, locking, unapproved discovery, or richer curation validation. |
 | Rework Risk | 3 | Incorrect metadata discrimination, public schema drift, or partial-write behavior would force revisiting multiple completed surfaces after initial implementation. |
 | Confidence | 3 | Task, plan, linked specs, code seams, calibrated analogs, and Grok 4.20 review provide good evidence; confidence remains below very high until premortem and live-host assumptions are pressure-tested. |
 
@@ -121,7 +121,7 @@
 - Public contract synchronization is a major size driver: both new tools require loader schema, annotations, dispatcher/factory wiring, command behavior, contract fixtures, README examples, and catalog tests to move together.
 - Metadata discrimination is a real implementation and validation driver because Asset Exemplars need stable `sourceElementId` identity without becoming Managed Scene Objects in existing scene-query serialization.
 - Validation burden remains high because correctness depends on no-partial-write refusals, approved-only discovery, metadata-backed staging evidence, serializer isolation, list caps, and representative MCP/host behavior.
-- Keeping SAR-01 metadata-only, unlocked, and instance-level contains scope and avoids absorbing SAR-02 instantiation or SAR-03 mutation guardrails.
+- Keeping SAR-01 metadata-only, unlocked, and instance-level contains scope and avoids absorbing SAR-02 instantiation or later source-stability validation.
 
 ### Contested Drivers
 
@@ -146,7 +146,7 @@
 
 - Grok 4.20 review found concrete hidden coupling in current serializer behavior but did not require a scope split; the finalized plan now carries serializer isolation as a test and implementation guardrail.
 - The premortem converted metadata-only staging visibility and mutation-protection deferral into explicit validation and docs obligations.
-- No evidence supports adding tags/layers, definition-level metadata, locking, unapproved listing, or full mutation guardrails to SAR-01.
+- No evidence supports adding tags/layers, definition-level metadata, locking, unapproved listing, or full source-stability behavior to SAR-01.
 <!-- SIZE:CHALLENGE:END -->
 
 ---
@@ -220,7 +220,7 @@ No material drift recorded yet.
 
 ### Operational / Rollout Validation
 - Public docs and live guide were updated for metadata-only staging, finite option sets, user-named asset workflow, and the compact live verification matrix.
-- SAR-02/SAR-03 consumers can rely on the approved-exemplar predicate and metadata contract; SAR-03 should reuse the predicate rather than duplicate it.
+- Later reuse consumers can rely on the approved-exemplar predicate and metadata contract; source-stability checks should reuse the predicate rather than duplicate it.
 
 ### Validation Notes
 - The host validation gap was closed after the live discovery blocker was fixed and retested.

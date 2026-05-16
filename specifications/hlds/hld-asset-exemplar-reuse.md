@@ -10,7 +10,7 @@ It focuses on:
 
 - Asset Exemplar discovery
 - Asset Instance creation
-- Asset Exemplar protection
+- Asset Exemplar source stability during reuse
 - replacement flows
 - source asset lineage
 - project-scoped asset sets, such as grouped low-poly vegetation component libraries
@@ -41,7 +41,7 @@ Implement asset reuse around five concepts:
 2. **approval-state enforcement**
 3. **project asset-set metadata and discovery**
 4. **Asset Instance creation with lineage**
-5. **Asset Exemplar protection**
+5. **Asset Exemplar source stability during reuse**
 
 ### Internal Structure for This Capability
 
@@ -50,7 +50,7 @@ Implement asset reuse around five concepts:
 - Asset Instance creation command
 - replacement command
 - Asset Exemplar metadata rules
-- integrity and protection checks
+- integrity and source-stability checks
 - lineage serializer helpers
 
 ### Separation Model
@@ -69,6 +69,8 @@ This separation should be visible in:
 
 Scene organization can help users understand that separation, but it is not the primary architectural boundary. A common group containing component-instance exemplars is a supported library convention; the runtime should rely on explicit exemplar metadata, approval state, and source lineage rather than a required group name, exact nesting depth, or SketchUp tag/layer convention.
 
+Reuse workflows must treat selected Asset Exemplars as sources and avoid mutating them implicitly. This does not make approved exemplars globally immutable: explicit target-based editing commands may still operate on exemplars for deliberate library maintenance.
+
 ## Component Breakdown
 
 ### 1. Asset Exemplar Discovery Component
@@ -86,6 +88,7 @@ Scene organization can help users understand that separation, but it is not the 
 - define approval-state rules
 - enforce minimum metadata requirements
 - determine whether an Asset Exemplar is reusable
+- distinguish reuse-flow source stability from deliberate explicit exemplar maintenance
 
 ### 3. Project Asset Set Metadata Component
 
@@ -115,11 +118,11 @@ Scene organization can help users understand that separation, but it is not the 
 - preserve semantic role
 - assign new source asset lineage
 
-### 6. Integrity / Protection Component
+### 6. Integrity / Source-Stability Component
 
 **Responsibilities**
 
-- block or detect in-place edits to Asset Exemplars
+- detect implicit in-place source edits during reuse workflows
 - verify Asset Exemplar library invariants
 
 ## Integration & Data Flows
@@ -272,9 +275,19 @@ Default exemplar identity to curated group or component instances. Definition-le
 
 **Reason**
 
-Component definitions are shared across instances. Treating a definition as an approved protected exemplar can unintentionally classify every instance of that definition as a library source object.
+Component definitions are shared across instances. Treating a definition as an approved exemplar can unintentionally classify every instance of that definition as a library source object.
 
-### 7. Replacement Preserves Business Identity
+### 7. Explicit Exemplar Maintenance Remains Allowed
+
+**Decision**
+
+Do not add runtime refusals to generic mutation commands solely because a target is an approved Asset Exemplar.
+
+**Reason**
+
+Generic mutation commands already require explicit target references. Blocking approved exemplars in those paths would make deliberate library maintenance awkward or force a duplicate maintenance surface. Source-stability requirements belong to reuse workflows that select exemplars as sources, such as instantiation and replacement.
+
+### 8. Replacement Preserves Business Identity
 
 **Decision**
 

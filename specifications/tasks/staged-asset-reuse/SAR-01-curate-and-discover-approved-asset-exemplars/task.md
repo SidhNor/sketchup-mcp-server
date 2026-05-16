@@ -23,7 +23,7 @@ This task delivers the first staged-asset vertical slice: register or curate an 
 - return JSON-safe curation evidence without raw SketchUp objects
 - expose `list_staged_assets` for approved-exemplar discovery
 - support documented discovery filters for the first asset-reuse workflow
-- install the initial exemplar-protection predicate needed by later mutation guardrails
+- install the initial approved-exemplar predicate needed by later reuse workflows
 
 ## Acceptance Criteria
 
@@ -77,7 +77,7 @@ Scenario: unsupported curation requests refuse clearly
 - raw SketchUp objects must not cross public MCP tool boundaries
 - MCP tool registration, dispatcher behavior, tests, and user-facing docs must stay in sync for the new discovery surface
 - curation must use the extension runtime path rather than release tooling or helper scripts
-- the first exemplar-protection predicate must be reusable by later mutation guardrail work
+- the first approved-exemplar predicate must be reusable by later source selection and source-stability checks
 
 ## Dependencies
 
@@ -89,7 +89,7 @@ Scenario: unsupported curation requests refuse clearly
 ## Relationships
 
 - blocks `SAR-02`
-- informs `SAR-03`
+- informs source-stability checks in later reuse workflows
 - provides the metadata and approval contract consumed by later asset reuse tasks
 
 ## Related Technical Plan

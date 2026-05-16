@@ -27,7 +27,7 @@
 - SAR-01 supports only `approval.state: "approved"`, `staging.mode: "metadata_only"`, and `filters.approvalState: "approved"`.
 - Unsupported finite values refuse with structured detail containing `field`, `value`, and `allowedValues`.
 - `list_staged_assets` returns only complete approved exemplars by default. Incomplete, unapproved, or malformed exemplar metadata is excluded from normal discovery.
-- Component-instance curation is instance-scoped. Definition-level exemplar metadata remains deferred for SAR-02/SAR-03 decisions.
+- Component-instance curation is instance-scoped. Definition-level exemplar metadata remains deferred for explicit future policy decisions.
 
 ## Tests Added
 
@@ -80,7 +80,7 @@
 ## Remaining Follow-Up
 
 - SAR-02 can consume the approved exemplar metadata contract for editable instance placement.
-- SAR-03 should reuse `AssetExemplarMetadata.approved_exemplar?` for mutation guardrails rather than duplicating the predicate.
+- Later reuse workflows should reuse `AssetExemplarMetadata.approved_exemplar?` for source selection and source-stability checks rather than duplicating the predicate.
 
 ## Task Metadata Updates
 
