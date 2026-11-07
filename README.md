@@ -158,13 +158,21 @@ SU_MCP::RuntimeLogger.emit(
 
 HTTP `tools/call` requests emit `tool.completed` events in the `tools`
 component with the JSON-RPC request ID, tool name, monotonic duration in milliseconds,
-and `succeeded`, `failed`, or `refused` outcome. Successes use `info`, failures use
+`succeeded`, `failed`, or `refused` outcome, and `response_chars` (the length of the
+result text sent to the client, when there is one). They also carry estimated token
+counts: `request_tokens_est` for the tool arguments the model wrote and
+`response_tokens_est` for the result text it reads back. Estimates divide characters by
+4.9 (measured on this server's JSON with an o200k tokenizer); Claude's tokenizer usually
+counts JSON somewhat higher, so treat them as a floor, not billing figures. Only sizes
+are logged, never the arguments or results themselves. Successes use `info`, failures use
 `error`, and refusals use `warn`. Runtime request exceptions also emit
 `request.failed` diagnostics without dumping the full request. Exception messages
 can still contain source excerpts supplied by Ruby. Completion events contain no
 tool arguments or results. Batched requests emit one completion event per tool
 call, each with its own request ID and duration. Notification-only batches and
 single-response batches preserve the pinned runtime SDK's existing response shape.
+Each MCP `initialize` request emits a `client.initialized` event in the `transport`
+component with `client` set to the client's reported `name/version`.
 
 Transport messages use the `transport` component, with transport and runtime
 lifecycle failures classified as `error`. Remaining string-only logging calls stay
@@ -175,8 +183,33 @@ Console, because large console writes stall SketchUp's UI thread. `eval_ruby`
 logs only the result's class, length, and a 200-character preview; the full
 result is still returned to the client.
 These filters cover this extension's logger, not messages printed directly by
-SketchUp, evaluated scripts, or other extensions. This change adds no log files or
-MCP diagnostics tools.
+SketchUp, evaluated scripts, or other extensions. Console logging writes no log
+files and adds no MCP diagnostics tools; see the opt-in usage log below.
+
+## Usage log (opt-in)
+
+Set `SKETCHUP_MCP_USAGE_LOG` to a file path before starting SketchUp to append one
+JSON line per `client.initialized` and `tool.completed` event to that file. Each line
+holds a UTC timestamp, the event name, and the same context as the console event:
+client, tool name, request ID, outcome, duration, `response_chars`, and the estimated
+token counts. Tool
+arguments and results are never written. The log is off when the variable is unset
+or empty, and write failures are ignored so they never interrupt a SketchUp command.
+
+The log is meant for measuring which tools clients use together and how large their
+responses are, to guide token-cost work on the tool surface:
+
+```bash
+# macOS: start SketchUp from a shell so it inherits the variable (adjust the version).
+SKETCHUP_MCP_USAGE_LOG=/tmp/su_mcp_usage.jsonl \
+  "/Applications/SketchUp 2025/SketchUp.app/Contents/MacOS/SketchUp"
+
+# Later, from this repository:
+bundle exec rake "mcp:usage_graph[/tmp/su_mcp_usage.jsonl]"
+```
+
+On Windows, set the variable in PowerShell (`$env:SKETCHUP_MCP_USAGE_LOG = "C:\temp\su_mcp_usage.jsonl"`)
+and start `SketchUp.exe` from the same session.
 
 ## Repository layout
 

@@ -86,7 +86,8 @@ module SU_MCP
     def build_native_runtime_server
       config = McpRuntimeConfig.new
       runtime_loader = McpRuntimeLoader.new(
-        logger: ->(message, **context) { log("MCP runtime: #{message}", **context) }
+        logger: ->(message, **context) { log("MCP runtime: #{message}", **context) },
+        usage_log: UsageLog.new(config.usage_log_path)
       )
       runtime_command_factory = RuntimeCommandFactory.new(
         terrain_output_stack_factory: Terrain::TerrainOutputStackFactory.new(

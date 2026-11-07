@@ -11,8 +11,9 @@ module SU_MCP
     JSON_CONTENT_TYPE = 'application/json'
     POST_ACCEPT_TYPES = [JSON_CONTENT_TYPE, 'text/event-stream'].freeze
 
-    def initialize(server)
+    def initialize(server, request_logging: McpRuntimeRequestLogging.new)
       @server = server
+      @request_logging = request_logging
     end
 
     def call(env)
@@ -34,7 +35,7 @@ module SU_MCP
 
     private
 
-    attr_reader :server
+    attr_reader :server, :request_logging
 
     def handle_post(env)
       accept_error = validate_accept_header(env.fetch('HTTP_ACCEPT', nil))
@@ -44,7 +45,7 @@ module SU_MCP
       return content_type_error if content_type_error
 
       body = env.fetch('rack.input', StringIO.new('')).read.to_s
-      response = McpRuntimeRequestLogging.new.call(body, server)
+      response = request_logging.call(body, server)
 
       if response
         [200, { CONTENT_TYPE_HEADER => JSON_CONTENT_TYPE }, [response]]

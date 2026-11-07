@@ -7,7 +7,10 @@ module SU_MCP
   # Shared logging and console filters for the SketchUp-hosted Ruby runtime.
   module RuntimeLogger
     LEVELS = { debug: 0, info: 1, warn: 2, error: 3 }.freeze
-    CONTEXT_KEYS = %i[tool request_id duration_ms outcome].freeze
+    CONTEXT_KEYS = %i[
+      tool request_id duration_ms outcome response_chars request_tokens_est response_tokens_est
+      client
+    ].freeze
     # Large console writes can stall SketchUp's UI thread, so messages are capped.
     MAX_MESSAGE_CHARS = 2_000
 

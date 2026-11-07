@@ -16,7 +16,60 @@ class McpRuntimeRequestLoggingTest < Minitest::Test
     assert_equal(%w[failed succeeded], completions.map { |event| event['outcome'] })
     assert_equal(['eval_ruby'], completions.map { |event| event['tool'] }.uniq)
     assert(completions.all? { |event| event['duration_ms'] >= 0 })
+    assert_operator(completions.last.fetch('response_chars'), :>, 0)
     refute_includes(completions.to_json, 'visible = true')
+  end
+
+  def test_usage_log_receives_client_sessions_and_tool_sizes_without_arguments
+    usage_log = record_usage_for_session(result_text: JSON.generate(success: true, value: 'secret'))
+
+    assert_equal(%w[client.initialized tool.completed], usage_log.records.map { |r| r[:event] })
+    assert_equal('codex-mcp-client/0.50.0', usage_log.records.first[:client])
+    tool_record = usage_log.records.last
+    assert_equal('eval_ruby', tool_record[:tool])
+    assert_equal(JSON.generate(success: true, value: 'secret').length, tool_record[:response_chars])
+    assert(usage_log.records.all? { |record| record[:timestamp].is_a?(String) })
+    refute_match(/secret/, usage_log.records.to_json)
+  end
+
+  def test_real_transport_logs_estimated_tokens
+    completions = transport_completion_events
+
+    assert(completions.all? { |event| event['request_tokens_est'].positive? })
+    assert_operator(completions.last.fetch('response_tokens_est'), :>, 0)
+  end
+
+  def test_usage_log_records_estimated_tokens
+    tool_record = record_usage_for_session(result_text: 'x' * 33).records.last
+
+    assert_equal(7, tool_record[:response_tokens_est]) # 33 chars / 4.9
+    assert_equal(4, tool_record[:request_tokens_est]) # {"code":"secret_code"} is 22 chars
+  end
+
+  def test_console_tool_events_show_estimated_tokens
+    server = StubServer.new do |request|
+      { id: request[:id], result: { content: [{ type: 'text', text: 'x' * 490 }] } }
+    end
+    stdout, = capture_io do
+      SU_MCP::McpRuntimeRequestLogging.new.call(eval_request(7, '1 + 1').to_json, server)
+    end
+    event = parse_events(stdout).first
+
+    assert_equal(100, event.fetch('response_tokens_est'))
+    assert_equal(490, event.fetch('response_chars'))
+    assert_equal(3, event.fetch('request_tokens_est'))
+  end
+
+  def test_initialize_without_client_info_is_still_a_session_boundary
+    usage_log = RecordingUsageLog.new
+    server = StubServer.new { { result: {} } }
+    capture_io do
+      SU_MCP::McpRuntimeRequestLogging.new(usage_log: usage_log)
+                                      .call({ id: 1, method: 'initialize' }.to_json, server)
+    end
+
+    assert_equal(['client.initialized'], usage_log.records.map { |record| record[:event] })
+    refute(usage_log.records.first.key?(:client))
   end
 
   def test_refusals_are_warnings_and_filters_apply_to_real_context
@@ -99,6 +152,20 @@ class McpRuntimeRequestLoggingTest < Minitest::Test
     assert_empty(stdout)
   end
 
+  # Collects usage records in memory instead of writing a file.
+  class RecordingUsageLog
+    attr_reader :records
+
+    def initialize
+      @records = []
+    end
+
+    def append(record)
+      @records << record
+      nil
+    end
+  end
+
   # Records calls to the server's hash and JSON entrypoints.
   class StubServer
     attr_reader :json_calls
@@ -163,6 +230,29 @@ class McpRuntimeRequestLoggingTest < Minitest::Test
     {
       jsonrpc: '2.0', id: id, method: 'tools/call',
       params: { name: 'eval_ruby', arguments: { code: code } }
+    }
+  end
+
+  def record_usage_for_session(result_text:)
+    usage_log = RecordingUsageLog.new
+    logging = SU_MCP::McpRuntimeRequestLogging.new(usage_log: usage_log)
+    server = StubServer.new do |request|
+      next { id: request[:id], result: { protocolVersion: '2025-06-18' } } if request[:id] == 1
+
+      { id: request[:id], result: { content: [{ type: 'text', text: result_text }] } }
+    end
+    capture_io do
+      logging.call(initialize_request(1, name: 'codex-mcp-client', version: '0.50.0').to_json,
+                   server)
+      logging.call(eval_request(2, 'secret_code').to_json, server)
+    end
+    usage_log
+  end
+
+  def initialize_request(id, name:, version:)
+    {
+      jsonrpc: '2.0', id: id, method: 'initialize',
+      params: { protocolVersion: '2025-06-18', clientInfo: { name: name, version: version } }
     }
   end
 

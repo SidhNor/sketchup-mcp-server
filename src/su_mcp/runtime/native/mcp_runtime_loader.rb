@@ -18,9 +18,10 @@ module SU_MCP
       dir
     end.freeze
 
-    def initialize(vendor_root: default_vendor_root, logger: nil)
+    def initialize(vendor_root: default_vendor_root, logger: nil, usage_log: UsageLog.new)
       @vendor_root = vendor_root
       @logger = logger
+      @usage_log = usage_log
     end
 
     attr_reader :vendor_root
@@ -69,14 +70,17 @@ module SU_MCP
 
     private
 
-    attr_reader :logger
+    attr_reader :logger, :usage_log
 
     def build_server(handlers:)
       server_builder.build(handlers: handlers)
     end
 
     def build_stateless_http_app(server)
-      McpRuntimeStatelessHttpApp.new(server)
+      McpRuntimeStatelessHttpApp.new(
+        server,
+        request_logging: McpRuntimeRequestLogging.new(usage_log: usage_log)
+      )
     end
 
     def default_vendor_root

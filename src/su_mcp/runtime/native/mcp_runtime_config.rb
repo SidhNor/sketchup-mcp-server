@@ -12,8 +12,10 @@ module SU_MCP
       SKETCHUP_MCP_TERRAIN_OUTPUT_MODE
     ].freeze
     DEFAULT_TERRAIN_OUTPUT_MODE = 'adaptive'
+    # File path for the opt-in JSONL usage log; unset or empty keeps it off.
+    USAGE_LOG_PATH_KEY = 'SKETCHUP_MCP_USAGE_LOG'
 
-    attr_reader :host, :port, :terrain_output_mode
+    attr_reader :host, :port, :terrain_output_mode, :usage_log_path
 
     def initialize(env: ENV)
       @host = env_value(env, HOST_KEYS, DEFAULT_HOST)
@@ -23,6 +25,7 @@ module SU_MCP
         TERRAIN_OUTPUT_MODE_KEYS,
         DEFAULT_TERRAIN_OUTPUT_MODE
       )
+      @usage_log_path = env_value(env, USAGE_LOG_PATH_KEY, nil)
     end
 
     private
