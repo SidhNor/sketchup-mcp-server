@@ -8,6 +8,8 @@ module SU_MCP
   module RuntimeLogger
     LEVELS = { debug: 0, info: 1, warn: 2, error: 3 }.freeze
     CONTEXT_KEYS = %i[tool request_id duration_ms outcome].freeze
+    # Large console writes can stall SketchUp's UI thread, so messages are capped.
+    MAX_MESSAGE_CHARS = 2_000
 
     module_function
 
@@ -29,7 +31,7 @@ module SU_MCP
       timestamp = Time.now.utc
       record = {
         timestamp: timestamp.iso8601(3), level: level.to_s, component: component.to_s,
-        event: event.to_s, message: message.to_s
+        event: event.to_s, message: capped(message.to_s)
       }.merge(context.slice(*CONTEXT_KEYS))
       return unless visible?(record, level, timestamp)
 
@@ -53,5 +55,12 @@ module SU_MCP
       end
     end
     private_class_method :visible?
+
+    def capped(message)
+      return message if message.length <= MAX_MESSAGE_CHARS
+
+      "#{message[0, MAX_MESSAGE_CHARS]}... (truncated #{message.length - MAX_MESSAGE_CHARS} chars)"
+    end
+    private_class_method :capped
   end
 end

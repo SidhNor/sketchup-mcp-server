@@ -25,6 +25,25 @@ class RuntimeLoggerTest < Minitest::Test
     assert_match(/Z\z/, record.fetch('timestamp'))
   end
 
+  def test_long_messages_are_capped_before_reaching_the_console
+    SU_MCP::RuntimeLogger.emit('x' * 1_000_000, level: :error, output: @output)
+    message = JSON.parse(@output.string.delete_prefix('SketchUp MCP: ')).fetch('message')
+
+    limit = SU_MCP::RuntimeLogger::MAX_MESSAGE_CHARS
+    assert_operator(message.length, :<, limit + 50)
+    assert(message.start_with?('x' * limit))
+    assert(message.end_with?("(truncated #{1_000_000 - limit} chars)"))
+  end
+
+  def test_messages_at_the_cap_are_unchanged
+    message = 'y' * SU_MCP::RuntimeLogger::MAX_MESSAGE_CHARS
+    SU_MCP::RuntimeLogger.emit(message, output: @output)
+
+    record = JSON.parse(@output.string.delete_prefix('SketchUp MCP: '))
+
+    assert_equal(message, record.fetch('message'))
+  end
+
   def test_default_filter_hides_debug_and_keeps_errors
     SU_MCP::RuntimeLogger.emit('noise', level: :debug, output: @output)
     SU_MCP::RuntimeLogger.emit('failure', level: :error, output: @output)

@@ -170,6 +170,10 @@ Transport messages use the `transport` component, with transport and runtime
 lifecycle failures classified as `error`. Remaining string-only logging calls stay
 `info` events in the `runtime` component. Tool and request filters match only events
 whose callers supply that context.
+Messages longer than 2,000 characters are truncated before they reach the Ruby
+Console, because large console writes stall SketchUp's UI thread. `eval_ruby`
+logs only the result's class, length, and a 200-character preview; the full
+result is still returned to the client.
 These filters cover this extension's logger, not messages printed directly by
 SketchUp, evaluated scripts, or other extensions. This change adds no log files or
 MCP diagnostics tools.
