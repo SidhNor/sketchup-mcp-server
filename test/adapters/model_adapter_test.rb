@@ -7,6 +7,48 @@ require_relative '../../src/su_mcp/adapters/model_adapter'
 class ModelAdapterTest < Minitest::Test
   include SceneQueryTestSupport
 
+  # Containers subclass the SketchUp classes the adapter branches on.
+  module SharedNode
+    attr_reader :entity_id, :definition
+
+    # Matches the SketchUp API name.
+    def entityID # rubocop:disable Naming/MethodName
+      entity_id
+    end
+  end
+
+  class SharedGroup < Sketchup::Group
+    include SharedNode
+
+    def initialize(id, definition)
+      super()
+      @entity_id = id
+      @definition = definition
+    end
+
+    def entities
+      definition.entities
+    end
+  end
+
+  class SharedInstance < Sketchup::ComponentInstance
+    include SharedNode
+
+    def initialize(id, definition)
+      super()
+      @entity_id = id
+      @definition = definition
+    end
+  end
+
+  SharedFace = Struct.new(:entity_id) do
+    def entityID # rubocop:disable Naming/MethodName
+      entity_id
+    end
+  end
+  SharedDefinition = Struct.new(:entities)
+  SharedModel = Struct.new(:entities)
+
   def setup
     @adapter = SU_MCP::Adapters::ModelAdapter.new
     @model = build_scene_query_model
@@ -81,6 +123,18 @@ class ModelAdapterTest < Minitest::Test
     assert_includes(entity_ids, 431)
   end
 
+  def test_all_entities_recursive_lists_shared_definition_contents_once_in_preorder
+    Sketchup.active_model_override = shared_definition_model
+
+    assert_equal([1, 2, 3, 4, 5, 6, 8, 7], @adapter.all_entities_recursive.map(&:entityID))
+  end
+
+  def test_group_component_entities_recursive_lists_each_container_once
+    Sketchup.active_model_override = shared_definition_model
+
+    assert_equal([1, 3, 5, 6, 7], @adapter.group_component_entities_recursive.map(&:entityID))
+  end
+
   def test_all_entity_paths_recursive_includes_ancestor_context_for_nested_entities
     nested_model = build_sample_surface_z_model
     Sketchup.active_model_override = nested_model
@@ -127,6 +181,20 @@ class ModelAdapterTest < Minitest::Test
   end
 
   private
+
+  # Root: instances 1 and 5 of one component (face 2, instance 3 of a nested
+  # component holding face 4), then groups 6 and 7 sharing a definition (face 8).
+  def shared_definition_model
+    nested = SharedDefinition.new([SharedFace.new(4)])
+    component = SharedDefinition.new([SharedFace.new(2), SharedInstance.new(3, nested)])
+    group_definition = SharedDefinition.new([SharedFace.new(8)])
+    SharedModel.new([
+                      SharedInstance.new(1, component),
+                      SharedInstance.new(5, component),
+                      SharedGroup.new(6, group_definition),
+                      SharedGroup.new(7, group_definition)
+                    ])
+  end
 
   def expected_obj_export_options
     {
