@@ -889,12 +889,21 @@ module SU_MCP
     end
 
     # Scene validation and measurement input schemas.
-    def expectation_target_schema
+    #
+    # Only mustExist spells out the full targetSelector shape; the other
+    # expectation families point to it by description. This keeps the schema
+    # small without $ref, which some provider tool validators drop or reject.
+    # Runtime validation still refuses malformed selectors in every family.
+    def target_selector_pointer_schema
+      described_schema({ type: 'object' }, 'Same shape as mustExist[].targetSelector.')
+    end
+
+    def expectation_target_schema(target_selector: target_selector_schema)
       {
         type: 'object',
         properties: {
           targetReference: target_reference_schema,
-          targetSelector: target_selector_schema,
+          targetSelector: target_selector,
           expectationId: string_schema
         },
         additionalProperties: false
@@ -906,7 +915,7 @@ module SU_MCP
         type: 'object',
         properties: {
           targetReference: target_reference_schema,
-          targetSelector: target_selector_schema,
+          targetSelector: target_selector_pointer_schema,
           expectationId: string_schema,
           requiredKeys: described_schema(string_array_schema, metadata_required_keys_description)
         },
@@ -919,7 +928,7 @@ module SU_MCP
         type: 'object',
         properties: {
           targetReference: target_reference_schema,
-          targetSelector: target_selector_schema,
+          targetSelector: target_selector_pointer_schema,
           expectationId: string_schema,
           expectedTag: string_schema
         },
@@ -932,7 +941,7 @@ module SU_MCP
         type: 'object',
         properties: {
           targetReference: target_reference_schema,
-          targetSelector: target_selector_schema,
+          targetSelector: target_selector_pointer_schema,
           expectationId: string_schema,
           expectedMaterial: string_schema
         },
@@ -971,7 +980,7 @@ module SU_MCP
         type: 'object',
         properties: {
           targetReference: target_reference_schema,
-          targetSelector: target_selector_schema,
+          targetSelector: target_selector_pointer_schema,
           expectationId: string_schema,
           surfaceReference: target_reference_schema,
           anchorSelector: anchor_selector_schema,
@@ -997,7 +1006,7 @@ module SU_MCP
           'Targets that must still resolve after the scene update.'
         ),
         mustPreserve: described_array_schema(
-          expectation_target_schema,
+          expectation_target_schema(target_selector: target_selector_pointer_schema),
           'Targets that must still resolve uniquely and remain preserved as scene objects.'
         ),
         metadataRequirements: described_array_schema(

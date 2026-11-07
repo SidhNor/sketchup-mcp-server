@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require_relative '../../test_helper'
+require 'json'
 require 'stringio'
 require 'tmpdir'
 require_relative '../../../src/su_mcp/runtime/tool_response'
@@ -901,10 +902,6 @@ class McpRuntimeLoaderTest < Minitest::Test
     input_schema = validation_tool.fetch(:input_schema)
     expectations_schema = input_schema.fetch(:properties).fetch(:expectations).fetch(:properties)
     must_exist_item = expectations_schema.fetch(:mustExist).fetch(:items).fetch(:properties)
-    metadata_requirement_item = expectations_schema
-                                .fetch(:metadataRequirements)
-                                .fetch(:items)
-                                .fetch(:properties)
     geometry_requirement_item = expectations_schema
                                 .fetch(:geometryRequirements)
                                 .fetch(:items)
@@ -916,7 +913,7 @@ class McpRuntimeLoaderTest < Minitest::Test
     )
     assert_equal(
       %w[attributes identity metadata],
-      metadata_requirement_item.fetch(:targetSelector).fetch(:properties).keys.map(&:to_s).sort
+      must_exist_item.fetch(:targetSelector).fetch(:properties).keys.map(&:to_s).sort
     )
     assert_equal(
       %w[
@@ -925,6 +922,38 @@ class McpRuntimeLoaderTest < Minitest::Test
       ],
       geometry_requirement_item.keys.map(&:to_s).sort
     )
+  end
+
+  def test_validate_scene_update_families_point_to_the_must_exist_target_selector_shape
+    validation_tool = @loader.tool_catalog.find do |tool|
+      tool.fetch(:name) == 'validate_scene_update'
+    end
+    expectations_schema = validation_tool.fetch(:input_schema)
+                                         .fetch(:properties)
+                                         .fetch(:expectations)
+                                         .fetch(:properties)
+
+    pointer_families = %i[
+      mustPreserve metadataRequirements tagRequirements materialRequirements
+      geometryRequirements
+    ]
+    pointer_description = 'Same shape as mustExist[].targetSelector.'
+    pointer_families.each do |family|
+      selector = expectations_schema.fetch(family).fetch(:items).fetch(:properties)
+                                    .fetch(:targetSelector)
+      assert_equal('object', selector.fetch(:type), family)
+      assert_equal(pointer_description, selector.fetch(:description), family)
+      refute(selector.key?(:properties), family)
+    end
+  end
+
+  # Guards the token cost of the largest validation schema; raise deliberately if needed.
+  def test_validate_scene_update_input_schema_stays_within_size_budget
+    validation_tool = @loader.tool_catalog.find do |tool|
+      tool.fetch(:name) == 'validate_scene_update'
+    end
+
+    assert_operator(JSON.generate(validation_tool.fetch(:input_schema)).bytesize, :<=, 5_500)
   end
 
   def test_validate_scene_update_tool_schema_exposes_surface_offset_geometry_requirements

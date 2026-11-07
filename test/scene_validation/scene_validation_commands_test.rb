@@ -252,6 +252,27 @@ class SceneValidationCommandsTest < Minitest::Test
     assert_equal('invalid_target_input', result.dig(:refusal, :code))
   end
 
+  # The public schema spells out targetSelector only under mustExist, so other
+  # families rely on runtime validation to refuse malformed selectors.
+  def test_refuses_malformed_target_selector_outside_must_exist
+    commands = build_commands(
+      targeting_query: SU_MCP::TargetingQuery.new(serializer: FakeSerializer.new)
+    )
+
+    result = commands.validate_scene_update(
+      'expectations' => {
+        'tagRequirements' => [
+          { 'targetSelector' => { 'layer' => { 'name' => 'Trees' } }, 'expectedTag' => 'Trees' }
+        ]
+      }
+    )
+
+    assert_equal(true, result[:success])
+    assert_equal('refused', result[:outcome])
+    assert_equal('invalid_request', result.dig(:refusal, :code))
+    assert_includes(result.dig(:refusal, :message), 'Unsupported targetSelector section: layer')
+  end
+
   def test_refuses_metadata_requirements_without_required_keys
     commands = build_commands
 

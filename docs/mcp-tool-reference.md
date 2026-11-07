@@ -351,6 +351,9 @@ Limits:
   - `materialRequirements`
   - `geometryRequirements`
 - Each expectation uses exactly one of `targetReference` or `targetSelector`.
+- Every family takes the same `targetSelector` shape (`identity`, `attributes`, `metadata`). The
+  schema spells it out once under `mustExist` and the other families point to it, to keep the
+  tool definition small; malformed selectors in any family are refused at runtime.
 - `metadataRequirements` is currently presence-style (not full public dimension-value validation).
 - `geometryRequirements` supports `kind: "surfaceOffset"` with `surfaceReference`, `anchorSelector.anchor`, `constraints.expectedOffset`, and `constraints.tolerance`.
 
