@@ -164,6 +164,46 @@ class McpRuntimeNativeContractTest < Minitest::Test
     )
   end
 
+  def test_create_site_element_with_missing_sections_reaches_runtime_validation
+    skip_unless_staged_vendor_runtime!
+
+    received = []
+    transport = @loader.build_transport(
+      handlers: {
+        create_site_element: lambda do |arguments|
+          received << arguments
+          { success: true, outcome: 'refused', refusal: { code: 'missing_required_field' } }
+        end
+      }
+    )
+
+    response = perform_raw_json_request(
+      transport,
+      jsonrpc: '2.0', id: 'missing-sections', method: 'tools/call',
+      params: { name: 'create_site_element', arguments: { elementType: 'tree_proxy' } }
+    )
+
+    assert_equal([{ 'elementType' => 'tree_proxy' }], received)
+    assert_equal('refused', response[:body].dig('result', 'structuredContent', 'outcome'))
+  end
+
+  def test_tools_without_runtime_owned_required_checks_keep_sdk_missing_argument_errors
+    skip_unless_staged_vendor_runtime!
+
+    transport = @loader.build_transport(
+      handlers: { eval_ruby: ->(_arguments) { flunk 'handler must not run' } }
+    )
+
+    response = perform_raw_json_request(
+      transport,
+      jsonrpc: '2.0', id: 'missing-code', method: 'tools/call',
+      params: { name: 'eval_ruby', arguments: {} }
+    )
+
+    assert_equal(-32_602, response[:body].dig('error', 'code'))
+    assert_includes(response[:body].dig('error', 'data').to_s, 'Missing required arguments: code')
+  end
+
   def test_native_transport_preserves_edge_restraint_elevation_refusal_details
     skip_unless_staged_vendor_runtime!
 

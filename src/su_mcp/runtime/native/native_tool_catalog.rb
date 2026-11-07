@@ -262,7 +262,9 @@ module SU_MCP
           handler_key: :create_site_element,
           annotations: { read_only_hint: false, destructive_hint: false },
           classification: 'first_class',
-          input_schema: create_site_element_schema
+          input_schema: create_site_element_schema,
+          # Misnested sections must reach request-shape recovery instead of an SDK error.
+          required_arguments_check: 'runtime'
         ),
         tool_entry(
           name: 'set_entity_metadata',
@@ -1970,7 +1972,8 @@ module SU_MCP
       annotations:,
       handler_key:,
       classification:,
-      input_schema: default_object_schema
+      input_schema: default_object_schema,
+      required_arguments_check: 'sdk'
     )
       NativeToolDefinition.build(
         name: name,
@@ -1979,7 +1982,8 @@ module SU_MCP
         annotations: annotations,
         handler_key: handler_key,
         input_schema: input_schema,
-        classification: classification
+        classification: classification,
+        required_arguments_check: required_arguments_check
       )
     end
   end
