@@ -43,7 +43,8 @@ module SU_MCP
       target = resolved_sampleable_target_or_refusal(
         references.fetch(:target_entry),
         visible_only: visible_only?(params),
-        ignore_entities: ignore_entities
+        ignore_entities: ignore_entities,
+        sample_points: sample_spec_points(sample_spec)
       )
       return ToolResponse.refusal_result(target.fetch(:refusal)) if target.key?(:refusal)
 
@@ -95,7 +96,8 @@ module SU_MCP
       target = resolved_sampleable_target_or_refusal(
         references.fetch(:target_entry),
         visible_only: visible_only?(params),
-        ignore_entities: ignore_entities
+        ignore_entities: ignore_entities,
+        sample_points: sample_spec.fetch(:profile_samples)
       )
       return ToolResponse.refusal_result(target.fetch(:refusal)) if target.key?(:refusal)
 
@@ -455,21 +457,62 @@ module SU_MCP
       )
     end
 
-    def resolved_sampleable_target_or_refusal(target_entry, visible_only:, ignore_entities:)
-      target_entity = target_entry.fetch(:entity)
-      target_face_entries = support.sampleable_faces_for(
-        target_entity,
-        visible_only: visible_only,
-        ancestor_chain: target_entry.fetch(:ancestors)
-      )
-      target_face_entries = support.reject_ignored_faces(target_face_entries, ignore_entities)
-      unless target_face_entries.empty?
-        return { entity: target_entity, face_entries: target_face_entries }
+    def resolved_sampleable_target_or_refusal(target_entry, visible_only:, ignore_entities:,
+                                              sample_points:)
+      footprint = sample_footprint(sample_xy_bounds(sample_points)) if visible_only
+      face_entries = target_face_entries(target_entry, visible_only, ignore_entities, footprint)
+      # Skipped containers may hold the only faces; sampleability ignores the footprint.
+      if face_entries.empty? && footprint
+        face_entries = target_face_entries(target_entry, visible_only, ignore_entities, nil)
       end
+      return { entity: target_entry.fetch(:entity), face_entries: face_entries } \
+        unless face_entries.empty?
 
       { refusal: target_not_sampleable_refusal }
     rescue RuntimeError => e
       { refusal: target_resolution_refusal(e) }
+    end
+
+    def sample_spec_points(sample_spec)
+      sample_spec.fetch(sample_spec.fetch(:mode) == :profile ? :profile_samples : :points)
+    end
+
+    def target_face_entries(target_entry, visible_only, ignore_entities, footprint)
+      face_entries = support.sampleable_faces_for(
+        target_entry.fetch(:entity),
+        visible_only: visible_only,
+        ancestor_chain: target_entry.fetch(:ancestors),
+        footprint: footprint
+      )
+      support.reject_ignored_faces(face_entries, ignore_entities)
+    end
+
+    # Rejects nested containers whose world XY box misses the sample bounds, so
+    # large targets only expand geometry near the samples. Only bounds that
+    # expose corners (SketchUp's BoundingBox) are trusted; others are kept.
+    def sample_footprint(sample_bounds)
+      return nil if sample_bounds.nil?
+
+      tolerance = internal_sample_tolerance
+      lambda do |entity, transform_chain|
+        box = container_world_xy_bounds(entity, transform_chain)
+        box.nil? || xy_bounds_overlap?(box, sample_bounds, tolerance)
+      end
+    end
+
+    def container_world_xy_bounds(entity, transform_chain)
+      bounds = entity.respond_to?(:bounds) ? entity.bounds : nil
+      return nil unless bounds.respond_to?(:corner) && bounds.valid?
+
+      corners = Array.new(8) { |index| bounds.corner(index) }
+      xy_bounds(corners.map { |corner| local_point_to_world(corner, transform_chain) })
+    rescue StandardError
+      nil
+    end
+
+    def xy_bounds_overlap?(box, other, tolerance)
+      box[:max_x] >= other[:min_x] - tolerance && box[:min_x] <= other[:max_x] + tolerance &&
+        box[:max_y] >= other[:min_y] - tolerance && box[:min_y] <= other[:max_y] + tolerance
     end
 
     def target_resolution_refusal(error)
@@ -658,7 +701,8 @@ module SU_MCP
         scene_entities,
         target_entity: target_entity,
         ignore_entities: ignore_entities,
-        xy_bounds: @active_sample_xy_bounds
+        xy_bounds: @active_sample_xy_bounds,
+        footprint: sample_footprint(@active_sample_xy_bounds)
       )
     end
 
