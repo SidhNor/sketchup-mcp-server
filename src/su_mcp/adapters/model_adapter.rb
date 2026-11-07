@@ -3,6 +3,8 @@
 require 'fileutils'
 require 'tmpdir'
 
+require_relative 'entity_path_index'
+
 module SU_MCP
   module Adapters
     # Shared SketchUp model/entity access seam extracted by PLAT-02.
@@ -74,8 +76,9 @@ module SU_MCP
         collect_group_component_entities(active_model!.entities.to_a)
       end
 
+      # Lazy occurrence index; see EntityPathIndex for the cost of full iteration.
       def all_entity_paths_recursive
-        collect_entity_paths(active_model!.entities.to_a, ancestors: [])
+        EntityPathIndex.new(active_model!)
       end
 
       def export_scene(format:, width: nil, height: nil)
@@ -124,26 +127,6 @@ module SU_MCP
           else
             []
           end
-        end
-      end
-
-      def collect_entity_paths(entities, ancestors:)
-        Array(entities).flat_map do |entity|
-          next [] unless entity
-          next [] unless entity.respond_to?(:entityID)
-
-          entry = { entity: entity, ancestors: ancestors }
-          [entry] + child_entity_paths_for(entity, ancestors: ancestors + [entity])
-        end
-      end
-
-      def child_entity_paths_for(entity, ancestors:)
-        if entity.is_a?(Sketchup::Group)
-          collect_entity_paths(entity.entities.to_a, ancestors: ancestors)
-        elsif entity.is_a?(Sketchup::ComponentInstance)
-          collect_entity_paths(entity.definition.entities.to_a, ancestors: ancestors)
-        else
-          []
         end
       end
 

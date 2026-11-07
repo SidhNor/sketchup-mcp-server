@@ -40,7 +40,7 @@ module SU_MCP
       attr_reader :adapter, :metadata, :serializer
 
       def exemplar_entities
-        adapter.all_entity_paths_recursive.filter_map do |entry|
+        exemplar_candidate_entries.filter_map do |entry|
           entity = entry.fetch(:entity)
           next unless group_or_component?(entity)
           next if definition_child_path?(entry.fetch(:ancestors))
@@ -48,6 +48,13 @@ module SU_MCP
 
           entity
         end
+      end
+
+      # Exemplars inside component instances are excluded below, so skip
+      # expanding component definitions when the adapter supports it.
+      def exemplar_candidate_entries
+        entries = adapter.all_entity_paths_recursive
+        entries.respond_to?(:each_outside_components) ? entries.each_outside_components : entries
       end
 
       def normalize_filters(raw_filters)

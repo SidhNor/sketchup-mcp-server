@@ -345,6 +345,7 @@ module SU_MCP
 
     def collect_reference_matches(entity_entries, references)
       all_references = [references.fetch(:target)] + references.fetch(:ignores)
+      entity_entries = candidate_entries(entity_entries, all_references)
       if serializer.respond_to?(:target_identity_value)
         collect_identity_reference_matches(entity_entries, all_references)
       else
@@ -368,6 +369,29 @@ module SU_MCP
           end
         end
         matched_references.each_value { |reference| reference.fetch(:matches) << entry }
+      end
+    end
+
+    # Narrows a lazy path index to entries matching any reference, so large
+    # models are not expanded into every placed copy of every entity.
+    def candidate_entries(entity_entries, references)
+      return entity_entries unless entity_entries.respond_to?(:entries_matching)
+
+      entity_entries.entries_matching(&candidate_predicate(references))
+    end
+
+    # One identity lookup per key per entity; exact matching happens afterwards.
+    def candidate_predicate(references)
+      queries = references.map { |reference| reference.fetch(:query) }
+      unless serializer.respond_to?(:target_identity_value)
+        return ->(entity) { queries.any? { |query| target_reference_matches?(entity, query) } }
+      end
+
+      wanted = reference_buckets_by_identity(references).transform_values(&:keys)
+      lambda do |entity|
+        wanted.any? do |identity_key, values|
+          values.include?(serializer.target_identity_value(entity, identity_key))
+        end
       end
     end
 
