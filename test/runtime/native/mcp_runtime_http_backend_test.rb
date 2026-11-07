@@ -26,7 +26,7 @@ class McpRuntimeHttpBackendTest < Minitest::Test
     # rubocop:enable Naming/PredicateMethod
 
     def accept_nonblock
-      raise IO::WaitReadable if @clients.empty?
+      raise IO::EAGAINWaitReadable if @clients.empty?
 
       @clients.shift
     end
@@ -70,7 +70,7 @@ class McpRuntimeHttpBackendTest < Minitest::Test
     # rubocop:enable Naming/PredicateMethod
 
     def read_nonblock(max_length)
-      raise IO::WaitReadable unless wait_readable(0)
+      raise IO::EAGAINWaitReadable unless wait_readable(0)
 
       length = [max_length, @request_text.bytesize - @position, @read_chunk_size || max_length].min
       chunk = @request_text.byteslice(@position, length)
@@ -387,7 +387,7 @@ class McpRuntimeHttpBackendTest < Minitest::Test
       server_factory: ->(_host, _port) { tcp_server },
       timer_starter: lambda do |_interval, _repeat, &block|
         timer_blocks << block
-        :timer_one
+        :"timer#{timer_blocks.length}"
       end,
       timer_stopper: ->(timer_id) { stopped << timer_id },
       logger: ->(_message, **_context) {}
@@ -399,10 +399,67 @@ class McpRuntimeHttpBackendTest < Minitest::Test
 
     backend.stop
 
-    assert_equal([:timer_one], stopped)
+    assert_equal(%i[timer1 timer2], stopped)
     assert_equal(true, tcp_server.closed)
     assert_equal(true, client.closed)
     assert_equal(true, app.closed)
+  end
+
+  def test_poll_speeds_up_while_clients_are_active_and_slows_down_when_idle
+    intervals = []
+    timer_blocks = []
+    now = 100.0
+    tcp_server = FakeTcpServer.new('127.0.0.1', 9877)
+    backend = build_backend(
+      app_builder: ->(_handlers) { ->(_env) { [200, {}, ['{}']] } },
+      server_factory: ->(_host, _port) { tcp_server },
+      timer_starter: lambda do |interval, _repeat, &block|
+        intervals << interval
+        timer_blocks << block
+        :"timer#{timer_blocks.length}"
+      end,
+      timer_stopper: ->(_timer_id) {},
+      logger: ->(_message, **_context) {}
+    )
+    backend.define_singleton_method(:monotonic_time) { now }
+    backend.start(host: '127.0.0.1', port: 9877, handlers: {})
+    tcp_server.enqueue(FakeClient.new(http_post_request('{}')))
+
+    timer_blocks.last.call
+    now += SU_MCP::McpRuntimeHttpBackend::ACTIVE_POLL_GRACE_SECONDS / 2
+    timer_blocks.last.call
+    now += SU_MCP::McpRuntimeHttpBackend::ACTIVE_POLL_GRACE_SECONDS
+    timer_blocks.last.call
+
+    assert_equal(
+      [
+        SU_MCP::McpRuntimeHttpBackend::DEFAULT_POLL_INTERVAL,
+        SU_MCP::McpRuntimeHttpBackend::ACTIVE_POLL_INTERVAL,
+        SU_MCP::McpRuntimeHttpBackend::DEFAULT_POLL_INTERVAL
+      ],
+      intervals
+    )
+  end
+
+  def test_idle_poll_keeps_the_existing_timer
+    intervals = []
+    timer_blocks = []
+    backend = build_backend(
+      app_builder: ->(_handlers) { ->(_env) { [200, {}, ['']] } },
+      server_factory: ->(_host, _port) { FakeTcpServer.new('127.0.0.1', 9877) },
+      timer_starter: lambda do |interval, _repeat, &block|
+        intervals << interval
+        timer_blocks << block
+        :timer_one
+      end,
+      timer_stopper: ->(_timer_id) { flunk 'idle polls should not restart the timer' },
+      logger: ->(_message, **_context) {}
+    )
+    backend.start(host: '127.0.0.1', port: 9877, handlers: {})
+
+    3.times { timer_blocks.first.call }
+
+    assert_equal([SU_MCP::McpRuntimeHttpBackend::DEFAULT_POLL_INTERVAL], intervals)
   end
 
   private

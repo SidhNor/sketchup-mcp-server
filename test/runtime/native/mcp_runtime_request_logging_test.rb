@@ -34,9 +34,11 @@ class McpRuntimeRequestLoggingTest < Minitest::Test
 
   def test_invalid_json_does_not_change_the_response
     response = '{"error":{"code":-32700}}'
-    result = SU_MCP::McpRuntimeRequestLogging.new.call('bad json') { response }
+    server = StubServer.new(json: response)
+    result = SU_MCP::McpRuntimeRequestLogging.new.call('bad json', server)
 
     assert_equal(response, result)
+    assert_equal(['bad json'], server.json_calls)
   end
 
   def test_batch_records_each_tool_with_its_own_duration
@@ -44,9 +46,10 @@ class McpRuntimeRequestLoggingTest < Minitest::Test
     times = [0.0, 0.01, 0.01, 0.05]
     stdout, = capture_io do
       logger = SU_MCP::McpRuntimeRequestLogging.new(clock: -> { times.shift })
-      logger.call(requests.to_json) do |payload|
-        { id: JSON.parse(payload)['id'], result: { structuredContent: { success: true } } }.to_json
+      server = StubServer.new do |request|
+        { id: request[:id], result: { structuredContent: { success: true } } }
       end
+      logger.call(requests.to_json, server)
     end
     events = parse_events(stdout)
 
@@ -62,9 +65,7 @@ class McpRuntimeRequestLoggingTest < Minitest::Test
     requests = [eval_request(41, '{ visible = true }'), eval_request(42, '1 + 1')]
     actual = expected = nil
     stdout, = capture_io do
-      actual = SU_MCP::McpRuntimeRequestLogging.new.call(requests.to_json) do |payload|
-        server.handle_json(payload)
-      end
+      actual = SU_MCP::McpRuntimeRequestLogging.new.call(requests.to_json, server)
       expected = server.handle_json(requests.to_json)
     end
     completions = parse_events(stdout).select { |event| event['event'] == 'tool.completed' }
@@ -83,9 +84,38 @@ class McpRuntimeRequestLoggingTest < Minitest::Test
               [{ id: 2, method: 'invalid' }, notification]]
     shapes.each do |requests|
       body = requests.to_json
-      actual = SU_MCP::McpRuntimeRequestLogging.new.call(body) { |payload| server.handle_json(payload) }
+      actual = SU_MCP::McpRuntimeRequestLogging.new.call(body, server)
 
       assert_equal(server.handle_json(body).to_s, actual.to_s)
+    end
+  end
+
+  def test_non_tool_requests_are_not_logged
+    server = StubServer.new { { result: { tools: [] } } }
+    stdout, = capture_io do
+      SU_MCP::McpRuntimeRequestLogging.new.call({ id: 1, method: 'tools/list' }.to_json, server)
+    end
+
+    assert_empty(stdout)
+  end
+
+  # Records calls to the server's hash and JSON entrypoints.
+  class StubServer
+    attr_reader :json_calls
+
+    def initialize(json: nil, &handler)
+      @json = json
+      @handler = handler
+      @json_calls = []
+    end
+
+    def handle(request)
+      @handler.call(request)
+    end
+
+    def handle_json(body)
+      @json_calls << body
+      @json
     end
   end
 
@@ -114,8 +144,10 @@ class McpRuntimeRequestLoggingTest < Minitest::Test
 
   def log_result(id, content)
     request = { id: id, method: 'tools/call', params: { name: 'eval_ruby' } }.to_json
-    response = { result: { structuredContent: content } }.to_json
-    SU_MCP::McpRuntimeRequestLogging.new.call(request) { response }
+    server = StubServer.new do
+      { result: { 'structuredContent' => content.transform_keys(&:to_s) } }
+    end
+    SU_MCP::McpRuntimeRequestLogging.new.call(request, server)
   end
 
   def invoke(transport, id, code)

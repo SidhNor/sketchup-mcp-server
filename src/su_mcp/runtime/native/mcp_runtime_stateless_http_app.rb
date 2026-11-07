@@ -44,7 +44,7 @@ module SU_MCP
       return content_type_error if content_type_error
 
       body = env.fetch('rack.input', StringIO.new('')).read.to_s
-      response = McpRuntimeRequestLogging.new.call(body) { |payload| server.handle_json(payload) }
+      response = McpRuntimeRequestLogging.new.call(body, server)
 
       if response
         [200, { CONTENT_TYPE_HEADER => JSON_CONTENT_TYPE }, [response]]
