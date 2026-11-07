@@ -128,6 +128,8 @@ module SU_MCP
     end
 
     def shutdown_native_runtime(reason)
+      # Writing to the Ruby Console while SketchUp quits can crash SketchUp.
+      RuntimeLogger.console_silenced = true if reason == McpRuntimeLifecycleObserver::QUIT_REASON
       return unless @native_runtime_server
 
       @native_runtime_server.stop

@@ -13,6 +13,14 @@ class RuntimeLoggerTest < Minitest::Test
 
   def teardown
     SU_MCP::RuntimeLogger.configure
+    SU_MCP::RuntimeLogger.console_silenced = false
+  end
+
+  def test_silenced_console_writes_nothing
+    SU_MCP::RuntimeLogger.console_silenced = true
+
+    assert_nil(SU_MCP::RuntimeLogger.emit('closing', level: :error, output: @output))
+    assert_empty(@output.string)
   end
 
   def test_main_writes_a_structured_event_without_opening_the_console

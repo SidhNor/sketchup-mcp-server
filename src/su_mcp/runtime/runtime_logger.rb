@@ -22,12 +22,24 @@ module SU_MCP
       }.freeze
     end
 
+    # SketchUp can crash if Ruby writes to the Ruby Console while the app is
+    # closing, so quit handling silences console output for the rest of the session.
+    def console_silenced=(value)
+      @console_silenced = value
+    end
+
+    def console_silenced?
+      @console_silenced == true
+    end
+
     def main(message, **options)
       emit(message, **options)
     end
 
     def emit(message, level: :info, component: 'runtime', event: 'message', output: $stdout,
              **context)
+      return nil if console_silenced?
+
       timestamp = Time.now.utc
       record = {
         timestamp: timestamp.iso8601(3), level: level.to_s, component: component.to_s,
