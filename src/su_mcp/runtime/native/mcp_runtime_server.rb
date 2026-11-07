@@ -20,14 +20,15 @@ module SU_MCP
       @running = true
     rescue StandardError, LoadError => e
       @running = false
-      logger.call("MCP runtime failed to start: #{e.message}")
+      logger.call("MCP runtime failed to start: #{e.message}", level: :error, component: 'runtime')
       raise
     end
 
     def stop
       backend.stop
     rescue StandardError => e
-      logger.call("MCP runtime failed to stop cleanly: #{e.message}")
+      logger.call("MCP runtime failed to stop cleanly: #{e.message}",
+                  level: :error, component: 'runtime')
     ensure
       @running = false
     end

@@ -18,7 +18,8 @@ module SU_MCP
         success: true,
         result: result.to_s
       }
-    rescue StandardError => e
+    # SyntaxError is a ScriptError, so malformed input needs an explicit rescue.
+    rescue StandardError, SyntaxError => e
       log "Error in eval_ruby: #{e.message}"
       log e.backtrace.join("\n")
       raise "Ruby evaluation error: #{e.message}"

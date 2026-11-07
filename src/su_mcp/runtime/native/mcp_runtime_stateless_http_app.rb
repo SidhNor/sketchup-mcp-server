@@ -2,6 +2,7 @@
 
 require 'json'
 require 'stringio'
+require_relative 'mcp_runtime_request_logging'
 
 module SU_MCP
   # Rack-compatible stateless Streamable HTTP app for the native MCP server.
@@ -43,7 +44,7 @@ module SU_MCP
       return content_type_error if content_type_error
 
       body = env.fetch('rack.input', StringIO.new('')).read.to_s
-      response = server.handle_json(body)
+      response = McpRuntimeRequestLogging.new.call(body) { |payload| server.handle_json(payload) }
 
       if response
         [200, { CONTENT_TYPE_HEADER => JSON_CONTENT_TYPE }, [response]]

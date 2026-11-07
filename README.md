@@ -116,6 +116,64 @@ Prepare a local versioned artifact:
 NEW_VERSION=0.1.1 bundle exec rake release:prepare
 ```
 
+## Console logging
+
+Runtime logs use `SketchUp MCP:` followed by a JSON event containing a UTC timestamp,
+severity, component, event name, and message. The default threshold is `info`;
+logging does not automatically open the Ruby Console. Use **Open Ruby Console**
+from the extension menu to view output.
+
+Under **Extensions → SketchUp MCP**, use **Filter Ruby Console Logs...** to choose
+the minimum severity and optional comma-separated component, tool, and request ID
+filters. Blank fields match all values. **Reset Ruby Console Log Filters** restores
+the default `info` threshold. **Clear Ruby Console** clears the entire native
+console, including messages from other extensions, without changing the filters.
+
+The native Ruby Console has no supported API for per-line text colors. Severity
+is recorded in each event's `level` field. No additional log window is opened.
+
+Configure session-only filters in the Ruby Console:
+
+```ruby
+SU_MCP::RuntimeLogger.configure(min_level: :warn)
+SU_MCP::RuntimeLogger.configure(
+  min_level: :debug, components: ['developer'], tools: ['eval_ruby'], request_ids: [42]
+)
+SU_MCP::RuntimeLogger.configure(since: Time.now.utc - 300, until_time: Time.now.utc + 300)
+SU_MCP::RuntimeLogger.configure # Reset to defaults.
+```
+
+Each configuration replaces the previous filters. Filters combine with AND; values
+within each list combine with OR. Time bounds accept Ruby `Time` values and apply
+to newly emitted events, with no historical storage or replay.
+
+Runtime callers can supply context with `RuntimeLogger.emit`:
+
+```ruby
+SU_MCP::RuntimeLogger.emit(
+  'Ruby evaluation failed', level: :error, component: 'developer', event: 'tool.failed',
+  tool: 'eval_ruby', request_id: 42, duration_ms: 12, outcome: 'failed'
+)
+```
+
+HTTP `tools/call` requests emit `tool.completed` events in the `tools`
+component with the JSON-RPC request ID, tool name, monotonic duration in milliseconds,
+and `succeeded`, `failed`, or `refused` outcome. Successes use `info`, failures use
+`error`, and refusals use `warn`. Runtime request exceptions also emit
+`request.failed` diagnostics without dumping the full request. Exception messages
+can still contain source excerpts supplied by Ruby. Completion events contain no
+tool arguments or results. Batched requests emit one completion event per tool
+call, each with its own request ID and duration. Notification-only batches and
+single-response batches preserve the pinned runtime SDK's existing response shape.
+
+Transport messages use the `transport` component, with transport and runtime
+lifecycle failures classified as `error`. Remaining string-only logging calls stay
+`info` events in the `runtime` component. Tool and request filters match only events
+whose callers supply that context.
+These filters cover this extension's logger, not messages printed directly by
+SketchUp, evaluated scripts, or other extensions. This change adds no log files or
+MCP diagnostics tools.
+
 ## Repository layout
 
 ```text

@@ -73,14 +73,14 @@ module SU_MCP
 
     attr_reader :app_builder, :server_factory, :timer_starter, :timer_stopper, :logger
 
-    def log(message)
-      logger.call(message)
+    def log(message, level: :info)
+      logger.call(message, level: level, component: 'transport')
     end
 
     def stop_timer
       timer_stopper.call(@timer_id) if @timer_id
     rescue StandardError => e
-      log "MCP runtime timer stop failed: #{e.message}"
+      log("MCP runtime timer stop failed: #{e.message}", level: :error)
     ensure
       @timer_id = nil
     end
@@ -92,7 +92,7 @@ module SU_MCP
       service_clients
       close_idle_clients
     rescue StandardError => e
-      log "MCP runtime poll error: #{e.message}"
+      log("MCP runtime poll error: #{e.message}", level: :error)
     end
 
     def accept_pending_clients
@@ -269,7 +269,7 @@ module SU_MCP
     def close_app
       @app.close if @app.respond_to?(:close)
     rescue StandardError => e
-      log "MCP runtime app close failed: #{e.message}"
+      log("MCP runtime app close failed: #{e.message}", level: :error)
     ensure
       @app = nil
     end

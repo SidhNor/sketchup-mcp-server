@@ -24,14 +24,16 @@ class McpRuntimeServerTest < Minitest::Test
   end
 
   class RecordingLogger
-    attr_reader :messages
+    attr_reader :messages, :contexts
 
     def initialize
       @messages = []
+      @contexts = []
     end
 
-    def call(message)
+    def call(message, **context)
       @messages << message
+      @contexts << context
     end
   end
 
@@ -96,7 +98,7 @@ class McpRuntimeServerTest < Minitest::Test
       runtime_loader: RecordingRuntimeLoader.new,
       backend: backend,
       facade: Object.new,
-      logger: ->(_message) {}
+      logger: ->(_message, **_context) {}
     )
 
     server.stop
@@ -141,6 +143,7 @@ class McpRuntimeServerTest < Minitest::Test
     assert_equal([], backend.start_calls)
     assert_equal(false, server.running?)
     assert_includes(logger.messages.last, 'missing vendored runtime')
+    assert_equal({ level: :error, component: 'runtime' }, logger.contexts.last)
   end
 
   def test_status_reports_runtime_loader_availability
@@ -153,7 +156,7 @@ class McpRuntimeServerTest < Minitest::Test
       ),
       backend: RecordingBackend.new,
       facade: Object.new,
-      logger: ->(_message) {}
+      logger: ->(_message, **_context) {}
     )
 
     status = server.status
@@ -180,7 +183,7 @@ class McpRuntimeServerTest < Minitest::Test
       runtime_loader: runtime_loader,
       backend: backend,
       facade: facade,
-      logger: ->(_message) {}
+      logger: ->(_message, **_context) {}
     )
 
     server.start

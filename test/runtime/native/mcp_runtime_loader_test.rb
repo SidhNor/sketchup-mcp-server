@@ -6,6 +6,7 @@ require 'tmpdir'
 require_relative '../../../src/su_mcp/runtime/tool_response'
 require_relative '../../../src/su_mcp/terrain/contracts/edit_terrain_surface_request'
 require_relative '../../../src/su_mcp/runtime/native/mcp_runtime_loader'
+require_relative '../../../src/su_mcp/developer/developer_commands'
 
 # rubocop:disable Metrics/ClassLength
 class McpRuntimeLoaderTest < Minitest::Test
@@ -289,7 +290,7 @@ class McpRuntimeLoaderTest < Minitest::Test
       measure_scene_tool.fetch('inputSchema').fetch('required')
     )
     assert_equal(
-      %w[from kind mode outputOptions target to],
+      %w[from kind mode outputOptions sampling samplingPolicy target to],
       measure_scene_tool.fetch('inputSchema').fetch('properties').keys.sort
     )
 
@@ -386,9 +387,9 @@ class McpRuntimeLoaderTest < Minitest::Test
                            .fetch('operation')
                            .fetch('properties')
     %w[strength neighborhoodRadiusSamples iterations correctionScope].each do |field|
-      assert_includes(operation_properties.keys.map(&:to_s), field)
+      assert_includes(operation_properties.keys, field)
     end
-    assert_equal(%w[local regional], operation_properties.fetch(:correctionScope).fetch(:enum))
+    assert_equal(%w[local regional], operation_properties.fetch('correctionScope').fetch('enum'))
 
     assert_equal(
       SU_MCP::Terrain::EditTerrainSurfaceRequest::SUPPORTED_BLEND_FALLOFFS,
@@ -408,17 +409,19 @@ class McpRuntimeLoaderTest < Minitest::Test
                             .fetch('constraints')
                             .fetch('properties')
     assert_equal(%w[fixedControls planarControls preserveZones surveyPoints],
-                 constraint_properties.keys.map(&:to_s).sort)
-    planar_control_schema = constraint_properties.fetch(:planarControls).fetch(:items)
-    assert_equal(['point'], planar_control_schema.fetch(:required))
-    assert_includes(planar_control_schema.fetch(:properties).keys, :id)
-    assert_includes(planar_control_schema.fetch(:properties).keys, :tolerance)
-    assert_equal(%w[x y z], planar_control_schema.fetch(:properties).fetch(:point).fetch(:required))
-    survey_point_schema = constraint_properties.fetch(:surveyPoints).fetch(:items)
-    assert_equal(['point'], survey_point_schema.fetch(:required))
-    assert_includes(survey_point_schema.fetch(:properties).keys, :id)
-    assert_includes(survey_point_schema.fetch(:properties).keys, :tolerance)
-    assert_equal(%w[x y z], survey_point_schema.fetch(:properties).fetch(:point).fetch(:required))
+                 constraint_properties.keys.sort)
+    planar_control_schema = constraint_properties.fetch('planarControls').fetch('items')
+    assert_equal(['point'], planar_control_schema.fetch('required'))
+    assert_includes(planar_control_schema.fetch('properties').keys, 'id')
+    assert_includes(planar_control_schema.fetch('properties').keys, 'tolerance')
+    assert_equal(%w[x y z],
+                 planar_control_schema.fetch('properties').fetch('point').fetch('required'))
+    survey_point_schema = constraint_properties.fetch('surveyPoints').fetch('items')
+    assert_equal(['point'], survey_point_schema.fetch('required'))
+    assert_includes(survey_point_schema.fetch('properties').keys, 'id')
+    assert_includes(survey_point_schema.fetch('properties').keys, 'tolerance')
+    assert_equal(%w[x y z],
+                 survey_point_schema.fetch('properties').fetch('point').fetch('required'))
 
     curate_staged_asset_tool = tools.find { |tool| tool.fetch('name') == 'curate_staged_asset' }
     assert_equal('Curate Staged Asset', curate_staged_asset_tool.fetch('title'))
@@ -609,7 +612,7 @@ class McpRuntimeLoaderTest < Minitest::Test
     create_group_tool = tools.find { |tool| tool.fetch('name') == 'create_group' }
     assert_equal('Create Group Container', create_group_tool.fetch('title'))
     assert_equal(
-      %w[children parent],
+      %w[children metadata parent sceneProperties],
       create_group_tool.fetch('inputSchema').fetch('properties').keys.sort
     )
 
@@ -1297,6 +1300,29 @@ class McpRuntimeLoaderTest < Minitest::Test
 
     assert_equal(202, response[:status])
     assert_equal('', response[:raw_body])
+  end
+
+  def test_eval_syntax_error_returns_an_mcp_error_and_transport_recovers
+    skip_unless_staged_vendor_runtime!
+
+    commands = SU_MCP::DeveloperCommands.new
+    transport = @loader.build_transport(handlers: { eval_ruby: commands.method(:eval_ruby) })
+    failure = perform_json_request(
+      transport, id: 1, method: 'tools/call',
+                 params: { name: 'eval_ruby', arguments: { code: '{ visible = true }' } }
+    )
+    recovery = perform_json_request(
+      transport, id: 2, method: 'tools/call',
+                 params: { name: 'eval_ruby', arguments: { code: '1 + 1' } }
+    )
+
+    assert_equal(200, failure[:status])
+    assert_equal(1, failure[:body].fetch('id'))
+    assert_equal(-32_603, failure[:body].dig('error', 'code'))
+    assert_kind_of(String, failure[:body].dig('error', 'message'))
+    assert_equal(200, recovery[:status])
+    assert_equal({ 'success' => true, 'result' => '2' },
+                 recovery[:body].dig('result', 'structuredContent'))
   end
 
   def test_build_transport_calls_a_representative_migrated_handler_from_the_handler_map

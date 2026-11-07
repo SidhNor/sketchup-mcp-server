@@ -174,12 +174,14 @@ module SU_MCP
     end
 
     def report_exception(exception, server_context)
-      return unless logger
-
       request = server_context[:request]
+      request = JSON.parse(request) if request.is_a?(String)
+      request = stringify_keys(request || {})
       message = "MCP runtime request error: #{exception.class}: #{exception.message}"
-      message += " request=#{JSON.generate(request)}" if request
-      logger.call(message)
+      RuntimeLogger.emit(
+        message, level: :error, component: 'runtime', event: 'request.failed',
+                 tool: request.dig('params', 'name'), request_id: request['id'], outcome: 'failed'
+      )
     rescue StandardError
       nil
     end

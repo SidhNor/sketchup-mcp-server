@@ -151,7 +151,7 @@ class McpRuntimeHttpBackendTest < Minitest::Test
         :timer_one
       end,
       timer_stopper: ->(_timer_id) { flunk 'stop should not run during start' },
-      logger: ->(_message) {}
+      logger: ->(_message, **_context) {}
     )
 
     backend.start(host: '127.0.0.1', port: 9877, handlers: { ping: -> { { success: true } } })
@@ -179,7 +179,7 @@ class McpRuntimeHttpBackendTest < Minitest::Test
         :timer_one
       end,
       timer_stopper: ->(_timer_id) {},
-      logger: ->(_message) {}
+      logger: ->(_message, **_context) {}
     )
     backend.start(host: '127.0.0.1', port: 9877, handlers: {})
     client = FakeClient.new(http_post_request('{"jsonrpc":"2.0","id":1,"method":"ping"}'))
@@ -213,7 +213,7 @@ class McpRuntimeHttpBackendTest < Minitest::Test
         :timer_one
       end,
       timer_stopper: ->(_timer_id) {},
-      logger: ->(_message) {}
+      logger: ->(_message, **_context) {}
     )
     backend.start(host: '127.0.0.1', port: 9877, handlers: {})
     client = FakeClient.new(http_post_request('{"jsonrpc":"2.0","id":1}', lowercase_headers: true))
@@ -239,7 +239,7 @@ class McpRuntimeHttpBackendTest < Minitest::Test
         :timer_one
       end,
       timer_stopper: ->(_timer_id) {},
-      logger: ->(_message) {}
+      logger: ->(_message, **_context) {}
     )
     backend.start(host: '127.0.0.1', port: 9877, handlers: {})
     client = FakeClient.new(
@@ -275,7 +275,7 @@ class McpRuntimeHttpBackendTest < Minitest::Test
         :timer_one
       end,
       timer_stopper: ->(_timer_id) {},
-      logger: ->(_message) {}
+      logger: ->(_message, **_context) {}
     )
     monotonic_times = [0.0, 0.0, 10.0]
     backend.define_singleton_method(:monotonic_time) { monotonic_times.shift || 10.0 }
@@ -305,7 +305,7 @@ class McpRuntimeHttpBackendTest < Minitest::Test
         :timer_one
       end,
       timer_stopper: ->(_timer_id) {},
-      logger: ->(_message) {}
+      logger: ->(_message, **_context) {}
     )
     backend.start(host: '127.0.0.1', port: 9877, handlers: {})
     client = FakeClient.new(http_chunked_post_request('{"jsonrpc":"2.0","id":1,"method":"ping"}'))
@@ -347,7 +347,7 @@ class McpRuntimeHttpBackendTest < Minitest::Test
         :timer_one
       end,
       timer_stopper: ->(_timer_id) {},
-      logger: ->(_message) {}
+      logger: ->(_message, **_context) {}
     )
     client = FakeClient.new(http_post_request('{"jsonrpc":"2.0","id":1}'))
     backend.start(host: '127.0.0.1', port: 9877, handlers: {})
@@ -366,7 +366,7 @@ class McpRuntimeHttpBackendTest < Minitest::Test
       server_factory: ->(_host, _port) { tcp_server },
       timer_starter: ->(_interval, _repeat, &_block) { :timer_one },
       timer_stopper: ->(timer_id) { stopped << timer_id },
-      logger: ->(_message) {}
+      logger: ->(_message, **_context) {}
     )
     backend.start(host: '127.0.0.1', port: 9877, handlers: {})
 
@@ -390,7 +390,7 @@ class McpRuntimeHttpBackendTest < Minitest::Test
         :timer_one
       end,
       timer_stopper: ->(timer_id) { stopped << timer_id },
-      logger: ->(_message) {}
+      logger: ->(_message, **_context) {}
     )
     client = FakeClient.new("POST /mcp HTTP/1.1\r\n")
     backend.start(host: '127.0.0.1', port: 9877, handlers: {})
@@ -427,7 +427,7 @@ class McpRuntimeHttpBackendTest < Minitest::Test
         :timer_one
       end,
       timer_stopper: ->(_timer_id) {},
-      logger: ->(_message) {}
+      logger: ->(_message, **_context) {}
     )
 
     [backend, timer_blocks]
