@@ -134,8 +134,9 @@ class TerrainSurfaceAdoptionSamplerTest < Minitest::Test
   end
 
   class RecordingAdapter
+    # Sampling resolves through entity paths; the full entity walk is not needed.
     def all_entities_recursive
-      []
+      raise 'all_entities_recursive should not be called'
     end
 
     def all_entity_paths_recursive

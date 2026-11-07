@@ -18,9 +18,10 @@ module SU_MCP
       dir
     end.freeze
 
-    def initialize(vendor_root: default_vendor_root, logger: nil)
+    def initialize(vendor_root: default_vendor_root, logger: nil, usage_log: UsageLog.new)
       @vendor_root = vendor_root
       @logger = logger
+      @usage_log = usage_log
     end
 
     attr_reader :vendor_root
@@ -69,14 +70,17 @@ module SU_MCP
 
     private
 
-    attr_reader :logger
+    attr_reader :logger, :usage_log
 
     def build_server(handlers:)
       server_builder.build(handlers: handlers)
     end
 
     def build_stateless_http_app(server)
-      McpRuntimeStatelessHttpApp.new(server)
+      McpRuntimeStatelessHttpApp.new(
+        server,
+        request_logging: McpRuntimeRequestLogging.new(usage_log: usage_log)
+      )
     end
 
     def default_vendor_root
@@ -174,12 +178,14 @@ module SU_MCP
     end
 
     def report_exception(exception, server_context)
-      return unless logger
-
       request = server_context[:request]
+      request = JSON.parse(request) if request.is_a?(String)
+      request = stringify_keys(request || {})
       message = "MCP runtime request error: #{exception.class}: #{exception.message}"
-      message += " request=#{JSON.generate(request)}" if request
-      logger.call(message)
+      RuntimeLogger.emit(
+        message, level: :error, component: 'runtime', event: 'request.failed',
+                 tool: request.dig('params', 'name'), request_id: request['id'], outcome: 'failed'
+      )
     rescue StandardError
       nil
     end

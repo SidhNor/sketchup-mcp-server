@@ -8,6 +8,7 @@ require_relative 'runtime/native/mcp_runtime_lifecycle_observer'
 require_relative 'runtime/native/mcp_runtime_loader'
 require_relative 'runtime/native/mcp_runtime_server'
 require_relative 'runtime/runtime_logger'
+require_relative 'runtime/ui/ruby_console_controls'
 require_relative 'terrain/ui/installer'
 require_relative 'version'
 
@@ -41,8 +42,8 @@ module SU_MCP
       @native_runtime_server ||= build_native_runtime_server
     end
 
-    def log(message)
-      RuntimeLogger.main(message)
+    def log(message, **context)
+      RuntimeLogger.main(message, **context)
     end
 
     def build_menu(menu)
@@ -72,7 +73,8 @@ module SU_MCP
     end
 
     def console_menu_actions
-      [['Open Ruby Console', -> { SKETCHUP_CONSOLE.show if defined?(SKETCHUP_CONSOLE) }]]
+      @ruby_console_controls ||= RubyConsoleControls.new
+      @ruby_console_controls.menu_actions
     end
 
     def install_managed_terrain_ui(menu)
@@ -84,13 +86,14 @@ module SU_MCP
     def build_native_runtime_server
       config = McpRuntimeConfig.new
       runtime_loader = McpRuntimeLoader.new(
-        logger: ->(message) { log("MCP runtime: #{message}") }
+        logger: ->(message, **context) { log("MCP runtime: #{message}", **context) },
+        usage_log: UsageLog.new(config.usage_log_path)
       )
       runtime_command_factory = RuntimeCommandFactory.new(
         terrain_output_stack_factory: Terrain::TerrainOutputStackFactory.new(
           mode: config.terrain_output_mode
         ),
-        logger: ->(message) { log("MCP runtime: #{message}") }
+        logger: ->(message, **context) { log("MCP runtime: #{message}", **context) }
       )
 
       McpRuntimeServer.new(
@@ -98,7 +101,7 @@ module SU_MCP
         runtime_loader: runtime_loader,
         backend: build_native_runtime_backend(runtime_loader),
         facade: McpRuntimeFacade.new(runtime_command_factory: runtime_command_factory),
-        logger: ->(message) { log("MCP runtime: #{message}") }
+        logger: ->(message, **context) { log("MCP runtime: #{message}", **context) }
       )
     end
 
@@ -126,6 +129,8 @@ module SU_MCP
     end
 
     def shutdown_native_runtime(reason)
+      # Writing to the Ruby Console while SketchUp quits can crash SketchUp.
+      RuntimeLogger.console_silenced = true if reason == McpRuntimeLifecycleObserver::QUIT_REASON
       return unless @native_runtime_server
 
       @native_runtime_server.stop

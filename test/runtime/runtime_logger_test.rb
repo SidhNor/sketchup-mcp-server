@@ -6,35 +6,90 @@ require_relative '../test_helper'
 require_relative '../../src/su_mcp/runtime/runtime_logger'
 
 class RuntimeLoggerTest < Minitest::Test
-  class FailingConsole
-    def write(_message)
-      raise 'no console write'
-    end
+  def setup
+    SU_MCP::RuntimeLogger.configure
+    @output = StringIO.new
   end
 
-  class ShowingConsole
-    attr_reader :shown
-
-    def initialize
-      @shown = false
-    end
-
-    def show
-      @shown = true
-    end
+  def teardown
+    SU_MCP::RuntimeLogger.configure
+    SU_MCP::RuntimeLogger.console_silenced = false
   end
 
-  def test_bridge_logger_entrypoint_is_retired
-    refute_respond_to(SU_MCP::RuntimeLogger, :bridge)
+  def test_silenced_console_writes_nothing
+    SU_MCP::RuntimeLogger.console_silenced = true
+
+    assert_nil(SU_MCP::RuntimeLogger.emit('closing', level: :error, output: @output))
+    assert_empty(@output.string)
   end
 
-  def test_main_logger_shows_console_and_writes_to_output
-    console = ShowingConsole.new
-    output = StringIO.new
+  def test_main_writes_a_structured_event_without_opening_the_console
+    SU_MCP::RuntimeLogger.main('loaded', output: @output)
+    record = JSON.parse(@output.string.delete_prefix('SketchUp MCP: '))
 
-    SU_MCP::RuntimeLogger.main('loaded', console: console, output: output)
+    assert_equal('loaded', record.fetch('message'))
+    assert_equal('info', record.fetch('level'))
+    assert_equal('runtime', record.fetch('component'))
+    assert_match(/Z\z/, record.fetch('timestamp'))
+  end
 
-    assert_equal(true, console.shown)
-    assert_equal("SketchUp MCP: loaded\n", output.string)
+  def test_long_messages_are_capped_before_reaching_the_console
+    SU_MCP::RuntimeLogger.emit('x' * 1_000_000, level: :error, output: @output)
+    message = JSON.parse(@output.string.delete_prefix('SketchUp MCP: ')).fetch('message')
+
+    limit = SU_MCP::RuntimeLogger::MAX_MESSAGE_CHARS
+    assert_operator(message.length, :<, limit + 50)
+    assert(message.start_with?('x' * limit))
+    assert(message.end_with?("(truncated #{1_000_000 - limit} chars)"))
+  end
+
+  def test_messages_at_the_cap_are_unchanged
+    message = 'y' * SU_MCP::RuntimeLogger::MAX_MESSAGE_CHARS
+    SU_MCP::RuntimeLogger.emit(message, output: @output)
+
+    record = JSON.parse(@output.string.delete_prefix('SketchUp MCP: '))
+
+    assert_equal(message, record.fetch('message'))
+  end
+
+  def test_default_filter_hides_debug_and_keeps_errors
+    SU_MCP::RuntimeLogger.emit('noise', level: :debug, output: @output)
+    SU_MCP::RuntimeLogger.emit('failure', level: :error, output: @output)
+
+    assert_equal(1, @output.string.lines.size)
+    assert_includes(@output.string, 'failure')
+  end
+
+  def test_filters_combine_severity_component_tool_and_request
+    SU_MCP::RuntimeLogger.configure(
+      min_level: :warn, components: ['developer'], tools: ['eval_ruby'], request_ids: [42]
+    )
+    context = { component: 'developer', tool: 'eval_ruby', request_id: 42, output: @output }
+    SU_MCP::RuntimeLogger.emit('low severity', level: :info, **context)
+    SU_MCP::RuntimeLogger.emit('wrong component', level: :error, **context.merge(component: 'http'))
+    SU_MCP::RuntimeLogger.emit('wrong tool', level: :error, **context.merge(tool: 'ping'))
+    SU_MCP::RuntimeLogger.emit('wrong request', level: :error, **context.merge(request_id: 43))
+    SU_MCP::RuntimeLogger.emit('matched', level: :error, **context)
+
+    assert_equal(1, @output.string.lines.size)
+    assert_includes(@output.string, 'matched')
+  end
+
+  def test_time_filters_exclude_events_outside_the_window
+    SU_MCP::RuntimeLogger.configure(since: Time.now + 60)
+    SU_MCP::RuntimeLogger.main('too early', output: @output)
+    SU_MCP::RuntimeLogger.configure(until_time: Time.now - 60)
+    SU_MCP::RuntimeLogger.main('too late', output: @output)
+
+    assert_empty(@output.string)
+  end
+
+  def test_output_failures_do_not_escape
+    output = Object.new
+    def output.write(_line)
+      raise IOError, 'closed'
+    end
+
+    assert_nil(SU_MCP::RuntimeLogger.main('loaded', output: output))
   end
 end

@@ -5,6 +5,10 @@ module SU_MCP
   class NativeToolDefinition
     VALID_CLASSIFICATIONS = %w[first_class escape_hatch].freeze
     REQUIRED_ANNOTATION_KEYS = %i[read_only_hint destructive_hint].freeze
+    # 'sdk' lets the MCP SDK reject missing top-level required arguments before
+    # dispatch; 'runtime' leaves that check to the tool's own validation so it
+    # can recover or refuse with structured details.
+    VALID_REQUIRED_ARGUMENT_CHECKS = %w[sdk runtime].freeze
 
     class << self
       def build(
@@ -14,7 +18,8 @@ module SU_MCP
         annotations:,
         handler_key:,
         input_schema:,
-        classification:
+        classification:,
+        required_arguments_check: 'sdk'
       )
         validate_name!(name)
         validate_title!(title)
@@ -23,6 +28,7 @@ module SU_MCP
         validate_handler_key!(handler_key)
         validate_input_schema!(input_schema)
         validate_classification!(classification)
+        validate_required_arguments_check!(required_arguments_check)
 
         {
           name: name,
@@ -30,6 +36,7 @@ module SU_MCP
           handler_key: handler_key,
           input_schema: input_schema,
           classification: classification,
+          required_arguments_check: required_arguments_check,
           metadata: {
             title: title,
             annotations: {
@@ -88,6 +95,14 @@ module SU_MCP
           VALID_CLASSIFICATIONS.join(', ')
         )
         raise ArgumentError, message
+      end
+
+      def validate_required_arguments_check!(check)
+        return if VALID_REQUIRED_ARGUMENT_CHECKS.include?(check)
+
+        raise ArgumentError,
+              'Native tool definitions require required_arguments_check in ' \
+              "#{VALID_REQUIRED_ARGUMENT_CHECKS.join(', ')}"
       end
     end
   end

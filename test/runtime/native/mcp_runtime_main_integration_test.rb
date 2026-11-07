@@ -100,10 +100,24 @@ class McpRuntimeMainIntegrationTest < Minitest::Test
 
     assert_equal(1, observers.length)
     assert_equal(1, server.stop_calls)
+    assert_predicate(SU_MCP::RuntimeLogger, :console_silenced?)
   ensure
+    SU_MCP::RuntimeLogger.console_silenced = false
     Sketchup.define_singleton_method(:add_observer, original_add_observer)
     SU_MCP::Main.remove_instance_variable(:@lifecycle_observer) if
       SU_MCP::Main.instance_variable_defined?(:@lifecycle_observer)
+    SU_MCP::Main.remove_instance_variable(:@native_runtime_server) if
+      SU_MCP::Main.instance_variable_defined?(:@native_runtime_server)
+  end
+
+  def test_restart_shutdown_keeps_console_logging
+    server = StubRuntimeServer.new(available: true)
+    SU_MCP::Main.instance_variable_set(:@native_runtime_server, server)
+
+    capture_io { SU_MCP::Main.send(:shutdown_native_runtime, 'restart') }
+
+    refute_predicate(SU_MCP::RuntimeLogger, :console_silenced?)
+  ensure
     SU_MCP::Main.remove_instance_variable(:@native_runtime_server) if
       SU_MCP::Main.instance_variable_defined?(:@native_runtime_server)
   end

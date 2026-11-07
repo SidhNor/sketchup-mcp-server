@@ -50,6 +50,18 @@ class McpRuntimeConfigTest < Minitest::Test
     end
   end
 
+  def test_usage_log_is_off_unless_a_path_is_configured
+    with_env('SKETCHUP_MCP_USAGE_LOG' => nil) do
+      assert_nil(SU_MCP::McpRuntimeConfig.new.usage_log_path)
+    end
+    with_env('SKETCHUP_MCP_USAGE_LOG' => '') do
+      assert_nil(SU_MCP::McpRuntimeConfig.new.usage_log_path)
+    end
+    with_env('SKETCHUP_MCP_USAGE_LOG' => '/tmp/su_mcp_usage.jsonl') do
+      assert_equal('/tmp/su_mcp_usage.jsonl', SU_MCP::McpRuntimeConfig.new.usage_log_path)
+    end
+  end
+
   private
 
   def with_env(overrides)

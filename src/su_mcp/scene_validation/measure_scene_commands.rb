@@ -79,7 +79,7 @@ module SU_MCP
 
     def measure_terrain_profile(request)
       evidence_result = sample_surface_query.profile_evidence(
-        entities: adapter.all_entities_recursive,
+        entities: [],
         entity_entries: adapter.all_entity_paths_recursive,
         scene_entities: adapter.queryable_entities,
         params: request.sample_surface_params

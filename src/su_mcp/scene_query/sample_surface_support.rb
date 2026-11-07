@@ -3,12 +3,17 @@
 module SU_MCP
   # Extracted sample-surface traversal, visibility, and clustering mechanics.
   class SampleSurfaceSupport
+    CONTAINER_TYPES = %w[group componentinstance].freeze
+
     def initialize(serializer:, cluster_tolerance_meters: 0.001)
       @serializer = serializer
       @cluster_tolerance_meters = cluster_tolerance_meters
     end
 
-    def sampleable_faces_for(entity, visible_only:, transform_chain: [], ancestor_chain: [])
+    # `footprint`, when given, is called with each nested group or component and
+    # its parent transform chain; containers it rejects are not descended into.
+    def sampleable_faces_for(entity, visible_only:, transform_chain: [], ancestor_chain: [],
+                             footprint: nil)
       entity_chain = ancestor_chain + [entity]
       return [] unless visible_entity_chain?(entity_chain, visible_only)
 
@@ -17,12 +22,13 @@ module SU_MCP
         serializer.entity_type_key(entity),
         visible_only,
         transform_chain + transformations_for(ancestor_chain),
-        ancestor_chain
+        ancestor_chain,
+        footprint
       )
     end
 
     def sampleable_faces_for_type(entity, entity_type, visible_only, transform_chain,
-                                  ancestor_chain)
+                                  ancestor_chain, footprint)
       case entity_type
       when 'face'
         [face_entry(entity, transform_chain, ancestor_chain + [entity])]
@@ -31,14 +37,16 @@ module SU_MCP
           entity.entities,
           visible_only,
           append_transform(transform_chain, entity),
-          ancestor_chain + [entity]
+          ancestor_chain + [entity],
+          footprint
         )
       when 'componentinstance'
         nested_faces_for(
           entity.definition.entities,
           visible_only,
           append_transform(transform_chain, entity),
-          ancestor_chain + [entity]
+          ancestor_chain + [entity],
+          footprint
         )
       else
         raise "Target type #{entity_type} is not supported by sample_surface_z"
@@ -46,12 +54,13 @@ module SU_MCP
     end
     private :sampleable_faces_for_type
 
-    def blocking_faces_for(scene_entities, target_entity:, ignore_entities:, xy_bounds: nil)
+    def blocking_faces_for(scene_entities, target_entity:, ignore_entities:, xy_bounds: nil,
+                           footprint: nil)
       scene_entities.flat_map do |entity|
         next [] if entity.equal?(target_entity)
         next [] unless entity_overlaps_xy_bounds?(entity, xy_bounds)
 
-        sampleable_faces_for(entity, visible_only: true, transform_chain: [])
+        sampleable_faces_for(entity, visible_only: true, transform_chain: [], footprint: footprint)
           .reject { |face_entry| ignored_face_entry?(face_entry, ignore_entities) }
       rescue RuntimeError
         []
@@ -82,16 +91,17 @@ module SU_MCP
       { face: entity, transform_chain: transform_chain, entity_chain: entity_chain }
     end
 
-    def nested_faces_for(entities, visible_only, transform_chain, ancestor_chain)
+    def nested_faces_for(entities, visible_only, transform_chain, ancestor_chain, footprint)
       collect_faces(
         entities,
         visible_only: visible_only,
         transform_chain: transform_chain,
-        ancestor_chain: ancestor_chain
+        ancestor_chain: ancestor_chain,
+        footprint: footprint
       )
     end
 
-    def collect_faces(entities, visible_only:, transform_chain:, ancestor_chain:)
+    def collect_faces(entities, visible_only:, transform_chain:, ancestor_chain:, footprint:)
       Array(entities).flat_map do |entity|
         next [] unless entity
 
@@ -99,35 +109,31 @@ module SU_MCP
           entity,
           visible_only: visible_only,
           transform_chain: transform_chain,
-          ancestor_chain: ancestor_chain
+          ancestor_chain: ancestor_chain,
+          footprint: footprint
         )
       end
     end
 
-    def collect_faces_for_entity(entity, visible_only:, transform_chain:, ancestor_chain:)
+    def collect_faces_for_entity(entity, visible_only:, transform_chain:, ancestor_chain:,
+                                 footprint:)
       entity_chain = ancestor_chain + [entity]
       return [] unless visible_entity_chain?(entity_chain, visible_only)
 
-      case serializer.entity_type_key(entity)
-      when 'face'
-        [face_entry(entity, transform_chain, entity_chain)]
-      when 'group'
-        nested_faces_for(
-          entity.entities,
-          visible_only,
-          append_transform(transform_chain, entity),
-          entity_chain
-        )
-      when 'componentinstance'
-        nested_faces_for(
-          entity.definition.entities,
-          visible_only,
-          append_transform(transform_chain, entity),
-          entity_chain
-        )
-      else
-        []
-      end
+      entity_type = serializer.entity_type_key(entity)
+      return [face_entry(entity, transform_chain, entity_chain)] if entity_type == 'face'
+
+      return [] unless CONTAINER_TYPES.include?(entity_type)
+      return [] if footprint && !footprint.call(entity, transform_chain)
+
+      nested_faces_for(
+        container_children(entity, entity_type), visible_only,
+        append_transform(transform_chain, entity), entity_chain, footprint
+      )
+    end
+
+    def container_children(entity, entity_type)
+      entity_type == 'group' ? entity.entities : entity.definition.entities
     end
 
     def visible_entity_chain?(entity_chain, visible_only)

@@ -262,7 +262,9 @@ module SU_MCP
           handler_key: :create_site_element,
           annotations: { read_only_hint: false, destructive_hint: false },
           classification: 'first_class',
-          input_schema: create_site_element_schema
+          input_schema: create_site_element_schema,
+          # Misnested sections must reach request-shape recovery instead of an SDK error.
+          required_arguments_check: 'runtime'
         ),
         tool_entry(
           name: 'set_entity_metadata',
@@ -887,12 +889,21 @@ module SU_MCP
     end
 
     # Scene validation and measurement input schemas.
-    def expectation_target_schema
+    #
+    # Only mustExist spells out the full targetSelector shape; the other
+    # expectation families point to it by description. This keeps the schema
+    # small without $ref, which some provider tool validators drop or reject.
+    # Runtime validation still refuses malformed selectors in every family.
+    def target_selector_pointer_schema
+      described_schema({ type: 'object' }, 'Same shape as mustExist[].targetSelector.')
+    end
+
+    def expectation_target_schema(target_selector: target_selector_schema)
       {
         type: 'object',
         properties: {
           targetReference: target_reference_schema,
-          targetSelector: target_selector_schema,
+          targetSelector: target_selector,
           expectationId: string_schema
         },
         additionalProperties: false
@@ -904,7 +915,7 @@ module SU_MCP
         type: 'object',
         properties: {
           targetReference: target_reference_schema,
-          targetSelector: target_selector_schema,
+          targetSelector: target_selector_pointer_schema,
           expectationId: string_schema,
           requiredKeys: described_schema(string_array_schema, metadata_required_keys_description)
         },
@@ -917,7 +928,7 @@ module SU_MCP
         type: 'object',
         properties: {
           targetReference: target_reference_schema,
-          targetSelector: target_selector_schema,
+          targetSelector: target_selector_pointer_schema,
           expectationId: string_schema,
           expectedTag: string_schema
         },
@@ -930,7 +941,7 @@ module SU_MCP
         type: 'object',
         properties: {
           targetReference: target_reference_schema,
-          targetSelector: target_selector_schema,
+          targetSelector: target_selector_pointer_schema,
           expectationId: string_schema,
           expectedMaterial: string_schema
         },
@@ -969,7 +980,7 @@ module SU_MCP
         type: 'object',
         properties: {
           targetReference: target_reference_schema,
-          targetSelector: target_selector_schema,
+          targetSelector: target_selector_pointer_schema,
           expectationId: string_schema,
           surfaceReference: target_reference_schema,
           anchorSelector: anchor_selector_schema,
@@ -995,7 +1006,7 @@ module SU_MCP
           'Targets that must still resolve after the scene update.'
         ),
         mustPreserve: described_array_schema(
-          expectation_target_schema,
+          expectation_target_schema(target_selector: target_selector_pointer_schema),
           'Targets that must still resolve uniquely and remain preserved as scene objects.'
         ),
         metadataRequirements: described_array_schema(
@@ -1970,7 +1981,8 @@ module SU_MCP
       annotations:,
       handler_key:,
       classification:,
-      input_schema: default_object_schema
+      input_schema: default_object_schema,
+      required_arguments_check: 'sdk'
     )
       NativeToolDefinition.build(
         name: name,
@@ -1979,7 +1991,8 @@ module SU_MCP
         annotations: annotations,
         handler_key: handler_key,
         input_schema: input_schema,
-        classification: classification
+        classification: classification,
+        required_arguments_check: required_arguments_check
       )
     end
   end

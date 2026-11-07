@@ -116,6 +116,101 @@ Prepare a local versioned artifact:
 NEW_VERSION=0.1.1 bundle exec rake release:prepare
 ```
 
+## Console logging
+
+Runtime logs use `SketchUp MCP:` followed by a JSON event containing a UTC timestamp,
+severity, component, event name, and message. The default threshold is `info`;
+logging does not automatically open the Ruby Console. Use **Open Ruby Console**
+from the extension menu to view output.
+
+Under **Extensions → SketchUp MCP**, use **Filter Ruby Console Logs...** to choose
+the minimum severity and optional comma-separated component, tool, and request ID
+filters. Blank fields match all values. **Reset Ruby Console Log Filters** restores
+the default `info` threshold. **Clear Ruby Console** clears the entire native
+console, including messages from other extensions, without changing the filters.
+
+The native Ruby Console has no supported API for per-line text colors. Severity
+is recorded in each event's `level` field. No additional log window is opened.
+
+Configure session-only filters in the Ruby Console:
+
+```ruby
+SU_MCP::RuntimeLogger.configure(min_level: :warn)
+SU_MCP::RuntimeLogger.configure(
+  min_level: :debug, components: ['developer'], tools: ['eval_ruby'], request_ids: [42]
+)
+SU_MCP::RuntimeLogger.configure(since: Time.now.utc - 300, until_time: Time.now.utc + 300)
+SU_MCP::RuntimeLogger.configure # Reset to defaults.
+```
+
+Each configuration replaces the previous filters. Filters combine with AND; values
+within each list combine with OR. Time bounds accept Ruby `Time` values and apply
+to newly emitted events, with no historical storage or replay.
+
+Runtime callers can supply context with `RuntimeLogger.emit`:
+
+```ruby
+SU_MCP::RuntimeLogger.emit(
+  'Ruby evaluation failed', level: :error, component: 'developer', event: 'tool.failed',
+  tool: 'eval_ruby', request_id: 42, duration_ms: 12, outcome: 'failed'
+)
+```
+
+HTTP `tools/call` requests emit `tool.completed` events in the `tools`
+component with the JSON-RPC request ID, tool name, monotonic duration in milliseconds,
+`succeeded`, `failed`, or `refused` outcome, and `response_chars` (the length of the
+result text sent to the client, when there is one). They also carry estimated token
+counts: `request_tokens_est` for the tool arguments the model wrote and
+`response_tokens_est` for the result text it reads back. Estimates divide characters by
+4.9 (measured on this server's JSON with an o200k tokenizer); Claude's tokenizer usually
+counts JSON somewhat higher, so treat them as a floor, not billing figures. Only sizes
+are logged, never the arguments or results themselves. Successes use `info`, failures use
+`error`, and refusals use `warn`. Runtime request exceptions also emit
+`request.failed` diagnostics without dumping the full request. Exception messages
+can still contain source excerpts supplied by Ruby. Completion events contain no
+tool arguments or results. Batched requests emit one completion event per tool
+call, each with its own request ID and duration. Notification-only batches and
+single-response batches preserve the pinned runtime SDK's existing response shape.
+Each MCP `initialize` request emits a `client.initialized` event in the `transport`
+component with `client` set to the client's reported `name/version`.
+
+Transport messages use the `transport` component, with transport and runtime
+lifecycle failures classified as `error`. Remaining string-only logging calls stay
+`info` events in the `runtime` component. Tool and request filters match only events
+whose callers supply that context.
+Messages longer than 2,000 characters are truncated before they reach the Ruby
+Console, because large console writes stall SketchUp's UI thread. `eval_ruby`
+logs only the result's class, length, and a 200-character preview; the full
+result is still returned to the client.
+These filters cover this extension's logger, not messages printed directly by
+SketchUp, evaluated scripts, or other extensions. Console logging writes no log
+files and adds no MCP diagnostics tools; see the opt-in usage log below.
+
+## Usage log (opt-in)
+
+Set `SKETCHUP_MCP_USAGE_LOG` to a file path before starting SketchUp to append one
+JSON line per `client.initialized` and `tool.completed` event to that file. Each line
+holds a UTC timestamp, the event name, and the same context as the console event:
+client, tool name, request ID, outcome, duration, `response_chars`, and the estimated
+token counts. Tool
+arguments and results are never written. The log is off when the variable is unset
+or empty, and write failures are ignored so they never interrupt a SketchUp command.
+
+The log is meant for measuring which tools clients use together and how large their
+responses are, to guide token-cost work on the tool surface:
+
+```bash
+# macOS: start SketchUp from a shell so it inherits the variable (adjust the version).
+SKETCHUP_MCP_USAGE_LOG=/tmp/su_mcp_usage.jsonl \
+  "/Applications/SketchUp 2025/SketchUp.app/Contents/MacOS/SketchUp"
+
+# Later, from this repository:
+bundle exec rake "mcp:usage_graph[/tmp/su_mcp_usage.jsonl]"
+```
+
+On Windows, set the variable in PowerShell (`$env:SKETCHUP_MCP_USAGE_LOG = "C:\temp\su_mcp_usage.jsonl"`)
+and start `SketchUp.exe` from the same session.
+
 ## Repository layout
 
 ```text

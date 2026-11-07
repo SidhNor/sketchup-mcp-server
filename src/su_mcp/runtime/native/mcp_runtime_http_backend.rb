@@ -4,28 +4,34 @@ require 'socket'
 require 'stringio'
 
 require_relative 'mcp_runtime_http_request_parser'
+require_relative 'mcp_runtime_poll_timer'
 
 module SU_MCP
   # Local HTTP listener for the staged Ruby-native MCP runtime.
   class McpRuntimeHttpBackend
-    DEFAULT_POLL_INTERVAL = 0.1
+    DEFAULT_POLL_INTERVAL = McpRuntimePollTimer::IDLE_INTERVAL
+    ACTIVE_POLL_INTERVAL = McpRuntimePollTimer::ACTIVE_INTERVAL
+    # Keep polling fast briefly after traffic so the next call in a burst is quick.
+    ACTIVE_POLL_GRACE_SECONDS = 2.0
     CLIENT_IDLE_TIMEOUT = 5.0
     MAX_ACCEPTS_PER_POLL = 4
     MAX_ACTIVE_CLIENTS = 16
     READ_CHUNK_BYTES = 16 * 1024
     WRITE_CHUNK_BYTES = 64 * 1024
-    MAX_WRITE_CHUNKS_PER_POLL = 16
+    MAX_WRITE_CHUNKS_PER_POLL = 64
 
     def initialize(app_builder:, server_factory:, timer_starter:, timer_stopper:, logger:)
       @app_builder = app_builder
       @server_factory = server_factory
-      @timer_starter = timer_starter
-      @timer_stopper = timer_stopper
       @logger = logger
+      @poll_timer = McpRuntimePollTimer.new(
+        timer_starter: timer_starter, timer_stopper: timer_stopper,
+        on_stop_error: ->(e) { log("MCP runtime timer stop failed: #{e.message}", level: :error) }
+      )
       @running = false
       @server = nil
       @app = nil
-      @timer_id = nil
+      @last_activity_at = nil
       @host = nil
       @port = nil
       @clients = {}
@@ -41,14 +47,15 @@ module SU_MCP
       @app = app_builder.call(handlers)
       @server = server_factory.call(host, port)
       @running = true
-      @timer_id = timer_starter.call(DEFAULT_POLL_INTERVAL, true) { poll_for_connections }
+      @last_activity_at = nil
+      @poll_timer.start { poll_for_connections }
       log "MCP runtime listening on #{host}:#{port}"
     end
 
     def stop
-      return unless @server || @timer_id || @running || @app || @clients.any?
+      return unless @server || @poll_timer.running? || @running || @app || @clients.any?
 
-      stop_timer
+      @poll_timer.stop
       close_socket(@server)
       @server = nil
       close_clients
@@ -71,18 +78,20 @@ module SU_MCP
 
     private
 
-    attr_reader :app_builder, :server_factory, :timer_starter, :timer_stopper, :logger
+    attr_reader :app_builder, :server_factory, :logger
 
-    def log(message)
-      logger.call(message)
+    def log(message, level: :info)
+      logger.call(message, level: level, component: 'transport')
     end
 
-    def stop_timer
-      timer_stopper.call(@timer_id) if @timer_id
-    rescue StandardError => e
-      log "MCP runtime timer stop failed: #{e.message}"
-    ensure
-      @timer_id = nil
+    def active?
+      return true if @clients.any?
+
+      @last_activity_at && monotonic_time - @last_activity_at < ACTIVE_POLL_GRACE_SECONDS
+    end
+
+    def mark_activity
+      @last_activity_at = monotonic_time
     end
 
     def poll_for_connections
@@ -91,8 +100,9 @@ module SU_MCP
       accept_pending_clients
       service_clients
       close_idle_clients
+      @poll_timer.pace(active: active?) if running?
     rescue StandardError => e
-      log "MCP runtime poll error: #{e.message}"
+      log("MCP runtime poll error: #{e.message}", level: :error)
     end
 
     def accept_pending_clients
@@ -118,7 +128,7 @@ module SU_MCP
         output: nil,
         output_offset: 0,
         dispatching: false,
-        last_active_at: monotonic_time
+        last_active_at: mark_activity
       }
     end
 
@@ -256,7 +266,7 @@ module SU_MCP
     end
 
     def close_client(client)
-      @clients.delete(client)
+      mark_activity if @clients.delete(client)
       close_socket(client)
     end
 
@@ -269,7 +279,7 @@ module SU_MCP
     def close_app
       @app.close if @app.respond_to?(:close)
     rescue StandardError => e
-      log "MCP runtime app close failed: #{e.message}"
+      log("MCP runtime app close failed: #{e.message}", level: :error)
     ensure
       @app = nil
     end

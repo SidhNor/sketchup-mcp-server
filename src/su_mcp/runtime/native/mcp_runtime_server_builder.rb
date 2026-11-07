@@ -100,7 +100,10 @@ module SU_MCP
           title: entry.dig(:metadata, :title),
           description: entry.fetch(:description),
           annotations: entry.dig(:metadata, :annotations),
-          input_schema: runtime_input_schema(entry.fetch(:input_schema)),
+          input_schema: runtime_input_schema(
+            entry.fetch(:input_schema),
+            required_arguments_check: entry.fetch(:required_arguments_check, 'sdk')
+          ),
           classification: entry.fetch(:classification),
           &build_tool_handler(entry.fetch(:handler_key), handler_map)
         )
@@ -152,8 +155,13 @@ module SU_MCP
       result
     end
 
-    def runtime_input_schema(schema)
-      runtime_input_schema_class.new(schema)
+    def runtime_input_schema(schema, required_arguments_check: 'sdk')
+      schema_class = if required_arguments_check == 'runtime'
+                       runtime_owned_required_input_schema_class
+                     else
+                       runtime_input_schema_class
+                     end
+      schema_class.new(schema)
     end
 
     def runtime_input_schema_class
@@ -162,6 +170,15 @@ module SU_MCP
 
         def validate_schema!
           nil
+        end
+      end
+    end
+
+    # Still advertises `required` in tools/list, but leaves enforcement to the tool.
+    def runtime_owned_required_input_schema_class
+      @runtime_owned_required_input_schema_class ||= Class.new(runtime_input_schema_class) do
+        def missing_required_arguments(_arguments)
+          []
         end
       end
     end

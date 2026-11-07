@@ -191,7 +191,7 @@ module SU_MCP
 
       def execute_grid_sampling(target_reference, sample_points)
         sample_query.execute(
-          entities: adapter.all_entities_recursive,
+          entities: [],
           entity_entries: adapter.all_entity_paths_recursive,
           scene_entities: adapter.queryable_entities,
           params: grid_sampling_params(target_reference, sample_points)

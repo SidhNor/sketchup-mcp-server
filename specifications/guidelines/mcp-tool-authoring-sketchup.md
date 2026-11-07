@@ -157,6 +157,8 @@ Provider function/tool validators may reject top-level schema composition even w
 
 Recovery-only request shapes must not be advertised as alternate public schema branches. Keep the canonical public contract in the tool schema and handle recognizable mistakes inside runtime validation or recovery seams.
 
+Do not use `$ref` or `$defs` in public tool schemas. Some clients convert MCP schemas into a reduced format and can drop references (Codex is one supported client where this is unconfirmed). When one nested shape repeats many times inside a single tool, spell it out once and give the other occurrences a short `{ type: "object", description: "Same shape as <path>." }` pointer. Only do this when runtime validation already refuses malformed values at every pointer site, and cover that with a test. Tool definitions are paid for in tokens on every session, so a large repeated shape is a real cost.
+
 ---
 
 ## 8. Separate selectors, actions, constraints, and output options

@@ -248,7 +248,7 @@ class SampleSurfaceZSceneQueryCommandsTest < Minitest::Test
     assert_equal('401', result.dig(:target_entry, :entity).entityID.to_s)
     ignored_entity_ids = result.fetch(:ignore_entities).map { |entity| entity.entityID.to_s }
     assert_equal(%w[406 407 408], ignored_entity_ids)
-    assert_operator(serializer.target_identity_value_calls, :<, entries.length * 2)
+    assert_operator(serializer.target_identity_value_calls, :<, entries.count * 2)
   end
 
   def test_multi_field_identity_reference_is_not_counted_as_ambiguous

@@ -3,6 +3,8 @@
 require 'fileutils'
 require 'tmpdir'
 
+require_relative 'entity_path_index'
+
 module SU_MCP
   module Adapters
     # Shared SketchUp model/entity access seam extracted by PLAT-02.
@@ -66,16 +68,20 @@ module SU_MCP
         active_model!.entities.to_a
       end
 
+      # Every reachable entity once, in first-occurrence preorder. Shared
+      # definitions are entered once, so cost follows unique entities rather
+      # than placed copies; use #all_entity_paths_recursive for occurrences.
       def all_entities_recursive
-        collect_entities(active_model!.entities.to_a)
+        unique_entities_preorder { |_entity| true }
       end
 
       def group_component_entities_recursive
-        collect_group_component_entities(active_model!.entities.to_a)
+        unique_entities_preorder { |entity| container?(entity) }
       end
 
+      # Lazy occurrence index; see EntityPathIndex for the cost of full iteration.
       def all_entity_paths_recursive
-        collect_entity_paths(active_model!.entities.to_a, ancestors: [])
+        EntityPathIndex.new(active_model!)
       end
 
       def export_scene(format:, width: nil, height: nil)
@@ -93,58 +99,42 @@ module SU_MCP
 
       private
 
-      def collect_entities(entities)
-        Array(entities).flat_map do |entity|
-          next [] unless entity
-          next [] unless entity.respond_to?(:entityID)
+      def unique_entities_preorder(&include)
+        found = []
+        visit_unique(active_model!.entities.to_a, {}.compare_by_identity, found, include)
+        found
+      end
 
-          [entity] + child_entities_for(entity)
+      def visit_unique(entities, entered, found, include)
+        Array(entities).each do |entity|
+          next unless entity
+          next unless entity.respond_to?(:entityID)
+
+          found << entity if include.call(entity)
+          children = container?(entity) ? container_entities(entity) : nil
+          next unless children
+
+          key = container_key(entity, children)
+          next if entered.key?(key)
+
+          entered[key] = true
+          visit_unique(children.to_a, entered, found, include)
         end
       end
 
-      def child_entities_for(entity)
-        if entity.is_a?(Sketchup::Group)
-          collect_entities(entity.entities.to_a)
-        elsif entity.is_a?(Sketchup::ComponentInstance)
-          collect_entities(entity.definition.entities.to_a)
-        else
-          []
-        end
+      def container?(entity)
+        entity.is_a?(Sketchup::Group) || entity.is_a?(Sketchup::ComponentInstance)
       end
 
-      def collect_group_component_entities(entities)
-        Array(entities).flat_map do |entity|
-          next [] unless entity
-          next [] unless entity.respond_to?(:entityID)
-
-          if entity.is_a?(Sketchup::Group)
-            [entity] + collect_group_component_entities(entity.entities.to_a)
-          elsif entity.is_a?(Sketchup::ComponentInstance)
-            [entity] + collect_group_component_entities(entity.definition.entities.to_a)
-          else
-            []
-          end
-        end
+      def container_entities(entity)
+        entity.is_a?(Sketchup::Group) ? entity.entities : entity.definition.entities
       end
 
-      def collect_entity_paths(entities, ancestors:)
-        Array(entities).flat_map do |entity|
-          next [] unless entity
-          next [] unless entity.respond_to?(:entityID)
-
-          entry = { entity: entity, ancestors: ancestors }
-          [entry] + child_entity_paths_for(entity, ancestors: ancestors + [entity])
-        end
-      end
-
-      def child_entity_paths_for(entity, ancestors:)
-        if entity.is_a?(Sketchup::Group)
-          collect_entity_paths(entity.entities.to_a, ancestors: ancestors)
-        elsif entity.is_a?(Sketchup::ComponentInstance)
-          collect_entity_paths(entity.definition.entities.to_a, ancestors: ancestors)
-        else
-          []
-        end
+      # Copies share a definition; fall back to the entities collection when
+      # an entity exposes no definition.
+      def container_key(entity, children)
+        definition = entity.definition if entity.respond_to?(:definition)
+        definition || children
       end
 
       def normalize_format(format)
